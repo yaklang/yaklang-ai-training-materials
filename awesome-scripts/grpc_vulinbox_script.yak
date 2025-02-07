@@ -1,0 +1,87 @@
+yakit.AutoInitYakit()
+
+scriptNameStr = cli.String("script-name", cli.setDefault(""))
+taskName = cli.String("task-name", cli.setDefault(""))
+
+cli.check()
+
+manager, err = hook.NewMixPluginCaller()
+if err != nil {
+    yakit.Error("build mix plugin caller failed: %s", err)
+    die(err)
+}
+defer manager.Wait()
+// 这个有必要设置：独立上下文，避免在大并发的时候出现问题
+manager.SetConcurrent(20)
+manager.SetDividedContext(true)
+//manager.SetFeedback(func(c){
+//    dump(c)
+//})
+
+
+scriptNames = str.Split(scriptNameStr, ",")
+
+x.Foreach(scriptNames, func(e){
+    yakit.Info("Start to Load Plugin: %v", e)
+    err = manager.LoadPlugin(e)
+    if err != nil {
+        yakit.Error("load plugin[%v] error: %v", e, err)
+    }
+    yakit.Info("%s Is Loaded",e)
+})
+
+
+rsp,err = http.Get("http://192.168.3.113:8787/vul/route?group=sql")
+if err != nil {
+    yakit.Error("http get error: %v", err)
+    die(err)
+}
+groups = rsp.Json()
+
+
+packet = `GET /{{params(path)}} HTTP/1.1
+Host: {{params(target)}}
+`
+
+
+tableName = "质量检测"
+columnType = "漏洞类型"
+columnTarget = "测试 Url"
+columnExpectedDetected = "预期检出"
+columnExpectedDetectedValue = "预期数"
+columnRealDetected = "实际检出"
+yakit.EnableTable(tableName, [columnType, columnTarget, columnExpectedDetected,columnExpectedDetectedValue, columnRealDetected])
+
+
+for _, v := range groups[0].VulInfos {
+    path = str.TrimPrefix(v.Path + v.DefaultQuery,"/")
+    target = "127.0.0.1:8787"
+    if v.ExpectedResult == nil {
+        continue
+    }
+    rsp, reqRaw := poc.HTTP(
+            packet,
+            poc.https(false),
+            poc.params({"target": target,"path": path}),
+        )~
+    isHttps = false
+    u = str.ExtractURLFromHTTPRequestRaw(reqRaw, isHttps)~
+    header, body = poc.Split(rsp)~
+    manager.MirrorHTTPFlow(isHttps, u.String(), reqRaw, rsp, body)
+
+    for k, res := range v.ExpectedResult {
+        yakit.Output(
+         yakit.TableData(
+             tableName, {
+                 columnType:"sql" ,
+                 columnTarget: path,
+                 columnExpectedDetected: k,
+                 columnExpectedDetectedValue: res,
+                 columnRealDetected: "yes",
+                }
+            )
+        )
+    }
+}
+
+

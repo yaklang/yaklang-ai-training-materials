@@ -1,0 +1,358 @@
+yakit.AutoInitYakit()
+
+target = cli.String("target", cli.setRequired(true))
+languages = cli.StringSlice(
+    "language",
+    cli.setMultipleSelect(false),
+    cli.setSelectOption("Java", "java"),
+    cli.setSelectOption("PHP", "php"),
+    cli.setSelectOption("Yaklang", "yak"),
+    cli.setSelectOption("Golang", "go"),
+)
+
+proxy = cli.String("proxy", cli.setHelp("remote url proxy"))
+timeout = 3
+
+peepholeSizes := cli.StringSlice(
+    "peephole",
+    cli.setHelp("将项目切分为多个小项目，以提高编译速度。精度随数字增高。"),
+    cli.setVerboseName("项目分片"),
+    cli.setSelectOption("关闭，精度IV", "0"),
+    cli.setSelectOption("慢速，精度III", "40"),
+    cli.setSelectOption("中速，精度II", "10"),
+    cli.setSelectOption("快速，精度I", "1"),
+)
+
+programName := cli.String("programName", cli.setVerboseName("项目名"), cli.setCliGroup("information"))
+description := cli.Text("description", cli.setVerboseName("项目描述"), cli.setCliGroup("information"))
+excludeFile := cli.String("excludeFile", cli.setVerboseName("排除文件/文件夹"),cli.setCliGroup("compile"),cli.setDefault("**/vendor/**,vendor/**,**/classes/**,**/target/**"))
+
+// {{ compile option
+entry := cli.FileNames("entry", cli.setVerboseName("项目入口文件"), cli.setCliGroup("compile"))
+strictMode = cli.Bool(
+    "StrictMode",
+    cli.setVerboseName("严格模式"),
+    cli.setHelp("如果取消严格模式将会忽略编译错误的文件。将可能导致编译结果缺失部分文件。"),
+    cli.setCliGroup("compile"),
+    cli.setDefault(false),
+)
+reCompile := cli.Bool("re-compile", cli.setVerboseName("是否重新编译"), cli.setCliGroup("compile"), cli.setDefault(true))
+
+cli.check()
+target = target.Trim(" ", "\n", "\t")
+origin = target
+proxy = str.TrimSpace(proxy.Lower())
+javaDir = ["webapp", "resources", "web-inf", "meta-inf", "classes"]
+// jsDir = ["node_modules"]
+// jsFiles = ["package-lock.json","package.json","yarn.lock"]
+phpFiles = ["index.php", "composer.json", "composer.lock", "wp-config.php", "config.php"]
+javaFiles = ["web.xml", "pom.xml", "application.properties", "struts.xml", "application.yml", "log4j2.xml", "log4j.properties", "shiro.ini"]
+var countMap = map[string]int{"php": 0, "go": 0, "java": 0, "yak": 0}
+
+params = {
+    "program_name": "",
+    "language": "",
+    "info": {
+        "kind": "",
+        "local_file": "",
+        "url": "",
+        "proxy": {"proxy": false, "url": ""}
+    },
+    "description": "",
+    "file_count": 0,
+    "error": {
+        "kind": "",
+        "msg": ""
+    }
+}
+func setLanguage(language) {
+    if params.language == ""{
+        params.language = language
+    }
+    return
+}
+
+// check cli parameter
+
+if proxy != "" {
+    params.info.proxy.proxy = true
+    params.info.proxy.url = proxy
+}
+
+if len(languages) > 0 {
+    setLanguage(languages[0])
+}
+
+peepholeSize = 0
+if len(peepholeSizes) > 0 {
+    i, err = atoi(peepholeSizes[0])
+    if err == nil {
+        peepholeSize = i
+    }
+}
+
+
+if programName != "" {
+    params.program_name = programName
+}
+
+
+func detectiveType(data) {
+    return data == codec.DecodeHex("504b0304")~
+}
+func newConnectException(err) {
+    params.error.kind = "connectFailException"
+    params.error.msg = err
+}
+func newFileTypeException(err) {
+    params.error.kind = "fileTypeException"
+    params.error.msg = err
+}
+func newFileNotFoundExcption(err) {
+    params.error.kind = "fileNotFoundException"
+    params.error.msg = err
+}
+func newLanguageNeedSelectException(err) {
+    if  params.error.kind!= "" {
+        return
+    }
+    params.error.kind = "languageNeedSelectException"
+    params.error.msg = err
+}
+
+func generateFileName(kind, filename) {
+    if params.program_name != "" {
+        return
+    }
+    //转换为合格的file格式
+    filename2 = str.Split(filename, "/")[-1]
+    filename2 = str.Split(filename2, "\\")[-1]
+    name := sprintf("%s(%s)",  filename2, time.Now().Format("2006-0102-15:04"))
+    params.program_name = name
+}
+func AutoParseLanguage() {
+    maxinfo = {"key": "", "value": 0}
+    for key, value := range countMap {
+        if maxinfo.value < value {
+            maxinfo.key = key
+            maxinfo.value = value
+        }
+    }
+
+    if maxinfo.value != 0 {
+        setLanguage(maxinfo.key)
+    } else {
+        newLanguageNeedSelectException(f`${params.info.kind} 无法自动检测项目的语言，请手动指定语言。`)
+    }
+}
+func generateDesc() {
+    params.description = f`desc: ${description}
+compile from [${params.info.kind}]${params.info.url}${params.info.local_file}
+    `
+}
+
+//获取zip中的信息，确定语言
+func getZipinfo(basePath) {
+    if params.language != "" {
+        return
+    }
+
+    zip.Recursive(
+        basePath,
+        (dir, path, info) => {
+            if !info.IsDir() {
+                params.file_count++
+            }
+
+            ext = file.GetExt(path).Lower().TrimLeft(".")
+            countinfo = countMap[ext]
+            if countinfo != nil {
+                countMap[ext] = countinfo + 1
+            }
+
+            if params.language == "" {
+                if info.IsDir() {
+                    if info.Name().Lower() in javaDir {
+                        setLanguage(ssa.Java)
+                    }
+                } else {
+                    if info.Name().Lower() in javaFiles {
+                        setLanguage(ssa.Java)
+                    }
+                    if info.Name().Lower() in phpFiles {
+                        setLanguage(ssa.PHP)
+                    }
+                }
+            }
+        },
+    )
+}
+
+func getLocalInfo(localFile) {
+    if !file.IsExisted(localFile) {
+        newFileNotFoundExcption(sprintf(
+            "not found this file in local,check path: %s",
+            localFile,
+        ))
+        return
+    }
+
+    ext := file.GetExt(localFile).Lower()
+    switch ext {
+    case ".jar", ".war":
+        params.info.kind = "jar"
+        params.info.local_file = localFile
+        setLanguage("java")
+        generateFileName("jar", localFile)
+    case ".zip":
+        params.info.kind = "compression"
+        params.info.local_file = localFile
+        generateFileName("compression", localFile)
+        getZipinfo(localFile)
+    default:
+        params.info.kind = "local"
+        if !file.IsDir(localFile) {
+            newFileTypeException(sprint("文件存在，但仅支持jar、war、zip压缩格式。"))
+            return
+        }
+
+        params.info.local_file = localFile
+        filesys.Recursive(
+            localFile,
+            filesys.onDirStat(func(path, info) {
+                if params.language == "" {
+                    switch  {
+                    case info.Name().Lower() in javaDir:
+                        setLanguage(ssa.Java)
+                    }
+                }
+            }),
+            filesys.onFileStat(func(path, info) {
+                params.file_count++
+                ext = file.GetExt(path).Lower().TrimLeft(".")
+                countinfo = countMap[ext]
+                if countinfo != nil {
+                    countMap[ext] = countinfo + 1
+                }
+
+                if params.language == "" {
+                    switch  {
+                    case info.Name().Lower() in javaFiles:
+                        setLanguage(ssa.Java)
+                    case info.Name().Lower() in phpFiles:
+                        setLanguage(ssa.PHP)
+                    }
+                }
+            }),
+        )
+        generateFileName("local", localFile)
+    }
+}
+
+func getHttpInfo(target) {
+    httpUrl = ""
+    if target.HasPrefix("http://") {
+        httpUrl = target[7:]
+    } else {
+        httpUrl = target[8:]
+    }
+
+    if !target.HasSuffix("/") {
+        target += "/"
+    }
+
+    gitUrl = target + "info/refs?service=git-upload-pack"
+    rsp, req, err = poc.Get(gitUrl, poc.connectTimeout(timeout), poc.timeout(timeout), poc.proxy(proxy))
+    if err == nil && rsp.GetStatusCode() == 200 {
+        params.info.kind = "git"
+        params.info.url = target
+        generateFileName("git", httpUrl)
+    }
+
+    if err != nil || rsp.GetStatusCode() != 200 {
+        res, req, err2 = poc.Get(origin, poc.connectTimeout(timeout), poc.timeout(timeout), poc.proxy(proxy))
+        if err2 != nil || res.GetStatusCode() != 200 {
+            generateFileName("http", target)
+            if err2 == nil {
+                newConnectException(sprintf("连接URL: %s 失败，状态码:%d", target, res.GetStatusCode()))
+            }else {
+                newConnectException(sprintf("连接URL: %s 失败:%s", target, err2.Error()))
+
+            }
+            return
+        }
+
+        if str.MatchAllOfSubString(res.GetContentType(), "jar") {
+            params.info.kind = "jar"
+            params.info.url = target
+            setLanguage(ssa.Java)
+            generateFileName("jar", httpUrl)
+        } else if res.GetBody() != nil && len(res.GetBody()) >= 4 && detectiveType(res.GetBody()[:4]) {
+            params.info.kind = "compression"
+            params.info.url = target
+            generateFileName("compression", httpUrl)
+        } else {
+            newFileTypeException(sprint("连接成功，但未找到匹配的文件类型。"))
+        }
+    }
+}
+
+if target.HasPrefix("git://") {
+    gitUrl = target[6:]
+    params.info.kind = "git"
+    params.info.url = target
+    generateFileName("git", gitUrl)
+    if params.language == "" {
+        newLanguageNeedSelectException("git 无法自动检测项目的语言，请手动指定语言。")
+    }
+} else if target.HasPrefix("http://") || target.HasPrefix("https://") {
+    getHttpInfo(target)
+} else {
+    getLocalInfo(target)
+}
+
+if params.program_name == "" {
+    generateFileName(params.info.kind, target)
+}
+
+if params.language == "" {
+    AutoParseLanguage()
+}
+
+yakit.Code(params)
+if params.error.kind != "" {
+    return
+}
+
+generateDesc()
+
+programName = sprint(params.program_name)
+language = sprint(params.language)
+
+opts = [
+    ssa.withProgramName(programName),
+    ssa.withProcess((msg, process) => {
+    yakit.SetProgressEx("complile", process)
+    yakit.Info("%s: %f", msg, process)
+  }),
+    ssa.withLanguage(language),
+    ssa.withReCompile(reCompile),
+    ssa.withStrictMode(strictMode),
+    ssa.withDescription(params.description),
+    ssa.withSaveToProfile(true),
+    ssa.withContext(context.Background()),
+    ssa.withConfigInfo(params.info),
+    ssa.withPeepholeSize(peepholeSize),
+    ssa.withDefaultExcludeFunc(str.Split(excludeFile, ","))~]
+if len(entry) != 0 {
+    opts = append(opts, ssa.withEntryFile(entry...))
+}
+
+
+progs, err := ssa.ParseProject(opts...)
+if err != nil {
+    yakit.Text("编译错误信息:\n" + err.Error())
+    yakit.Error("语言： %s", language)
+    yakit.Error("项目名：%s", programName)
+    yakit.Error("编译信息： %s", params.info)
+}

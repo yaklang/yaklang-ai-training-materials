@@ -1,0 +1,85 @@
+tempDir = yakit.GetHomeTempDir()
+
+base = file.Join(tempDir, "aa", "bb", "cc", "dd", "ee", "ff")
+file.MkdirAll(base)
+for idx in 10 {
+    file.Save(file.Join(base, f"${idx}.txt"), f"${idx}")~
+}
+
+base = file.Join(tempDir, "aa", "gg", "ee", "ff")
+file.MkdirAll(base)
+for idx in 10 {
+    file.Save(file.Join(base, f"${idx}.txt"), f"${idx}")~
+}
+
+count = 0
+filesys.Recursive(
+    file.Join(tempDir, "aa"),
+    filesys.onFileStat((name, info) => {
+        count++
+    })
+)~
+assert count == 20
+
+count = 0
+filesys.Recursive(
+    file.Join(tempDir, "aa", "bb", "cc", "dd"),// "/tmp/aa/bb/cc/dd/",
+    filesys.onFileStat((name, info) => {
+        count++
+    })
+)~
+assert count == 10
+
+
+count = 0
+filesys.Recursive(
+    file.Join(tempDir, "aa", "gg"), // "/tmp/aa/gg/",
+    filesys.onFileStat((name, info) => {
+        count++
+    })
+)~
+dump(count)
+assert count == 10
+
+
+count = 0
+filesys.Recursive(
+    file.Join(tempDir, "aa"),
+    filesys.dir(
+        "**gg", 
+        filesys.onFileStat((name, info) => {
+            count++
+        }), 
+    )
+)~
+dump(count)
+assert count == 10
+
+
+
+count = 0
+filesys.Recursive(
+    file.Join(tempDir, "aa"),
+    filesys.dir("**ff", filesys.onFileStat((name, info) => {
+        println(name)
+        count++
+    }))
+)~
+dump(count)
+assert count == 20
+
+
+count = 0
+filesys.Recursive(
+    tempDir,
+    filesys.dir(
+        "aa**f*",
+        filesys.onFileStat((name, info) => {
+            print("name: ", name)
+            count++
+        }),
+    )
+)~
+print("count: ", count)
+dump(count)
+assert count == 20

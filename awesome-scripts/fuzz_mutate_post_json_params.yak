@@ -1,0 +1,57 @@
+var checkKey = false
+var checkDollarKey = false
+var checkb0c = false
+var checkb = false
+
+
+packet = `GET / HTTP/1.1
+Host: www.baidu.com
+Test: 111111
+Content-Type: a/1
+content-type: a/2
+Content-type: a/3
+a: bbbbb
+
+{"key":"a","$key":"$", "b":[{"c":"ckey"}]}`
+
+freq = fuzz.HTTPRequest(packet)~
+assert freq.GetHeaderParamByName("CONTENT-TYPE").GetFirstValue() in ["a/1","a/2", "a/3"]
+assert freq.GetHeaderParamByName("Content-Type").GetFirstValue() == "a/1"
+assert freq.GetHeaderParamByName("content-type").GetFirstValue() == "a/2"
+assert freq.GetHeaderParamByName("Content-type").GetFirstValue() == "a/3"
+assert freq.GetHeaderParamByName("a").GetFirstValue() == "bbbbb"
+assert freq.GetHeaderParamByName("Host").GetFirstValue() == "www.baidu.com"
+
+for result in freq.GetPostJsonParams() {
+
+    body = result.Fuzz(f`${result.Value()}` + "__PLACEHOLDER").FirstFuzzHTTPRequest().Show().GetBody()
+    if body.Contains("a__PLACEHOLDER") {
+        checkKey = true
+    } else if  body.Contains(`$__PLACEHOLDER`){
+            dump(result.Name())
+            dump(result.GetPostJsonPath())
+        if result.Name() == "$key" && result.GetPostJsonPath() == `$["$key"]` {
+            checkDollarKey = true
+        }
+    } else if body.Contains(`[{\"c\":\"ckey\"}]__PLACEHOLDER`) { // 把 array 和 字符串拼接了
+        checkb = true
+    } else if body.Contains(`ckey__PLACEHOLDER`) {
+        checkb0c = true
+    }
+}
+
+if !checkKey {
+    die("BASIC $.key failed")
+}
+
+if !checkDollarKey {
+    die(`BASIC $["$key"] failed`)
+}
+
+if !checkb {
+    die(`BASIC $.b failed`)
+}
+
+if !checkb0c {
+    die(`BASIC $.b[0].c failed`)
+}

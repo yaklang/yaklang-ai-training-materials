@@ -1,0 +1,41 @@
+// @ssa-ignore
+plugin = PLUGIN != undefined ? PLUGIN : db.GetYakitPluginByName("基础 XSS 检测")~
+// @ssa-ignore
+request = REQUEST != undefined ? REQUEST : b"GET / HTTP/1.1\r\nHost: www.example.com\r\nr\n"
+// @ssa-ignore
+ctx = CTX != undefined ? CTX : context.Background()
+// @ssa-ignore
+https := !!(HTTPS)
+// @ssa-ignore
+callerFilter := CALLER_FILTER != undefined ? CALLER_FILTER : str.NewFilter()
+
+caller := hook.NewMixPluginCallerWithFilter(callerFilter)~
+caller.SetCache(true)
+caller.SetRuntimeId(RUNTIME_ID)
+if PROXY != undefined{
+    caller.SetProxy(PROXY)
+}
+caller.LoadPluginByName(CTX,plugin.ScriptName,[])~
+
+needResponse := plugin.Type == "mitm" && RESPONSE == undefined
+
+// handle response
+var responseBytes = []byte{}
+var responseBody = []byte{}
+try {
+    if needResponse {
+        responseBytes, _ = poc.HTTP(request, poc.https(https))~
+        if len(responseBytes) > 0 {
+            _, responseBody = poc.Split(responseBytes)
+        }
+    }else{
+        responseBytes = RESPONSE
+       _, responseBody = poc.Split(responseBytes)
+    }
+} catch err {
+    log.warn(f"load RESPONSE failed ${err}")
+}
+
+u := str.ExtractURLFromHTTPRequestRaw(request, https)~
+caller.MirrorHTTPFlow(https, u.String(), request, responseBytes, responseBody)
+caller.Wait()

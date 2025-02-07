@@ -1,0 +1,110 @@
+args = cli.Json(
+    "kv", 
+    cli.setJsonSchema(
+        <<<JSON
+{
+  "type": "object",
+  "properties": {
+    "kvs": {
+      "type": "array",
+      "title": "键值对",
+      "minItems": 1,
+      "items": {
+        "properties": {
+          "kind": {
+            "title": "类型",
+            "type": "string",
+            "enum": [
+                "Header",
+                "Cookie",
+                "GetParams",
+                "PostParams"
+            ],
+            "default": "Header"
+            },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "require": [
+          "key",
+          "value",
+          "kind"
+        ]
+      }
+    }
+  }
+}
+JSON, 
+        cli.setUISchema(
+            cli.uiGroups(cli.uiGroup(cli.uiField(
+                "kvs", 
+                1, 
+                cli.uiFieldWidget(cli.uiWidgetTable), 
+                cli.uiFieldGroups(cli.uiGroup(cli.uiField(
+                    "items", 
+                    1, 
+                    cli.uiFieldGroups(cli.uiGroup(
+                        cli.uiTableField("kind", 120),
+                        cli.uiTableField("key", 120),
+                        cli.uiTableField("value", 300), 
+                    )), 
+                ))), 
+            ))), 
+            cli.uiGlobalFieldPosition(cli.uiPosHorizontal), 
+        ), 
+    ), 
+    cli.setRequired(true), 
+)
+keyword = cli.String("url-keyword", cli.setRequired(false), cli.setCliGroup("前提条件"), cli.setVerboseName("URL 前提条件"))
+cli.check()
+
+m = {}
+lock = sync.NewRWMutex()
+
+hijackHTTPRequest = func(isHttps, url, req, forward, drop) {
+    if keyword != "" && !url.Contains(keyword) {
+        return
+    }
+    
+
+    lock.Lock()
+    m[PLUGIN_RUNTIME_ID] = true
+    lock.Unlock()
+    kvs = args["kvs"]
+    for _, item := range kvs {
+        key = item.key
+        val = item.value
+        kind = item.kind
+        f = poc.ReplaceHTTPPacketHeader
+        if kind == "Cookie" {
+            f = poc.ReplaceHTTPPacketCookie
+        } else if kind == "GetParams" {
+            f = poc.ReplaceHTTPPacketQueryParam
+        } else if kind == "PostParams" {
+            f = poc.ReplaceHTTPPacketPostParam
+        }
+        
+
+        req = f(req, key, val)
+    }
+    
+
+    forward(req)
+}
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    lock.RLock()
+    ok = PLUGIN_RUNTIME_ID in m
+    lock.RUnlock()
+    if !ok {
+        return
+    }
+    
+
+    flow.FromPlugin = "修改 HTTP 请求"
+}

@@ -1,0 +1,27 @@
+host , port = tcp.MockTCPProtocol("rdp")
+
+checked, checked2 = false, false
+
+for result in servicescan.Scan(host, string(port),
+    servicescan.proto(["tcp"]...),
+    servicescan.maxProbes(100),
+    servicescan.all(),
+)~{
+    dump(result)
+    if result.Fingerprint.ServiceName == "rdp" {
+        checked = true
+    }
+}
+
+for result in servicescan.Scan(host, string(port),
+    servicescan.proto(["udp"]...),
+    servicescan.maxProbes(100),
+)~{
+    dump(result)
+    if result.Fingerprint.ServiceName == "rdp" {
+        checked2 = true
+    }
+}
+
+
+if (!checked || checked2) { die("ERROR for Mock protocol smoking test!")}

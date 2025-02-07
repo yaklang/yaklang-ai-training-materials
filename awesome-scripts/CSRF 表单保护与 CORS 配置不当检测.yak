@@ -1,0 +1,201 @@
+newResult = func( url, reqRaw, respRaw) {
+    return { "url": url,   "reqRaw": reqRaw, "respRaw": respRaw }
+}
+
+//checkErr 检查错误并退出
+checkErr = func(err) {
+    if err != nil {
+        yakit.Output(sprintf("csrf-DETECT error: %s", err))
+        os.Exit(1)
+    }
+}
+
+description = `
+跨站请求伪造（Cross-Site Request Forgery，简称CSRF）是一种网络攻击手段，攻击者通过诱导用户点击链接、访问网站或者加载图片等方式，使得用户在不知情的情况下发送了一个预设的请求。这个请求通常对应一些具有一定副作用的操作，例如更改密码、购买商品等。
+
+风险说明：“此页面可能包含一个没有CSRF保护的表单”，这句话的含义是，该页面的某个表单可能存在CSRF漏洞。如果攻击者利用这个漏洞，他们可以构造特定的请求，当用户访问某个链接或者页面时，这个请求就会被发送出去，从而执行了攻击者预设的操作。
+
+潜在风险：如果一个表单没有适当的CSRF保护，那么攻击者就可以利用这个漏洞进行攻击。这可能导致用户的账户被恶意操作，例如更改账户设置、进行非法交易、甚至窃取用户的账户。
+
+防护措施：为了防止CSRF攻击，开发者需要在表单中加入CSRF令牌。当用户提交表单时，服务器会验证这个令牌，如果令牌不匹配，那么请求就会被拒绝。此外，还可以使用同源策略（Same-Origin Policy）和内容安全策略（Content Security Policy）等技术防止CSRF攻击。
+    `
+csrfLog = func(result){
+    url = result.url
+    reqRaw = result.reqRaw
+    respRaw = result.respRaw
+    msg = "This page may contain a form without CSRF protection."
+    solution = `
+1. 使用CSRF令牌：在每个表单提交时，服务器应生成一个唯一的、随机的CSRF令牌，并将其嵌入到表单中。当表单被提交时，服务器应验证提交的令牌是否与之前生成的令牌匹配。如果令牌不匹配，则请求应被视为非法并被拒绝。
+
+2. 验证Referer头：服务器可以验证HTTP Referer头以确保请求是从信任的源发送的。如果Referer头与预期的源不匹配，服务器应拒绝请求。
+
+3. 使用SameSite Cookies：SameSite cookie属性可以防止CSRF攻击，因为它们只允许在同一站点的上下文中发送cookie，阻止了跨站请求。`
+
+    report = {"message": msg, url:url}
+    yakit.Output(report)
+    risk.NewRisk(
+            url,
+            risk.title(sprintf("csrf for: %v", url)),
+            risk.details(report),
+            risk.solution(solution),
+            risk.description(description),
+            risk.type("csrf"),
+            risk.request(reqRaw),
+            risk.response(respRaw),
+            risk.severity("low"),
+    )
+}
+
+corsLog = func(result){
+    url = result.url
+    reqRaw = result.reqRaw
+    respRaw = result.respRaw
+    msg = "CORS configuration insecure"
+    description = `
+`
+    solution = `
+1. 限制允许的源：CORS策略应明确指定允许哪些源进行跨源请求，而不是简单地允许所有源。这可以通过设置Access-Control-Allow-Origin头来实现。
+
+2. 限制允许的HTTP方法：应限制允许跨源请求的HTTP方法。例如，可能只允许GET和POST请求。
+
+3. 使用预检请求：对于可能对服务器数据产生副作用的HTTP请求方法（例如，PUT，DELETE），应使用CORS预检请求来确保服务器接受请求。预检请求通过发送一个带有Access-Control-Request-Method和Access-Control-Request-Headers头的OPTIONS请求来实现。
+
+4. 避免信任cookie：对于跨源请求，不应信任或依赖cookie。因为cookie可以被第三方网站操纵，所以它们不应被用作身份验证或会话管理。`
+
+    report = {"message": msg, url:url}
+    yakit.Output(report)
+    risk.NewRisk(
+            url,
+            risk.title(sprintf("cors unsafe for: %v", url)),
+            risk.details(report),
+            risk.description(description),
+            risk.solution(solution),
+            risk.type("cors"),
+            risk.request(reqRaw),
+            risk.response(respRaw),
+            risk.severity("info"),
+    )
+}
+
+csrf_Detect =  func(url,req,rsp,body,ishttps){
+    lowHttpRsp,_,err = poc.HTTPEx(req, poc.deleteHeader("Cookie"), poc.https(ishttps))
+    checkErr(err)
+    rspWithoutCookie = lowHttpRsp.RedirectRawPackets[0].Response
+
+    phtml, err = xpath.LoadHTMLDocument(body)
+    checkErr(err)
+    html, err = xpath.LoadHTMLDocument(poc.GetHTTPPacketBody(rspWithoutCookie))
+    checkErr(err)
+    pforms = xpath.Find(phtml,"//form")
+    forms = xpath.Find(html,"//form")
+
+    dforms = []
+    for pform in pforms{
+        flag = true
+        for form in forms{
+            if formCompare(pform,form){
+                flag = false
+                break
+            }
+        }
+        if flag{
+            dforms.Append(pform)
+        }
+    }
+
+    for form in dforms{
+        formCheck(url,req,rsp,form)
+    }
+
+}
+
+formCompare = func(pform,form){
+    paction = xpath.SelectAttr(pform,"action")
+    action = xpath.SelectAttr(form,"action")
+    if paction != action {
+        return false
+    }
+
+    pinputs = xpath.Find(pform, "//input")
+    inputs = xpath.Find(form, "//input")
+    if len(pinputs) != len(inputs){
+        return false
+    }
+
+    for i = 0; i < len(pinputs);i++ {
+        if xpath.SelectAttr(pinputs[i],"name") != xpath.SelectAttr(inputs[i],"name"){
+            return false
+        }
+    }
+
+    return true
+}
+
+paramBlackList = ["token","csrf","xsrf","tkn"]
+submitBlackList = ["login","register","search","登录","注册","搜索"]
+
+
+formCheck = func(url,req,rsp,form){
+    //检测是否是受js控制的表单 ， 没有action，且有id
+    action = xpath.SelectAttr(form,"action")
+    id = xpath.SelectAttr(form,"id")
+    if action == "" && id != ""{
+        return
+    }
+
+    inputs = xpath.Find(form, "//input")
+
+    for input in inputs{
+        if !xpath.ExistedAttr(input,"hidden"){
+            continue
+        }
+        for name in paramBlackList{
+            if str.Contains(xpath.SelectAttr(input,"name"),name){
+                return
+            }
+        }
+    }
+    interHtml =  xpath.OutputHTML(form)
+    for name in submitBlackList{
+        if str.Contains(interHtml,name){
+            return
+        }
+    }
+    csrfLog(newResult(url,req,rsp))
+}
+
+corsCheck = func(ishttps,req,rsp,url){
+    //检查是否为跨域请求以及请求是否有效
+    if poc.GetStatusCodeFromResponse(rsp) != 200 || poc.GetHTTPPacketHeaders(req)["Origin"] == nil {
+        return
+    }
+    headers = poc.GetHTTPPacketHeaders(rsp)
+    if headers["Access-Control-Allow-Origin"] == nil || headers["Content-Length"] == 0 {
+        return
+    }
+    if headers["Access-Control-Allow-Origin"] == "*"{
+        corsLog(newResult(url,req,rsp))
+    }
+
+    domain = str.RandStr(5)+".example.com"
+    lowHttp,_,err = poc.HTTPEx(req, poc.replaceHeader("Origin", domain))
+    checkErr(err)
+    newHeaders = poc.GetHTTPPacketHeaders(lowHttp.RedirectRawPackets[0].Response)
+    if newHeaders["Access-Control-Allow-Origin"] != nil{
+        if str.Contains(newHeaders["Access-Control-Allow-Origin"] ,domain){
+            corsLog(newResult(url,req,rsp))
+        }
+    }
+
+}
+
+mirrorFilteredHTTPFlow = func(ishttps, url, req, rsp, body) {
+
+    corsCheck(ishttps,req,rsp,url)
+
+    headers = poc.GetHTTPPacketHeadersFull(rsp)
+    if  len(headers["Content-Type"]) == 0 || !str.Contains(headers["Content-Type"][0],"html"){
+        return
+    }
+    csrf_Detect(url, req, rsp, body, ishttps)
+}

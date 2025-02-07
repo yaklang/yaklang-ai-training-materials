@@ -1,0 +1,98 @@
+
+ctx = context.Background()
+
+pluginName = "被动指纹检测"
+plugin = nil
+pluginCode = ""
+reqs = [{"RawHTTPRequest": b`GET / HTTP/1.1
+Host: www.example.com
+`, "IsHttps": true}]
+
+pluginType = "mitm"
+isSmoking = false
+isStrict = false
+runtimeId = ""
+cliParams = {}
+if getParams("REQUESTS") != undefined {
+    reqs = getParams("REQUESTS")
+    ctx = getParams("CTX")
+    plugin = getParams("PLUGIN")
+    pluginName = getParams("PLUGIN_NAME")
+    pluginCode = getParams("PLUGIN_CODE")
+    pluginType = getParams("PLUGIN_TYPE")
+    isSmoking = getParams("IS_SMOKING")
+    runtimeId = getParams("RUNTIME_ID")
+    isStrict = getParams("IS_STRICT")
+    cliParams = getParams("CLI_PARAMS")
+}
+
+/*
+Init Yakit
+*/
+yakit.AutoInitYakit()
+yakit.Info("Start to load plugin: %v", pluginName)
+yakit.Info("RuntimeID: %v", runtimeId)
+
+caller, err := hook.NewMixPluginCaller()
+if err != nil { die(err) }
+caller.SetRuntimeId(runtimeId)
+err = caller.LoadPluginEx(ctx, plugin,cliParams...)
+if err != nil { die(err) }
+caller.SetCache(false)
+caller.SetConcurrent(len(reqs))
+
+swg = sync.NewSizedWaitGroup(10)
+filter = str.NewFilter()
+for req in reqs {
+    reqHash = codec.Sha256(sprintf("%v:%v", req.IsHttps, req.RawHTTPRequest))
+    if filter.Exist(reqHash) {
+        continue
+    }
+    filter.Insert(reqHash)
+
+    swg.Add()
+    req := req
+    go fn {
+        defer swg.Done()
+        try {
+            switch pluginType {
+                case "nuclei":
+                    u = str.ExtractURLFromHTTPRequestRaw(req.RawHTTPRequest, req.IsHttps )~
+                    caller.MirrorHTTPFlowExSync(!isSmoking,req.IsHttps, u.String(), req.RawHTTPRequest, "", "") // nuclei scan not need rsp
+                case "port-scan":
+                    u = str.ExtractURLFromHTTPRequestRaw(req.RawHTTPRequest, req.IsHttps )~
+                    caller.MirrorHTTPFlowExSync(!isSmoking,req.IsHttps, u.String(), "", "", "") // port scan not need req and rsp
+                default:
+                    rspIns, _ := poc.HTTPEx(req.RawHTTPRequest, poc.https(req.IsHttps), poc.session("__GRPC_TEST__"))~
+                    rsp = rspIns.RawPacket
+                    firstRsp = rspIns.RedirectRawPackets[0].Response
+                    firstReq = rspIns.RedirectRawPackets[0].Request
+                    reqRaw = rspIns.RedirectRawPackets[-1].Request
+                    if poc.GetHTTPPacketHeader(firstRsp, "Set-Cookie") == "" {
+                        reqRaw = firstReq
+                    }
+                    //println("---------------------")
+                    //println(string(reqRaw))
+                    //println(string(rsp))
+                    //println("---------------------")
+                    isHttps = req.IsHttps
+
+                    u = str.ExtractURLFromHTTPRequestRaw(reqRaw, isHttps /*type: bool*/)~
+                    header, body = poc.Split(rsp)~
+                    caller.MirrorHTTPFlowExSync(!isSmoking, isHttps, u.String(), reqRaw, rsp, body)
+                    sleep(float(randn(40,100))/float(1000))
+
+            }
+        } catch err {
+            println("===================packet=================== \n%v" % string(req.RawHTTPRequest))
+            log.warn("exec request failed: %v", err)
+        }
+    }
+}
+swg.Wait()
+caller.Wait()
+if isStrict {
+    if caller.LastErr() != nil {
+        die(caller.LastErr())
+    }
+}
