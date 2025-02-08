@@ -1,0 +1,22 @@
+extractPrefixAndConcatPath := (packet, url) => {
+    urlIns, err := str.ParseStringUrlToUrlInstance(url)
+    if err != nil {
+        log.Error("cannot treat %v as url", url)
+        return
+    }
+    
+    prefix = urlIns.Path.TrimRight("/", "?", ";")
+    oldPath := poc.GetHTTPRequestPath(packet)
+    packet = poc.ReplaceHTTPPacketPath(packet, prefix + oldPath)
+    return packet
+}
+
+# input your yak code
+packet := `GET /a/b/c/ HTTP/1.1
+Host: www.example.com
+
+`
+url := `https://www.example.com/prefix/`
+
+newPacket = extractPrefixAndConcatPath(packet, url)
+println(string(newPacket))
