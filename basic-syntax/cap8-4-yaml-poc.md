@@ -230,7 +230,7 @@ http:
 
 以下是一个提取器组的定义，其中包括一个正则提取器和一个键值对（KV）提取器：
 
-```Go
+```
 extractors:
   - name: id
     scope: raw
@@ -528,7 +528,7 @@ wpForo论坛WordPress插件在1.9.7之前的版本中未对论坛登录表单中
 
 可以通过匹配器检测header中的Location字段验证漏洞存在
 
-```Go
+```
 requests:
   - method: GET
     path:

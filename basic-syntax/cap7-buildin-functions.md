@@ -265,7 +265,7 @@ OUTPUT:
 
 函数的示例：
 
-```Go
+```
 host, port, err = str.ParseStringToHostPort("example.com:80")
 // host: example.com
 // port: 80
@@ -320,7 +320,7 @@ host, port, err = str.ParseStringToHostPort("https://example.com")
 
 读者可以从这个示例快速学习这个重要函数的使用：
 
-```Go
+```
 str.ParseStringToHosts("192.168.0.1/32,127.0.0.1") // 返回 ["192.168.0.1", "127.0.0.1"]
 ```
 
@@ -629,7 +629,7 @@ f.Close()
 
 除了使用上述代码打开文件描述符之外，我们还提供了一个省略Flags和权限控制参数的快捷打开函数：
 
-```Go
+```
 fp = file.Open("pathtofile.txt")
 defer fp.Close()
 
@@ -690,7 +690,7 @@ defer f.Close()
 
 在上面提供的代码示例中：
 
-```Go
+```
 f = file.OpenFile("/tmp/test2.txt", file.O_CREATE|file.O_RDWR, 0o777)
 defer f.Close()
 ```
@@ -941,7 +941,7 @@ conn.Close()
 
 首先，我们创建一个TCP服务器，它将在本地环回地址（`127.0.0.1`）上的`8085`端口监听传入的连接。
 
-```Go
+```
 go func{
     tcp.Serve("127.0.0.1", 8085, tcp.serverCallback(conn => {
         conn.Write("Hello I am server")
@@ -954,7 +954,7 @@ go func{
 
 - **等待服务器启动**
 
-```Go
+```
 os.WaitConnect("127.0.0.1:8085", 4)
 ```
 
@@ -962,7 +962,7 @@ os.WaitConnect("127.0.0.1:8085", 4)
 
 - **创建TCP客户端并连接**
 
-```Go
+```
 conn = tcp.Connect("127.0.0.1", 8085)
 ```
 
@@ -970,7 +970,7 @@ conn = tcp.Connect("127.0.0.1", 8085)
 
 - **接收数据**
 
-```Go
+```
 data = conn.ReadFast()
 ```
 
@@ -978,7 +978,7 @@ data = conn.ReadFast()
 
 - **输出数据**
 
-```Go
+```
 dump(data)
 ```
 
@@ -986,7 +986,7 @@ dump(data)
 
 - **关闭连接**
 
-```Go
+```
 conn.Close()
 ```
 
@@ -1195,7 +1195,7 @@ OUTPUT:
 
 上述的一套API中`json.New`返回的序列化内容是Yak内部定义的一个类型，此类型内置一些成员方法可用于辅助完成一些分析工作。
 
-```Go
+```
 type palm/common/yak/yaklib.(yakJson) struct {
 PtrStructMethods(指针结构方法/函数):
     // 判断解析出的对象是否是数组 [] 
@@ -1230,7 +1230,7 @@ PtrStructMethods(指针结构方法/函数):
 
 下面是一个例子，可以直观地看到这对函数的作用：
 
-```Go
+```
 jsonRaw = `[1,23,4,"abc",true,false, {"abc": 123123, "dddd":"123"}]`
 a = ["123", true, false, "123123", 123, {"abc": 123},nil]
 dump(json.loads(jsonRaw))
@@ -1265,7 +1265,7 @@ JSONPath是一种用于从JSON格式的数据结构中提取特定数据的查�
 
 下面使用三个处理下述JSON数据的案例，来展示JsonPath优雅的提取数据能力。
 
-```Go
+```
 jsonRaw=`{
     "name": "YaklangUser",
     "criticalList": [
@@ -1284,7 +1284,7 @@ jsonRaw=`{
 
 1.  提取根节点的name字段
 
-```Go
+```
 rootName = json.Find(jsonRaw, "$.name")
 printf("Fetch `name` in root node: %v\n", rootName)
  
@@ -1296,7 +1296,7 @@ OUTPUT:
 
 1. 提取所有对象中的name字段
 
-```Go
+```
 results = json.Find(jsonRaw, "$..name")
 dump(results)
 /*
@@ -1311,7 +1311,7 @@ OUTPUT:
 
 1. 提取数组数据
 
-```Go
+```
 results = json.Find(jsonRaw, "$.criticalList[1]")
 dump(results)
 /*
@@ -1559,7 +1559,7 @@ HTTP 协议是 Web 应用程序的基础，许多应用程序、框架和库都�
 
 在Yak里发送一个简单快速的HTTP请求是很容易的，只需要一行代码。
 
-```Go
+```
 rsp = http.Get("http://example.com")~
 http.show(rsp)
 ```
@@ -1638,7 +1638,7 @@ Content-Length: 1256
 
 这样简单的请求发送可能不易于解决一些复杂的场景，所以Yak还支持客户端式的HTTP请求发送。
 
-```Go
+```
 req = http.NewRequest("HEAD", "http://example.com")~
 rsp = http.Do(req)~
 ```

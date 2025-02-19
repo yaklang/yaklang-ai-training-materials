@@ -21,7 +21,7 @@ Fuzz可以是完全随机的，也可以是基于某种模式或逻辑的，后�
 
 `fuzz.HTTPRequest`是 Yak HTTP Fuzz 模块中的核心API，调用此API可以创建一个HTTP Fuzz对象。其函数定义如下：
 
-```Go
+```
 fuzz.HTTPRequest(packet []byte, opt...) (*FuzzHTTPRequest, error)
 ```
 
@@ -29,7 +29,7 @@ fuzz.HTTPRequest(packet []byte, opt...) (*FuzzHTTPRequest, error)
 
 #### HTTPS 参数使用
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -47,7 +47,7 @@ fuzz.HTTPRequest(raw, fuzz.https(true))~
 
 类似地Yak语言的`fuzz`库还提供了“代理”参数，用户可以参考这段代码案例来为当前请求设置参数：
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -71,7 +71,7 @@ fuzz.HTTPRequest(raw, fuzz.proxy("http://proxy.com"))~
 >
 > 方法链式调用是一种语法糖。 类似的语法是方法级联调用，即调用一个对象的多个方法的语法糖
 >
-> ```Go
+> ```
 > raw = `GET / HTTP/1.1
 > Host: www.example.com
 > 
@@ -90,7 +90,7 @@ HTTP Fuzzing 技术主要包含两个关键步骤：
 
 通过一个案例来快速熟悉一下执行模糊测试的API：
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -107,7 +107,7 @@ for res = range ch {
 
 在上述示例中，构建了一个 HTTP Fuzz 对象，调用了 `FuzzMethod`。该 API 的具体作用将在随后的内容中详细描述。只需关注以下代码：`fuzz.HTTPRequest(raw, fuzz.https(true))~.FuzzMethod("GET","POST")`，其调用后生成的HTTP Fuzz对象渲染出的Fuzz 数据集合如下：
 
-```Go
+```
 GET / HTTP/1.1
 Host: www.example.com
 
@@ -127,7 +127,7 @@ Content-Length: 0
 
 下面是一个`ExecFirst`的案例，其调用方式与`Exec`一致，不过返回值不再是管道，而是单独响应对象，所以案例中只需直接读取即可。
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -170,7 +170,7 @@ fuzz库为用户提供便捷的数据包变形API，只需要用户将不同变�
 
 在Fuzz库中生成针对请求方法的Fuzz数据是很容易的，需要使用的API是 `FuzzMethod`此API接收请求方法列表，使用这个方法列表以模板为基础生成请求方法对应的数据包。
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -198,7 +198,7 @@ abc=1
 
 同样的也配备了针对请求路径的Fuzz的API：`FuzzPath`，还是传入一个请求路径的列表，改造一下上面的案例，一个针对请求路径的HTTP Fuzz数据生成案例：
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -227,7 +227,7 @@ abc=1
 
 除了`FuzzPath`这个API以外，Yak中还有另一个API可以使用：`FuzzPathAppend`此API可以在原有路径基础上追加新的路径，一个简单的案例如下：
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -262,7 +262,7 @@ abc=1
 
 直接变形参数原文的API是`FuzzGetParamsRaw`，此API直接操作URL的query部分，接收一个paramsRaw 列表，会使用此列表生成对应的变形数据包。这是一个清晰明了的案例：
 
-```Go
+```
 raw = `GET /?a=b HTTP/1.1
 Host: www.example.com
 
@@ -288,7 +288,7 @@ abc=1
 
 此API可以单独操作一个GET参数。
 
-```Go
+```
 raw = `GET /?a=b HTTP/1.1
 Host: www.example.com
 
@@ -310,7 +310,7 @@ abc=1
 
 上述案例中`FuzzGetParams`API的传入值分别为：**参数名**：`"a"`,**Fuzz数据集合（参数值）**: `["c","d"]`，Fuzz数据集合还可以是一个单个值如 `"c"`，单独这样看起来似乎比较鸡肋，但是搭配之前提过的Yak的 Fuzztag，如`{{i(1-3)}}`就可以通过少量的代码完成大量的数据生成，当然fuzztag也可以是列表中的一项，同样会被渲染。下面是一个简单的案例：
 
-```Go
+```
 raw = `GET /?a=b HTTP/1.1
 Host: www.example.com
 
@@ -356,7 +356,7 @@ fuzz库中的API`FuzzGetJsonPathParams`可以使用jsonPath的方式操作指定
 
 一个简单的例子如下
 
-```Go
+```
 raw = `GET /?a={"abc":"test"} HTTP/1.1
 Host: www.example.com
 
@@ -383,7 +383,7 @@ abc=1
 
 fuzz库同样包含针对这种情况的API：`FuzzGetBase64Params`，其调用和`FuzzGetParams`完全一致，唯一的不同是会将参数值Base64编码。案例如下：
 
-```Go
+```
 raw = `GET /?a=b HTTP/1.1
 Host: www.example.com
 
@@ -409,7 +409,7 @@ abc=1
 
 fuzz库中处理这种情况的API是：`FuzzGetBase64JsonPath`，此API的调用同`FuzzGetJsonPathParams`，不同的是此API会在解析和填入数据的时候分别对参数值进行Base64解码和Base64编码
 
-```Go
+```
 //eyJhYmMiOiJ0ZXN0In0%3D {"abc":"test"}
 raw = `GET /?a=eyJhYmMiOiJ0ZXN0In0%3D HTTP/1.1 
 Host: www.example.com
@@ -446,7 +446,7 @@ abc=1
 
 对于常规的头部变形需求，fuzz库中提供的API是`FuzzHTTPHeader`。
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 a: b
@@ -477,7 +477,7 @@ abc=1
 
 首先是请求头级别的Cookie变形，使用的API是`FuzzCookieRaw`，此API是对之前提过的普通Header变形的一层封装，减少了指定请求头名的参数，固定为 “Cookie”，只需要传入请求头内容即可，构造 Fuzz数据包时候会将Cookie头整体进行变形替换。
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 Cookie: a=b
@@ -504,7 +504,7 @@ abc=1
 
 Cookie作为安全测试的重要关注点，还需要更细粒度的API支持，所以fuzz中提供了针对单个Cookie变形的API：`FuzzCookie`，通过一个简单的案例来学习这个API。
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 Cookie: a=b
@@ -554,7 +554,7 @@ abc=1
 
 对请求体变形的基础支撑API是`FuzzPostRaw`，此API用于请求体原文整体替换。
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 
@@ -580,7 +580,7 @@ c
 
 `Content-Type`为`application/json`时会使用JSON格式提交数据，fuzz库中配备了针对Json形式的HTTP请求体的API：`FuzzPostJsonParams`，此API可以针对Json格式请求体的指定节点进行变形。
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 
@@ -618,7 +618,7 @@ username=abc&password=123456
 
 基础的参数处理的API是`FuzzPostParams`接下来通过一个简单的案例，迅速认识一下：
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 
@@ -749,7 +749,7 @@ Content-Type: image/png
 
 API原型为`FuzzUploadFile(name any , filename any, content []byte)`，通过一个案例来快速认知一下：
 
-```Go
+```
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -776,7 +776,7 @@ Content-Type: application/octet-stream
 
 上面提到过的文件名属性`filename`，在fuzz库中对应的API是：`FuzzUploadFileName`
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 
@@ -818,7 +818,7 @@ Content-Type: application/octet-stream
 
 直接来看一个案例：
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 
@@ -859,7 +859,7 @@ Content-Disposition: form-data; name="a"
 
 为了应对这种情况，fuzz库引入一个新的**Fuzz 参数对象**：`FuzzHTTPRequestParam`。此对象的一些关键API如下：
 
-```Go
+```
 type FuzzHTTPRequestParam struct {
   PtrStructMethods(指针结构方法/函数): 
       func Debug() return(*mutate.FuzzHTTPRequestParam) // 打印参数信息
@@ -898,7 +898,7 @@ post1=1&post2=2
 
 测试请求包中有两个GET参数`get1`和`get2`，下面是一个使用API `GetGetQueryParams` 自动发现这两个参数的示例：
 
-```Go
+```
 raw = `POST /?get1=1&get2=2 HTTP/1.1
 Host: www.example.com
 Content-Type: application/x-www-form-urlencoded
@@ -921,7 +921,7 @@ Name:get1                 Position:[GET参数(get-query)]
 
 同样使用测试请求包为例。观察请求包，发现其有两个Cookie 参数：`cookie1 = 1`和`cookie2 = 2`。使用`GetCookieParams`自动发现Cookie参数：
 
-```Go
+```
 raw = `POST /?get1=1&get2=2 HTTP/1.1
 Host: www.example.com
 Content-Type: application/x-www-form-urlencoded
@@ -946,7 +946,7 @@ Name:cookie2              Position:[Cookie参数(cookie)]
 
 测试请求包里有两个`application/x-www-form-urlencoded`类型的键值对POST参数：`post1=1`和`post2=2`。对应的API是`GetPostParams`
 
-```Go
+```
 raw = `POST /?get1=1&get2=2 HTTP/1.1
 Host: www.example.com
 Content-Type: application/x-www-form-urlencoded
@@ -967,7 +967,7 @@ Name:post2                Position:[POST参数(post-query)]
 
 在变形数据的部分中有提到过不同的`Content-Type`会使请求体的数据格式不同，除了默认的`application/x-www-form-urlencoded`格式以外，`application/json`也是常用的一种格式。自动发现这种格式的参数的API是`GetPostJsonParams`
 
-```Go
+```
 raw = `POST / HTTP/1.1
 Host: www.example.com
 Content-Type: application/json
@@ -993,7 +993,7 @@ Name:c                    JsonPath: $.c          Position:[JSON-Body参数(post-
 
 仍然使用上面的测试数据包。
 
-```Go
+```
 raw = `POST /?get1=1&get2=2 HTTP/1.1
 Host: www.example.com
 Content-Type: application/x-www-form-urlencoded
@@ -1039,7 +1039,7 @@ fuzz库中还有更多形式发现参数API，下面简单介绍一下：
 
 获取到 Fuzz 参数对象之后，只需调用其 `Fuzz`方法便可以方便地针对这个参数进行数据包变形。`Fuzz`方法的函数签名是：`Fuzz(i any...) FuzzHTTPRequest`
 
-```Go
+```
 raw = `GET /?a=b&c=d HTTP/1.1
 Host: www.example.com
 
@@ -1094,7 +1094,7 @@ Host: www.example.com
 
 在 Yak 语言中，实施一次中间人攻击是相对容易的，只需利用标准库：`mitm`。通过调用标准库函数：`mitm.Start`即可在指定端口上启动一个中间人代理。此外，我们还需结合回调函数：`mitm.callback` 来处理捕获到的 HTTP(s) 流量。以下是一个简单的示例以帮助读者更好地理解：
 
-```Go
+```
 // 监听所有网卡的8082端口
 err = mitm.Start(
     8082, 
@@ -1119,7 +1119,7 @@ die(err)
 
 在前一部分中，我们成功地实现了中间人攻击的流量嗅探功能。实际上， Yak 语言也能轻松地实现中间人攻击中对HTTP(s)的请求和响应的拦截。为了实现这一目标，我们需要使用两个新的标准库函数：`mitm.hijackHTTPRequest`和`mitm.hijackHTTPResponse`。以下是一个简单的示例，以便于读者更好地理解：
 
-```Go
+```
 // 监听所有网卡的8082端口
 err = mitm.Start(
     8082, 
@@ -1159,7 +1159,7 @@ die(err)
 
 若要在MITM标准库中配置MITM服务器以使用默认的 CA 证书，只需调用函数：`mitm.useDefaultCA(true)`。需要注意的是，此选项默认已启用。若需使用其他 CA 证书，请参考以下示例：
 
-```Go
+```
 err = mitm.Start(
     8082, 
     ..., // 省略

@@ -6,14 +6,14 @@
 
 比如以下这个代码样例：
 
-```Go
+```
 a = 1/0
 println("after a = ", a)
 ```
 
 程序运行时将会产生以下的信息： 
 
-```Go
+```
 Panic Stack:
 File "/var/folders/8f/m14c7x3x1c55rzvk5qvvb1w00000gn/T/yaki-code-3822814179.yak", in __yak_main__
 --> 1 a = 1/0

@@ -98,7 +98,7 @@ synscan.ScanFromPing(hosts:string,ports:string,opts ...synscan.scanOpt) (chan *s
 
 #### 扫描结果：`SynScanResult`结构
 
-```Go
+```
 type synscan.(SynScanResult) struct {
   Fields(可用字段):      
       // 扫描到的 IP
@@ -117,7 +117,7 @@ type synscan.(SynScanResult) struct {
 
 当直接进行扫描时，会使用默认的配置参数进行扫描
 
-```Go
+```
 res, err := synscan.Scan("127.0.0.1", "1-65535")
 die(err)
 for result := range res {    
@@ -187,7 +187,7 @@ Yak 库 api 始终遵循简单易用的理念，在 synscan 库中只有两个�
 
 #### 扫描结果：`MatchResult`结构
 
-```Go
+```
 type MatchResult struct {
   Fields(可用字段):
       Target: string
@@ -227,7 +227,7 @@ type FingerprintInfo struct {
 
 #### 扫描案例1：最简单的扫描使用
 
-```Go
+```
 host = "nmap.scanme.org" // 指定主机
 port = "22-80,443,3389" // 指定端口
 ch, err = servicescan.Scan(host, port)  // 开始扫描，函数会立即返回一个错误和结果管道
@@ -269,7 +269,7 @@ tcp://nmap.scanme.org:25         open   smtp
 
 当想使用 synscan 进行端口快速扫描时，还希望对扫描的端口，进行指纹识别时，可以借助`servicescan.ScanFromSynResult` 这个函数
 
-```Go
+```
 host = "nmap.scanme.org" // 指定主机
 port = "22-80,443,3389" // 指定端口
 ch, err = synscan.Scan(host, port)  // 开始扫描，函数会立即返回一个错误和结果管道

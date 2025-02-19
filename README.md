@@ -70,7 +70,7 @@ Our goal is to provide a "one-stop" security capability foundation.
 
 我们创建一个 `service_scan.yak` 内容如下
 
-```go
+```
 // 极简获取参数，--target xxxx  --port 80
 scanTarget, scanPorts = cli.String("target"), cli.String("port")
 
@@ -122,7 +122,7 @@ tcp://192.168.1.126:80	 open	nginx[*]/php[5.4.45]
 按照编程语言的传统，我们要介绍一门语言的第一个程序，一般来说是在屏幕打印 “Hello World”。在 Yaklang 中，我们仅仅用一行就可以表示这个程序：
 
 
-```go
+```
 print("Hello World")
 // 输出：Hello World
 ```
@@ -135,7 +135,7 @@ print("Hello World")
 
 在 Yaklang 中，你可以使用 `var` 来创建一个变量，也可以直接使用 `=` 来自动创建一个变量，也可以通过 `:=` 来强制创建一个新的变量。
 
-```go
+```
 var myVariable = 1
 myVariable = 2
 myVariable := 3
@@ -184,7 +184,7 @@ Yaklang 中的创建字符串的方式有多种：
 
 1. 使用双引号创建字符串
 
-```go
+```
 myString := "Hello World"
 ```
 
@@ -192,7 +192,7 @@ myString := "Hello World"
 
 2. 使用反引号创建字符串
 
-```go
+```
 myString := `Hello World`
 ```
 
@@ -200,7 +200,7 @@ myString := `Hello World`
 
 3. Heredoc 语法
 
-```go
+```
 myString := <<EOF
 Hello World
 EOF
@@ -214,7 +214,7 @@ Heredoc 语法可以用来创建多行字符串，并且可以包含换行符。
 
 1. 使用 `string % element` 语法来格式化字符串
 
-```go
+```
 name := "John"
 println("Hello %v" % name)
 // 输出：Hello John
@@ -222,7 +222,7 @@ println("Hello %v" % name)
 
 这种语法使用 `%v` 来表示变量的值，`%v` 是 `value` 的缩写，表示变量的值的展示形态，Yaklang 会根据变量的类型来决定展示形态。同样的，类似其他编程语言，用户也可以通过 `%d` 来表示整数，通过 `%f` 来表示浮点数，通过 `%s` 来表示字符串。
 
-```go
+```
 name, age := "John", 20
 println("Hello %v, you are %v years old" % [name, age])
 // 输出：Hello John, you are 20 years old
@@ -232,7 +232,7 @@ println("Hello %v, you are %v years old" % [name, age])
 
 2. 使用 `sprintf` 函数来格式化字符串
 
-```go
+```
 name := "John"
 println(sprintf("Hello %v", name))
 // 输出：Hello John
@@ -240,7 +240,7 @@ println(sprintf("Hello %v", name))
 
 `sprintf` 本质上和 `%` 语法是等价的，但是 `sprintf` 对多个变量的支持是通过直接输入多个参数来实现的，而不是 `[]` 包裹多个变量。
 
-```go
+```
 name, age := "John", 20
 println(sprintf("Hello %v, you are %v years old", name, age))
 // 输出：Hello John, you are 20 years old
@@ -248,7 +248,7 @@ println(sprintf("Hello %v, you are %v years old", name, age))
 
 3. f-string 插值语法
 
-```go
+```
 name := "John"
 println(f"Hello ${name}")
 // 输出：Hello John
@@ -276,7 +276,7 @@ myDict := {"key": "value"}
 
 1. 列表的“增删改查”：
 
-```go
+```
 myList = [1,2,3]
 
 myList.Append(4)
@@ -303,7 +303,7 @@ println(myList[1:3])
 
 除了上述的基本用法之外，`list` 也支持 `newList = append(oldList, element)` 的用法（`append` 是一个内置函数）。
 
-```go
+```
 myList = [1,2,3]
 newList = append(myList, 4)
 println(newList)
@@ -316,7 +316,7 @@ println(newList)
 
 2. 字典的“增删改查”：
 
-```go
+```
 myDict = {}
 
 myDict["name"] = "John"
@@ -344,7 +344,7 @@ println(f`Hello ${myDict["name"]}, your age is ${myDict["age"]}`)
 
 在 Yaklang 中，我们直接使用 IF 和 Switch 来实现条件控制流。使用 For 来构建循环控制流。使用大括号来包裹控制流中的代码块儿。大家可以直接通过下面的案例快速了解 Yaklang 中的控制流
 
-```go
+```
 scores = [10, 20, 30, 40, 50, 60, 70, 80, 99, 100]
 teamScore = 0
 for score in scores {
@@ -364,7 +364,7 @@ println(teamScore)
 
 我们发现，上述代码中，我们使用了 `elif` 来表示 "否则如果"，这个语法在其他编程语言中非常常见，实际上，熟悉其他编程语言的同学可能会更喜欢 `else if` 的写法，在 Yaklang 中，我们也可以使用 `else if` 来表示 "否则如果"。观察下面的案例，它在 Yaklang 中仍然是可以生效的，并且和 `elif` 语法是等价的。在实际使用中，你不需要纠结这个问题，按自己的习惯来写即可。
 
-```go
+```
 result = ""
 age = 18
 if age > 80 {
@@ -380,7 +380,7 @@ println(result)
 
 在 for 循环中，Yaklang 可以使用 `in` 来表示 foreach 循环。在 `in` 的左边表示当次循环体执行的变量，在 `in` 的右边表示循环的集合。
 
-```go
+```
 scores = [10, 20, 30, 40, 50, 60, 70, 80, 99, 100]
 for score in scores {
     println(score)
@@ -400,7 +400,7 @@ for score in scores {
 
 这种循环非常符合 `python` 的使用直觉，但是如果用户更喜欢 Golang 风格的 `for range` 语法，那么可以参考下面的案例：
 
-```go
+```
 scores = [10, 20, 30, 40, 50, 60, 70, 80, 99, 100]
 for index, score = range scores {
     println(index, score)
@@ -416,7 +416,7 @@ for index, score = range scores {
 
 在 for 循环中，用户也可以通过 `for condition {}` 来实现 while 循环。
 
-```go
+```
 i := 0
 for i < 10 {
     println(i)
@@ -439,7 +439,7 @@ for i < 10 {
 
 除了上面的内容，Yaklang 也支持经典的三段式的 For 循环
 
-```go
+```
 for i := 0; i < 10; i++ {
     println(i)
 }
@@ -456,7 +456,7 @@ for i := 0; i < 10; i++ {
 
 Yaklang 中函数使用非常自由，有很多种方式可以创建函数，
 
-```go
+```
 func myFunction() {
     println("Hello World")
 }
@@ -480,7 +480,7 @@ println(helloNameAndAge("John", 20))
 
 除了声明式的创建函数之外，Yaklang 还支持箭头函数，箭头函数是函数的一种简写形式，用户可以通过 `=>` 来创建箭头函数。
 
-```go
+```
 myFunction = () => {
     println("Hello World")
 }
@@ -504,7 +504,7 @@ println(helloNameAndAge("John", 20))
 
 箭头函数中箭头的右边可以是一个表达式也可以是代码块儿，如果是一个表达式，那么表达式会自动返回，如果是一个代码块儿，那么代码块儿会自动返回最后一个表达式的值。
 
-```go
+```
 helloName = name => sprintf("Hello %v", name)
 println(helloName("John"))
 // 输出：Hello John
@@ -516,7 +516,7 @@ println(helloName("John"))
 
 在 Yaklang 的函数中，函数会自动捕获和访问外部变量，这个特性在函数式编程中非常常见，我们称之为闭包。
 
-```go
+```
 name := "John"
 helloWithOutterName = () => sprintf("Hello %v", name)
 println(helloWithOutterName())
@@ -527,7 +527,7 @@ println(helloWithOutterName())
 
 除了自动捕获，函数内部也可以修改外部变量
 
-```go
+```
 name := "John"
 helloModifiedWithOutterName = () => {
     name = "Jane"
@@ -546,7 +546,7 @@ Yaklang 是一个安全领域的 DSL，我们内置了很多安全领域的函�
 
 最典型的案例就是我们在 “速览” 中的 `servicescan.Scan` 函数，这个函数可以用来扫描目标主机的服务。
 
-```go
+```
 results, err = servicescan.Scan(scanTarget, scanPorts)
 die(err)
 
@@ -571,7 +571,7 @@ for result in results {
 
 1. 手动接受错误，并通过 `die(err)` 来处理错误
 
-```go
+```
 results, err = servicescan.Scan(scanTarget, scanPorts)
 die(err)
 ```
@@ -580,7 +580,7 @@ die(err)
 
 2. 使用 `~` 语法来自动处理错误（WavyCall）
 
-```go
+```
 results = servicescan.Scan(scanTarget, scanPorts)~
 ```
 
@@ -594,7 +594,7 @@ results = servicescan.Scan(scanTarget, scanPorts)~
 
 Yaklang 编程的时候，支持 try-catch 语法，用户可以捕获错误，并进行处理。
 
-```go   
+```   
 try {
     results = servicescan.Scan(scanTarget, scanPorts)~
     for result in results {
@@ -611,7 +611,7 @@ try {
 
 4. 使用 `defer recover()` 来捕获错误
 
-```go
+```
 defer {
     err = recover()
     if err != nil {
@@ -657,7 +657,7 @@ myFunc()
 
 Yaklang 支持并发编程，用户可以通过 `go` 关键字来创建并发任务，从语法上看， `go` 关键字后一般可以跟随一个匿名函数调用。表示以异步的形式立即调用后面的函数。
 
-```go
+```
 go func() {
     println("Hello World in Goroutine")
 }()
@@ -684,7 +684,7 @@ Hello World in Main
 
 通常我们使用 `go` 关键字来创建并发任务，但是这些并发任务执行完毕后，我们可能需要等待这些并发任务执行完毕，这时候我们可以使用 `WaitGroup` 来等待这些并发任务执行完毕。
 
-```go
+```
 wg = sync.NewWaitGroup()
 for element in [1,2,3] {
     element := element

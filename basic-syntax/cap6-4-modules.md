@@ -10,7 +10,7 @@
 
 函数定义如下：
 
-```Go
+```
 func import(file, exportsName) (var, error)
 ```
 
@@ -18,7 +18,7 @@ func import(file, exportsName) (var, error)
 
 一个例子如下, 首先创建`lib.yak`脚本：
 
-```Go
+```
 func callee(caller) {
     println("callee is called by", caller)
 }
@@ -26,7 +26,7 @@ func callee(caller) {
 
 创建main.yak脚本：
 
-```Go
+```
 res, err = import("lib", "callee")
 die(err)
 
@@ -45,7 +45,7 @@ include 只有脚本执行前执行，一定位于代码的最前面，include �
 
 一个例子如下, 首先创建lib.yak脚本：
 
-```Go
+```
 func callee(caller) {
     println("callee is called by", caller)
 }
@@ -53,14 +53,14 @@ func callee(caller) {
 
 创建main.yak脚本：
 
-```Go
+```
 include "lib.yak"
 callee("main.yak")
 ```
 
 执行文件main.yak时，将会从当前目录下找到lib.yak文件，并将文件内容替换掉 include 语句，然后后续代码可直接使用在此文件中的所有内容，上述的两个文件将会形成如下的代码
 
-```Go
+```
 func callee(caller) {
     println("callee is called by", caller)
 }
@@ -69,7 +69,7 @@ callee("main.yak")
 
 以上代码运行将会打印如下内容。
 
-```Go
+```
 callee is called by main.yak
 ```
 
@@ -79,7 +79,7 @@ callee is called by main.yak
 
 首先创建lib.yak脚本如下：
 
-```Go
+```
 func callee(caller) {
     println("callee is called by", caller)
 }
@@ -90,7 +90,7 @@ if YAK_MAIN {
 
 使用 include 语法的main.yak脚本如下：
 
-```Go
+```
 include "lib.yak"
 callee("main.yak")
 if YAK_MAIN {
@@ -100,7 +100,7 @@ if YAK_MAIN {
 
 执行文件main.yak时， include 将会将lib.yak脚本内内容完全复制，因此lib.yak内的判断YAM_MAIN代码实际上是在main.yak内运行的，因此也为 true。执行结果如下：
 
-```Go
+```
 i am in lib block
 callee is called by main.yak
 i am in main block
@@ -108,7 +108,7 @@ i am in main block
 
 使用 import 语法的main.yak脚本如下：
 
-```Go
+```
 res, err = import("lib", "callee")
 die(err)
 
@@ -120,7 +120,7 @@ if YAK_MAIN {
 
 此时使用 import 语法，则在lib.yak中的YAK_MAIN为 false，不会运行对应判断内代码。输出如下：
 
-```Go
+```
 callee is called by main.yak
 i am in main block
 ```

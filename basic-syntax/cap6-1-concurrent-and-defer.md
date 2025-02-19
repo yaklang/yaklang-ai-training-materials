@@ -70,13 +70,13 @@ println("end loop ")
 
 在Yak中， 协程运行的基本单位是一个函数，创建协程异步执行的语法和普通的函数调用类似，只需要在开头加上"go"关键字即可。以下是语法示例：
 
-```Go
+```
 go 函数名(参数列表)
 ```
 
 以下是一个简单的代码案例：
 
-```Go
+```
 func count() {
     for i := 1; i <= 5; i++ {
         println("count function:\t", i)
@@ -94,7 +94,7 @@ sleep(1)
 
 在这个例子中， `count`是一个函数，他的作用是循环5次打印`count function: i`， 在程序运行的时候，将会直接调用该函数，函数执行结束后将会继续执行后续代码，仍然循环5次 打印`Main function : i`， 程序将会产生以下输出：
 
-```Go
+```
 count function:  1
 count function:  2
 count function:  3
@@ -111,7 +111,7 @@ Main function:   5
 
 接下来，在函数调用的时候加入"go"关键字，将会使`count`函数异步执行, 异步执行代码示例如下：
 
-```Go
+```
 func count() {
     for i := 1; i <= 5; i++ {
         println("count function:\t", i)
@@ -129,7 +129,7 @@ sleep(1)
 
 这一示例执行结果如下：
 
-```Go
+```
 Main function:   1
 count function:  1
 Main function:   2
@@ -156,7 +156,7 @@ count function:  5
 
 以下为延迟执行的关键字"defer"语法。
 
-```Go
+```
 defer 函数名(参数列表)
 ```
 
@@ -164,7 +164,7 @@ defer 函数名(参数列表)
 
 以下是一个简单的代码样例：
 
-```Go
+```
 println("statement 1")
 defer println("statement 2")
 println("statement 3")
@@ -181,7 +181,7 @@ subFunc2()
 
 在这个示例中，在主函数，程序在defer关键字进行延迟执行`println("statement 2")`这次函数调用，定义`subFunc1`和`subFunc2`两个函数， 主函数将会调用`subFunc2`函数，并在`subFunc2`中，通过普通调用和延迟调用来拿各种功能方式调用`subFunc1`函数。当运行此程序的时候，将会产生以下输出：
 
-```Go
+```
 statement 1
 statement 3
 in sub function 1:  call from subFunc2
@@ -195,7 +195,7 @@ statement 2
 
 程序可以设置多个延迟函数，这些延迟函数将会被保存在一个先入后出的栈结构内，程序结束以后，将会依次从栈中弹出执行，也就是多个函数将会优先执行后定义的函数，从后向前执行。接下来的例子将会展示这一特性：
 
-```Go
+```
 println("statement 1")
 defer println("statement 2")
 defer println("statement 3")
@@ -205,7 +205,7 @@ println("statement 5")
 
 程序运行结束以后，将会从后向前执行定义好的延迟函数，该代码示例运行结果如下：
 
-```Go
+```
 statement 1
 statement 5
 statement 4
@@ -217,7 +217,7 @@ statement 2
 
 程序出错时也会执行其中的延迟函数，接下来的示例将会展示这一特性：
 
-```Go
+```
 defer println("defer statement1 ")
 a = 1 / 0 
 defer println("defer statement2 ")
@@ -225,7 +225,7 @@ defer println("defer statement2 ")
 
 该程序运行到`1/0`的时候，将会触发错误，程序将崩溃，而此时已经通过defer关键字设置了"defer statement1"的延迟函数调用，于是，该代码示例运行结果如下：
 
-```Go
+```
 defer statement1 
 Panic Stack:
 File "/var/folders/8f/m14c7x3x1c55rzvk5qvvb1w00000gn/T/yaki-code-287898179.yak", in __yak_main__
@@ -244,7 +244,7 @@ YakVM Panic: runtime error: integer divide by zero
 
 在第五章中已经详细讲解了函数的创建方式和直接的调用，一个代码的样例如下：
 
-```Go
+```
 func a() {
     println("in sub function 1")
 }
@@ -253,7 +253,7 @@ a()
 
 在很多时候，临时的函数不一定需要被定名，可以直接定义函数并调用。比如如下的代码：
 
-```Go
+```
 func() {
     println("in sub function 2")
 }()
@@ -261,7 +261,7 @@ func() {
 
 在Yak中进行协程创建和延迟运行的时候都需要编写一个函数调用，很多时候会创建一个简单的临时函数，并不给他定名然后调用，将会编写类似上述示例的代码，Yak对这种情况提供了更加简单的方案：
 
-```Go
+```
 func {
     println("in sub function 3")
 }
@@ -271,7 +271,7 @@ func {
 
 在go关键字和defer关键字后，也可以编写这样的代码：
 
-```Go
+```
 defer func {
     println("in defer")
 }
@@ -284,7 +284,7 @@ sleep(1)
 
 这样的程序似的程序编写的更加简洁，他的运行和定义函数进行调用是等效的，运行结果如下：
 
-```Go
+```
 sleep 1
 in go
 in defer
@@ -303,7 +303,7 @@ in defer
 
 下面请看这样一段代码样例：
 
-```Go
+```
 for i in 16 {
     num = i 
     go func{
@@ -328,7 +328,7 @@ for statement done!
 
 为了解决这样一个问题，Yak提供了等待协程的工具：WaitGroup，以下的代码展示了WaitGroup的使用，并通过这一工具解决了前一个代码示例中存在的问题。
 
-```Go
+```
 wg = sync.NewWaitGroup()
 for i in 16 {
     num = i 
@@ -376,7 +376,7 @@ for statement done!
 
 以下的例子演示了`SideWaitGroup`的简单使用：
 
-```Go
+```
 swg = sync.NewSizedWaitGroup(1)
 for i in 16 {
     num = i 
@@ -407,7 +407,7 @@ sync库还提供了很多其他函数可以帮助我们完成并发控制，详�
 
 我们使用一个程序示例讲解这个特性：
 
-```Go
+```
 ch = make(chan int, 2) // 创建Channel，缓存区为2
 
 ch <- 1 // 写入数据 此时缓存区[1]
@@ -428,7 +428,7 @@ println(<- ch) // 取出数据 2 此时缓存区[]
 
 单独使用 Channel 的阻塞特性可能让人奇怪，但是如果和协程一起工作，则会形成非常高效的并发通讯。
 
-```Go
+```
 ch1 = make(chan int)
 ch2 = make(chan int)
 go fn{

