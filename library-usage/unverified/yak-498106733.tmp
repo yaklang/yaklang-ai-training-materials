@@ -1,0 +1,63 @@
+根据提供的代码和知识库内容，我将为您生成完整的U通信训练教程以下是结构化教学材料：
+
+---
+
+# Yaklang UDP 通信开发指南
+
+---
+
+## UDP vs TCP 协议对比
+| 特性           |                        | -------------- | -------------------------- |--- | 连接方式       | 无连接                     | 面向连接             |
+| 可靠性         | 不保证数据完整性和顺序     | 可靠传输             | 速度 低延迟高吞吐量 相对较低 适用场景 实时音视频、游戏、DNS查询  | 文件传输网页   | 头部开销 8字节                      | 20-60            |
+
+## 核心API说明
+
+### 1. `udp.Serve(host, port, callback context)`
+```go
+// 启动UDP服务器
+udp.S
+    "1270.1", 
+    8080
+    ud.serverCallback((conn, data) { 处理接收逻辑
+    }),p.serverContext(context.Seconds(5)) // 设置5秒超时
+)
+```
+- **参数说明**
+  - `host:`监听地址port: int监听端口callback func(conn byte[])：数据接收回调context: context.Context服务运行上下文 2Connect( port) 客户端连接示例
+conn = udpConnect("example.com 53~ 波浪操作符处理错误.SetTimeout(3)3秒超 代码全流程解析 服务端搭建
+host, port = "0 os.GetRandomAvailableTCPPort()
+
+go func {.Serve
+        host, 
+        port
+        udCallback(( data => {
+            // 数据接收处理
+            dump(data 原始数据输出
+            conn.Write("U Message From Server") // 发送响应
+        }),
+        ud(2控制
+    )
+}
+**技术要点**：
+1os 获取可用端口（实际应为U注意函数名差异）
+2 func`协程实现异步服务
+3)` 用于原始诊断 客户端通信
+sleep( 确保服务端启动host, port 错误处理.SendDP Message Client") 
+
+// 等待所有操作完成
+waitAllAsyncCallFinish() 
+```关键操作~` 操作符快速错误等效于 `or die`）waitAllAsync`：同步点 输入对照表                  | 输出结果 说明               | ------ | ------------------------- |------------ | |
+| 客户端 | " Message From Client" 无直接返回                    |后不等待响应 服务端 接收客户端消息"UDP Message From Server" 异步响应机制 接收服务端响应 Recv() 需单独实现 |
+
+--- 性能优化实践
+```go 高性能服务端模板
+go func
+    udp (conn, data)
+        // 最小化
+        conn.Write(processData))~
+    }, udContext(context.Background())) 长期运行
+}
+
+// 批客户端
+parallel 10
+    conn =.Connect(target
