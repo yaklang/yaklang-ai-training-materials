@@ -1,0 +1,101 @@
+# Yaklang UDP 编程教程
+
+Yaklang 提供了一套简洁易用的UDP通信接口，非常适合网络安全测试和网络协议开发。以下我们将通过示例代码逐步讲解如何使用这些接口。
+
+## 1. 基础概念
+UDP（用户数据报协议）是一种无连接的网络协议，具有以下特点：
+- 传输速度快
+- 不保证数据包顺序、完整性和可靠性
+- 适合实时性要求高的场景，如视频流、在线游戏等
+
+与TCP不同，UDP不需要建立连接，直接发送数据即可。
+
+## 2. 快速入门：UDP服务器与客户端
+
+### 示例代码解析
+```yaklang
+// 获取随机端口并启动服务器
+host, port = "127.0.0.1", os.GetRandomAvailableTCPPort()
+go func {
+    udp.Serve(host, port, 
+        udp.serverCallback((conn, data) => {
+            dump(data) // 打印接收到的数据
+            conn.Write("UDP Message From Server") // 发送响应
+        }), 
+        udp.serverContext(context.Seconds(2)) // 设置超时时间
+    )
+}()
+
+sleep(1) // 等待服务器启动
+conn = udp.Connect(host, port)~ // 创建客户端连接
+conn.Send("UDP Message From Client") // 发送消息
+waitAllAsyncCallFinish() // 等待所有异步调用完成
+```
+
+### 代码执行流程
+1. **服务器端**
+   - 使用 `os.GetRandomAvailableTCPPort()` 获取随机端口
+   - 使用 `udp.Serve` 启动异步服务器
+   - 定义回调函数处理客户端请求
+   - 使用 `context.Seconds(2)` 设置2秒超时
+
+2. **客户端**
+   - 使用 `udp.Connect` 连接服务器
+   - 使用 `conn.Send` 发送消息
+   - 使用 `waitAllAsyncCallFinish` 等待所有异步操作完成
+
+## 3. 核心API详解
+
+### 服务器端API
+```yaklang
+udp.Serve(address, port, callback, context)
+```
+- address: 监听地址
+- port: 监听端口
+- callback: 回调函数 `(conn, data) => {}`
+- context: 上下文设置（如超时）
+
+### 客户端API
+```yaklang
+conn = udp.Connect(host, port)~
+conn.Send(data)
+data = conn.Recv()~
+conn.Close()
+```
+
+## 4. 异步编程要点
+- 使用 `go func {}` 启动协程运行服务器
+- 使用 `sleep` 确保服务器完全启动
+- 使用 `waitAllAsyncCallFinish` 等待所有异步操作完成
+
+## 5. 超时控制
+```yaklang
+udp.serverContext(context.Seconds(2)) // 服务器端超时
+conn.SetTimeout(timeout) // 客户端超时
+```
+
+## 6. 数据处理
+```yaklang
+dump(data) // 打印原始数据
+string(data) // 转换为字符串
+```
+
+## 7. 错误处理
+使用波浪操作符 `~` 自动处理错误：
+```yaklang
+conn = udp.Connect(host, port)~
+data = conn.Recv()~
+```
+
+## 8. 实战建议
+- 在实际应用中，建议将服务器逻辑封装成独立函数
+- 使用 `try-catch` 处理可能的异常
+- 对于重要数据传输，建议实现自定义确认机制
+
+## 9. 扩展练习
+1. 修改示例代码，实现多客户端同时连接
+2. 添加消息计数功能，统计接收和发送的消息数量
+3. 实现简单的UDP聊天程序
+
+通过以上内容的学习，您应该已经掌握了Yaklang中UDP编程的基本用法。建议结合实际场景进行更多实践，加深理解。
+
