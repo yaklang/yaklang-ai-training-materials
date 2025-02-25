@@ -1,0 +1,128 @@
+根据您提供的代码和知识库内容，我们可以为 Yaklang 的 UDP 通信功能编写一份详细的教程。以下是对代码的扩展和教程设计：
+
+---
+
+# **Yaklang UDP 通信教程**
+
+## **简介**
+UDP（用户数据报协议）是一种无连接的网络协议，具有低延迟和较小的协议开销，适合实时性要求高的场景，如视频流、在线游戏等。Yaklang 提供了一套简单易用的 UDP 接口，帮助开发者快速实现 UDP 客户端和服务器之间的通信。
+
+---
+
+## **核心概念**
+1. **UDP 特点**：
+   - 无连接：无需建立连接即可发送数据。
+   - 不可靠：不保证数据包的顺序、完整性和可靠性。
+   - 高效：低延迟，适合对性能要求较高的场景。
+
+2. **Yaklang 提供的 UDP 接口**：
+   - `os.GetRandomAvailableUDPPort()`：获取随机可用的 UDP 端口。
+   - `udp.Serve(host, port, callback)`：启动 UDP 服务器，监听指定地址和端口，并处理客户端请求。
+   - `udp.Connect(host, port)`：创建 UDP 客户端连接。
+   - `conn.Send(data)`：向目标地址发送数据。
+   - `conn.Recv()`：接收来自目标地址的数据。
+.Write(data)`：向连接写入数据（用于服务器端响应）。
+   - `sleep(seconds)`：等待一段时间，确保异步任务完成。
+
+3. **异步编程**：
+   - 使用 `go func {}` 启动协程，实现并发操作。
+   - 使用 `waitAllAsyncCallFinish()` 等待所有异步调用完成。
+
+---
+
+## **代码解析与教程**
+
+### **1. 创建 UDP 服务器**
+```yak
+host, port = "127.0.0.1", osPPort()
+go func {
+    udp.Serve(host, port, udp.serverCallback((conn, data) => {
+        dump(data) // 打印接收到的数据
+        conn.Write("UDP Message From Server") // 向客户端发送响应
+    }), udp.serverContext(context.Seconds(2))) // 设置超时时间为 2 秒
+}
+```
+
+#### **关键点解析**：
+- **随机端口**：`os.GetRandomAvailableUDPPort()` 动态分配一个未被占用的 UDP 端口。
+- **异步启动**：通过 `go func {}` 启动一个协程运行服务器，避免阻塞主程序。
+- **回调函数**：`udp.serverCallback` 定义了服务器接收到数据后的处理逻辑。
+- **超时设置**：`udp.serverContext(context.Seconds(2))` 设置服务器上下文的超时时间。
+
+---
+
+### **2. 创建 UDP 客户端**
+```yak
+sleep(1) // 等待服务器完全启动
+conn = udp.Connect(host, port)~ // 连接到服务器
+conn.Send("UDP Message From Client") // 发送消息
+waitAllAsyncCallFinish() // 等待所有异步调用完成
+```
+
+#### **关键点解析**：
+- **等待服务器启动**：`sleep(1)` 确保服务器在客户端连接前已经启动。
+- **建立连接**：`udp.Connect(host, port)` 创建一个 UDP 客户端连接。
+- **发送数据**：`conn.Send(data)` 将消息发送到服务器。
+- **同步等待**：`waitAllAsyncCallFinish()` 确保所有异步任务完成后再继续执行。
+
+---
+
+### **3. 数据传输与调试**
+- **服务器端调试**：
+  ```yak
+  打印接收到的原始数据
+  println(string(data)) // 转换为字符串并打印
+  ```
+- **客户端调试**：
+  ```yak
+  data = conn.Recv()~ // 接收服务器响应
+  println(f"message from server: ${string(data)}") // 打印响应内容
+  ```
+
+---
+
+## **扩展功能**
+
+### **1. 设置超时时间**
+在实际应用中，可能需要设置客户端或服务器的超时时间以避免长时间阻塞：
+```yak
+conn.SetTimeout(2) // 设置超时时间为 2 秒
+data = conn.Recv()~ // 接收数据
+if data == nil {
+    println("timeout occurred")
+}
+```
+
+### **2. 处理错误**
+使用波浪操作符 `~` 捕获潜在错误：
+```yak
+conn, err = udp.Connect(host, port)
+if err != nil {
+    die(err) // 快速失败
+}
+```
+
+---
+
+## **最佳实践**
+
+### **1. 异步任务管理**
+- 使用 `sync.NewWaitGroup()` 管理多个协程：
+  ``` wg := sync.NewWaitGroup()
+  wg.Add(1)
+  go func {
+      defer wg.Done()
+      udp.Serve(host, port(...))
+  }()
+  wg.Wait() // 等待所有协程完成
+  ```
+
+### **2. 数据清洗**
+在处理接收到的数据时，可以结合 `str.Trim` 和 `str.TrimSpace` 清理不必要的字符：
+cleanData = str.TrimSpace(string(data)) // 去除空白字符
+println(cleanData)
+ **完整示例代码**
+以下是完整的 UDP 客户端和服务器通信示例：
+```yak
+// 获取随机端口
+host, port =
