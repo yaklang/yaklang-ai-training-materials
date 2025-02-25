@@ -2,6 +2,8 @@
 
 Yaklang AIKB Means: Yaklang AI Knowledge Base
 
+Managed via yaklang.io
+
 This is a knowledge base for Yaklang, a powerful and flexible programming language.
 
 # CDSL: Yak 
