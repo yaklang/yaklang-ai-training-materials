@@ -1,0 +1,193 @@
+# Yaklang UDP 编程教程
+
+本教程将帮助您掌握 Yaklang 中的 UDP 编程，涵盖基础概念、代码解析、常见用法以及最佳实践。我们将基于您提供的代码示例进行扩展讲解。
+
+---
+
+## **UDP 协议简介**
+
+UDP（用户数据报协议）是一种无连接的网络协议，提供快速但不可靠的数据传输服务。与 TCP 不同，UDP 不保证数据包的顺序、完整性或可靠性，但它的优势在于低延迟和较小的协议开销，非常适合对实时性要求高的应用，如视频流、在线游戏等。
+
+在 Yaklang 中，UDP 编程接口设计得简单易用，适合初学者学习和使用。
+
+---
+
+## **代码解析**
+
+以下是您提供的代码及其功能分解：
+
+```yak
+host, port = "127.0.0.1", os.GetRandomAvailableTCPPort()
+
+// 异步启动一个 UDP 服务器
+go func {
+    udp.Serve(host, port, 
+        udp.serverCallback((conn, data) => {
+            dump(data) // 打印接收到的数据
+            conn.Write("UDP Message From Server") // 向客户端发送响应
+        }), 
+        udp.serverContext(context.Seconds(2)) // 设置超时时间为 2 秒
+    )
+}()
+
+sleep(1) // 等待一秒，确保服务器完全启动
+
+// 创建客户端并连接服务器
+conn = udp.Connect(host, port)~
+conn.Send("UDP Message From Client") // 向服务器发送消息
+
+waitAllAsyncCallFinish() // 等待所有异步调用完成
+```
+
+### **代码功能分解**
+1. **获取随机端口**：
+   - 使用 `os.GetRandomAvailableTCPPort()` 获取一个随机可用的端口。
+   - 这种方法可以避免端口冲突，适用于测试环境。
+
+2. **异步启动 UDP 服务器**：
+   - 使用 `go` 关键字启动一个协程运行 `udp.Serve`。
+   - `udp.Serve` 接收两个主要参数：
+     - **回调函数**：处理接收到的数据。
+     - **上下文**：设置超时时间（这里为 2 秒）。
+   - 回调函数中：
+     - 使用 `dump(data)` 打印接收到的数据。
+     - 使用 `conn.Write` 向客户端发送响应消息。
+
+3. **客户端连接与通信**：
+udp.Connect` 创建客户端连接。
+   - 调用 `conn.Send` 向服务器发送消息。
+   - 使用 `waitAllAsyncCallFinish` 等待所有异步操作完成。
+
+---
+
+## **核心 API 详解**
+
+### **1. `os.GetRandomAvailableTCPPort`**
+- **功能**：获取一个随机可用的 TCP 端口。
+- **用途**：避免手动指定端口导致的冲突问题。
+- **示例**：
+  ```yak
+  port = os.GetRandomAvailableTCPPort()
+  println(port) // 输出一个随机端口号
+  ```
+
+### **2. `udp.Serve`**：启动一个 UDP 服务器，监听指定地址和端口。
+- **参数**：
+  - **地址和端口**：服务器绑定的地址和端口。
+  - **回调函数**：处理接收到的数据。
+  - **上下文**：设置超时时间或其他选项。
+- **示例**：
+  ```yak
+  udp.Serve("127.0.0.1", 8080, 
+      udp.serverCallback((conn, data) => {
+          println(f"Received: ${string(data)}")
+      }), 
+      udp.serverContext(context.Seconds(5))
+  )
+  ```
+
+### **3. `udp.Connect`**
+- **功能**：创建一个 UDP 客户端连接。
+- **返回值**：返回一个连接对象。
+- **示例**：
+  ```yak
+  conn = udp.Connect("127.0.0)~
+  conn.Send("Hello Server")~
+  ```
+
+### **4. `conn.Send` 和 `conn.Write`**
+- **功能**：
+  - `conn.Send`：向服务器发送消息。
+  - `conn.Write`：向客户端发送响应。
+- **区别**：两者功能类似，具体使用取决于上下文。
+
+### **5. `waitAllAsyncCallFinish`**
+- **功能**：等待所有异步调用完成**：确保程序不会提前退出。
+
+---
+
+## **完整示例**
+
+以下是一个完整的 UDP 通信示例，包含服务器和客户端：
+
+```yak
+// 获取随机端口
+host, port = "127.0.0.1", os.GetRandomAvailableUDPPort()
+
+// 异步启动服务器
+go func {
+    udp.Serve(host, port, 
+        udp.serverCallback((conn, data) => {
+            println(f"Message from client: ${string(data)}")
+            conn.Write("UDP Message From Server")~
+        }),Context(context.Seconds(2))
+    )
+}()
+
+sleep(确保服务器启动完成
+
+// 创建客户端并发送消息
+conn = udp.Connect(host, port)~
+conn.Send("UDP Message From Client")~
+
+// 接收服务器响应
+conn.SetTimeout(2)
+data = conn.Recv()~
+println(f"Message from server: ${string(data)}")
+
+// 关闭连接
+conn.Close()
+```
+
+---
+
+## **最佳实践**
+
+1. **超时设置**：
+   - 在 UDP 通信中，建议为服务器和客户端设置合理的超时时间，以避免资源浪费。
+   - 示例：
+     ```yak
+     conn.SetTimeout(2) // 设置超时时间为 2 秒
+     ```
+
+2. **错误处理**：
+   - 使用波浪操作符 `~` 自动处理错误。
+   - 示例：
+     ```yak
+     conn = udp)~
+     ```
+
+3. **异步编程**：
+   - 使用 `go` 关键字启动协程处理并发任务。
+   - 示例：
+     ```yak
+     go func {
+         udp.Serve(...)
+     }()
+     ```
+
+4. **日志记录**：
+   - 使用 `dump` 或 `println` 记录关键信息，便于调试。
+   - 示例：
+     ```yak
+     dump(data) // 打印接收到的数据
+     ```
+
+---
+
+## **扩展练习**
+
+1. **多客户端通信**：
+   - 修改服务器代码，使其能够同时处理多个客户端请求。
+   - 提示：使用 `for` 循环遍历客户端连接。
+
+2. **数据格式化**：
+   - 在客户端和服务器之间传递 JSON 格式的数据。
+   - 提示：使用 `json.Marshal` 和 `json.Unmarshal` 处理数据。
+
+3. **性能优化**：
+   - 测试不同超时时间对通信性能的影响time.Now` 记录时间差。
+
+---
+
+通过以上内容，您应该已经掌握了 Yaklang 中 UDP 编程的基本用法和最佳实践。希望这些知识能帮助您更好地开发网络安全相关的脚本！
