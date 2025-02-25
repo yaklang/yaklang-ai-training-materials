@@ -1,0 +1,139 @@
+根据您提供的代码和相关资料，我将为您设计一份完整的 Yaklang 教程，重点讲解代码中涉及的核心概念、函数使用方法以及如何扩展应用。教程将涵盖以下内容：
+
+---
+
+# **Yaklang 入门与实战教程**
+
+## **目标**
+通过本教程，您将学会：
+1. 使用 Yaklang 编写脚本处理 HTTP 请求。
+2. 理解并掌握 `db` 和 `hook` 模块的基本用法。
+3. 学习如何利用 `poc` 模块修复和解析 HTTP 请求。
+4. 掌握字符串操作函数（如 `str.Trim` 和 `str.TrimSpace`）的使用场景和优化技巧。
+
+---
+
+## **代码解析与扩展**
+
+### **代码功能概述**
+这段代码的主要功能是：
+1. 创建一个临时插件，用于拦截和记录 HTTP 流量。
+2. 通过模拟多个 HTTP 请求，验证插件是否正确记录了流量次数。
+3. 最后通过断言检查数据库中存储的计数值是否符合预期。
+
+---
+
+### **核心模块与函数详解**
+
+#### **1. 数据库操作 (`db` 模块)**
+- **`db.SetKey(key, value)`**  
+  将键值对存储到数据库中。  
+  示例：  
+  ```yak
+  db.SetKey("counter", 0)  // 初始化计数器为 0
+  ```
+
+- **`db.GetKey(key)`**  
+  获取指定键的值。  
+  示例：  
+  ```yak
+  count := db.GetKey("counter")  // 获取当前计数器值
+  println(count)
+  ```
+
+- **`db.CreateTemporaryYakScript(type, code)`**  
+  创建一个临时插件，`type` 表示插件类型（如 `"mitm"`），`code` 是插件的逻辑代码。  
+  示例：  
+  ```yak
+  pluginName := db.CreateTemporaryYakScript("mitm", "println('Hello MITM')")
+  defer db.DeleteYakScriptByName(pluginName)  // 确保插件在脚本结束时被删除
+  ```
+
+---
+
+#### **2. HTTP 请求处理 (`poc` 模块)**
+- **`poc.FixHTTPRequest(rawRequest)`**  
+  修复原始 HTTP 请求数据包，确保其格式正确。  
+  示例：  
+  ```yak
+  fixedRequest := poc.FixHTTPRequest("GET /a/b/c HTTP/1.1\r\nHost: example.com")
+  println(fixedRequest)
+  ```
+
+- **`poc.GetUrlFromHTTPRequest(protocol, rawRequest)`**  
+  从 HTTP 请求中提取完整的 URL。  
+  示例：  
+  ```yak
+  url := poc.GetUrlFromHTTPRequest("http", "GET /a/b/c HTTP/1.1\r\nHost: example.com")
+  println(url)  // 输出：http://example.com/a/b/c
+  ```
+
+---
+
+#### **3. 插件调用 (`hook` 模块)**
+- **`hook.NewMixPluginCaller()`**  
+  创建一个插件调用器，用于加载和调用插件。  
+  示例：  
+  ```yak
+  caller := hook.NewMixPluginCaller()
+  caller.LoadPlugin("my-plugin-name")
+  ```
+
+- **`caller.MirrorHTTPFlow(tls, url, request, response, body)`**  
+  模拟 HTTP 流量，触发插件逻辑。  
+  示例：  
+  ```yak
+  caller.MirrorHTTPFlow(false, "http://example.com", "GET / HTTP/1.1\r\nHost: example.com", "", "")
+  ```
+
+---
+
+#### **4. 字符串操作 (`str` 模块)**
+- **`str.Trim(s, cutset)`**  
+  移除字符串两端的指定字符集合。  
+  示例：  
+  ```yak
+  result := str.Trim("===[Warning]===", "[]=")
+  println(result)  // 输出：Warning
+  ```
+
+- **`str.TrimSpace(s)`**  
+  移除字符串两端的所有空白字符（包括空格、制表符、换行符等）。  
+  示例：  
+  ```yak
+  result := str.TrimSpace("\t Hello World \n")
+  println(result)  // 输出：Hello World
+  ```
+
+---
+
+### **完整代码解读**
+
+```yak
+// 生成随机密钥
+key := randstr(20)
+
+// 定义插件代码
+code := f`key="${key}";db.SetKey(key, 0)
+count=0
+mirrorNewWebsitePath = (tls, url, req, rsp, body) => {
+    count++
+    println(url)
+    db.SetKey(key, count)
+}`
+
+// 创建临时插件
+pluginName := db.CreateTemporaryYakScript("mitm", code)~
+defer db.DeleteYakScriptByName(pluginName)
+
+// 创建插件调用器
+caller := hook.NewMixPluginCaller()~
+caller.LoadPlugin(pluginName)
+
+// 模拟 HTTP 请求
+for i in [
+    {"https": false, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"}, //1
+    {"https": true, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"},  //2
+    {"https": false, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"}, //2
+    {"https": false, "request": "POST /
+
