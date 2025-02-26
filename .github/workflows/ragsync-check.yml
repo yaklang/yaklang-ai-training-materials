@@ -1,0 +1,23 @@
+name: Ragsync Verification
+
+on:
+  workflow_dispatch:  # Allow manual workflow trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Run at midnight every Sunday
+
+jobs:
+  check-ragsync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download Ragsync binary
+        run: |
+          wget https://oss-qn.yaklang.com/ragsync/v1.0.3/ragsync_linux_amd64 -O ragsync
+          chmod +x ragsync
+      
+      - name: Verify Ragsync command
+        run: |
+          ./ragsync sync -h
