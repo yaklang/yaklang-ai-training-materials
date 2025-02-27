@@ -2,6 +2,10 @@ name: Ragsync Verification
 
 on:
   workflow_dispatch:  # Allow manual workflow trigger
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   schedule:
     - cron: '0 0 * * 0'  # Run at midnight every Sunday
 
@@ -40,3 +44,7 @@ jobs:
       - name: Run Ragsync Sync
         run: |
           ./ragsync sync --dir ./library-usage
+      
+      - name: Run Ragsync yaklang-website
+        run: |
+          ./ragsync sync --dir ./yaklang-website
