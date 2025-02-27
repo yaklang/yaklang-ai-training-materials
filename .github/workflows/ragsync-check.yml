@@ -21,3 +21,22 @@ jobs:
       - name: Verify Ragsync command
         run: |
           ./ragsync sync -h
+      
+      - name: Load Ragsync Config
+        run: |
+          mkdir -p ~/.ragsync
+          echo "${{ secrets.RAGSYNC_CONFIG }}" | base64 -d > ~/.ragsync/ragsync.yaml
+          echo "Config loaded to ~/.ragsync/ragsync.yaml"
+      
+      - name: Validate Ragsync Config
+        run: |
+          ./ragsync validate
+          if [ $? -ne 0 ]; then
+            echo "Ragsync config validation failed"
+            exit 1
+          fi
+          echo "Ragsync config validation passed"
+      
+      - name: Run Ragsync Sync
+        run: |
+          ./ragsync sync --dir ./library-usage
