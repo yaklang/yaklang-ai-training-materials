@@ -48,3 +48,7 @@ jobs:
       - name: Run Ragsync yaklang-website
         run: |
           ./ragsync sync --dir ./yaklang-website
+      
+      - name: Run Ragsync yaklang-website
+        run: |
+          ./ragsync sync --dir ./articles
