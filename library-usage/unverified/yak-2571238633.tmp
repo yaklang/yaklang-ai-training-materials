@@ -58,7 +58,7 @@ defer db.DeleteYakScriptByName(pluginName)
    - 返回值 `pluginName` 是插件的唯一名称。
 
 2. **资源清理**：
-   - `defer db.DeleteYakScriptByName(pluginName)` 确保在程序结束时删除插件，避免资源泄漏。
+   - `defer db.DeleteYakScriptByName(pluginName)` 确保在程序结束时删除插件，避免污染数据库。
 
 ---
 
@@ -73,7 +73,7 @@ caller.LoadPlugin(pluginName, )
    - `hook.NewMixPluginCaller()` 创建一个插件调用器实例。
    - `caller.LoadPlugin(pluginName, )` 加载指定插件。
 
-2. **并发安全**：
+2. **错误处理**：
    - `~` 波浪操作符用于捕获潜在错误，确保程序不会因插件加载失败而崩溃。
 
 ---
@@ -83,14 +83,17 @@ caller.LoadPlugin(pluginName, )
 for i in [
     {"https": false, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"}, //1
     {"https": true, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"},  //2
-    {"https": false, "request": "GET /a/b.com"}, //2
     {"https": false, "request": "POST /a/b/c HTTP/1.1\r\nHost: www.example.com\r\n"}, //3
     {"https": false, "request": "POST /a/b/ HTTP/1.1\r\nHost: www.example.com"}, //4
-    {"httpsrequest": "GET /a/b/ HTTP/1.: www.example.com"}, //5
+    {"https": true,  "request": "GET /a/b/ HTTP/1.: www.example.com"}, //5
     {"https": false, "request": "GET /a/b HTTP/.example.com"}, //6
 ] {
     i.request = poc.FixHTTPRequest(i.request)
-    url = poc.GetUrlFromHTTPRequest(i.https?"https":"http", i.request)
+    schema = "http"
+    if i.https{
+       schema = "https"
+    }
+    url = poc.GetUrlFromHTTPRequest(schema, i.request)
     caller.MirrorHTTPFlow(i.https, url, i.request, "", "")
 }
 ```
@@ -101,7 +104,7 @@ for i in [
    - 例如，将 `\n` 替换为标准的 `\r\n`。
 
 2. **提取完整 URL**：
-   - `poc.Get.https?"https":"http", i.request)` 从 HTTP 请求中提取完整的 URL。
+   - `poc.GetUrlFromHTTPRequest(schema, i.request)` 从 HTTP 请求中提取完整的 URL。
    - 根据 `i.https` 判断协议类型（`http` 或 `https`）。
 
 3. **调用插件处理请求**：
@@ -166,21 +169,6 @@ assert parseInt(db.GetKey(key)) == 6
 
 ---
 
-### **3.3 并发控制**
-- **协程与同步工具**：
-  - 使用 `go` 启动协程执行异步任务。
-  - 使用 `sync.NewWaitGroup` 控制并发任务的完成。
-    ```yak
-    wg := sync.NewWaitGroup()
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        println("Async task completed")
-    }()
-    wg.Wait()
-    ```
-
----
 
 ## 4. **总结**
 
@@ -188,6 +176,6 @@ assert parseInt(db.GetKey(key)) == 6
 1. 如何动态生成和注册临时插件。
 2. 使用 `poc` 库修复和解析 HTTP 请求。
 3. 调用插件处理请求流，并验证结果。
-4. 错误处理与并发控制的基本技巧。
+4. 错误处理的基本技巧。
 
 希望这份教程能帮助你更好地理解和使用 Yaklang！如果你有更多问题
