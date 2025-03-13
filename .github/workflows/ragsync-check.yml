@@ -19,7 +19,7 @@ jobs:
       
       - name: Download Ragsync binary
         run: |
-          wget https://oss-qn.yaklang.com/ragsync/v1.0.3/ragsync_linux_amd64 -O ragsync
+          wget https://oss-qn.yaklang.com/ragsync/v1.0.7/ragsync_linux_amd64 -O ragsync
           chmod +x ragsync
       
       - name: Verify Ragsync command
