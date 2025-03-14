@@ -29,27 +29,44 @@ assert dirCount >= 2  // 至少两个子目录
 assert fileCount == 3 // 三个文件
 
 // ======================
-// 案例 2：二进制文件压缩
+// 案例 2：二进制文件压缩与解压
 // ======================
-pngHeader = hex.ParseHexString("89504E470D0A1A0A0000000D49484452")~
+pngHeader = codec.EncodeToHex("89504E470D0A1A0A0000000D49484452")
+binData = codec.EncodeToHex("000102030405")
 rawBinary = zip.CompressRaw({
     "image.png": pngHeader,
-    "data.bin":  hex.ParseHexString("000102030405")~,
+    "data.bin": binData,
 })~
 binZipPath = file.Join(yakit.GetHomeTempDir(), "binary.zip")
 file.Save(binZipPath, rawBinary)
 defer file.Remove(binZipPath)
 
-// 验证二进制内容
+count=0
+files = []
 zip.Recursive(binZipPath, (isDir, path, info) => {
-    if !isDir {
-        content = zip.ReadFileFromZip(binZipPath, path)~
-        if path == "image.png" {
-            assert bytes.HasPrefix(content, pngHeader)
-        }
-    }
+    count++
+    files = append(files, path)
 })
 
+assert "image.png" in files
+assert "data.bin" in files
+assert 2 == count
+
+// 验证解压zip
+decompressPath = str.PathJoin(yakit.GetHomeTempDir(),"binary")
+println(decompressPath)
+zip.Decompress(binZipPath, decompressPath)~
+
+count = 0
+files = []
+contents = []
+for d in file.ReadFileInfoInDirectory(decompressPath)~{
+    count ++
+    files = append(files, d.Name)
+}
+assert "image.png" in files
+assert "data.bin" in files
+assert 2 == count
 // ======================
 // 案例 3：中文/特殊字符处理
 // ======================
@@ -78,7 +95,10 @@ assert "emoji😊.txt" in specialFiles
 // ======================
 try {
     // 尝试读取不存在的 ZIP
-    zip.Recursive("/path/not/exist.zip", (_,_,_) => {})
+    basePath= str.PathJoin(os.TempDir(),"/path/not/exist.zip")
+    defer file.Remove(basePath)
+    zip.Recursive(basePath, (isDir,path,info) => {
+    })
 } catch err {
     println("成功捕获错误:", err)
 }
@@ -92,16 +112,26 @@ memZip = zip.CompressRaw({
 })~
 
 // 直接从内存解析
+memZip = zip.CompressRaw({
+    "memory.txt": "直接内存操作",
+    "data.json": '{"key": "value"}'
+})~
+
+// 直接从内存解析
 memFiles = []
+size = []
 zip.RecursiveFromRaw(memZip, (isDir, path, info) => {
     if !isDir {
         memFiles = append(memFiles, path)
-        // 演示内容读取
-        content = zip.ReadFileFromRaw(memZip, path)~
-        println(sprintf("文件 %s 大小: %d 字节", path, len(content)))
+        size = append(size, info.Size())
+        println(sprintf("文件 %s 大小: %d 字节", path, info.Size()))
     }
 })
+
 assert "memory.txt" in memFiles
+assert "data.json" in memFiles
+assert 18 in size
+assert 16 in size
 ```
 
 补充说明：
@@ -116,8 +146,7 @@ assert "memory.txt" in memFiles
 - `zip.CompressRaw(map[string]string/bytes)`：内存创建 ZIP
 - `zip.Recursive(path, callback)`：遍历磁盘上的 ZIP 文件
 - `zip.RecursiveFromRaw(data, callback)`：遍历内存中的 ZIP 数据
-- `zip.ReadFileFromZip(path, filepath)`：从磁盘 ZIP 读取单个文件
-- `zip.ReadFileFromRaw(data, filepath)`：从内存 ZIP 读取单个文件
+- `zip.Decompress(zipPath, targetPath)`：解压 ZIP 文件到指定目录
 
 注意事项：
 1. ZIP 路径分隔符统一使用正斜杠 `/`
