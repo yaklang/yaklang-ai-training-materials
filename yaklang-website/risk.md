@@ -6,7 +6,7 @@ sidebar_position: 130
 
 ## 新建一个 dnslog
 
-```go
+```yak
 #通过 risk 中的 NewDNSLogDomain 来获取一个二级域名和token 
 server,token,err = risk.NewDNSLogDomain()
 
@@ -24,7 +24,7 @@ dns server check token: kdxpxbvuzf
 
 ## 查询 dnslog 接收
 
-```go
+```yak
 #这里我使用上面的 dnstoken  kdxpxbvuzf
 #通过函数 CheckDNSLogByToken 以及 token 来查询 dnslog 的结果
 
@@ -62,7 +62,7 @@ dump(risk.CheckDNSLogByToken("kdxpxbvuzf"))
 
 ![img.png](../../static/img/yakexample/risk_start_bridge.png)
 
-```go
+```yak
 #通过环境变量来进行配置 yak 脚本链接 bridge
 YAK_BRIDGE_ADDR                = "YAK_BRIDGE_ADDR"
 YAK_BRIDGE_SECRET              = "YAK_BRIDGE_SECRET"
@@ -92,7 +92,7 @@ log.info("token: %s",token/*type ...any*/)
 [INFO] 2022-03-03 16:32:19 +0800 [yaki-code-3541846741] token: qOeZvvgr
 ```
 
-```go
+```yak
 //通过risk.CheckRandomTriggerByToken 函数进行查询是否有反连
 dump(risk.CheckRandomTriggerByToken("YcEhgllg"))
 ```

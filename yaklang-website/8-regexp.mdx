@@ -54,7 +54,7 @@ yak 支持的正则表达式写法很多，有忠诚于标准库的写法，同�
 
 我们这篇文章将介绍作者最推荐的几种文本匹配的写法
 
-```go
+```yak
 func str.MatchAllOfGlob(origin, globPattern1, globPattern2) return bool
 func str.MatchAnyOfGlob(origin, globPattern1, globPattern2) return bool
 
@@ -73,7 +73,7 @@ func str.MatchAnyOfSubString(origin, sub1, sub2) return bool
 
 ### 单个正则匹配文本
 
-```go
+```yak
 result = str.MatchAllOfRegexp(`GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -91,7 +91,7 @@ if result {
 
 #### 多正则匹配：AND 场景
 
-```go
+```yak
 data = `GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -104,7 +104,7 @@ if result {
 
 #### 多正则匹配：OR 场景
 
-```go
+```yak
 data = `GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -119,7 +119,7 @@ if result {
 
 如下几个接口在 `>= 1.0.13-sp14` 引擎中使用：
 
-```go
+```yak
 // 匹配符合正则要求的结果（只返回一个结果）
 func re.Find(data, regexp/*string*/) return string
 
@@ -156,7 +156,7 @@ func re.FindAllSubmatchIndex(data, regexp/*string*/) return
 
 ### 提取单个结果
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 
 // 匹配提取单个结果
@@ -175,7 +175,7 @@ OUTPUT:
 
 ### 提取所有结果
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 
 // 匹配提取所有结果
@@ -202,7 +202,7 @@ OUTPUT:
 
 ### 提取包含分组的结果
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 
 // 匹配提取分组结果(单个)
@@ -225,7 +225,7 @@ OUTPUT:
 
 ### 提取全部分组结果
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 
 // 匹配提取分组结果（多个）
@@ -264,7 +264,7 @@ OUTPUT:
 
 ## 根据正则替换数据
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 pattern := `CoreText\s([^:]+)`
 
@@ -285,7 +285,7 @@ OUTPUT:
 
 ## 原汁原味的 Golang `regexp`
 
-```go
+```yak
 data = `.796 Electron Helper (Renderer)[7878:58760] CoreText note: Client requested name ".NewYork-Regular", it will get Times-Roman rather than the intended font. All systCoreText aaaa:em UI font acce`
 
 // 匹配提取分组结果（多个）
@@ -339,7 +339,7 @@ OUTPUT:
 
 使用 re 模块可以编译/执行 Golang 的 `Compile/MustCompile` 对象：
 
-```go
+```yak
 type regexp.(Regexp) struct {
   Fields(可用字段):   StructMethods(结构方法/函数):
   PtrStructMethods(指针结构方法/函数):

@@ -6,7 +6,7 @@ sidebar_position: 11
 
 yaklang 中布尔值使用常量 true 和 false 来表示。值得注意的是，布尔值是没办法参与数值运算的，即形如 true + 1这种运算是非法的，一个简单的布尔值例子如下：
 
-```go
+```yak
 a = true
 b = false
 if a && b {
@@ -18,7 +18,7 @@ if a && b {
 
 在yaklang中，nil和undefined是完全等价的，一个简单的例子如下：
 
-```go
+```yak
 a = nil
 println(a == undefined) // true
 println(b == nil) // true 访问没声明的变量其值相当于nil/undefined

@@ -8,7 +8,7 @@ sidebar_position: 13
 
 一个简单的例子如下，这些操作和我们使用 Golang 非常类似，当然切片的计算继承了 Python 的风格：
 
-```go
+```yak
 a = [1, 2]
 b = [4, 5, 6]
 
@@ -28,7 +28,7 @@ println(a[::-1]) // [6, 5, 4, 3, 2, 1]
 
 同样，yaklang也支持slice的内置方法，可以实现一些很方便的操作，一个完整的例子如下：
 
-```go
+```yak
 a = [1, 2, 3]
 // Append / Push: 修改 a 变量的 list 值，追加一个值
 a.Append(4)

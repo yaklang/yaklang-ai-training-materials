@@ -6,7 +6,7 @@ sidebar_position: 21
 
 在 Yaklang 中的函数其实本质上是一种 “值”，我们以这种方式，可以很容易理解 Yaklang 中最推荐的函数声明模式：
 
-```go
+```yak
 abc = func() {
     println("function is called")
 }
@@ -14,7 +14,7 @@ abc = func() {
 
 同时为了照顾不同人的不同习惯，我们 func 关键字和 fn, def 都是完全一致的，也就是说上述代码与下面的代码完全等价：
 
-```go
+```yak
 abc = fn() {
     println("function is called")
 }
@@ -24,7 +24,7 @@ abc = fn() {
 
 在我们理解上述函数之后，其实很多同学会很奇怪，为什么要使用一个变量名来接收函数本身？其实从语法设计上来说，接受函数作为值与“声明”一个函数，本质上是一样的；所以我们设计了如下 “糖”，来降低大家的使用和理解成本
 
-```go
+```yak
 func abc() {
     println("Hello World Named-Function!")
 }

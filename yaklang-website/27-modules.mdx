@@ -20,7 +20,7 @@ sidebar_position: 27
 
 所以我们在看下面代码：
 
-```go
+```yak
 // main.yak
 func callee(caller) {
    println("callee is called by", caller)
@@ -41,7 +41,7 @@ if YAK_MAIN {
 
 作为对比，我们在同一个目录下，编写一个 foo.yak，内容如下
 
-```go
+```yak
 // foo.yak
 res, err := dyn.LoadVarFromFile("main.yak", "callee")
 die(err)
@@ -55,7 +55,7 @@ res[0].Value("foo.yak")
 
 我们发现:
 
-```go
+```yak
 if YAK_MAIN {
    println("i am in main block")
    callee("main")
@@ -78,7 +78,7 @@ if YAK_MAIN {
 
 我们先创建一个 a1.yak 脚本
 
-```go
+```yak
 // a1.yak
 func callee() {
    println("I am in `callee` function....")
@@ -92,7 +92,7 @@ if YAK_MAIN {
 
 然后我们创建一个 main.yak 脚本
 
-```go
+```yak
 // main.yak
 calleeVar, err = import("a1", "callee")
 if err != nil {
@@ -123,7 +123,7 @@ include 只有在脚本执行之前进行执行，本质相当于把一个新的
 
 作为对比，我们继续使用上一节的 main.yak 函数。通过 include 来执行。
 
-```go
+```yak
 // foo2.yak
 include "main.yak"
 

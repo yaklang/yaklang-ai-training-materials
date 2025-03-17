@@ -17,7 +17,7 @@
 
 这个类型的定义是
 
-```go
+```yak
 type palm/common/yak/yaklib.(yakJson) struct {
 PtrStructMethods(指针结构方法/函数):
     // 判断解析出的对象是否是数组 [] 
@@ -52,7 +52,7 @@ PtrStructMethods(指针结构方法/函数):
 
 所以最基础的，我们可以使用如下方式来测试这两个功能：
 
-```go
+```yak
 println(json.loads(`{"test": 123}`))
 println(json.dumps({"test": 123}))
 ```

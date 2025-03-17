@@ -40,7 +40,7 @@ import TOCInline from '@theme/TOCInline';
 其返回值是响应结构体，请求结构体和错误。参考[后文](#使用原始-http-报文发送数据包获取更多请求与响应数据-pochttpex)获取更多信息。
 
 以下是一个简单的例子，我们使用 `poc.Do` 来发送一个 GET 请求：
-```go
+```yak
 rsp, req = poc.Do("GET", "https://www.baidu.com")~
 ```
 
@@ -57,7 +57,7 @@ rsp, req = poc.Do("GET", "https://www.baidu.com")~
 
 当然，`poc` 库也提供了更加简便地方法来快速发送其他的请求，例如 `poc.Get`, `poc.Post`。其本质上是对 `poc.Do` 的封装。
 
-```go
+```yak
 rsp, req = poc.Get("https://www.baidu.com")~ // 相当于 poc.Do("GET", "https://www.baidu.com")
 rsp, req = poc.Post("https://www.baidu.com", poc.replaceBody("a=1&b=2", false))~ //  相当于 poc.Do("POST", "https://www.baidu.com", poc.replaceBody("a=1&b=2", false))
 ```
@@ -73,7 +73,7 @@ rsp, req = poc.Post("https://www.baidu.com", poc.replaceBody("a=1&b=2", false))~
 
 使用 `poc.HTTP` 可以直接做到以一个数据包发送报文：
 
-```go
+```yak
 rsp, req = poc.HTTP(`GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -123,7 +123,7 @@ req:
 
 举一个简单的例子，响应结构体的结构如下：
 
-```go
+```yak
 type LowhttpResponse struct {
 	RawPacket              []byte // 原始响应报文
 	RedirectRawPackets     []*RedirectFlow // 所有重定向的请求与响应流信息
@@ -172,7 +172,7 @@ type LowhttpTraceInfo struct {
 第一个方法是使用 `poc.ParseBytesToHTTPResponse`将原始响应报文解析为原始响应结构体，在此结构体中我们就可以拿到许多响应信息。
 
 一个例子如下：
-```go
+```yak
 rsp, req = poc.HTTP(`GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -188,7 +188,7 @@ println(string(body)) // 响应体
 第二个方法是使用`poc`库提供的辅助函数，这些函数可以帮助我们快速获取响应信息，如响应状态码，响应体等。
 
 一个例子如下：
-```go
+```yak
 rsp, req = poc.HTTP(`GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -206,7 +206,7 @@ body = poc.GetHTTPPacketBody(rsp) // 响应体
 #### 方法一：请求时使用额外参数
 
 有一些额外参数可以辅助我们对原始请求数据包进行修改，以下是提供的接口：
-```go
+```yak
 poc.replaceFirstLine
 poc.replaceMethod
 poc.replaceHeader
@@ -236,7 +236,7 @@ poc.deleteForm
 一些简单的例子如下：
 ##### 修改请求方法
 
-```go
+```yak
 // 将请求方法改为POST，并增加body
 rsp, req = poc.HTTP(`GET /post HTTP/1.1
 Host: pie.dev
@@ -246,7 +246,7 @@ printf("%s", rsp)
 
 ##### 修改path
 
-```go
+```yak
 // 将path改为get
 rsp, req = poc.HTTP(`GET /post HTTP/1.1
 Host: pie.dev
@@ -256,7 +256,7 @@ printf("%s", rsp)
 
 ##### 修改Host
 
-```go
+```yak
 // 将Host改为pie.dev
 rsp, req = poc.HTTP(`GET /get HTTP/1.1
 Host: baidu.com
@@ -266,7 +266,7 @@ printf("%s", rsp)
 
 ##### 修改所有GET参数
 
-```go
+```yak
 rsp, req = poc.HTTP(`GET /get?a=1&b=2 HTTP/1.1
 Host: pie.dev
 `, poc.replaceAllQueryParams({"a":"3", "b":"4"}))~
@@ -275,7 +275,7 @@ printf("%s", rsp)
 
 ##### 增加一个form表单，上传文件
 
-```go
+```yak
 // 新增一个form，上传文件，poc.appendUploadFile 第一个参数为fieldName，第二个参数为fileName，第三个参数为文件内容，第四个参数为contentType
 rsp, req = poc.HTTP(`POST /post HTTP/1.1
 Host: pie.dev
@@ -292,7 +292,7 @@ printf("%s", rsp)
 #### 方法二：使用辅助函数
 
 与额外参数类似，用户可以直接使用辅助函数对原始请求数据包进行修改，而不进行请求：
-```go
+```yak
 poc.ReplaceHTTPPacketMethod
 poc.ReplaceHTTPPacketFirstLine
 poc.ReplaceHTTPPacketHeader
@@ -322,7 +322,7 @@ poc.DeleteHTTPPacketForm
 一些简单的例子如下：
 ##### 修改请求方法
 
-```go
+```yak
 // 将请求方法改为POST
 req = poc.ReplaceHTTPPacketMethod(`GET /post HTTP/1.1
 Host: pie.dev
@@ -331,7 +331,7 @@ Host: pie.dev
 
 ##### 修改path
 
-```go
+```yak
 // 将path改为get
 req = poc.ReplaceHTTPPacketPath(`GET /post HTTP/1.1
 Host: pie.dev
@@ -342,7 +342,7 @@ Host: pie.dev
 
 这是poc标准库最近新增的一个工具函数，经常在构建请求时使用，一个简单的例子如下：
 
-```go
+```yak
 packet = `GET /post HTTP/1.1
 Host: pie.dev
 `
@@ -356,7 +356,7 @@ packet = poc.BuildRequest(packet, poc.replaceMethod("POST"), poc.replaceBody("a=
 
 这时就可以使用额外参数了。其类似于 `http` 库中的额外参数。
 
-```go title="使用 poc.https 设置 TLS 加密通信"
+```yak title="使用 poc.https 设置 TLS 加密通信"
 packet = `GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -368,7 +368,7 @@ rsp, req = poc.HTTP(packet, poc.https(true))~
 
 这种可变参数的设置方法在 Yak 中非常常用，它允许用户拥有好的代码提示，并且能在动态类型中很好地配合强类型限制去限制参数内容。
 
-```go title="同时使用多个参数"
+```yak title="同时使用多个参数"
 rsp, req = poc.HTTP(
     packet,
     poc.https(true),
@@ -411,7 +411,7 @@ rsp, req = poc.HTTP(
 一般情况下，我们并不需要手动指定目标地址，`poc.HTTP` 会自动识别 Host 请求头进行数据包发送。假如 Host 请求头中没有指定端口，则使用默认端口（HTTP为80，HTTPS为443）。假如没有 Host 请求头且没有手动指定 Host 则会报错。
 
 我们以下面的例子来说明：
-```go title="不指定 HTTPS && 不指定端口"
+```yak title="不指定 HTTPS && 不指定端口"
 packet = `GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -423,7 +423,7 @@ rsp, req = poc.HTTP(
 
 此时目标地址为：`www.baidu.com:80`
 
-```go title="指定 HTTPS && 不指定端口"
+```yak title="指定 HTTPS && 不指定端口"
 packet = `GET / HTTP/1.1
 Host: www.baidu.com
 
@@ -436,7 +436,7 @@ rsp, req = poc.HTTP(
 
 此时目标地址为：`www.baidu.com:443`
 
-```go title="指定端口"
+```yak title="指定端口"
 packet = `GET / HTTP/1.1
 Host: www.baidu.com:8080
 
@@ -460,7 +460,7 @@ rsp, req = poc.HTTP(
 
 :::
 
-```go title="指定 Host 和 Port 来发送数据包"
+```yak title="指定 Host 和 Port 来发送数据包"
 packet = `GET / HTTP/1.1
 Host: www.baidu.com:8080
 
@@ -484,7 +484,7 @@ rsp, req = poc.HTTP(
 1. 如果数据包是 `multipart/form-data` 形式的，自动校验并修复 Boundary
 1. 自动修复 CRLF
 
-```go title="修复 Content-Length"
+```yak title="修复 Content-Length"
 packet = `
 GET / HTTP/1.1
 Host: www.example.com
@@ -512,7 +512,7 @@ abc123123
 1. 数据包 Content-Length 无法对应
 1. 数据包中结尾缺失 CRLF*2
 
-```go title="修复上传文件数据包，同时也能修复 Content-Length"
+```yak title="修复上传文件数据包，同时也能修复 Content-Length"
 packet = `
 POST / HTTP/1.1
 Host: localhost:8000
@@ -562,7 +562,7 @@ Content of a.txt.
 
 一般来说，我们在 `poc.HTTP` 中获得的数据包是 `bytes` 类型的，实际上在进行数据处理过程中，我们有时并不希望整体进行处理，需要单独进行处理 header 与 body。
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.example.com
@@ -583,7 +583,7 @@ printf("Body MD5: %v\n", codec.Md5(body))   // 计算数据包响应的 md5
 
 这种处理方式没有任何问题，可以很好的让 "错误" 变成代码逻辑，那么如果不想处理错误的话，我们可以使用
 
-```go title="简化错误处理"
+```yak title="简化错误处理"
 rsp, req := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.example.com

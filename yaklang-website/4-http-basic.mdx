@@ -22,7 +22,7 @@ import TOCInline from '@theme/TOCInline';
 
 ### 基础：快速发送一个 GET / POST 请求
 
-```go
+```yak
 rsp = http.Get("http://example.com")~
 http.show(rsp)
 ```
@@ -76,7 +76,7 @@ Content-Length: 1256
 
 实际上，我们也支持这种形式：
 
-```go
+```yak
 req = http.NewRequest("HEAD", "http://baidu.com")~
 http.show(req) // show packet
 
@@ -116,7 +116,7 @@ Content-Length: 0
 
 在 `>= 1.1.8-sp8` 的引擎版本中，我们可以通过 `http.params({"key": "value"})` 或者 `http.postparams({"key": "value"})` 来为 GET 请求设置参数。
 
-```go
+```yak
 req = http.NewRequest("GET", "https://www.baidu.com", http.params({"key": "value"}))~
 http.show(req)
 
@@ -136,7 +136,7 @@ Host: www.baidu.com
 
 因此，我们把这两个参数放在一起，将会明白他是如何工作的
 
-```go
+```yak
 req = http.NewRequest("GET", "https://www.baidu.com", http.params({"key": "value"}), http.postparams({"key2": "value2"}))~
 http.show(req)
 
@@ -155,7 +155,7 @@ key2=value2
 
 通过使用 `http.json(...)` 可以让 yak 的 http 库自动把对象转变成 JSON 格式的内容，并为他设置好合理的 `Content-Type`
 
-```go
+```yak
 req = http.NewRequest("GET", "https://www.baidu.com", http.json({"key": "value"}))~
 http.show(req)
 
@@ -183,7 +183,7 @@ Content-Length: 15
 
 一般来说，设置 User-Agent 是一个非常常见的操作，在 Yak 中，我们也可以很好支持这个操作：`http.useragent` 或 `http.ua` 都可以完成操作。
 
-```go
+```yak
 req = http.NewRequest("GET", "https://www.baidu.com", http.useragent("Yaklang-User-Agent/1.1"))~
 http.show(req)
 
@@ -199,7 +199,7 @@ User-Agent: Yaklang-User-Agent/1.1
 
 当然，我们在一些特殊场景中经常会使用一个虚假的或者随机的 `User-Agent`，通过 `http.fakeua()` 我们可以随机生成一个 User-Agent 来发送数据包。
 
-```go
+```yak
 req = http.NewRequest("GET", "https://www.baidu.com", http.fakeua())~
 http.show(req)
 
@@ -225,7 +225,7 @@ Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like 
 
 User-Agent 当然只是一种特殊情况，一般来说，我们还可以设置更多复杂的情况，通过 `http.header` 可以快速设置。
 
-```go
+```yak
 req = http.NewRequest(
     "GET", "https://www.baidu.com",
     http.header("User-Spec-Header", "AwesomeYaklang!")
@@ -246,7 +246,7 @@ User-Spec-Header: AwesomeYaklang!
 
 当然，和上面接口高度类似地，我们可以设置通过类似的操作去设置 Cookie：`http.cookie(any)`
 
-```go
+```yak
 req = http.NewRequest(
     "GET", "https://www.baidu.com",
     http.header("User-Spec-Header", "AwesomeYaklang!"),
@@ -277,7 +277,7 @@ HTTP 超时限制的目的是防止客户端无限期地等待服务器响应，
 
 我们可以用一个例子来观察这个参数的作用：
 
-```go
+```yak
 rsp = http.Get("http://www.example.com", http.timeout(0.3))~
 
 /*
@@ -295,7 +295,7 @@ YakVM Panic: native func `http.Get` call error: Get "http://www.example.com": co
 
 当然，我们可以编写一个不用 `wavycalling` 的版本：
 
-```go
+```yak
 rsp, err = http.Get("http://www.example.com", http.timeout(0.3))
 if err != nil {
     log.error(`Get http://www.example.com: %v`, err)
@@ -313,7 +313,7 @@ OUTPUT:
 
 除了控制超时之外，yak http 也支持用户单独设置一个代理，我们可以使用著名的 `ifconfig.me` 来验证我们的代理设置成功没有。
 
-```go
+```yak
 rsp = http.Get("http://ifconfig.me", http.timeout(5), http.proxy("http://127.0.0.1:7890"))~
 http.show(rsp)
 
@@ -339,7 +339,7 @@ Content-Length: 12
 
 在 http 包中，我们默认开启了重定向，但是有时候我们往往需要禁用重定向控制。
 
-```go
+```yak
 rsp = http.Get("https://baidu.com/", http.timeout(5), http.noredirect())~
 ```
 
@@ -349,7 +349,7 @@ rsp = http.Get("https://baidu.com/", http.timeout(5), http.noredirect())~
 
 ### 获取 HTTP 响应状态码
 
-```go
+```yak
 url = "https://www.example.com"
 rsp = http.Get(url)~
 
@@ -383,14 +383,14 @@ Response StatusCode: 200
 
 和上述内容差不多，我们可以通过直接操作 `rsp` （*YakHttpResponse） 来获取响应的信息
 
-```go
+```yak
 ```
 
 ### 获取数据包的响应数据
 
 这个功能和绝大多数 HTTP 库都有不同，我们可以允许用户获取一个请求的具体报文信息：
 
-```go
+```yak
 url = "https://www.example.com"
 rsp = http.Get(url)~
 dump([]byte(rsp.Data()))
@@ -424,7 +424,7 @@ dump([]byte(rsp.Data()))
 
 这个功能和绝大多数 HTTP 库都有不同，我们可以允许用户获取一个请求的具体报文信息：
 
-```go
+```yak
 url = "https://www.example.com"
 rsp = http.Get(url)~
 dump([]byte(rsp.Raw()))

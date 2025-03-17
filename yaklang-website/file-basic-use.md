@@ -17,7 +17,7 @@
 
 是 yak 封装的一个比原生 File 更好用的库，支持的接口如下：
 
-```go
+```yak
 type _yakFile interface {
     Name() string                   // 获取当前文件名
     Close() error                   // 关闭当前文件
@@ -42,7 +42,7 @@ type _yakFile interface {
 
 如果你有兴趣，Golang 官方文档原文在这里：[fs.FileInfo/os.FileInfo 接口定义](https://golang.org/pkg/io/fs/#FileInfo)
 
-```go
+```yak
 type FileInfo interface {
     Name() string       // 文件名
     Size() int64        // length in bytes for regular files; system-dependent for others 文件大小
@@ -63,7 +63,7 @@ type FileInfo interface {
 
 这个函数其实是 Golang 的 `os.OpenFile` 包装而成的，[这里可以查看原始函数](https://golang.org/pkg/os/#OpenFile)
 
-```go
+```yak
 // 创建简单的文件
 f, err := file.OpenFile("_testFile.txt", file.O_CREATE|file.O_RDWR, 0777)
 die(err)
@@ -99,7 +99,7 @@ asdfahsdfasdf Now
 
 `file.Open("test-file.txt")` 等效为 `file.OpenFile("test-file.txt", file.O_CREATE|file.O_RDWR, 0777)`
 
-```go
+```yak
 f, err := file.Open("_testFile.txt")
 die(err)
 
@@ -118,7 +118,7 @@ file.Rm("_testFile.txt")
 
 #### 创建临时文件 `file.TempFile(dir: string)`
 
-```go
+```yak
 // 创建一个临时文件
 f, err := file.TempFile("")
 die(err)
@@ -143,7 +143,7 @@ dump(raw)
 
 执行的结果为
 
-```go
+```yak
 我们创建了一个临时文件： /var/folders/tj/pfxp0gls4r74c_lx0hw48yjh0000gn/T/yak-320826568.tmp
 写入一点随机字符串
 我们写入的文件内容为：
@@ -156,7 +156,7 @@ dump(raw)
 
 文件删除直接调用 `file.Remove` 或者 `file.Rm` 都可以达成目的，其本质上是调用 `os.RemoveAll` 来执行的
 
-```go
+```yak
 fileName = "target-filename.txt"
 file.Remove(fileName)
 file.Rm(fileName)
@@ -172,7 +172,7 @@ file.Rm(fileName)
 
 ### 文件按行读写
 
-```go
+```yak
 f, err := file.Open("12_fileio.yak")
 die(err)
 dump(f.ReadLines())

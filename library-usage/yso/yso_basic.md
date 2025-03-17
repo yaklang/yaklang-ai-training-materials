@@ -10,7 +10,7 @@
 
 该类型用于详细描述Java类的内部结构。其结构定义如下：
 
-```go
+```yak
 type ClassObject struct {
     Type                string          // 类型描述
     Magic               uint32          // 魔数，标识Java类的开始 -> 0xCAFEBABE
@@ -37,7 +37,7 @@ type ClassObject struct {
 
 此类型用于表示序列化的Java对象，具备以下定义：
 
-```go
+```yak
 type JavaObject struct {
     yserx.JavaSerializable // 实现Java序列化接口
     verbose *GadgetInfo    // 包含对象的详细信息

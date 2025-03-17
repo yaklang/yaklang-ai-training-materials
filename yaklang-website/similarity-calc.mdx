@@ -27,7 +27,7 @@ SSDeep 是专门针对大文本准备的算法。
 
 相似度算法原理是，两段文本的相同文本内容长度/总长度
 
-```go
+```yak
 packet1 := `GET /_sockets/u/13946521/ws?session=eyJ2IjoiVjMiLCJ1IjoxMzk0NjUyMSwicyI6Njk3MjI4MDcxLCJjIjoxMjQ2NzQ1MzA0LCJ0IjoxNjQ2Mzg3NTU0fQ%3D%3D--6f75e12befb81db097c8c8082e77eaad6b68bc422115c03e3a02a6a467a305f3&shared=true&p=1743245261_1645685603.14085 HTTP/1.1
 Host: alive.github.com
 Accept-Encoding: deflate
@@ -77,7 +77,7 @@ stability: 0.995774647887324
 
 在 Yak 中，我们在 `str.*SimHash*` 相关接口可以计算相关内容，下面大家可以看案例：同上，我们只需要修改函数调用即可
 
-```go
+```yak
 packet1 := `GET /_sockets/u/13946521/ws?session=eyJ2IjoiVjMiLCJ1IjoxMzk0NjUyMSwicyI6Njk3MjI4MDcxLCJjIjoxMjQ2NzQ1MzA0LCJ0IjoxNjQ2Mzg3NTU0fQ%3D%3D--6f75e12befb81db097c8c8082e77eaad6b68bc422115c03e3a02a6a467a305f3&shared=true&p=1743245261_1645685603.14085 HTTP/1.1
 Host: alive.github.com
 Accept-Encoding: deflate
@@ -132,7 +132,7 @@ stability: 0.9921875
 
 > ssdeep is a program for computing context triggered piecewise hashes (CTPH). Also called fuzzy hashes, CTPH can match inputs that have homologies. Such inputs have sequences of identical bytes in the same order, although bytes in between these sequences may be different in both content and length.
 
-```go
+```yak
 packet1 := `GET /_sockets/u/13946521/ws?session=eyJ2IjoiVjMiLCJ1IjoxMzk0NjUyMSwicyI6Njk3MjI4MDcxLCJjIjoxMjQ2NzQ1MzA0LCJ0IjoxNjQ2Mzg3NTU0fQ%3D%3D--6f75e12befb81db097c8c8082e77eaad6b68bc422115c03e3a02a6a467a305f3&shared=true&p=1743245261_1645685603.14085 HTTP/1.1
 Host: alive.github.com
 Accept-Encoding: deflate

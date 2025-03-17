@@ -8,7 +8,7 @@ yaklang支持defer关键字，和常见的defer关键字相同，能够实现在
 
 yaklang支持匿名函数，所以一个很常见的写法是
 
-```go
+```yak
 defer fn(){
 
 }()
@@ -26,7 +26,7 @@ defer fn{
 
 1. 传入参数，这种方式defer内部的变量不会随外部的变量变化而变化
 
-```go
+```yak
 //go 函数传参模式
 func dfp1() {
    var a = 1
@@ -48,7 +48,7 @@ func main() {
 
 2. 直接使用代码块内部的参数，这种方式defer内部的变量会随外部的变量变化而变化
 
-```go
+```yak
 //go 直接使用作用域内的变量
 func dfp2() {
    var a = 1
@@ -70,7 +70,7 @@ func main() {
 
 而对于yaklang来说，无论使用哪一种方法，defer内变量都会随着外部变量的变化而变化
 
-```go
+```yak
 f = 1
 defer func{
     println("准备开始执行 defer func")
@@ -91,7 +91,7 @@ f = nil // 在这里设置 f 为空
 
 在go语言中，当返回值在函数定义里就声明了的情况下，defer是可以修改返回值的。
 
-```go
+```yak
 func test() (i int) {
    i = 1
    defer func() {
@@ -114,7 +114,7 @@ return: 2
 
 yaklang的defer的执行顺序和go的一致，采用的是"先进后出"的栈结构
 
-```go
+```yak
 defer fn {
     dump(2)
 }

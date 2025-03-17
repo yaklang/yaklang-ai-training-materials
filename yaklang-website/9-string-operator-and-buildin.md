@@ -8,7 +8,7 @@ sidebar_position: 9
 
 与大多数语言类似，我们使用+号来连接字符串，例如：
 
-```go
+```yak
 a = "Hello, "
 b = "Yak"
 println(a + b) // Hello, Yak
@@ -16,7 +16,7 @@ println(a + b) // Hello, Yak
 
 我们吸取了python的语法糖，可以使用*号来重复字符串n次，例如：
 
-```go
+```yak
 a = "powerful "
 println(a * 5 + "yak") // powerful powerful powerful powerful powerful yak 
 ```
@@ -31,7 +31,7 @@ println(a * 5 + "yak") // powerful powerful powerful powerful powerful yak
 
 一个简单的例子如下：
 
-```go
+```yak
 a = "Hello, Yak"
 println(a[0])      // H
 println(a[1:5])    // ello
@@ -42,7 +42,7 @@ println(a[3:0:-1]) // lle
 
 当然了，我们一样支持类似于python的字符串内置方法，下面这个例子展示了字符串类型的所有内置方法：
 
-```go
+```yak
 // 取字符串倒序等价于 [::-1]
 assert "abcdefg".Reverse() == "gfedcba"
 

@@ -44,7 +44,7 @@
 
 ### `tools.SynScanResult` 扫描结果结构
 
-```go
+```yak
 type palm/common/yak/yaklib/tools.(SynScanResult) struct {
   Fields(可用字段):
       // 扫描到的 IP
@@ -61,7 +61,7 @@ type palm/common/yak/yaklib/tools.(SynScanResult) struct {
 
 ### 执行案例：最经典/最简单的使用方法
 
-```go
+```yak
 res, err := synscan.Scan("127.0.0.1", "1-65535")
 die(err)
 
@@ -72,7 +72,7 @@ for result := range res {
 
 当我们执行完上面脚本之后，我们发现扫描结果如下：
 
-```go
+```yak
 OPEN: 127.0.0.1:60012      from synscan
 OPEN: 127.0.0.1:6341       from synscan
 OPEN: 127.0.0.1:7891       from synscan
@@ -96,7 +96,7 @@ OPEN: 127.0.0.1:16067      from synscan
 
 ### 执行案例：自定义等待时间
 
-```go
+```yak
 // 扫描本地 1-65535 号端口，全部数据包发送完毕的时候，等待 3.5 秒
 res, err := synscan.Scan("127.0.0.1", "1-65535", synscan.wait(3.5))
 die(err)
@@ -108,7 +108,7 @@ for result := range res {
 
 ### 执行案例：输出到文件
 
-```go
+```yak
 res, err := synscan.Scan("127.0.0.1", "1-65535",
     synscan.wait(3.5),
     synscan.outputFile("test.txt"),
@@ -122,7 +122,7 @@ for result := range res {
 
 当我们执行完上面的代码之后，`cat test.txt`，我们发现了文件内容结果如下
 
-```go
+```yak
 127.0.0.1:60012
 127.0.0.1:6341
 127.0.0.1:7891

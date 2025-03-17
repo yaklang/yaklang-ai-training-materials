@@ -22,13 +22,13 @@ import TOCInline from '@theme/TOCInline';
 
 和其他 API 使用类似，我们在 `fuzz.HTTPRequest` 中是这么定义的
 
-```go title="fuzz.HTTPRequest 定义"
+```yak title="fuzz.HTTPRequest 定义"
 fuzz.HTTPRequest(packet []byte, opt...) (*FuzzHTTPRequest, error)
 ```
 
 其中 opt 的可以使用 `fuzz.https(bool)` 去指定是否是 HTTPS。就像这样
 
-```go title="使用带参数的 FuzzRequest"
+```yak title="使用带参数的 FuzzRequest"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -51,7 +51,7 @@ freq.Show()
 
 因此，上述代码可以简化为
 
-```go title="使用 WavyCall 简化 fuzz.HTTPRequest"
+```yak title="使用 WavyCall 简化 fuzz.HTTPRequest"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -79,7 +79,7 @@ freq.Show()
 
 在 fuzz 模块的使用中，我们可以观察如下例子，很好的体现了链式调用的优势
 
-```go title="WavyCall 创建对象，然后链式调用"
+```yak title="WavyCall 创建对象，然后链式调用"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -104,7 +104,7 @@ fuzz.HTTPRequest(raw, fuzz.https(true))~.Show().ExecFirst()~
 
 我们继续借用上一个例子稍作修改来完成这部分内容：
 
-```go title="ExecFirst() (*_httpResult, error)"
+```yak title="ExecFirst() (*_httpResult, error)"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -134,7 +134,7 @@ WavyCall 可以在 ExecFirst() 使用来简化代码
 
 当然这就需要我们了解 result 的对象信息：`_httpResult`，这个结构的描述并不复杂：
 
-```go title="_httpResult 结构描述"
+```yak title="_httpResult 结构描述"
 type _httpResult struct {
   Fields(可用字段):
       Url: string
@@ -164,7 +164,7 @@ type _httpResult struct {
 
 这里我们就需要了解我们用的 API：`Exec() (chan *_httpResult, error)`。观察如下代码即可快速了解：
 
-```go title="模糊测试 Method，同时发送多个请求"
+```yak title="模糊测试 Method，同时发送多个请求"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -187,7 +187,7 @@ for result in resultChan {
 
 如果你不想处理后续请求的话，可以直接放行
 
-```go title="更简化的写法，不处理任何结果"
+```yak title="更简化的写法，不处理任何结果"
 for result in fuzz.HTTPRequest(raw, fuzz.https(true))~.FuzzMethod("HEAD", "GET", "POST", "DELETE").Exec()~ {}
 ```
 
@@ -210,7 +210,7 @@ HTTP数据包变形可以使攻击者能够通过绕过安全措施来攻击目�
 
 针对 HTTP 方法的变形发包（下称模糊测试），我们在上一个案例中已经描述，我们稍作修改，获取模糊测试的数据包内容。
 
-```go title="模糊测试 HTTP 方法"
+```yak title="模糊测试 HTTP 方法"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -237,7 +237,7 @@ OUTPUT:
 
 类似的，我们可以快速对上述例子进行改造，构造出一个模糊测试 HTTP 路径的案例：
 
-```go title="同时测试 Method 和 Path"
+```yak title="同时测试 Method 和 Path"
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -276,7 +276,7 @@ OUTPUT:
 
 其实 HTTP 路径测试我们还可以有另一个 API 可用，我们使用一个新的 API `FuzzPathAppend(...)`，可以在原路径的基础上追加一些新的内容，大家看如下案例。
 
-```go
+```yak
 raw = `GET / HTTP/1.1
 Host: www.example.com
 
@@ -386,7 +386,7 @@ User-Agent: Ur-Awesome-UA/1.0001
 
 根据具体定义：我们可以编写代码
 
-```go title="手动获取参数"
+```yak title="手动获取参数"
 raw = `GET /target-path?abc=123 HTTP/1.1
 Host: www.example.com
 User-Agent: Ur-Awesome-UA/1.0001
@@ -448,7 +448,7 @@ User-Agent: Ur-Awesome-UA/1.0001
 
 简化后的代码为：
 
-```go title="GetGetQueryParams 简化"
+```yak title="GetGetQueryParams 简化"
 raw = `GET /target-path?abc=123 HTTP/1.1
 Host: www.example.com
 User-Agent: Ur-Awesome-UA/1.0001
@@ -478,7 +478,7 @@ User-Agent: Ur-Awesome-UA/1.0001
 
 我们在这个案例中使用了 `freq.GetGetQueryParams()` 来获取所有可供模糊测试的 Get 参数，这些参数对象区别于原来的 `*FuzzHTTPRequest` 结构体：
 
-```go title="FuzzHTTPRequestParam 的成员方法描述"
+```yak title="FuzzHTTPRequestParam 的成员方法描述"
 type FuzzHTTPRequestParam struct {
     // Fuzz 用于将参数的值进行模糊测试
     Fuzz func(v1 ...any) mutate.FuzzHTTPRequestIf
@@ -758,7 +758,7 @@ type FuzzHTTPRequestParam struct {
 
 #### FuzzHTTPRequest 结构描述
 
-```go title="FuzzHTTPRequest 功能一览表"
+```yak title="FuzzHTTPRequest 功能一览表"
 type *FuzzHTTPRequest {
     func ExecFirst(v1 ...func httpPoolConfigOption(v1: *mutate.httpPoolConfig) ) return(*mutate._httpResult, error)
     func Exec(v1 ...func httpPoolConfigOption(v1: *mutate.httpPoolConfig) ) return(chan *mutate._httpResult, error)
@@ -828,7 +828,7 @@ type *FuzzHTTPRequest {
 
 #### FuzzHTTPRequestParam 结构描述
 
-```go
+```yak
 type FuzzHTTPRequestParam struct {
     // Fuzz 用于将参数的值进行模糊测试
     Fuzz func(v1 ...any) mutate.FuzzHTTPRequestIf

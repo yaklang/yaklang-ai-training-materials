@@ -6,7 +6,7 @@ sidebar_position: 22
 
 在 Yaklang 中，最普通的函数定义参数其实非常简单，与其他语言的固定形参没有区别；无需声明类型即可使用；
 
-```go
+```yak
 func abc(a, b, c) {
     return b+1, c-1
 }
@@ -18,7 +18,7 @@ assert bPlusOne == 13, cMinusOne == 1
 
 有时候我们在定义的时候，并不知道参数的数量应该有多少个，或者我们希望我们的函数接受多个参数，这就需要支持“可变数量”的参数了；在 Yaklang 定义下，可变数量参数定义其实非常简单，我们使用 func(a...) 中的 ... 来定义。
 
-```go
+```yak
 func sum(a...) {
     // typeof(a) == []var
     result = 0
@@ -37,7 +37,7 @@ assert sum() == 0
 
 同样我们也可以支持固定参数与可变参数混合的模式：
 
-```go
+```yak
 func sum(a, b...) {
     result = a
     for i in b {
@@ -67,7 +67,7 @@ YakVM Panic: "runtime error: function sum need at least 1 params, got 0 params"
 
 ### 可以没有返回值
 
-```go
+```yak
 assert nil == undefined
 
 abc = func() {}
@@ -78,7 +78,7 @@ dump(abc())
 
 ### 返回值数量可以不一定
 
-```go
+```yak
 abc = func(n) {
     if n == 1 {
         return 1
@@ -112,7 +112,7 @@ abc(2) -> r1: [2 3 4]
 
 如下，一下两段代码是等价的
 
-```go
+```yak
 // 处理 error，但是 error 不重要，打印到屏幕即可
 res, err = servicescan.Scan("127.0.0.1", "443,80")
 if err != nil {

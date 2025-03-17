@@ -37,7 +37,7 @@ import TOCInline from '@theme/TOCInline';
 
 本文我们将描述如何进行 SYN 扫描，还是以代码案例为准：
 
-```go title="SYN 扫描的基础案例"
+```yak title="SYN 扫描的基础案例"
 res, err = synscan.Scan("**.**.*00.1/24", "80,443")
 die(err)
 
@@ -50,7 +50,7 @@ for result in res {
 
 合理使用 `WavyCall` 可以让上述代码写起来更加流畅：
 
-```go title="WavyCall 简化"
+```yak title="WavyCall 简化"
 for result in synscan.Scan("**.**.*00.1/24", "80,443")~ {
     println(result.String())
 }
@@ -107,7 +107,7 @@ OPEN: **.**.*00.243:80     from synscan
 
 他的返回值为 `chan *SynScanResult` 这是一个 channel 复合类型，他的核心结构定义为：
 
-```go title="SynScanResult 定义"
+```yak title="SynScanResult 定义"
 type SynScanResult struct {
   Fields(可用字段):
       Host: string
@@ -126,7 +126,7 @@ type SynScanResult struct {
 
 具体案例如下：
 
-```go title="excludeHosts and excludePorts"
+```yak title="excludeHosts and excludePorts"
 for result in synscan.Scan(
     "**.**.100.1/24", "80,443",
     synscan.excludeHosts("**.**.100.44-100"),
@@ -153,7 +153,7 @@ for result in synscan.Scan(
 
 案例如下:
 
-```go title="带频率限制的 SYN 扫描"
+```yak title="带频率限制的 SYN 扫描"
 for result in synscan.Scan(
     "127.0.0.1", "1-65535",
     synscan.concurrent(500),

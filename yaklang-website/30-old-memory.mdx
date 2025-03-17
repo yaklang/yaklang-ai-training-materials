@@ -20,7 +20,7 @@ Golang 的一些令人惊叹的特性我们在 Yak 中也可以找到实现，�
 
 ### 基础运算符
 
-```go
+```yak
 // 加减乘除:  1 + 4 * 5
 '+' '-' '*' '/'
 
@@ -50,7 +50,7 @@ Golang 的一些令人惊叹的特性我们在 Yak 中也可以找到实现，�
 
 yak最近也新增了我们在c系语言中常见三元运算符，其使用方法完全相同，例如:
 
-```go
+```yak
 a = true ? "1" : "2" // 结果为: "1"
 b = 2>1?(2<1?true:false):false // 结果为: false
 c = true?false?true:false:false // 结果为: false
@@ -65,7 +65,7 @@ c = true?false?true:false:false // 结果为: false
 
 如果读者有写过 Golang，我们下面一段代码可以更容易帮你理解这个特殊操作符
 
-```go
+```yak
 // 声明一个 chan，类型为 var, chan 的缓冲区为 2，可以缓冲两个元素
 ch := make(chan var, 2)
 ch <- 123
@@ -88,13 +88,13 @@ seconds:   456
 
 我们可以使用sprintf实现简单地实现格式化字符串:
 
-```go
+```yak
 println(sprintf("here is string: %s and int: %d", "something", 0))
 ```
 
 当然一个更简单的方法是类似于python的语法糖`%`:
 
-```go
+```yak
 s = "here is string: %s" % "something"
 s2 = "here is int: %d and %d" % [1, 2]
 println(s) // here is string: something
@@ -105,7 +105,7 @@ println(s2) // here is int: 1 and 2
 
 `in`运算符与python中的`in`类似:
 
-```go
+```yak
 // 包含子字符串，等价于str.Contains("aabb", "aa")
 dump("aa" in "aabb")
 
@@ -128,7 +128,7 @@ dump("Add" in time.Now())
 
 与python类似，yak可以使用+号合并Slice/Array:
 
-```go
+```yak
 println([1, 2, 3]  + [4, 5, 6]) // [1 2 3 4 5 6]
 println([1, 2, 3]  + ["aaa", "bbb"]) // [1 2 3 aaa bbb]
 ```
@@ -139,7 +139,7 @@ println([1, 2, 3]  + ["aaa", "bbb"]) // [1 2 3 aaa bbb]
 
 与python类似，yak可以使用*号来生成重复的字符串，注意，这里`*`号只能用于生成重复的字符串，不能像python一样生成重复元素组成数组等:
 
-```go
+```yak
 println("a" * 3) // aaa
 println([]byte{104} * 3) // [104 104 104]
 ```
@@ -150,7 +150,7 @@ println([]byte{104} * 3) // [104 104 104]
 
 ### 基础数据类型
 
-```golang
+```yaklang
 1. int
 2. float     // 等效于 Golang 的 float64
 3. string
@@ -161,7 +161,7 @@ println([]byte{104} * 3) // [104 104 104]
 
 这些类型其实都是最基础的数据类型：
 
-```go
+```yak
 // 以下是一组基础声明
 a = 1 // 创建一个 int 类型变量，并初始化为 1
 b = "hello" // string 类型
@@ -186,7 +186,7 @@ f = var // f 为一个 兼容类型
 
 #### 声明一个 Slice
 
-```go
+```yak
 b = [1, 2.3, 5]         // 创建一个 []float
 c = ["a", "b", "c"]     // 创建一个 []string
 d = ["a", 1, 2.3]       // 创建一个 []var (等价于 Go 语言的 []interface{})
@@ -200,13 +200,13 @@ h = []byte(nil)         // 创建一个空 byte slice
 
 1. 含义与 Golang 相同的 append 用法
 
-```go
+```yak
 a = append(a, 1, 2, 3)
 ```
 
 2. 通过 `len` 获取 Slice 的元素个数，通过 `cap` 获得 slice 的容量，同 Golang 用法
 
-```go
+```yak
 a = append([1,2,3], 5,6,7)
 length = len(a)
 println("len(a): ", length)
@@ -221,7 +221,7 @@ println("cap(a): ", capValue)
 
 3. `copy(sliceA, sliceB)` 把 sliceB 的元素复制到 sliceA 中，如果复制的元素个数为 `min(len(sliceA), len(sliceB))`
 
-```go
+```yak
 a = [1,2,3]
 b = [4,5,6,7,8]
 copiedCount = copy(a, b)
@@ -235,7 +235,7 @@ println("slice a now: ", a)
 
 4. 按索引取数组元素，支持拆包，具体案例如下
 
-```go
+```yak
 a = [1,2,3,4,5,6,7,8]
 b = a[4:6]
 c = a[:5]
@@ -266,7 +266,7 @@ a[3]:  4
 
 下面是一个 slice 拆包的基本案例
 
-```go
+```yak
 a, b, c = [1, 2.3, "stringValue"]
 println("a: ", a)
 println("b: ", b)
@@ -283,7 +283,7 @@ c:  stringValue
 
 当然，拆包+赋值的另一个案例读者可以尝试
 
-```go
+```yak
 a = make([]var, 4)
 a[1], a[2], a[3] = 1, "asdfasdf", false
 
@@ -300,7 +300,7 @@ slice a:  [<nil> 1 asdfasdf false]
 
 #### 赋值与创建一个 Map / Dict
 
-```go
+```yak
 a = {"a": 1, "b": 2, "c": 3}             // 得到 map[string]int 类型的对象
 b = {"a":1,"b":2.3,"c": 3}               // 得到 map[string]float64 类型的对象
 c = {1: "a", 2: "b", 3: "c"}             // 得到 map[int]string 类型的对象
@@ -323,7 +323,7 @@ x = make(map[var]var)                    // 创建一个 map[interface{}]interfa
 
 #### map / dict 的基本操作
 
-```go
+```yak
 a = {"a": 234, "b": "sasdfasdf", "ccc": "13"}      // 我们创建一个 map[var]var
 n = len(a)                                         // 取 a 的元素个数
 println("len(a): ", n)
@@ -362,7 +362,7 @@ NOW map a:
 :::tip 注意
 **注意：在判断元素是否存在或在元素不存在时取默认值时，Yak 和 Golang 有区别**
 
-```go
+```yak
 x = {"a": 1, "b": 2}
 a = x["a"] // 结果：a = 1
 // 判断元素是否存在
@@ -394,7 +394,7 @@ g = get(x, "g", "ggggg") // 结果: g = "ggggg"
 
 创建 chan 与 Golang 保持相同的方法
 
-```go
+```yak
 ch1 = make(chan bool, 2)        // 得到 buffer = 2 的 chan bool
 ch2 = make(chan int)            // 得到 buffer = 0 的 chan int
 ch3 = make(chan map[string]int) // 得到 buffer = 0 的 chan map[string]int
@@ -402,7 +402,7 @@ ch3 = make(chan map[string]int) // 得到 buffer = 0 的 chan map[string]int
 
 #### chan 的基础操作
 
-```go
+```yak
 /*创建一个 chan var*/
 ch1 = make(chan var, 4)
 ch1 <- 1
@@ -436,7 +436,7 @@ cap(ch1):  4
 
 :::tip chan 使用小贴士 需要注意的是，在 chan 被关闭后，<-ch 取得 undefined 值。所以在 yak 中应该这样：
 
-```go
+```yak
 v = <-ch1
 if v != undefined { // 判断chan没有被关闭的逻辑
     ...
@@ -451,7 +451,7 @@ if v != undefined { // 判断chan没有被关闭的逻辑
 
 函数和闭包定义关键字为 `def` / `func` / `fn`, 这三个关键字完全等效！
 
-```go
+```yak
 // 定义了一个函数为 aaa，同时这个函数被赋值给了 bbb，所以这个函数拥有了两个名字
 bbb = func aaa() {
     println("具名函数 aaa 函数赋值给了 bbb，被调用了")
@@ -500,7 +500,7 @@ sleep(1)
 
 本质上 yak 函数的定义本质上都是 `func(params ...interface{}) interface{}` 因此可以对常见任何形态的函数定义做兼容。
 
-```go
+```yak
 // 我们定义一个带参数的函数
 func x(a) {
     println("exec in x func, recv: ", a)
@@ -514,7 +514,7 @@ exec in x func, recv:  aaa
 */
 ```
 
-```go
+```yak
 func argsTest1(vars...) {
     println("argsTest1 recv: ", vars)
 }
@@ -540,7 +540,7 @@ vars:  [1 2 3 4 5]
 
 当我们定义的 yak 函数有多个返回值是，我们默认返回的是一个列表 `[]interface{}`，所以在函数返回的时候，可以支持自动拆包，这样做间接支持了 Golang 的多返回值语法。
 
-```go
+```yak
 // 我们看如下案例
 func testFunc(arg1, args...) {
     return 1, 2, arg1
@@ -569,7 +569,7 @@ ret3:  aaa
 
 当然在不完全拆包的情况下，会报错，我们看如下情况
 
-```go
+```yak
 func testFunc(arg1, args...) {
     return 1, 2, arg1
 }
@@ -592,7 +592,7 @@ Yak 脚本与 Golang 的 Go 的作用都是相同的，但是需要注意一点�
 
 在 Golang 中，我们启动一个 Goroutine 通过以下操作启动
 
-```go
+```yak
 go func(){
     // ...do some codes
 }()
@@ -600,7 +600,7 @@ go func(){
 
 在 yak 中，我们不仅兼容了上述写法，我们执行如下命令，都是等效的
 
-```go
+```yak
 //  goroutine 启动来函数异步调用
 go fn(){}()
 go func(){}() // 兼容 Go 的写法
@@ -616,7 +616,7 @@ go def{/*do sth*/}
 
 一个比较复杂的例子：
 
-```go
+```yak
 wg = sync.NewWaitGroup()
 wg.Add(2)
 
@@ -641,7 +641,7 @@ wg.Wait()
 
 但是，由于匿名函数存在，所以 yak defer 常见有两种写法：
 
-```go
+```yak
 defer fn() {} ()
 defer fn{}
 ```
@@ -653,7 +653,7 @@ defer fn{}
 在 Golang 中，当 defer 被声明的时候，如果直接使用函数传参的形式(非指针引用)，此时的参数就会使用参数当前值，在整个生命周期内不会变化。
 golang 示例
 
-```go
+```yak
 func dfp1() {
    var a = 1
    defer func(t int) {
@@ -668,7 +668,7 @@ func dfp1() {
 
 golang 示例
 
-```go
+```yak
 func dfp2() {
    var a = 1
    defer func() {
@@ -682,7 +682,7 @@ func dfp2() {
 但 yak 不论何种方式都是会受到影响。
 yak 示例
 
-```go
+```yak
 f = {"ccc": 1}
 dump(f.ccc)
 defer func{
@@ -707,7 +707,7 @@ golang 示例
 在 defer 中修改返回值，如果是直接修改了返回值的值，golang 会改变返回的值。yak 不会受到影响
 golang 示例
 
-```go
+```yak
 func dfr1() (r int) {
    r = 5
    defer func() {
@@ -730,7 +730,7 @@ func dfr2() (r int) {
 
 yak 示例
 
-```go
+```yak
 fn test(){
    a := 2
    defer fn{
@@ -771,7 +771,7 @@ defer fn(){
 
 ### `if/elif/else` 条件分支
 
-```go
+```yak
 if expr {
 
 } elif expr2 {
@@ -788,7 +788,7 @@ yak switch 语句和 Golang 的有共同点也有不同点；
 1. yak 的 swtich 没有 break / fallthrough 的特性支持
 2. yak switch 后的表达式只能是表达式，不能像 Golang 一样承载`赋值语句; 表达式`
 
-```go
+```yak
 // switch expr1 {case: expr2; default}
 a = 5
 switch a - 3 {
@@ -815,7 +815,7 @@ case false:
 
 #### 无限循环
 
-```go
+```yak
 for { // 无限循环，需要在中间 break 或 return 结束
     ...
 }
@@ -827,7 +827,7 @@ for booleanExpr { // 类似很多语言的 while 循环
 
 #### 基础使用
 
-```go
+```yak
 /*
 for initExpr; conditionExpr; stepExpr {
     ...
@@ -860,7 +860,7 @@ element:  9
 
 `for range` 是 Golang 特有的形式，yak 对这种形式进行了保留
 
-```go
+```yak
 // 声明一个最基础的 slice / list
 a = [1,2,3,4]
 
@@ -884,7 +884,7 @@ for _, element = range a {
 
 #### `for range` 来遍历一个 map / dict
 
-```go
+```yak
 b = {"abc": "123", "bcd": "bcd", "cde": 512}
 for key, value = range b {
     println(str.f("b[%v]: %v", key, value))
@@ -901,7 +901,7 @@ b[cde]: 512
 
 上述脚本很容易猜到，结果如下
 
-```go
+```yak
 a[0]: 1
 a[1]: 2
 a[2]: 3
@@ -917,7 +917,7 @@ current element: 1
 
 #### `for range` 同样可以操作 chan
 
-```go
+```yak
 ch := make(chan var, 2)
 ch <- 1
 ch <- 2
@@ -953,7 +953,7 @@ fetch chan var [ch] element:  2
 
 所以我们在看下面代码：
 
-```go
+```yak
 func aaa(caller) {
    println("aaa is called by", caller)
 }
@@ -966,7 +966,7 @@ if YAK_MAIN {
 
 当我们调用 `yak main.yak` 的时候，界面展示
 
-```go
+```yak
 i am in main.... block
 aaa is called by main
 ```
@@ -975,7 +975,7 @@ aaa is called by main
 
 作为对比，我们在同一个目录下，编写一个 `foo.yak`，内容如下
 
-```go
+```yak
 res, err := dyn.LoadVarFromFile("main.yak", "aaa")
 die(err)
 
@@ -984,13 +984,13 @@ res[0].Value("foo.yak")
 
 我们执行 `yak foo.yak` 之后，发现屏幕打印出：
 
-```go
+```yak
 aaa is called by foo.yak
 ```
 
 我们发现:
 
-```go
+```yak
 if YAK_MAIN {
    println("i am in main.... block")
    aaa("main")
@@ -1011,7 +1011,7 @@ func import(modName: string, varName: string) (*yak.yakVariable, error)
 
 `*yak.yakVariable` 定义如下：
 
-```go
+```yak
 type palm/common/yak.(yakVariable) struct {
   Fields(可用字段):
       FilePath: string
@@ -1033,7 +1033,7 @@ type palm/common/yak.(yakVariable) struct {
 
 我们先创建一个 `a1.yak` 脚本
 
-```go
+```yak
 func poc() {
    println("I am in `poc` function....")
 }
@@ -1046,7 +1046,7 @@ if YAK_MAIN {
 
 然后我们创建一个 `main.yak` 脚本
 
-```go
+```yak
 pocVar, err = import("a1", "poc")
 if err != nil {
     die(err)
@@ -1060,14 +1060,14 @@ if YAK_MAIN {
 
 如果我们单独执行 `main.yak` 我们发现输出为
 
-```go
+```yak
 poc function is called by main
 I am in `poc` function....
 ```
 
 如果我们单独执行 `a1.yak` 我们发现输出为：
 
-```go
+```yak
 poc function is called by a1
 I am in `poc` function....
 ```
@@ -1080,7 +1080,7 @@ I am in `poc` function....
 
 作为对比，我们继续使用上一节的 `main.yak` 函数。通过 `include` 来执行。
 
-```go
+```yak
 include "main.yak"
 
 if YAK_MAIN {
@@ -1090,7 +1090,7 @@ if YAK_MAIN {
 
 我们执行上述代码之后，发现结果如下
 
-```go
+```yak
 i am in main.... block
 aaa is called by main
 aaa is called by foo2.yak

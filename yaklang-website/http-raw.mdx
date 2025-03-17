@@ -6,7 +6,7 @@ sidebar_position: 42
 
 在 Yak 中除了可以使用 Golang 原生封装的 `http` 模块之外，提供了一种专门为安全优化的 "直接发送原始数据包" 的办法。
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.example.com
@@ -91,7 +91,7 @@ Yak 大多数功能包中 "小写字母" 的导出一般意味着他是一个 "�
 
 我们需要制定一些高级参数，来控制 poc 中 "细微" 的操作步骤。例如，我们需要增加 "代理" 功能，同时强制开启 HTTPS 可以执行如下代码
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.google.com
@@ -105,7 +105,7 @@ die(err)
 
 一般来说，我们的数据包通常不会是固定的，为了更自由的发送一些 "内容"。我们需要 "标注" 那些地方需要被动态替换，然后使用 `poc.params` 高级参数来动态替换。
 
-```go
+```yak
 // 构建一个想要动态渲染的参数值
 targetHost = "www.baidu.com"
 port = 80
@@ -127,7 +127,7 @@ printf("http.Response' s MD5: %v", codec.Md5(rsp))
 
 ### `poc.ParseBytesToHTTPResponse` 将字节码转换成原生http.Response对象
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.example.com
@@ -142,7 +142,7 @@ httpRsp,err = poc.ParseBytesToHTTPResponse(rsp) //将字节码转换成http.Resp
 http.show(httpRsp)
 ```
 输出结果如下
-```go
+```yak
 HTTP/1.1 200 OK
 Connection: close
 Content-Length: 1256
@@ -208,7 +208,7 @@ X-Cache: HIT
 ```
 ### `poc.ParseBytesToHTTPRequest` 将字节码转换成原生http.Request对象
 
-```go
+```yak
 rsp, req, err := poc.HTTP(`
 GET / HTTP/1.1
 Host: www.example.com
@@ -223,7 +223,7 @@ http.show(httpReq)
 ```
 
 输出结果如下
-```go
+```yak
 GET / HTTP/1.1
 Host: www.example.com
 Content-Length: 0

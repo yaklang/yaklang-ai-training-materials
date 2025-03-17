@@ -8,7 +8,7 @@ sidebar_position: 15
 
 ## 解析混合网段+域名+IP 的用户输入
 
-```go
+```yak
 hosts = str.ParseStringToHosts("192.168.1.1/24,baidu.com,172.168.12.1/26")
 for _, host = range hosts {
     println(host)
@@ -45,7 +45,7 @@ Output:
 
 yak 提供了兼容性相当高的端口解析能力
 
-```go
+```yak
 ports = str.ParseStringToPorts("a,22,80,8000-8002,443,8888,abc,af")
 for _, port = range ports {
     println(port)
@@ -74,7 +74,7 @@ OUTPUT:
 
 最常见的一个需求是说，我们需要把端口和主机通过 `:` 组合起来。我们可以使用 `str.HostPort`
 
-```go
+```yak
 println(str.HostPort("baidu.com", 80))
 println(str.HostPort("baidu.com", "80"))
 println(str.HostPort("127.0.0.1", 80))
@@ -97,7 +97,7 @@ OUTPUT:
 
 笛卡尔积是一个有效的方案，谁都能想到的最基础实现方案是：
 
-```go
+```yak
 hosts = str.ParseStringToHosts("192.168.1.1/24")
 ports = str.ParseStringToPorts("a,22,80,8000-8002,443,8888,abc,af")
 for _, host = range hosts {
@@ -111,7 +111,7 @@ for _, host = range hosts {
 
 分组扫描是一个很有用的操作，例如 `[1,2,3,4,5,6,7,8,10]` 我们可以把他 4 个元素为一组，分成三组，如何操作呢？
 
-```go
+```yak
 dump(x.Chunk([1,2,3,4,5,6,7,8,9,10], 4))
 
 /*
@@ -139,7 +139,7 @@ OUTPUT
 
 :::info 分组在某些时候非常有用，我们可以参考如下案例
 
-```go
+```yak
 dump(x.Chunk(str.ParseStringToHosts("192.168.1.1/24"), 4))
 ```
 

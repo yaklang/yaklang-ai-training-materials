@@ -14,7 +14,7 @@ Yak 通过非 Java 的方式实现了一整套 Java 反序列化协议。
 
 在实现了 Java 反序列化协议后，Java 相关漏洞不再需要原生 Java 或硬编码 HEX/Binary 流来实现。
 
-```go
+```yak
 evilCls, err = yso.GetCommonsCollections5("echo HelloWorld")
 die(err)
 

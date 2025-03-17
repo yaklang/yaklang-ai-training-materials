@@ -10,7 +10,7 @@ sidebar_position: 12
 
 在yaklang中，如果使用 `[var1, var2, var3...]` 这种形式来创建slice，yak vm会根据slice中的元素类型来自动推断最契合的slice类型，一个简单的例子如下：
 
-```go
+```yak
 a = [1, 2, 3]
 println(typeof(a)) // []int
 b = ["qwe", "asd"]
@@ -30,7 +30,7 @@ println(typeof(c)) // []any{}
 
 yaklang也兼容golang语法，使用make语句显示创建一个对应类型的slice，一个简单的例子如下：
 
-```go
+```yak
 // 创建一个不带长度的 []int
 a = make([]int)
 println(typeof(a)) // []int

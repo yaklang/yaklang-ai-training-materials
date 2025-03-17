@@ -63,7 +63,7 @@
 
 #### `fp.MatchResult`
 
-```go
+```yak
 type palm/common/fp.(MatchResult) struct {
   Fields(可用字段):
       Target: string
@@ -85,7 +85,7 @@ type palm/common/fp.(MatchResult) struct {
 
 #### `fp.Fingerprint`
 
-```go
+```yak
 type palm/common/fp.(FingerprintInfo) struct {
   Fields(可用字段):
       IP: string
@@ -112,7 +112,7 @@ type palm/common/fp.(FingerprintInfo) struct {
 
 #### `servicescan.Scan` 基础使用: 扫描一批主机与一批端口
 
-```go
+```yak
 res, err := servicescan.Scan("47.**.***.105/24", "22")
 die(err)
 
@@ -127,7 +127,7 @@ for result := range res {
 
 当我们执行上述代码的时候，我们的结果如下
 
-```go
+```yak
 tcp://47.**.***.32:22	 open	openssh[6.6.1]
 tcp://47.**.***.21:22	 open	openssh[7.4]
 tcp://47.**.***.40:22	 open	openssh[6.6.1]
@@ -150,7 +150,7 @@ tcp://47.**.***.249:22	 open	linux_kernel[*]/openssh[7.2p2]/ubuntu_linux[*]
 
 我们看如下例子：
 
-```go
+```yak
 resultMatch, err := servicescan.ScanOne("47.**.**.248", 22)
 die(err)
 
@@ -159,7 +159,7 @@ println(resultMatch)
 
 输出的结果为
 
-```go
+```yak
 tcp://47.**.**.248:22	 open	openssh[7.4]
 ```
 
@@ -180,7 +180,7 @@ tcp://47.**.**.248:22	 open	openssh[7.4]
 
 当我们尝试使用上述参数，直接在输入端口后，输入具体的参数选项，即可让参数生效，样例如下：
 
-```go
+```yak
 res, err := servicescan.Scan(
     "47.**.***.105/24", "80,8080",
     servicescan.active(true), servicescan.all(),
@@ -198,7 +198,7 @@ for result := range res {
 
 上述代码进行扫描之后，会把结果进行返回，我们屏蔽掉没有开放的端口，只展示开放端口和他们的 CPE 指纹信息，我们尝试扫描了一个网段，如下是结果
 
-```go
+```yak
 tcp://47.**.***.7:80	 open	apache[*]
     [cpe:/a:*:apache:*:*:*:*]
 tcp://47.**.***.30:80	 open	apache[*]
@@ -261,7 +261,7 @@ tcp://47.**.***.218:8080	 open	jquery[*]/jquery[2.1.4]
 :::danger 我们隐去了扫描 IP 的具体信息 我们隐藏了扫描的具体 IP，同时对大量结果进行了删减和省略，具体怎么使用，需要读者自行尝试
 :::
 
-```go
+```yak
 res, err := synscan.Scan("47.**.***.105/24", "80,888,443,8080-8085,9000")
 die(err)
 
@@ -282,7 +282,7 @@ for result := range res {
 }
 ```
 
-```go
+```yak
 OPEN: 47.**.***.35:443     from synscan
 OPEN: 47.**.***.191:80     from synscan
 OPEN: 47.**.***.200:443    from synscan

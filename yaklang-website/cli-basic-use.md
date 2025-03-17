@@ -5,18 +5,18 @@
 
 ## 获取所有参数
 
-```go
+```yak
 yak 26_cliutil.yak --url https://baidu.com --allow-do-sth --number1 123 --floatvar 1.23 --target "192.168.1.1/24,10.1.3.2/28" --target-port "22,3306,80,8080-8082" --urls "leavesongs.com,10.1.3.2" --urls2 "https://www.baidu.com"
 ```
 
-```go title="26_cliutil.yak"
+```yak title="26_cliutil.yak"
 args = cli.Args()  // 获取所有命令行参数内容
 dump(args)         // 展示参数结果
 ```
 
 上述代码执行之后，会展示所有输入的参数：
 
-```go
+```yak
 ([]string) (len=17 cap=32) {
  (string) (len=3) "yak",
  (string) (len=14) "26_cliutil.yak",
@@ -42,7 +42,7 @@ dump(args)         // 展示参数结果
 
 ### `cli.String`： 处理字符串类型参数
 
-```go
+```yak
 // >  yakc clitest.yak --url https://baidu.com
 strParam = cli.String("url")  
 dump(strParam)
@@ -50,14 +50,14 @@ dump(strParam)
 
 通过执行 `dump(strParam)` 可以看到参数类型与值
 
-```go
+```yak
 (string) (len=17) "https://baidu.com"
 ```
 
 
 ### `cli.Bool`：处理 Bool 类型参数
 
-```go
+```yak
 boolParam = cli.Bool("allow-do-sth")
 dump(boolParam)
 ```
@@ -70,14 +70,14 @@ dump(boolParam)
 
 ### `cli.Int`：处理整数参数
 
-```go
+```yak
 intParam = cli.Int("number1")
 dump(intParam)
 ```
 
 ### `cli.Float`：处理浮点参数
 
-```go
+```yak
 floatParam = cli.Float("floatvar")
 dump(floatParam)
 ```
@@ -88,7 +88,7 @@ dump(floatParam)
 
 如以下代码, 通过在第一个参数中传入`短参数名 长参数名`来设置短参数别名:
 
-```go
+```yak
 // -t example.com 或 --target example.com
 target = cli.String("t target")  
 print(target)
@@ -98,7 +98,7 @@ print(target)
 
 ### `cli.Hosts`：处理参数是网段的情况
 
-```go
+```yak
 // --target "192.168.1.1/24,10.1.3.2/28"
 netParam = cli.Hosts("target")
 dump(netParam)
@@ -106,7 +106,7 @@ dump(netParam)
 
 上述脚本执行结果为
 
-```go
+```yak
 /*
 展示结果
 ([]string) (len=272 cap=512) {
@@ -127,7 +127,7 @@ dump(netParam)
 
 ### `cli.Ports`：处理扫描端口组参数
 
-```go
+```yak
 // --target-port "22,3306,80,8080-8082"
 portParam = cli.Ports("target-port")
 dump(portParam)
@@ -135,7 +135,7 @@ dump(portParam)
 
 上述脚本执行结果为
 
-```go
+```yak
 ([]int) (len=6 cap=8) {
  (int) 22,
  (int) 80,
@@ -156,7 +156,7 @@ dump(portParam)
 
 #### 案例：解析 urls，自由解析
 
-```go
+```yak
 // --urls "leavesongs.com,10.1.3.2,https://www.baidu.com"
 urlParam = cli.Urls("urls")
 dump(urlParam)
@@ -164,7 +164,7 @@ dump(urlParam)
 
 解析结果为 urls
 
-```go
+```yak
 ([]string) (len=6 cap=8) {
  (string) (len=22) "https://leavesongs.com",
  (string) (len=26) "https://www.leavesongs.com",
@@ -216,7 +216,7 @@ dump(urlParam)
 
 Yak cli 模块中，我们经常需要为我们的脚本设置参数，同为我们脚本设置帮助信息，方便别人来使用。
 
-```go
+```yak
 cli.SetDoc(`这是一个程序文档信息`)
 testValue = cli.String("t target", cli.setRequired(true), cli.setHelp("这是一个扫描目标，是必要参数"))
 boolParams = cli.Bool("b bool-params", cli.setHelp("这是一个bool值"))
@@ -228,7 +228,7 @@ println("param parsed")
 
 我们编写了上述代码，将会从命令行取出一些参数来执行，如果我们不输入参数，直接执行，将会出现如下效果:
 
-```go
+```yak
 Error:
   Parameter [target] error: miss parameter
 

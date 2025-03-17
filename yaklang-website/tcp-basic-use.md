@@ -9,7 +9,7 @@
 
 ## 一个例子看透 TCP 库的三个 API
 
-```go
+```yak
 // 设置日志的级别，方便我们看到 TCP 库的一些信息输出
 loglevel("info")
 
@@ -55,7 +55,7 @@ sleep(3)
 1. 然后我们访问本地 9000 端口，发送一条消息
 1. 我们从客户端收到了，服务器返回来的消息
 
-```go
+```yak
 [INFO] 2021-06-11 17:52:47 +0800 [default:tcp_serve.go:63] recv tcp connection from 127.0.0.1:58352 to 127.0.0.1:9000
 [INFO] 2021-06-11 17:52:47 +0800 [default:tcp_util.go:15] recv local connection from: 127.0.0.1:58352
 [INFO] 2021-06-11 17:52:47 +0800 [default:tcp_serve.go:63] recv tcp connection from 127.0.0.1:58353 to 127.0.0.1:8085
@@ -92,7 +92,7 @@ sleep(3)
 
 #### `*yaklib.tcpConnection` 函数定义
 
-```go
+```yak
 type palm/common/yak/yaklib.(tcpConnection) struct {
   Fields(可用字段):
       Conn: net.Conn

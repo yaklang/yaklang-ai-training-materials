@@ -16,7 +16,7 @@ sidebar_position: 14
 
 在yaklang中，如果使用 `{key1: value1, key2: value2...}` 来创建一个map，yak vm会根据map中的key与value元素类型来自动推断最契合的map类型，一个简单的例子如下：
 
-```go
+```yak
 m = {"a": 1, "b": 2}
 println(typeof(m)) // map[string]int
 m2 = {"a":"b", "c":"d"}
@@ -31,7 +31,7 @@ println(typeof(m4)) // map[interface{}]interface{}
 
 yaklang也兼容golang语法，使用make语句显示创建一个对应类型的map，一个简单的例子如下：
 
-```go
+```yak
 // 创建一个不带初始容量的 map[string]int
 a = make(map[string]int)
 a["a"] = 1

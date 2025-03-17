@@ -32,7 +32,7 @@ SYN扫描是另一种TCP扫描。端口扫描工具不使用操作系统原生�
 
 我们看下面的代码
 
-```go
+```yak
 target := cli.String("target", cli.setHelp("设置扫描目标"))
 port  = cli.String("ports", cli.setDefault("80,8080-8082,9000-9002"))
 
@@ -57,7 +57,7 @@ for ret := range res {
 
 我们在上述代码中
 
-```go {2}
+```yak {2}
 res, err := synscan.Scan(target, port)
 die(err)
 ```
@@ -72,7 +72,7 @@ die(err)
 
 `*tools.SynScanResult` 结构说明
 
-```go
+```yak
 type palm/common/yak/yaklib/tools.(SynScanResult) struct {
   Fields(可用字段): 
       Host: string  
@@ -111,7 +111,7 @@ type palm/common/yak/yaklib/tools.(SynScanResult) struct {
 
 我们看如下案例：
 
-```go {7-8}
+```yak {7-8}
 target := cli.String("target", cli.setHelp("设置扫描目标"))
 port  = cli.String("ports", cli.setDefault("80,8080-8082,9000-9002"))
 

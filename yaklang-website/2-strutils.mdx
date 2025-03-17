@@ -21,7 +21,7 @@ import TOCInline from '@theme/TOCInline';
 
 这一系列函数可以方便用户快速处理扫描目标，包括但不限于：端口，主机，Url，CIDR C段；该系列有如下函数：
 
-```go
+```yak
 // 把字符串解析成 C段 CIDR 的 C 段形式，用逗号分割，解析结果也用逗号进行分割
 str.ParseStringToCClassHosts(targets string) string
 
@@ -56,7 +56,7 @@ str.ParseStringToHTTPResponse(res string) (*http.Response, error)
 
 最基础地，我们可以解析一个主机列表：
 
-```go
+```yak
 input = `192.168.1.1/24,192.168.2.101`
 results = str.ParseStringToHosts(input)~
 for result in results {
@@ -97,7 +97,7 @@ Output:
 
 这些情况往往都能被 `str.ParseStringToHosts` 很好处理（**当然，多个目标的输入仍然是逗号分隔**）
 
-```go
+```yak
 input = `192.168.1.1/24,192.168.2.101,www.example.com,www.example.com:80,https://example.com,192.168.1.1:80,192.168.1.1-5,https://example.com/abc`
 results = str.ParseStringToHosts(input)~
 for result in results {
@@ -133,7 +133,7 @@ https://example.com/abc
 
 如下案例可以快速了解这个函数的功能。
 
-```go
+```yak
 input = `80,443,8000-8008,8080-8088`
 ports = str.ParseStringToPorts(input)~
 for port in ports {
@@ -166,7 +166,7 @@ for port in ports {
 
 我们可以通过很多简单的方式把数字转变成字符串，例如
 
-```go
+```yak
 a = parseString(80); dump(a)
 /* OUTPUT: (string) (len=2) "80" */
 
@@ -188,7 +188,7 @@ a = f`${port}`; dump(a)
 
 我们在 `str` 函数库中可以找到 `str.ParseStringToHostPort` 这个函数，可以很方便的完成这个小目标：
 
-```go
+```yak
 input = `https://example.com`
 host, port = str.ParseStringToHostPort(input)~  // host: example.com   port: 443
 
@@ -211,7 +211,7 @@ host, port = str.ParseStringToHostPort(input)~  // host: 192.168.1.1   port: 445
 
 如果我们输入了一个不可能推断出端口的函数，那么我们一般会获得如下内容，它会造成解析错误
 
-```go
+```yak
 input = `192.168.1.1`
 host, port = str.ParseStringToHostPort(input)~
 /*
@@ -237,7 +237,7 @@ try {
 
 `str.ParseStringToHostPort` 的反义函数是 `str.HostPort`，因此我们可以使用这个函数快速组合一个扫描目标主机和端口。
 
-```go
+```yak
 // 基础使用
 result = str.HostPort("127.0.0.1", 8080) // result: 127.0.0.1:8080
 
@@ -273,7 +273,7 @@ OUTPUT:
 
 在 `str.ExtractTitle` 中，我们可以直接做到这个操作，函数定义为 `ExtractTitle(any) string` 从任何可能的文本中提取一个 `<title></title>` 标签。
 
-```go
+```yak
 input = `<html>
     <head>
         <title>This is a title tag in HTML!</title>
@@ -303,7 +303,7 @@ title = str.ExtractTitle(input)
 
 我们观察如下案例
 
-```go
+```yak
 input = `
 HTTP/1.1 200 OK
 Cache-Control: max-age=864000
@@ -352,7 +352,7 @@ OUTPUT:
 
 我们观察如下案例即可快速了解
 
-```go
+```yak
 input = `
 HTTP/1.1 302 Found
 Connection: close

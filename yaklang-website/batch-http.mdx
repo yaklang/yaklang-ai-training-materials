@@ -25,7 +25,7 @@ sidebar_position: 112
 
 其定义为：
 
-```go
+```yak
 type palm/common/mutate.(_httpResult) struct {
   Fields(可用字段):
       Url: string
@@ -48,7 +48,7 @@ type palm/common/mutate.(_httpResult) struct {
 
 我们尝试对一个网站的 `/target1 /target2 /target3 ... /target10` 进行批量发包，如何实现呢？
 
-```go
+```yak
 res, err = httpool.Pool(`GET /target{{int(1-10)}} HTTP/1.1
 Host: www.baidu.com
 `)
@@ -79,7 +79,7 @@ OUTPUT:
 
 ### 带参数渲染的批量发包模版
 
-```go
+```yak
 res, err = httpool.Pool(`GET /target{{params(suffix)}} HTTP/1.1
 Host: www.baidu.com
 
@@ -120,7 +120,7 @@ OUTPUT:
 
 我们对上面的内容进行一点点修改，增加一些其他参数
 
-```go
+```yak
 res, err = httpool.Pool(`GET /target{{params(suffix)}} HTTP/1.1
 Host: www.baidu.com
 
@@ -135,7 +135,7 @@ die(err)
 
 对于 Yak 来说，这并不是一个困难的事情，通过 `httpool` 的参数可以指定 host 实现针对 IP 的特定连接，再去查询绑定关系，从而碰撞出可以访问的内部资产。
 
-```go
+```yak
 domains = [
     "m1.test.example.com",
     "oa.example.com",
@@ -193,7 +193,7 @@ for result = range res {
 
 我们以一个简单例子快速预览一下这个库的核心功能
 
-```go
+```yak
 freq, err = fuzz.HTTPRequest(`GET / HTTP/1.1
 Host: www.example.com
 `)
@@ -227,7 +227,7 @@ die(err)
 
 我们在使用 `*mutate.FuzzHTTPRequest` 的时候，如果不知道他的定义是啥，有哪些可用方法，可以通过 `desc(freq)` 直接查看
 
-```go
+```yak
 type palm/common/mutate.(FuzzHTTPRequest) struct {
   Fields(可用字段):
       Opts: []mutate.BuildFuzzHTTPRequestOption

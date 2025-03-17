@@ -31,7 +31,7 @@
 
 ### 生成根证书保存在本地
 
-```go
+```yak
 ca, key, err := tls.GenerateRootCA("Yak Test")
 die(err)
 
@@ -46,7 +46,7 @@ die(file.Save("yak.pkey.pem", key))
 
 我们执行上述内容之后，获得如下结果
 
-```go
+```yak
 -----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIQer+QHpumrucWtk75qj4MIjANBgkqhkiG9w0BAQsFADAT
 MREwDwYDVQQDEwhZYWsgVGVzdDAgFw05OTEyMzExNjAwMDBaGA8yMTIwMDUyMjAz
@@ -99,7 +99,7 @@ CvOqogKav8T8ZJDIGNbvo0laAoIyvF+6f6v/9lBQAb/sle8B33Yh
 
 ### 签发证书，并尝试构建 TLS TCP 通信
 
-```go
+```yak
 // 生成一个 CA
 ca, key, err := tls.GenerateRootCA("Yak Test")
 die(err)
@@ -137,7 +137,7 @@ println("Client RECV: ", raw)
 
 我们执行完上述代码之后，收到的结果为：
 
-```go
+```yak
 TLS Server RECV conn from:  127.0.0.1:55217
 Client RECV:  Hello TLS Config
 ```

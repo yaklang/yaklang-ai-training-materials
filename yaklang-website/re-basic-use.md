@@ -25,7 +25,7 @@ yak 的正则工具包非常简单易用，核心只有两个函数
 
 ### 使用 `re.Match` 检查字符串是否符合正则
 
-```go
+```yak
 // 我们构建一个 match
 pattern := `matchThis(.*?)txt`
 
@@ -49,7 +49,7 @@ pattern: matchThis(.*?)txt 匹配成功
 
 ### 使用 `re.Match` 检查字节流(`[]byte`)是否符合正则
 
-```go
+```yak
 pattern := `matchThis(.*?)txt`
 result := re.Match(pattern, []byte(`
 asdfas sdfa sdfa

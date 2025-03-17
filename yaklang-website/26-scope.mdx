@@ -6,7 +6,7 @@ sidebar_position: 26
 
 作用域为已声明标识符所表示的常量、类型、变量、函数或闭包在源代码中的作用范围。yaklang的作用域与golang几乎保持一致，例如：
 
-```go
+```yak
 // 全局变量
 var GLOBAL_VAR = 6666
 func scope_test(c) { // c: 形式参数
@@ -28,7 +28,7 @@ assert GLOBAL_VAR == 6666
 
 值得注意的是，新版yaklang引擎与旧版yaklang引擎在:=行为表现不一致。在旧版yaklang中，:=与=完全相同，而在新版yaklang中:=会强制创建一个新的局部变量，一个简单的例子如下：
 
-```go
+```yak
 var VAR = 1
 func scope_test() {
     assert VAR == 1

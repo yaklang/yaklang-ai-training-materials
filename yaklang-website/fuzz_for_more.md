@@ -12,7 +12,7 @@ sidebar_position: 10
 
 细心的朋友可能已经观察到了，在我们的上一节展示的 `*FuzzHTTPRequest` 结构体中，有几个字段可能和我们在这一小节中的主要目的有关
 
-```go
+```yak
 // 获取所有常见参数
 func GetCommonParams() return([]*mutate.FuzzHTTPRequestParam) 
 func GetCookieParams() return([]*mutate.FuzzHTTPRequestParam) 
@@ -24,7 +24,7 @@ func GetPostParams() return([]*mutate.FuzzHTTPRequestParam)
 
 我们发现上述的方法引入了一个结构体 `*mutate.FuzzHTTPRequestParam`，这个结构体我们可以通过如下代码 `desc` 出这个内容
 
-```go
+```yak
 req, err := fuzz.HTTPRequest(`GET /?test=1 HTTP/1.1
 Host: 127.0.0.1`)
 die(err)
@@ -36,7 +36,7 @@ for _, param := range req.GetGetQueryParams() {
 
 我们通过上述代码，构建了一个 GET 参数为 `test` 的 HTTP 请求。在没有进行 Fuzz 的情况下我们使用 `.GetGetQueryParams()` 来获取所有的 Get 参数的可测试的参数，我们直接来 `desc(param)` 可以描述这个结构体。
 
-```go
+```yak
 type palm/common/mutate.(FuzzHTTPRequestParam) struct {
   Fields(可用字段): 
   StructMethods(结构方法/函数): 
@@ -61,7 +61,7 @@ type palm/common/mutate.(FuzzHTTPRequestParam) struct {
 
 我们上一节展示了，如何获取 Get 中的参数，那么我们接下来对上一节的一点点代码进行小修改，我们再增加一个参数，并打印出这些参数的一些属性，并尝试对参数进行 Fuzz 看一下实际使用效果。
 
-```go
+```yak
 req, err := fuzz.HTTPRequest(`GET /?test=1&key1=23 HTTP/1.1
 Host: 127.0.0.1`)
 die(err)
@@ -135,7 +135,7 @@ Content-Length: 0
 
 在 [【实战2: 指纹扫描+基础爬虫】](/docs/yakexamples/scan_and_crawler) 这一节中，我们可以做到爬虫爬取指纹扫描的结果，尽可能获取一个 Web 应用的常见的 URL 与可扫描的数据包。
 
-```go
+```yak
 loglevel("error")
 
 res, err := crawler.Start(cli.String("target"), crawler.maxRequest(100))
@@ -176,7 +176,7 @@ for r := range res {
 
 执行结果为（省略，脱敏打码了很大一部分信息，大家也不必猜测实际扫描环境，可以自己复制执行进行学习）
 
-```go
+```yak
 ...
 ...
 
@@ -206,7 +206,7 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 我们实际上明确知道，爬虫远远是不够的，日常针对带有 Cookie / Authorization JWT 认证的各种常见应用，最有效的方式其实是通过中间人劫持来获取具体的 HTTP 的包，然后针对这个包来发起 Fuzz。我们在之前的文档中，已经了解过如何进行被动扫描 [【使用 `mitm`】进行被动扫描](/docs/yakexamples/passive_scan)。
 
-```go title="fuzz_with_mitm.yak" {3-5}
+```yak title="fuzz_with_mitm.yak" {3-5}
 loglevel(`info`)
 
 go func {

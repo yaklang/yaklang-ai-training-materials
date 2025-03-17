@@ -16,7 +16,7 @@
 
 本模块核心函数为 `func subdomain.Start(targetDomain, params...) return (chan *subdomain.SubdomainResult, error)`
 
-```go
+```yak
 res, err := subdomain.Scan("b******u.com" , subdomain.recursive(true ) )
 die(err)
 
@@ -31,7 +31,7 @@ for result := range res {
 
 :::note
 
-```go
+```yak
 type palm/common/subdomain.(SubdomainResult) struct {
   Fields(可用字段):
       // 原来的域名是谁？ 
@@ -68,7 +68,7 @@ type palm/common/subdomain.(SubdomainResult) struct {
 
 结果简单展示如下：
 
-```go
+```yak
                                      m.b*******u.com IP:[   110********9] From:[]
                                    www.b*******u.com IP:[   110********3] From:[]
                           autodiscover.b*******u.com IP:[ 111.2********7] From:[]
@@ -108,7 +108,7 @@ type palm/common/subdomain.(SubdomainResult) struct {
 
 `Scan` 的第二个参数为可变参数，具体如果想设置一些扫描的参数，可以通过 `subdomaqin.[your-option](paramValue)` 来设置，具体案例如下
 
-```go
+```yak
 res, err := subdomain.Scan("y************i.com" , 
     subdomain.recursive(true), // 设置允许递归
     subdomain.maxDepth(5),     // 设置递归最大深度

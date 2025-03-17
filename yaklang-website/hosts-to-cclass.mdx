@@ -8,7 +8,7 @@ sidebar_position: 61
 
 C段探测是一个非常有用的操作：我们可以轻易的通过这种方式支持扫描目标主机的 "附近" 是否有相关目标。
 
-```go
+```yak
 hostStr = str.ParseStringToCClassHosts("127.0.0.1,127.0.0.2,127.0.0.4,47.53.11.1/23,baidu.com")
 println(hostStr)
 
@@ -31,7 +31,7 @@ OUTPUT:
 
 在我们有上面的基础之后，我们可以轻易实现一个 "扫描 C 段的功能"。
 
-```go
+```yak
 hostStr = str.ParseStringToCClassHosts("127.0.0.1,127.0.0.2,127.0.0.4,47.53.11.1/23,baidu.com")
 for _, i = range str.ParseStringToHosts(hostStr) {
     // doSth

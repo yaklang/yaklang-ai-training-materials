@@ -15,7 +15,7 @@
 
 :::note 我们列出 `*exec.Cmd` 可用的操作与字段，如有需要可以自行取用。
 
-```go
+```yak
 type os/exec.(Cmd) struct {
   Fields(可用字段): 
       Path: string  
@@ -54,7 +54,7 @@ type os/exec.(Cmd) struct {
 
 使用案例如下
 
-```go
+```yak
 raw, err = exec.System("ls")
 die(err)
 dump(raw)
@@ -62,7 +62,7 @@ dump(raw)
 
 当我们执行上面例子的时候，本质上是执行了一条系统命令 `ls`
 
-```go
+```yak
 ([]uint8) (len=32 cap=1536) {
  00000000  53 32 5f 30 34 36 2e 79  61 6b 0a 61 2e 79 61 6b  |S2_046.yak.a.yak|
  00000010  0a 62 2e 79 61 6b 0a 74  65 73 74 2e 79 61 6b 0a  |.b.yak.test.yak.|
@@ -79,7 +79,7 @@ dump(raw)
 
 经典案例如下：
 
-```go
+```yak
 exec.SystemBatch(`echo {{net:(192.168.1.1/28,example.com)}}` , exec.callback(func(cmd, results){
     println(`exec: `, `results: `, codec.EncodeASCII(string(results)))
 }))
@@ -87,7 +87,7 @@ exec.SystemBatch(`echo {{net:(192.168.1.1/28,example.com)}}` , exec.callback(fun
 
 执行结果如下：
 
-```go
+```yak
 exec:  results:  "192.168.1.7\n"
 exec:  results:  "192.168.1.6\n"
 exec:  results:  "192.168.1.3\n"
@@ -135,7 +135,7 @@ exec:  results:  "192.168.1.1\n"
 
 我们以下面例子作为展示
 
-```go
+```yak
 exec.WatchOutput(`ping 8.8.8.8`, 4, def callback(result) {
     println(now())
     println(string(result))
@@ -153,7 +153,7 @@ exec.WatchOutput(`ping 8.8.8.8`, 4, def callback(result) {
 
 执行上述结果为：
 
-```go
+```yak
 2021-06-28 21:25:28.298526 +0800 CST m=+1.030134668
 PING 8.8.8.8 (8.8.8.8): 56 data bytes
 64 bytes from 8.8.8.8: icmp_seq=0 ttl=113 time=108.981 ms

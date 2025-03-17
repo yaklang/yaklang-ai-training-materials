@@ -18,7 +18,7 @@ sidebar_position: 6
 
 这一部分内容非常简单，我们在前面已经写过很多次了，通过 `servicescan.ScanFromSynResult` 我们可以把 SYN 端口开放扫描和指纹识别扫描进行关联与对接，这一步会针对初步单端口的扫描非常快速。
 
-```go
+```yak
 hosts = cli.String("target", cli.setHelp("scan hosts"))
 ports = cli.String("ports", cli.setDefault("80,8080-8082,443,888"))
 
@@ -40,7 +40,7 @@ die(err)
 1. 基础使用手册可以具体参考 [crawler 基础爬虫使用文档](/api-manual/buildinlibs/lib_crawler)
 1. 爬虫所有 API 可以参考 [crawler 完全 API](/api-manual/api/crawler)
 
-```go
+```yak
 // 创建一个文件夹为 `./scan_and_crawler` 的临时文件位置。
 // 这个文件夹用于存储扫描的结果
 fp, err = file.TempFile("scan_and_crawler")
@@ -79,7 +79,7 @@ func startCrawler(target) {
 
 :::
 
-```go {40-48}
+```yak {40-48}
 // 从命令行获取输入
 hosts = cli.String("target", cli.setHelp("scan hosts"))
 ports = cli.String("ports", cli.setDefault("80,8080-8082,443,888"))
@@ -134,7 +134,7 @@ for result := range res {
 
 当我们完成上述代码的时候，我们可以执行 
 
-```go
+```yak
 yak scan_and_crawler.yak --target 47.***.**.**/24 --ports 80,8000-8003,8080-8083,443
 ```
 

@@ -38,7 +38,7 @@ sidebar_position: 5
 
 我们根据文档编写了如下代码，
 
-```go title="yakmisc.yak"
+```yak title="yakmisc.yak"
 targets := cli.String("target", cli.setHelp("扫描目标"))
 scanTargets := str.ParseStringToHosts(targets)
 if len(scanTargets) <= 0 {
@@ -63,7 +63,7 @@ yak yakmisc.yak --target 192.168.1.23/29,example.com
 
 获取到的结果为
 
-```go
+```yak
 [INFO] 2021-07-01 11:57:28 +0800 [yakmisc] start to handle target ip: 192.168.1.16
 [INFO] 2021-07-01 11:57:28 +0800 [yakmisc] start to handle target ip: 192.168.1.17
 [INFO] 2021-07-01 11:57:28 +0800 [yakmisc] start to handle target ip: 192.168.1.18
@@ -92,7 +92,7 @@ yak yakmisc.yak --target 192.168.1.23/29,example.com
 
 所以我们编写这个部分其实是非常简单，我们以只使用 servicescan 为例：
 
-```go
+```yak
 log.setLevel("info")
 
 targets := cli.String("target", cli.setHelp("扫描目标"))
@@ -167,7 +167,7 @@ wg.Wait()
 在同学们阅读了上述两个文档的之后，我们相信很容易将会得到下面的代码，简单结合了我们的并发限制的功能之后，我们得到了如下带总体并发限制的子域名检测：
 
 
-```go
+```yak
 ...
 ...
 
@@ -200,7 +200,7 @@ scanDomain = func(domain) {
 
 我们编写完核心工作函数之后，把上述代码塞进之前的代码中。然后执行一下命令行扫描一下一些互联网资产
 
-```go
+```yak
 yak yakmisc.yak --target 47.5********05/24,b********.com --ports 80
 ```
 
@@ -242,7 +242,7 @@ yak yakmisc.yak --target 47.5********05/24,b********.com --ports 80
 
 虽然现在我们对域名扫描的结果使用非常简单仅仅是
 
-```go {6-8}
+```yak {6-8}
 res, err := subdomain.Scan(domain, subdomain.recursive(true))
 if err != nil {
     log.error("subdomain scan[%s] failed: %s", domain, err)
@@ -255,7 +255,7 @@ for result := range res {
 
 我们把域名收集的结果打印出来到屏幕上了，然而这并没有满足我们的需求。其实只需要把 `result` 中的 IP 地址取出来，重新交给端口扫描/指纹扫描即可
 
-```go {6-8,9}
+```yak {6-8,9}
 res, err := subdomain.Scan(domain, subdomain.recursive(true))
 if err != nil {
     log.error("subdomain scan[%s] failed: %s", domain, err)
@@ -271,7 +271,7 @@ for result := range res {
 
 如果用户不熟悉 `subdomain` 中有啥字段可以使用，可以参考文档 [`subdomain` 中的结果处理](/api-manual/buildinlibs/lib_subdomain#核心函数与基础使用)
 
-```go
+```yak
 type palm/common/subdomain.(SubdomainResult) struct {
   Fields(可用字段):
       // 原来的域名是谁？
@@ -312,7 +312,7 @@ type palm/common/subdomain.(SubdomainResult) struct {
 
 大家可以执行以下命令：
 
-```go
+```yak
 yak yakmisc.yak --target 192.168.1.1/24,example.com,10.3.1.0/24
 ```
 
@@ -322,7 +322,7 @@ yak yakmisc.yak --target 192.168.1.1/24,example.com,10.3.1.0/24
 
 :::
 
-```go title="yakmisc.yak"
+```yak title="yakmisc.yak"
 log.setLevel("info")
 
 targets := cli.String("target", cli.setHelp("扫描目标"))
@@ -426,7 +426,7 @@ wg.Wait()
 
 ### Show Me the Code!
 
-```go
+```yak
 // 从命令行获取文件名，如果用户没有输入，我们自定义一个随机文件名
 domainFileName = cli.String("domain-result", cli.setDefault(sprintf("yakmisc-domain-result-%v.txt", randstr(15))))
 
@@ -445,7 +445,7 @@ defer domainResult.Close()
 
 当我们把所有上述细节代码整合在一起的时候，我们发现，仅仅 96 行，我们就实现了从子域名到端口扫描的全部功能。
 
-```go title="yakmisc.yak"
+```yak title="yakmisc.yak"
 log.setLevel("info")
 
 resultFileName = cli.String("port-result", cli.setDefault(sprintf("yakmisc-port-result-%v.txt", randstr(15))))

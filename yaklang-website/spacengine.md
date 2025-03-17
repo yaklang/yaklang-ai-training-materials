@@ -19,7 +19,7 @@ sidebar_position: 4
 
 其实我们发现，我们要实现这些常见的功能，已经并不需要手动去寻找库，我们的内置 API 可以完成这部分操作，最基础的代码我们可以看如下样例
 
-```go
+```yak
 shodanToken := cli.String("token")
 maxRecord := cli.Int("max-record")
 if maxRecord <= 0 {
@@ -63,7 +63,7 @@ for result := range ch {
 
 我们以 [`http.Get`](/api-manual/api/http#httpget) 为例讲解一下如何发起一个 http 请求
 
-```go
+```yak
 rsp, err := http.Get("http://example.com")
 die(err)
 
@@ -74,7 +74,7 @@ http.show(rsp)
 
 然后通过 `http.show(rsp)` 来展示得到的响应整体数据包。上述代码直接可以执行，执行结果如下：
 
-```go
+```yak
 HTTP/1.1 200 OK
 Connection: close
 Content-Length: 1256
@@ -144,7 +144,7 @@ X-Cache: HIT
 
 :::info
 
-```go
+```yak
 type net/http.(Response) struct {
   Fields(可用字段): 
       Status: string  
@@ -176,7 +176,7 @@ type net/http.(Response) struct {
 
 我们经过简单的了解，可以对一开始我们的从 shodan 获取数据的接口进行改动。
 
-```go
+```yak
 shodanToken := cli.String("token")
 maxRecord := cli.Int("max-record")
 if maxRecord <= 0 {

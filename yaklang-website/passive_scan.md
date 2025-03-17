@@ -26,7 +26,7 @@ sidebar_position: 11
 
 被动扫描能力底座也是 Yak 目前 "独一份" 提供的。简单来说，Yak 提供了一个方便的中间人的接口，仅需 `mitm.Start` 即可启动一个中间人代理。
 
-```go
+```yak
 err = mitm.Start(8082, mitm.callback(func(isHttps, url, req, rsp) {
     if req.Method == "CONNECT" {
         return
@@ -55,7 +55,7 @@ die(err)
 
 顺理成章的，我们可以编写自己的被动扫描器了，我们通过 `fuzz` 模块，可以很容易做到针对 `http.Request` 的变形，不管是分析内部参数还是对特定参数进行扫描，这些操作手到擒来！
 
-```go
+```yak
 wg = sync.NewWaitGroup()
 defer wg.Wait()
 

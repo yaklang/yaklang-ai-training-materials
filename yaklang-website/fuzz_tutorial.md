@@ -44,7 +44,7 @@ sidebar_position: 9
 
 在 Yak 中，你甚至可以这样编写 Web Fuzz 的功能
 
-```go
+```yak
 // 创建一个可 Fuzz 的请求
 fReq, err := fuzz.HTTPRequest(`GET / HTTP/1.1
 Host: 127.0.0.1`)
@@ -73,7 +73,7 @@ User-Agent: ua-for www.example.com
 
 Yak 针对这种情况的支持可以说是业内首创，通过 `{{integer(1-10)}}` 这样的标签，我们可以把 `1-10` 拆成真正的 `[1,2,3,4...8,9,10]`。例如我们执行下面的脚本
 
-```go
+```yak
 basePacket = `
 GET / HTTP/1.1
 Host: 127.0.0.1
@@ -135,7 +135,7 @@ Content-Length: 0
 
 但是有时候，我们使用 fuzz 并不只是为了 fuzz 几个整数，经常我们需要构造若干与漏洞测试相关的 Payload，或者随机字符串，构造数据包，那么我们应该如何操作呢？
 
-```go
+```yak
 basePacket = `
 GET / HTTP/1.1
 Host: 127.0.0.1
@@ -150,7 +150,7 @@ fReq.FuzzGetParams("testValue", ["test", "alert(1)", "prompt`34{{char(a-c)}}`"])
 
 我们观察上面代码，Get 参数变成一个 list/slice，分别为
 
-```go
+```yak
 test
 alert(1)
 prompt`34{{char(a-c)}}`
@@ -216,13 +216,13 @@ Content-Length: 0
 
 我们观察如下案例：
 
-```go
+```yak
 dump(fuzz.Strings(`fuzzedStr:{{integer(1-4)}}`))
 ```
 
 我们执行上述代码之后，控制台输出如下内容
 
-```go
+```yak
 ([]string) (len=4 cap=4) {
  (string) (len=11) "fuzzedStr:1",
  (string) (len=11) "fuzzedStr:2",
@@ -239,7 +239,7 @@ dump(fuzz.Strings(`fuzzedStr:{{integer(1-4)}}`))
 
 我们支持如下内容：
 
-```go
+```yak
 // 整数 fuzz： 
 {{int}} {{integer}} {{i}}
 
@@ -269,7 +269,7 @@ dump(fuzz.Strings(`fuzzedStr:{{integer(1-4)}}`))
 
 我们执行下面代码，我们构建一个最基础的 HTTP 请求，然后在使用 `desc(req)` 展示 req 具体所有的可用字段
 
-```go
+```yak
 req, err := fuzz.HTTPRequest(`GET / HTTP/1.1
 Host: 127.0.0.1`)
 die(err)
@@ -279,7 +279,7 @@ desc(req)
 
 我们将得到一个非常棒的结果：
 
-```go
+```yak
 type palm/common/mutate.(FuzzHTTPRequest) struct {
   Fields(可用字段): 
       Opts: []mutate.BuildFuzzHTTPRequestOption  
@@ -355,7 +355,7 @@ type palm/common/mutate.(FuzzHTTPRequest) struct {
 
 我们用一个最简单的例子说明一下基础用法
 
-```go
+```yak
 basePacket = `
 GET / HTTP/1.1
 Host: www.example.com
@@ -377,7 +377,7 @@ for element := range res {
 
 上述简单 Fuzz 脚本获得的结果为：
 
-```go
+```yak
 status: 200 bodylen:    1610  url: http://www.example.com/?testValue=prompt%6034a%60
 status: 200 bodylen:    1610  url: http://www.example.com/?testValue=prompt%6034c%60
 status: 200 bodylen:    1610  url: http://www.example.com/?testValue=prompt%6034b%60

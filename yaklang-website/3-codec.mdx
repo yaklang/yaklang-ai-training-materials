@@ -26,7 +26,7 @@ import TOCInline from '@theme/TOCInline';
 1. `fn codec.DecodeBase64(var_1: string): ([]byte, error)`    **值得注意的是，解码base64的结果为 []byte 即为 bytes**
 1. `fn codec.EncodeBase64(var_1: interface {}): string`
 
-```go
+```yak
 ret := codec.EncodeBase64("abcdefghijklmn\x99\xFf")
 println("编码为：", ret)
 res, err := codec.DecodeBase64(ret)
@@ -54,7 +54,7 @@ HTML 实体编码一般用于绕过 XSS
 1. `fn codec.EscapeHtml(var_1: string): string`  只编码特殊字符，`<&>` 等等
 1. `fn codec.EncodeHtml(var_1: string): string`  解码
 
-```go
+```yak
 ret := codec.EncodeHtml("abcdefghijklmn\xA0")
 println("Html编码为：", ret)
 res := codec.DecodeHtml(ret)
@@ -101,7 +101,7 @@ Escape编码为： abcdefghij&lt;&gt;:;{]{]|\$^&amp;^&amp;#@klmn�
 1. `fn codec.EncodeUrl(var_1: string): string`
 2. `fn codec.DecodeUrl(var_1: string) (string, error)`
 
-```go
+```yak
 ret := codec.EncodeUrl("abcdefghij<>:;{]{]|\\$^&^&#@klmn\xA0")
 println("Url编码为：", ret)
 res, err := codec.DecodeUrl(ret)
@@ -133,7 +133,7 @@ Url编码为： %61%62%63%64%65%66%67%68%69%6a%3c%3e%3a%3b%7b%5d%7b%5d%7c%5c%24%
 1. `fn codec.DoubleDecodeUrl(var_1: string): (string, error)`
 1. `fn codec.DoubleEncodeUrl(var_1: string): string`
 
-```go
+```yak
 
 ret := codec.DoubleEncodeUrl("abcdefghij<>:;{]{]|\\$^&^&#@klmn\xA0")
 println("Url编码为：", ret)
@@ -162,7 +162,7 @@ Double Url编码为： %2561%2562%2563%2564%2565%2566%2567%2568%2569%256a%253c%2
 1. `fn codec.DecodeHex(var_1: string): ([]uint8, error)`
 1. `fn codec.EncodeToHex(var_1: interface {}): string`
 
-```go
+```yak
 ret := codec.EncodeToHex("abcdefghij<>:;{]{]|\\$^&^&#@klmn\xA0")
 println("Url编码为：", ret)
 res, err := codec.DecodeHex(ret)
@@ -193,7 +193,7 @@ Hex 编码为： 6162636465666768696a3c3e3a3b7b5d7b5d7c5c245e265e2623406b6c6d6ea
 1. 解码操作，`\xNN` 变成具体字符 `fn codec.DecodeASCII(var_1: string): (string, error)`
 1. 基本同 `codec.EncodeASCII` 的函数 `fn codec.EncodeToPrintable(var_1: string): string` ，但是只打印可见内容
 
-```go
+```yak
 ret := codec.EncodeASCII("abcdefghijklmn\x99\xFf")
 println("编码为：", ret)
 res, err := codec.DecodeASCII(ret)

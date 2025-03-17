@@ -33,7 +33,7 @@
 
 ### 如何使用 `mitm.Start` ?
 
-```go
+```yak
 // 启动一个 mitm 劫持服务器
 go mitm.Start(8084, mitm.callback(fn(isHttps, url, request, response){
     if isHttps {
@@ -56,7 +56,7 @@ die(err)
 
 当我们执行上述脚本之后，结果如下：
 
-```go
+```yak
 [WARN] 2021-06-17 17:59:54 +0800 [default:mitm.go:87] mitm proxy use the default cert and key
 CONNECT www.baidu.com:443 HTTP/1.1
 Host: www.baidu.com:443
@@ -115,7 +115,7 @@ X-Ua-Compatible: IE=Edge,chrome=1
 
 我们对上述案例进行改造：我们保留原来 HTTPS 劫持的中间人服务器，在请求发送到 HTTPS 中间人之前，就把请求劫持下来，并且不影响后续的代理请求。
 
-```go
+```yak
 // 启动一个 mitm 劫持服务器
 go mitm.Start(8084, mitm.callback(fn(isHttps, url, request, response){
     println("请求经过了代理服务器")
@@ -144,7 +144,7 @@ die(err)
 
 当然，在我们完成上述代码执行的时候，我们如愿以偿得到了如下输出
 
-```go
+```yak
 [WARN] 2021-06-17 20:31:17 +0800 [default:mitm.go:87] mitm proxy use the default cert and key
 [WARN] 2021-06-17 20:31:17 +0800 [default:mitm.go:87] mitm proxy use the default cert and key
 请求经过了代理服务器
@@ -192,7 +192,7 @@ X-Ua-Compatible: IE=Edge,chrome=1
 
 我们使用一个新的例子来测试，首先编写一个yak脚本来启动一个能劫持websocket的server:
 
-```go
+```yak
 wg = sync.NewWaitGroup()
 wg.Add(1)
 go fn{
@@ -219,7 +219,7 @@ wg.Wait()
 
 接下来我们使用go来启动一个websocket的测试服务器，这里需要安装依赖:**"github.com/gorilla/websocket"**:
 
-```go
+```yak
 package main
 
 import (
@@ -335,7 +335,7 @@ server recv from client: Hijack request
 
 `mitm.wsforcetext`的使用非常简单，我们只需要对上述的例子进行稍微的修改即可:
 
-```go
+```yak
 wg = sync.NewWaitGroup()
 wg.Add(1)
 go fn{

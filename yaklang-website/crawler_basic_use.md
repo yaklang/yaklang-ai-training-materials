@@ -5,7 +5,7 @@
 
 ## 快速入门
 
-```go
+```yak
 ch, err := crawler.Start(
     "https://www.leavesongs.com",
 )
@@ -51,7 +51,7 @@ for result := range ch {
 
 ### 使用爬虫（带参数）
 
-```go
+```yak
 ch, err := crawler.Start(
     "https://www.leavesongs.com",
     crawler.maxRequest(20),      # 设置参数：最多获取 20 个连接
@@ -68,7 +68,7 @@ for result := range ch {
 
 ### 配合 fuzz 模块
 
-```go
+```yak
 ch, err := crawler.Start(
     "https://www.leavesongs.com",
     crawler.maxRequest(200),

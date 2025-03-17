@@ -24,7 +24,7 @@ Yakit 的 Yak Runner 是一个很好的执行代码，调试脚本的地方。
 
 一般来说，我们接收命令行参数，需要通过预先定义参数类型和描述来操作，但是在 yak 中，我们处理参数其实可以非常简单
 
-```go
+```yak
 // 如果我们需要处理 --your-param xxx 这个参数，我们通过下面代码获取
 cli.String("your-param")
 
@@ -34,7 +34,7 @@ cli.Int("int-param")
 
 我们写一个最简单的脚本
 
-```go title="1_handleCliParam.yak"
+```yak title="1_handleCliParam.yak"
 target = cli.String("target")
 intParam = cli.Int("int-param")
 
@@ -78,7 +78,7 @@ YAK 自带了服务扫描功能
 :::
 
 
-```go
+```yak
 // 使用命令行参数
 targets := cli.String("target")
 ports := cli.String("ports", cli.setDefault("80,22,8080-8082"))
@@ -123,7 +123,7 @@ println("Scan Finished")
 
 当然，我们的接口都有相关功能实现，我们如何使用呢，我们为上述的脚本增加一个设置并发和设置输出的参数试一下
 
-```go
+```yak
 // 使用命令行参数
 targets := cli.String("target")
 ports := cli.String("ports")
