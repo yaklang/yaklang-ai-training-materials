@@ -80,6 +80,8 @@ caller.LoadPlugin(pluginName, )
 
 ### **2.4 模拟 HTTP 请求流**
 ```yak
+caller = hook.NewMixPluginCaller()~
+caller.LoadPlugin(pluginName, )
 for i in [
     {"https": false, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"}, //1
     {"https": true, "request": "GET /a/b/c HTTP/1.1\r\nHost: www.example.com"},  //2
@@ -147,35 +149,3 @@ assert parseInt(db.GetKey(key)) == 6
     url = poc.GetUrlFromHTTPRequest("http", request)
     println(url)  // 输出 "http://www.example.com/index.html"
     ```
-
----
-
-### **3.2 错误处理与波浪操作符**
-- **波浪操作符 `~`**快速忽略错误，适用于非关键操作。
-  - 示例：
-    ```yak
-    result = riskyCall()~  // 如果 `riskyCall` 失败，不会中断程序
-    ```
-
-- **显式错误处理**：
-  - 对于关键操作，建议使用 `try-catch` 块捕获错误。
-    ```yak
-    try {
-        riskyCall()
-    } catch err {
-        println("Error:", err)
-    }
-    ```
-
----
-
-
-## 4. **总结**
-
-通过这段代码，我们学习了以下内容：
-1. 如何动态生成和注册临时插件。
-2. 使用 `poc` 库修复和解析 HTTP 请求。
-3. 调用插件处理请求流，并验证结果。
-4. 错误处理的基本技巧。
-
-希望这份教程能帮助你更好地理解和使用 Yaklang！如果你有更多问题
