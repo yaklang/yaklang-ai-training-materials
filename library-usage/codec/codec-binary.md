@@ -39,6 +39,13 @@ assert result1.Value() == 0x3322 // 断言成功
        bin.toInt8("field2"),
        bin.toBytes("field3", "field2")  // 使用 field2 的值作为长度
    )~
+   
+   // 通过字段名查找特定结果
+   // 可以在复杂结构中查找嵌套字段
+   fieldValue = bin.Find(result, "field1")
+   if fieldValue != nil {
+       println("Field1:", fieldValue.AsUint16())
+   }
    ```
 
 4. **字节序处理**：
@@ -85,7 +92,7 @@ result = bin.Read(classBytes,
     bin.toUint16("constPoolCount") // 常量池计数
 )~
 
-// 访问结构体中的字段
+// 方法1: 通过索引访问字段
 // 验证魔数 (result[0] 是 magic 字段)
 magic := result[0].AsUint32() 
 if magic == 0xCAFEBABE {
@@ -94,15 +101,28 @@ if magic == 0xCAFEBABE {
     println("无效的 Java class 文件")
 }
 
-// 获取 Java 版本 (result[2] 是 majorVersion 字段)
-majorVersion := result[2].AsUint16()
-// Java 版本 = 主版本号 - 44
-javaVersion := majorVersion - 44
-println("Java 版本:", javaVersion) // 输出: Java 版本: 8
+// 方法2: 通过字段名查找字段（推荐，更加直观）
+// 使用bin.Find按字段名查找
+magicField := bin.Find(result, "magic")
+if magicField != nil && magicField.AsUint32() == 0xCAFEBABE {
+    println("有效的 Java class 文件")
+}
 
-// 获取常量池大小 (result[3] 是 constPoolCount 字段)
-constPoolCount := result[3].AsUint16()
-println("常量池条目数:", constPoolCount - 1) // 实际条目数 = 常量池计数 - 1
+// 获取 Java 版本 - 使用字段名查找
+majorVersionField := bin.Find(result, "majorVersion")
+if majorVersionField != nil {
+    version := majorVersionField.AsUint16()
+    // Java 版本 = 主版本号 - 44
+    javaVersion := version - 44
+    println("Java 版本:", javaVersion) // 输出: Java 版本: 8
+}
+
+// 获取常量池大小 - 使用字段名查找
+constPoolField := bin.Find(result, "constPoolCount")
+if constPoolField != nil {
+    count := constPoolField.AsUint16()
+    println("常量池条目数:", count - 1) // 实际条目数 = 常量池计数 - 1
+}
 ```
 
 实际网络安全应用场景（端口解析示例）：
