@@ -1,15 +1,12 @@
-我将根据你的测试用例和知识库内容，整理一份关于Yaklang TLS检测的教程：
-
 ### Yaklang TLS协议检测专题教程
 
 #### 1. 基础检测方法
 ```yak
-// 基础TLS检测（自动协商协议）
-for r in tls.Inspect(getParam("target"))~ {
-    dump(r.Protocol)
-    if r.Protocol in ["http/1.1", "h2"] {
-        check = true
-    }
+// 检查目标地址的TLS证书，并返回其证书信息与错误
+target = cli.String("target")
+cli.check()
+for r in tls.Inspect(target)~ {
+    dump(r)
 }
 ```
 
@@ -17,7 +14,7 @@ for r in tls.Inspect(getParam("target"))~ {
 ```yak
 // 强制使用HTTP/2进行检测
 check = false
-for r in tls.InspectForceHttp2(getParam("VULINBOX"))~ {
+for r in tls.InspectForceHttp2(target)~ {
     if r.Protocol in ["h2"] {
         check = true
     }
@@ -30,7 +27,7 @@ if !check {
 #### 3. 强制HTTP/1.1检测
 ```yak
 // 强制使用HTTP/1.1进行检测
-for r in tls.InspectForceHttp1_1(getParam("VULINBOX"))~ {
+for r in tls.InspectForceHttp1_1(target)~ {
     if r.Protocol == "http/1.1" {
         check = true
     }
@@ -41,7 +38,7 @@ for r in tls.InspectForceHttp1_1(getParam("VULINBOX"))~ {
 1. **tls模块方法**：
    - `Inspect()`: 自动协商检测支持的协议
    - `InspectForceHttp2()`: 强制尝试HTTP/2连接
-   - `InspectForceHttp1_1()`: 强制使用HTTP/1.1
+   - `InspectForceHttp1_1()`: 强制使用HTTP/1.1协议
 
 2. **错误处理**：
    - `~`操作符：自动捕获错误
@@ -52,12 +49,15 @@ for r in tls.InspectForceHttp1_1(getParam("VULINBOX"))~ {
    // 从命令行获取参数（结合cli包）
    target = cli.String("target")
    port = cli.Int("port", 443)
+   cli.check()
    ```
+   - check 用于检查命令行参数是否合法，这主要检查必要参数是否传入与传入值是否合法
 
 #### 5. 扩展应用示例
 结合HTTP测试：
 ```yak
-target = getParam("VULINBOX")
+target = cli.String("target")
+cli.check()
 
 // 先进行协议检测
 protoCheck = false
@@ -92,6 +92,7 @@ if protoCheck {
    ```yak
    target = cli.String("target", "https://example.com")
    timeout = cli.Int("timeout", 5)
+   cli.check()
    ```
 
 本教程完整演示了如何利用Yaklang进行协议级安全检测，这些方法可以应用于：
@@ -99,4 +100,3 @@ if protoCheck {
 - 中间件安全配置验证
 - 漏洞验证前的环境检测
 - 自动化安全扫描工具开发
-
