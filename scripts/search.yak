@@ -1,0 +1,265 @@
+// =============================================================================
+// Yak 代码搜索工具 - 在 Yak 文件中搜索函数名和关键字
+// Yak搜索 代码搜索 函数查找 关键字检索
+// 关键词: yak搜索, 函数搜索, 代码查找, 关键字检索, grep, context, 上下文搜索
+// =============================================================================
+
+println("Yak 代码搜索工具启动...")
+
+// =============================================================================
+// 1. 命令行参数解析
+// 参数解析 CLI参数 命令行选项
+// 关键词: CLI参数, 命令行解析, 参数验证, keyword参数, limit参数, regexp参数
+// =============================================================================
+
+// 定义命令行参数
+// 关键词: cli.String, cli.Int, cli.Bool, 参数定义, 搜索关键字, 结果限制, 正则表达式
+keyword = cli.String("keyword", cli.setRequired(true), cli.setHelp("要搜索的关键字或函数名"))
+limit = cli.Int("limit", cli.setDefault(20), cli.setHelp("限制显示的匹配结果数量，默认20"))
+regexp = cli.Bool("regexp", cli.setDefault(false), cli.setHelp("是否使用正则表达式搜索，默认false"))
+cli.check()
+
+// 参数验证 - 确保搜索关键字不为空
+// 关键词: 参数验证, 空值检查, 字符串长度验证
+if str.TrimSpace(keyword) == "" {
+    println("错误: 搜索关键字不能为空")
+    log.error("Empty keyword provided")
+    assert false, "搜索关键字不能为空"
+}
+
+println(f"开始搜索关键字: '${keyword}'")
+println(f"结果限制数量: ${limit}")
+println(f"是否使用正则表达式: ${regexp}")
+log.info("Starting search for keyword: %s, limit: %d, regexp: %v", keyword, limit, regexp)
+
+// =============================================================================
+// 2. 配置搜索参数
+// 搜索配置 上下文设置 文件扩展名配置
+// 关键词: 搜索配置, 上下文行数, 文件扩展名, 配置参数
+// =============================================================================
+
+// 默认上下文行数 - 显示匹配行前后各10行内容
+// 关键词: 上下文行数, context lines, 默认配置, 搜索上下文
+defaultContextLines = 10
+println(f"使用默认上下文行数: ${defaultContextLines}")
+
+// 支持的文件扩展名 - 只搜索 Yak 相关文件
+// 关键词: 文件扩展名, 搜索范围, 文件类型过滤, 支持格式
+supportedExtensions = [".yak"]
+println(f"搜索文件类型: ${str.Join(supportedExtensions, ", ")}")
+
+// =============================================================================
+// 3. 文件发现和扫描
+// 文件遍历 目录扫描 Yak文件发现
+// 关键词: 文件遍历, Recursive, 目录扫描, 文件发现, 文件过滤
+// =============================================================================
+
+println("\n=== 开始文件扫描 ===\n")
+
+// 获取当前工作目录 - 作为搜索的根目录
+// 关键词: 工作目录, 当前目录, 根目录获取, os.Getwd
+currentDir, wdErr = os.Getwd()
+if wdErr != nil {
+    log.error("Failed to get current directory: %v", wdErr)
+    assert false, f"获取当前目录失败: ${wdErr}"
+}
+log.info("Search root directory: %s", currentDir)
+println(f"搜索根目录: ${currentDir}")
+
+// 收集所有需要搜索的文件
+// 关键词: 文件收集, 文件列表, 路径存储, 文件统计
+allFiles = []
+totalFiles = 0
+
+// 递归遍历目录查找所有 .yak 文件
+// 关键词: Recursive遍历, 文件系统遍历, 目录递归, 文件发现
+err = filesys.Recursive(currentDir,
+    filesys.onFileStat((pathName, info) => {
+        // 检查文件扩展名是否为支持的类型
+        // 关键词: 扩展名检查, 文件类型过滤, 后缀匹配, supportedExtensions
+        ext = file.GetExt(pathName)
+        if ext in supportedExtensions {
+            totalFiles++
+            allFiles = append(allFiles, pathName)
+            log.info("Found Yak file: %s", pathName)
+        }
+    })
+)
+
+if err != nil {
+    log.error("Failed to scan directory: %v", err)
+    assert false, f"目录扫描失败: ${err}"
+}
+
+println(f"发现 ${totalFiles} 个 Yak 文件需要搜索")
+assert totalFiles > 0, "没有找到任何 Yak 文件进行搜索"
+
+// =============================================================================
+// 4. 关键字搜索执行
+// 搜索执行 内容匹配 上下文提取
+// 关键词: 搜索执行, 字符串匹配, 内容搜索, 上下文提取, grep功能
+// =============================================================================
+
+println("\n=== 开始关键字搜索 ===\n")
+
+// 搜索结果统计
+// 关键词: 搜索统计, 匹配计数, 文件计数, 结果汇总
+totalMatches = 0
+matchedFiles = 0
+
+// 对每个文件执行搜索
+// 关键词: 文件循环, 逐个搜索, 文件处理, 批量搜索
+for filePath in allFiles {
+    // log.info("Searching in file: %s", filePath)
+
+    // 读取文件内容
+    // 关键词: 文件读取, 内容加载, file.ReadFile, 文件内容获取
+    content, readErr = file.ReadFile(filePath)
+    if readErr != nil {
+        log.error("Failed to read file %s: %v", filePath, readErr)
+        println(f"警告: 无法读取文件 ${filePath}: ${readErr}")
+        continue
+    }
+
+    contentStr = string(content)
+    lines = str.Split(contentStr, "\n")
+
+    // 在文件中搜索关键字
+    // 关键词: 行搜索, 关键字匹配, 内容查找, str.Contains, 正则表达式搜索
+    fileMatches = 0
+    fileMatchLines = []
+
+    // 检查是否达到全局结果限制
+    // 关键词: 结果限制, limit检查, 搜索提前终止, 性能优化
+    if totalMatches >= limit {
+        log.info("Reached global limit (%d), skipping file: %s", limit, filePath)
+        continue
+    }
+
+    for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+        line = lines[lineIndex]
+        isMatch = false
+
+        // 根据参数选择搜索方式
+        // 关键词: 搜索模式选择, 正则表达式, 字符串匹配, 搜索策略
+        if regexp {
+            // 使用正则表达式搜索
+            // 关键词: re.Match, 正则匹配, 模式搜索, 高级搜索
+            isMatch = re.Match(keyword, line)
+        } else {
+            // 使用普通字符串搜索
+            // 关键词: str.Contains, 字符串包含, 简单匹配, 快速搜索
+            isMatch = str.Contains(line, keyword)
+        }
+
+        if isMatch {
+            fileMatches++
+            totalMatches++
+
+            // 记录匹配行信息
+            // 关键词: 匹配记录, 行号存储, 匹配信息, 结果收集
+            matchInfo = {
+                "lineNumber": lineIndex + 1,  // 行号从1开始
+                "lineContent": line,
+                "contextBefore": [],
+                "contextAfter": []
+            }
+
+            // 提取上下文 - 前面的行
+            // 关键词: 上下文提取, 前置上下文, 行范围, 边界检查
+            startBefore = max(0, lineIndex - defaultContextLines)
+            for i := startBefore; i < lineIndex; i++ {
+                matchInfo["contextBefore"] = append(matchInfo["contextBefore"], lines[i])
+            }
+
+            // 提取上下文 - 后面的行
+            // 关键词: 上下文提取, 后置上下文, 行范围, 边界检查
+            endAfter = min(len(lines)-1, lineIndex + defaultContextLines)
+            for i := lineIndex+1; i <= endAfter; i++ {
+                matchInfo["contextAfter"] = append(matchInfo["contextAfter"], lines[i])
+            }
+
+            fileMatchLines = append(fileMatchLines, matchInfo)
+
+            // 检查是否达到文件级别的结果限制
+            // 关键词: 文件结果限制, 提前终止, 性能优化, 结果控制
+            if len(fileMatchLines) >= limit {
+                log.info("Reached per-file limit (%d) for file: %s", limit, filePath)
+                break
+            }
+
+            // 检查是否达到全局结果限制
+            // 关键词: 全局结果限制, 搜索终止, 性能优化, 结果控制
+            if totalMatches >= limit {
+                log.info("Reached global limit (%d), stopping search", limit)
+                break
+            }
+        }
+    }
+
+    // 显示文件搜索结果
+    // 关键词: 结果显示, 文件结果, 匹配输出, 搜索报告
+    if fileMatches > 0 {
+        matchedFiles++
+        println(f"\n文件: ${filePath}")
+        println(f"匹配次数: ${fileMatches}")
+
+        // 显示每个匹配及其上下文
+        // 关键词: 上下文显示, 匹配详情, 行内容, 格式化输出
+        for matchIndex := 0; matchIndex < len(fileMatchLines); matchIndex++ {
+            match = fileMatchLines[matchIndex]
+            println(f"\n  匹配 ${matchIndex + 1} (第 ${match["lineNumber"]} 行):")
+
+            // 显示前置上下文
+            // 关键词: 前置上下文, 上下文显示, 行号计算, 内容输出
+            if len(match["contextBefore"]) > 0 {
+                startLineNum = match["lineNumber"] - len(match["contextBefore"])
+                for i := 0; i < len(match["contextBefore"]); i++ {
+                    ctxLine = match["contextBefore"][i]
+                    println(f"    ${startLineNum + i}| ${ctxLine}")
+                }
+            }
+
+            // 显示匹配行 - 用高亮标记
+            // 关键词: 匹配行显示, 高亮标记, 当前行, 匹配内容
+            println(f"  > ${match["lineNumber"]}| ${match["lineContent"]}")
+
+            // 显示后置上下文
+            // 关键词: 后置上下文, 上下文显示, 行号计算, 内容输出
+            if len(match["contextAfter"]) > 0 {
+                startLineNum = match["lineNumber"] + 1
+                for i := 0; i < len(match["contextAfter"]); i++ {
+                    ctxLine = match["contextAfter"][i]
+                    println(f"    ${startLineNum + i}| ${ctxLine}")
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// 5. 搜索结果汇总和验证
+// 结果汇总 统计验证 搜索报告
+// 关键词: 结果汇总, 搜索统计, 验证断言, 完成报告
+// =============================================================================
+
+println("\n=== 搜索完成汇总 ===")
+println(f"搜索关键字: '${keyword}'")
+println(f"扫描文件数: ${totalFiles}")
+println(f"匹配文件数: ${matchedFiles}")
+println(f"总匹配次数: ${totalMatches}")
+
+// 关键结果验证
+// 关键词: 结果验证, 断言检查, 统计验证, 搜索有效性
+assert totalFiles > 0, "至少应该扫描到一个文件"
+assert totalMatches >= 0, "匹配次数应该大于等于0"
+
+// 如果找到了匹配，验证匹配文件数合理
+// 关键词: 匹配验证, 文件数检查, 结果合理性, 数据一致性
+if totalMatches > 0 {
+    assert matchedFiles > 0, "如果有匹配，应该至少有一个匹配的文件"
+    assert matchedFiles <= totalFiles, "匹配文件数不应该超过总文件数"
+}
+
+log.info("Search completed successfully. Keyword: %s, Files: %d, Matches: %d", keyword, totalFiles, totalMatches)
+println("\nYak 代码搜索工具执行完成!")

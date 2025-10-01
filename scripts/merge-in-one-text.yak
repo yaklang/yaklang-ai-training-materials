@@ -4,6 +4,11 @@
 // 关键词: zip.CompressRaw, filesys.Recursive, 文档压缩, 训练材料, 文件收集
 // =============================================================================
 
+// CLI 参数定义
+// 关键词: CLI参数, 命令行参数, 参数解析, 输出路径
+output_zip = cli.String("output", cli.setDefault("aikb.zip"), cli.setHelp("输出 ZIP 文件路径"))
+cli.check()
+
 println("开始收集训练材料文档...")
 
 // =============================================================================
@@ -36,9 +41,8 @@ log.info("Target folders: %v", target_folders)
 target_extensions = [".md", ".mdx", ".yak"]
 log.info("Target extensions: %v", target_extensions)
 
-// 输出 ZIP 文件路径
+// 输出 ZIP 文件路径将通过 CLI 参数获取
 // 关键词: 输出路径, ZIP文件, 目标文件, 压缩包路径
-output_zip = "/tmp/test.zip"
 log.info("Output ZIP file: %s", output_zip)
 
 // =============================================================================
