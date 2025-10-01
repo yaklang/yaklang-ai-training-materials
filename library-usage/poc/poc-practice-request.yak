@@ -1,113 +1,159 @@
 
 // =============================================================================
 // 6. 实际发包演示和响应处理
+// POC库HTTP请求发送 HTTP发包 网络请求 响应处理 数据包发送
+// 关键词: HTTP, HTTPEx, Get, Post, Put, Delete, Head, Options, 发包, 请求, 响应
 // =============================================================================
 println("\n6. 实际发包演示和响应处理")
 
-// 创建本地测试服务器
+// 创建本地测试服务器 - 用于模拟HTTP响应
+// 关键词: 本地服务器, httpserver, 测试服务器, 模拟服务器
 port = os.GetRandomAvailableTCPPort()
-check = false
-check2 = false
+check = false  // JSON请求检查标志
+check2 = false // 自定义头检查标志
 
 go func {
+    // 启动HTTP服务器 - httpserver.Serve函数使用示例
+    // 关键词: httpserver.Serve, HTTP服务器, 服务器启动, 请求处理器
     httpserver.Serve(
         "127.0.0.1",
         port,
         httpserver.handler((rsp, req) => {
+            // 获取原始请求数据 - http.dump函数使用
+            // 关键词: http.dump, 请求转储, 原始请求, 请求数据
             raw = http.dump(req)~
 
-            // 记录请求信息
+            // 记录请求信息 - 用于验证请求内容
+            // 关键词: JSON检测, Content-Type检查, 请求头验证
             if raw.Contains("application/json") {
-                check = true
+                check = true  // 标记收到JSON请求
             }
             if raw.Contains("X-Test-Header") {
-                check2 = true
+                check2 = true  // 标记收到自定义头
             }
 
-            // 根据请求路径返回不同的响应
+            // 路由处理 - 根据请求路径返回不同的响应
+            // 关键词: 路由, URL路径, 请求路径, 响应处理, 路径匹配
             if req.URL.Path == "/json" {
+                // JSON响应路径 - 返回JSON格式数据
                 rsp.Write(`{"status": "ok", "method": "` + req.Method + `", "path": "` + req.URL.Path + `"}`)
             } else if req.URL.Path == "/form" {
+                // 表单响应路径 - 处理表单提交
                 rsp.Write(`{"received": "form", "method": "` + req.Method + `"}`)
             } else if req.URL.Path == "/redirect" {
+                // 重定向测试路径 - HTTP重定向演示
+                // 关键词: 重定向, redirect, 302状态码, Location头
                 rsp.SetHeader("Location", f"http://127.0.0.1:${port}/target")
                 rsp.SetStatusCode(302)
                 rsp.Write(`Redirecting...`)
             } else if req.URL.Path == "/target" {
+                // 重定向目标路径 - 重定向的最终目标
                 rsp.Write(`{"redirected": true, "final": true}`)
             } else if req.URL.Path == "/slow" {
-                // 模拟慢响应，但不会真的延迟
+                // 慢响应测试路径 - 模拟慢响应但不真的延迟
+                // 关键词: 慢响应, 性能测试, 响应时间
                 rsp.Write(`{"slow": "response", "method": "` + req.Method + `"}`)
             } else if req.URL.Path == "/delay" {
-                // 模拟延迟响应用于超时测试
+                // 延迟响应测试路径 - 用于超时测试
+                // 关键词: 延迟, 超时测试, time.Sleep, 延迟响应
                 time.Sleep(2 * time.Second)
                 rsp.Write(`{"delayed": "response"}`)
             } else if str.HasPrefix(req.URL.Path, "/concurrent/") {
+                // 并发请求测试路径 - 处理并发请求
+                // 关键词: 并发, 并发请求, goroutine, 并行处理
                 id = str.TrimPrefix(req.URL.Path, "/concurrent/")
                 rsp.Write(`{"concurrent": "` + id + `", "method": "` + req.Method + `"}`)
             } else {
+                // 默认响应路径 - 回显请求信息
+                // 关键词: 默认响应, 回显, echo, 请求回显
                 rsp.Write(`{"echo": "` + req.Method + ` ` + req.URL.Path + `"}`)
             }
         }),
     )~
 }
 
+// 等待服务器启动 - 确保服务器可用
+// 关键词: WaitConnect, 连接等待, 服务器就绪, 端口检测
 os.WaitConnect(f"127.0.0.1:${port}", 3)~
 
+// ===== 6.1 poc.HTTP函数 - 发送原始HTTP数据包 =====
+// 关键词: poc.HTTP, HTTP发包, 原始数据包, 基础HTTP请求, 数据包发送
 println("6.1 HTTP - 发送原始数据包并处理响应")
+// 构造原始HTTP请求包 - GET方法示例
+// 关键词: 原始请求包, HTTP请求构造, GET请求, 请求头设置
 packet = `GET /test HTTP/1.1
 Host: 127.0.0.1:` + string(port) + `
 User-Agent: POC-Test/1.0
 
 `
+// 发送HTTP请求 - poc.HTTP函数基本用法
+// 关键词: poc.HTTP调用, 超时设置, poc.timeout, HTTP发送
 rsp, req, err = poc.HTTP(packet, poc.timeout(5))
+// HTTP请求错误处理 - 检查请求是否成功
+// 关键词: 错误处理, error handling, 请求失败, 异常处理
 if err != nil {
     println("HTTP 请求错误:", err)
     assert false, "HTTP 请求不应该失败"
 } else {
+    // 显示原始请求和响应数据包
+    // 关键词: 原始数据包, 请求响应查看, 数据包内容
     println("原始请求数据包:")
     println(string(req))
     println("原始响应数据包:")
     println(string(rsp))
 
-    // 解析响应并严格验证
-    statusCode = poc.GetStatusCodeFromResponse(rsp)
-    body = poc.GetHTTPPacketBody(rsp)
+    // 响应解析 - 使用POC库解析HTTP响应
+    // 关键词: 响应解析, GetStatusCodeFromResponse, GetHTTPPacketBody, 状态码获取
+    statusCode = poc.GetStatusCodeFromResponse(rsp)  // 获取HTTP状态码
+    body = poc.GetHTTPPacketBody(rsp)               // 获取响应体
     println("响应状态码:", statusCode)
     println("响应体:", string(body))
     
-    // 严格验证
+    // 严格验证 - 确保请求响应符合预期
+    // 关键词: 断言验证, assert, 响应验证, 状态码验证, 内容验证
     assert statusCode == 200, f"期望状态码200，实际得到${statusCode}"
     assert len(body) > 0, "响应体不应该为空"
     assert str.Contains(string(body), "GET /test"), "响应体应该包含请求路径信息"
     println("✓ HTTP 请求验证通过")
 }
 
+// ===== 6.2 poc.HTTPEx函数 - 返回结构体对象 =====
+// 关键词: poc.HTTPEx, 结构体响应, LowhttpResponse, 高级HTTP请求, 结构化响应
 println("\n6.2 HTTPEx - 发送并返回结构体，处理结构体响应")
+// 构造HTTP请求包 - 用于HTTPEx演示
+// 关键词: HTTPEx请求包, JSON路径请求
 packet2 = `GET /json HTTP/1.1
 Host: 127.0.0.1:` + string(port) + `
 
 `
+// 发送HTTPEx请求 - 返回结构化对象
+// 关键词: poc.HTTPEx调用, 结构体返回, rspStruct, reqStruct
 rspStruct, reqStruct, err = poc.HTTPEx(packet2, poc.timeout(5))
 if err != nil {
     println("HTTPEx 请求错误:", err)
     assert false, "HTTPEx 请求不应该失败"
 } else {
+    // 请求结构体信息访问 - reqStruct对象属性
+    // 关键词: 请求结构体, reqStruct属性, Method, URL, 请求信息获取
     println("请求结构体信息:")
-    println("请求方法:", reqStruct.Method)
-    println("请求URL:", reqStruct.URL.String())
+    println("请求方法:", reqStruct.Method)        // 获取HTTP方法
+    println("请求URL:", reqStruct.URL.String())   // 获取请求URL
 
+    // 响应结构体信息访问 - rspStruct对象方法
+    // 关键词: 响应结构体, rspStruct方法, GetStatusCode, GetDurationFloat, ResponseBodySize
     println("响应结构体信息:")
-    println("响应状态码:", rspStruct.GetStatusCode())
-    println("响应URL:", rspStruct.Url)
-    println("响应时间:", rspStruct.GetDurationFloat())
-    println("响应体大小:", rspStruct.ResponseBodySize)
+    println("响应状态码:", rspStruct.GetStatusCode())      // 获取状态码
+    println("响应URL:", rspStruct.Url)                    // 获取响应URL
+    println("响应时间:", rspStruct.GetDurationFloat())     // 获取响应时间
+    println("响应体大小:", rspStruct.ResponseBodySize)     // 获取响应体大小
 
-    // 处理响应体并严格验证
+    // 响应体处理 - 从结构体中提取原始数据包
+    // 关键词: RawPacket, 原始数据包提取, 响应体获取
     body = poc.GetHTTPPacketBody(rspStruct.RawPacket)
     println("响应体内容:", string(body))
     
-    // 严格验证
+    // HTTPEx结构体验证 - 验证结构体对象的正确性
+    // 关键词: 结构体验证, HTTPEx验证, 方法验证, 状态码验证
     assert reqStruct.Method == "GET", f"期望请求方法GET，实际得到${reqStruct.Method}"
     assert rspStruct.GetStatusCode() == 200, f"期望状态码200，实际得到${rspStruct.GetStatusCode()}"
     assert rspStruct.ResponseBodySize > 0, "响应体大小应该大于0"
@@ -116,11 +162,17 @@ if err != nil {
     println("✓ HTTPEx 请求验证通过")
 }
 
+// ===== 6.3 GET请求演示 - 使用HTTP函数发送GET请求 =====
+// 关键词: GET请求, HTTP GET, GET方法, 查询请求, 数据获取
 println("\n6.3 Get - 使用 HTTP 函数发送 GET 请求")
+// 构造GET请求包 - 标准GET请求格式
+// 关键词: GET请求包, GET数据包构造, HTTP GET格式
 getPacket = `GET /get HTTP/1.1
 Host: 127.0.0.1:` + string(port) + `
 
 `
+// 发送GET请求 - 使用poc.HTTP发送GET请求
+// 关键词: GET请求发送, poc.HTTP GET, GET请求执行
 rsp, req, err = poc.HTTP(getPacket, poc.timeout(5))
 if err != nil {
     println("GET 请求错误:", err)
@@ -139,8 +191,14 @@ if err != nil {
     println("✓ GET 请求验证通过")
 }
 
+// ===== 6.4 POST请求演示 - 发送JSON数据 =====
+// 关键词: POST请求, HTTP POST, POST方法, JSON提交, 数据提交, 表单提交
 println("\n6.4 Post - 使用 HTTP 函数发送 POST 请求（JSON）")
+// 构造JSON请求体 - POST请求的数据内容
+// 关键词: JSON请求体, POST数据, JSON数据, 请求体构造
 jsonBody = `{"action": "test", "data": "hello"}`
+// 构造POST请求包 - 包含JSON数据的POST请求
+// 关键词: POST请求包, JSON POST, Content-Type, Content-Length, POST数据包
 postPacket = `POST /post HTTP/1.1
 Host: 127.0.0.1:` + string(port) + `
 Content-Type: application/json
@@ -148,6 +206,8 @@ Content-Length: ` + string(len(jsonBody)) + `
 
 ` + jsonBody
 
+// 发送POST请求 - 提交JSON数据
+// 关键词: POST请求发送, JSON提交, poc.HTTP POST, POST请求执行
 rsp, req, err = poc.HTTP(postPacket, poc.timeout(5))
 if err != nil {
     println("POST 请求错误:", err)
@@ -283,19 +343,28 @@ if err != nil {
 
 // =============================================================================
 // 7. 请求构建选项测试和实际使用演示
+// POC库选项系统 HTTP选项 请求选项 构建选项 参数选项
+// 关键词: 选项, options, 请求构建, BuildRequest, 选项组合, 参数设置
 // =============================================================================
 println("\n7. 请求构建选项测试和实际使用演示")
 
+// ===== 7.1 poc.json选项 - JSON请求体选项 =====
+// 关键词: poc.json, JSON选项, JSON请求体, JSON数据, application/json
 println("7.1 json - JSON 请求体选项创建和使用")
+// 创建JSON选项 - 将数据转换为JSON格式的请求体
+// 关键词: JSON选项创建, poc.json函数, JSON数据转换, 请求体选项
 jsonOpt = poc.json({"name": "test", "value": 123})
 println("JSON 选项创建成功")
 
-// 实际使用 JSON 选项
+// JSON选项使用 - 在BuildRequest中应用JSON选项
+// 关键词: BuildRequest, JSON选项应用, 选项组合, 请求构建
 jsonPacket = poc.BuildRequest(poc.BasicRequest(),
-    poc.replaceMethod("POST"),
-    poc.replacePath("/json-post"),
-    poc.replaceHost("127.0.0.1"),
-    jsonOpt)
+    poc.replaceMethod("POST"),          // 设置POST方法
+    poc.replacePath("/json-post"),      // 设置请求路径
+    poc.replaceHost("127.0.0.1"),      // 设置主机
+    jsonOpt)                           // 应用JSON选项
+// 发送带JSON选项的请求 - 验证JSON选项效果
+// 关键词: JSON请求发送, 选项验证, JSON选项测试
 rsp, req, err = poc.HTTP(jsonPacket, poc.port(port), poc.timeout(5))
 if err != nil {
     println("JSON 选项测试错误:", err)
@@ -346,7 +415,11 @@ if err != nil {
     println("✓ Body 选项验证通过")
 }
 
+// ===== 7.3 poc.query选项 - URL查询参数选项 =====
+// 关键词: poc.query, 查询参数, URL参数, GET参数, 查询字符串, query string
 println("\n7.3 query - 查询参数选项创建和使用")
+// 创建查询参数选项 - 添加URL查询参数
+// 关键词: 查询参数创建, poc.query函数, URL参数设置, GET参数
 queryOpt = poc.query({"page": 1, "size": 10})
 println("Query 选项创建成功")
 
@@ -375,7 +448,11 @@ if err != nil {
     println("✓ Query 选项验证通过")
 }
 
+// ===== 7.4 poc.postParams选项 - 表单参数选项 =====
+// 关键词: poc.postParams, 表单参数, POST参数, 表单提交, form data, urlencoded
 println("\n7.4 postParams - 表单参数选项创建和使用")
+// 创建表单参数选项 - 设置POST表单数据
+// 关键词: 表单参数创建, poc.postParams函数, 表单数据, POST表单
 postParamsOpt = poc.postParams({"username": "admin", "password": "pass"})
 println("PostParams 选项创建成功")
 
@@ -437,7 +514,11 @@ if err != nil {
     println("✓ PostData 选项验证通过")
 }
 
+// ===== 7.6 poc.header选项 - 自定义请求头选项 =====
+// 关键词: poc.header, 请求头, HTTP头, 自定义头, header, 头部设置
 println("\n7.6 header - 请求头选项创建和使用")
+// 创建自定义请求头选项 - 添加HTTP头部
+// 关键词: 请求头创建, poc.header函数, HTTP头设置, 自定义头部
 headerOpt = poc.header("X-Custom", "value")
 println("Header 选项创建成功")
 
@@ -493,7 +574,11 @@ if err != nil {
     println("✓ UA 选项验证通过")
 }
 
+// ===== 7.8 poc.cookie选项 - Cookie选项 =====
+// 关键词: poc.cookie, Cookie, 会话Cookie, 认证Cookie, 状态保持, session
 println("\n7.8 cookie - Cookie 选项创建和使用")
+// 创建Cookie选项 - 设置请求Cookie
+// 关键词: Cookie创建, poc.cookie函数, Cookie设置, 会话管理
 cookieOpt = poc.cookie("session=abc123")
 println("Cookie 选项创建成功")
 
@@ -523,12 +608,18 @@ if err != nil {
 
 // =============================================================================
 // 8. 连接配置选项实际使用演示
+// 网络连接配置 超时设置 主机端口配置 连接参数
+// 关键词: 连接配置, 网络配置, 超时, timeout, host, port, 连接参数
 // =============================================================================
 println("\n8. 连接配置选项实际使用演示")
 
+// ===== 8.1 poc.host/poc.port选项 - 主机端口配置 =====
+// 关键词: poc.host, poc.port, 主机配置, 端口配置, 连接目标, 网络地址
 println("8.1 host/port - 主机和端口选项的使用")
-hostOpt = poc.host("127.0.0.1")
-portOpt = poc.port(port)
+// 创建主机和端口选项 - 指定连接目标
+// 关键词: 主机选项, 端口选项, 连接目标设置, 网络地址配置
+hostOpt = poc.host("127.0.0.1")  // 设置目标主机
+portOpt = poc.port(port)         // 设置目标端口
 println("Host/Port 选项创建成功")
 
 // 实际使用 host/port 选项
@@ -543,7 +634,11 @@ if err != nil {
     println("使用 host/port 选项的响应:", string(body))
 }
 
+// ===== 8.2 poc.timeout选项 - 请求超时配置 =====
+// 关键词: poc.timeout, 超时设置, 请求超时, 网络超时, timeout配置
 println("\n8.2 timeout - 超时选项的使用")
+// 创建超时选项 - 设置请求超时时间
+// 关键词: 超时选项创建, poc.timeout函数, 超时时间设置, 网络超时
 timeoutOpt = poc.timeout(2.0)  // 设置2秒超时
 println("Timeout 选项创建成功")
 
@@ -765,56 +860,87 @@ if err != nil {
     println("超时错误正确捕获，耗时:", duration.Milliseconds(), "ms, 错误:", err)
 }
 
+// ===== 11.3 并发请求演示 - goroutine并发HTTP请求 =====
+// 关键词: 并发请求, goroutine, 并行HTTP, channel, 并发编程, 多线程请求
 println("\n11.3 并发请求演示")
+// 创建结果收集通道 - 用于收集并发请求结果
+// 关键词: channel创建, 结果收集, 并发通信, make channel, 缓冲通道
 println("创建 channel 来收集并发请求结果")
-results = make(chan any, 5)
+results = make(chan any, 5)  // 创建缓冲为5的通道
 
+// 启动并发请求 - 使用goroutine实现并行请求
+// 关键词: 并发启动, goroutine循环, 并行执行, 多线程请求
 println("启动 5 个并发请求")
 for i := 0; i < 5; i++ {
+    // 启动goroutine - 每个请求在独立的goroutine中执行
+    // 关键词: go func, goroutine启动, 并发函数, 异步执行
     go func(id) {
+        // 构建并发请求包 - 为每个goroutine构建独立的请求
+        // 关键词: 并发请求构建, 独立请求包, 并行请求构造
         concurrentPacket = poc.BuildRequest(poc.BasicRequest(),
             poc.replaceMethod("GET"),
-            poc.replacePath("/concurrent/" + string(id)),
+            poc.replacePath("/concurrent/" + string(id)),  // 每个请求有唯一路径
             poc.replaceHost("127.0.0.1"))
         
+        // 发送并发请求 - 在goroutine中执行HTTP请求
+        // 关键词: 并发HTTP请求, goroutine请求, 并行发送
         rsp, req, err = poc.HTTP(concurrentPacket, poc.port(port), poc.timeout(5))
         
+        // 构建结果对象 - 收集请求结果信息
+        // 关键词: 结果构建, 请求结果, 并发结果收集
         singleResult = {
-            "id": id,
-            "success": err == nil,
-            "status": 0,
-            "body_length": 0
+            "id": id,                    // 请求ID
+            "success": err == nil,       // 请求是否成功
+            "status": 0,                // HTTP状态码
+            "body_length": 0            // 响应体长度
         }
         
+        // 处理成功响应 - 提取响应信息
+        // 关键词: 响应处理, 状态码提取, 响应体长度
         if err == nil {
             singleResult["status"] = poc.GetStatusCodeFromResponse(rsp)
             singleResult["body_length"] = len(poc.GetHTTPPacketBody(rsp))
         }
         
+        // 发送结果到通道 - 通过channel传递结果
+        // 关键词: channel发送, 结果传递, 并发通信, 结果收集
         results <- singleResult
-    }(i)
+    }(i)  // 传递循环变量到goroutine
 }
 
+// 等待并收集结果 - 从channel接收所有并发请求的结果
+// 关键词: 结果等待, channel接收, 并发同步, 结果收集, 并发等待
 println("等待并发请求完成")
-successCount = 0
+successCount = 0  // 成功请求计数器
+// 循环接收结果 - 从channel中依次接收每个goroutine的结果
+// 关键词: 结果接收循环, channel读取, 并发结果处理, 同步等待
 for i := 0; i < 5; i++ {
+    // 从通道接收结果 - 阻塞等待goroutine完成
+    // 关键词: channel接收, 结果读取, 并发同步, 阻塞等待
     result = <-results
+    // 提取结果信息 - 解析并发请求的结果数据
+    // 关键词: 结果解析, 数据提取, 并发结果处理
     id = result["id"]
     success = result["success"]
     status = result["status"]
     bodyLength = result["body_length"]
     println(f"并发请求 ${id}: 成功=${success}, 状态码=${status}, 响应长度=${bodyLength}")
     
-    // 严格验证每个并发请求
+    // 并发请求验证 - 严格验证每个并发请求的结果
+    // 关键词: 并发验证, 请求结果验证, 并发测试断言, 结果检查
     assert success == true, f"并发请求${id}应该成功"
     assert status == 200, f"并发请求${id}应该返回状态码200，实际得到${status}"
     assert bodyLength > 0, f"并发请求${id}响应体长度应该大于0"
     
+    // 统计成功请求 - 计算成功的并发请求数量
+    // 关键词: 成功统计, 请求计数, 并发成功率
     if success {
         successCount = successCount + 1
     }
 }
 
+// 最终验证 - 确保所有并发请求都正确完成
+// 关键词: 最终验证, 并发完成验证, 通道清空验证, 成功率验证
 assert len(results) == 0, "所有并发请求结果已处理"
 assert successCount == 5, f"期望5个并发请求都成功，实际成功${successCount}个"
 println("✓ 并发请求测试完成，所有5个请求都成功")
