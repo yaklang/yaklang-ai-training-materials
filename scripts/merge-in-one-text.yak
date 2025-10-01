@@ -1,0 +1,293 @@
+// =============================================================================
+// 文档压缩工具 - 将训练材料压缩到单个 ZIP 文件
+// 文档压缩 ZIP创建 文件收集 训练材料打包
+// 关键词: zip.CompressRaw, filesys.Recursive, 文档压缩, 训练材料, 文件收集
+// =============================================================================
+
+println("开始收集训练材料文档...")
+
+// =============================================================================
+// 1. 确定项目根目录和目标文件夹
+// 项目路径 根目录定位 文件夹配置 目标路径
+// 关键词: 项目根目录, 工作目录, 目标文件夹, 路径配置
+// =============================================================================
+
+// 获取当前工作目录作为项目根目录
+// 关键词: 工作目录, 当前目录, 基准路径, 项目根路径
+project_root, pwd_err = os.Getwd()
+if pwd_err != nil {
+    log.error("Failed to get current directory: %v", pwd_err)
+    assert false, f"获取当前目录失败: ${pwd_err}"
+}
+log.info("Project root directory: %s", project_root)
+
+// 定义需要收集的目标文件夹
+// 关键词: 目标文件夹, 文件夹列表, 收集范围, 文档目录
+target_folders = [
+    "awesome-scripts",
+    "basic-syntax", 
+    "library-usage",
+    "practice"
+]
+log.info("Target folders: %v", target_folders)
+
+// 定义需要收集的文件扩展名
+// 关键词: 文件扩展名, 文件类型, 过滤规则, 文件格式
+target_extensions = [".md", ".mdx", ".yak"]
+log.info("Target extensions: %v", target_extensions)
+
+// 输出 ZIP 文件路径
+// 关键词: 输出路径, ZIP文件, 目标文件, 压缩包路径
+output_zip = "/tmp/test.zip"
+log.info("Output ZIP file: %s", output_zip)
+
+// =============================================================================
+// 2. 收集所有目标文件
+// 文件遍历 文件收集 递归扫描 文件列表
+// 关键词: filesys.Recursive, 文件遍历, 递归扫描, 文件收集
+// =============================================================================
+
+println("\n开始扫描目标文件夹...")
+
+// 存储所有需要压缩的文件内容
+// 关键词: 文件映射, 内容存储, 文件字典, ZIP内容
+collected_files = {}
+total_files = 0
+total_size = 0
+
+// 遍历每个目标文件夹
+// 关键词: 文件夹遍历, 目录扫描, 循环处理, 批量收集
+for folder in target_folders {
+    folder_path = file.Join(project_root, folder)
+    
+    // 检查文件夹是否存在
+    // 关键词: 路径验证, 文件夹检查, 存在性验证, 路径有效性
+    if !file.IsDir(folder_path) {
+        log.warn("Folder not found, skipping: %s", folder_path)
+        continue
+    }
+    
+    log.info("Scanning folder: %s", folder)
+    folder_file_count = 0
+    
+    // 使用 filesys.Recursive 递归遍历文件夹
+    // 关键词: 递归遍历, filesys.Recursive, 文件扫描, 目录遍历
+    err = filesys.Recursive(folder_path, 
+        filesys.onFileStat((file_path, info) => {
+            // 检查文件扩展名是否匹配
+            // 关键词: 扩展名匹配, 文件过滤, 类型检查, 文件筛选
+            ext = file.GetExt(file_path)
+            should_include = false
+            for target_ext in target_extensions {
+                if ext == target_ext {
+                    should_include = true
+                    break
+                }
+            }
+            
+            // 如果扩展名匹配，读取文件内容
+            // 关键词: 文件读取, 内容获取, ReadFile, 文件内容
+            if should_include {
+                content, read_err = file.ReadFile(file_path)
+                if read_err != nil {
+                    log.error("Failed to read file %s: %v", file_path, read_err)
+                    return nil
+                }
+                
+                // 计算相对路径作为 ZIP 内部路径
+                // 关键词: 相对路径, ZIP路径, 路径计算, 内部路径
+                rel_path = str.TrimPrefix(file_path, project_root + "/")
+                
+                // 存储文件内容
+                // 关键词: 内容存储, 文件添加, 数据收集, ZIP内容
+                collected_files[rel_path] = string(content)
+                total_files++
+                total_size += len(content)
+                folder_file_count++
+                
+                log.info("Collected: %s (%d bytes)", rel_path, len(content))
+            }
+            
+            return nil
+        })
+    )
+    
+    // 遍历错误处理
+    // 关键词: 错误处理, 遍历失败, 异常处理, 错误检查
+    if err != nil {
+        log.error("Failed to scan folder %s: %v", folder, err)
+    } else {
+        log.info("Folder %s: collected %d files", folder, folder_file_count)
+    }
+}
+
+// 验证收集结果
+// 关键词: 结果验证, 文件统计, 收集检查, 数据验证
+println(f"\n文件收集完成:")
+println(f"  总文件数: ${total_files}")
+println(f"  总大小: ${total_size} 字节")
+
+assert total_files > 0, "至少应该收集到一些文件"
+assert total_size > 0, "文件总大小应该大于0"
+
+// =============================================================================
+// 3. 压缩文件到 ZIP
+// ZIP压缩 文件打包 压缩创建 数据压缩
+// 关键词: zip.CompressRaw, 文件压缩, ZIP创建, 数据打包
+// =============================================================================
+
+println("\n开始压缩文件到 ZIP...")
+
+// 使用 zip.CompressRaw 压缩收集的文件
+// 关键词: CompressRaw, 内存压缩, ZIP生成, 压缩处理
+start_time = time.Now()
+compressed_data, compress_err = zip.CompressRaw(collected_files)
+if compress_err != nil {
+    log.error("Failed to compress files: %v", compress_err)
+    assert false, f"压缩失败: ${compress_err}"
+}
+end_time = time.Now()
+duration = end_time.Sub(start_time)
+
+// 压缩结果统计
+// 关键词: 压缩统计, 压缩比, 性能指标, 压缩效率
+compressed_size = len(compressed_data)
+compression_ratio = float64(compressed_size) / float64(total_size) * 100
+
+log.info("Compression completed in %v", duration)
+log.info("Original size: %d bytes", total_size)
+log.info("Compressed size: %d bytes", compressed_size)
+log.info("Compression ratio: %.2f%%", compression_ratio)
+
+println(f"\n压缩完成:")
+println(f"  原始大小: ${total_size} 字节")
+println(f"  压缩后大小: ${compressed_size} 字节")
+println(f"  压缩比: ${sprintf('%.2f%%', compression_ratio)}")
+println(f"  耗时: ${duration}")
+
+assert len(compressed_data) > 0, "压缩数据不应为空"
+
+// =============================================================================
+// 4. 保存 ZIP 文件
+// 文件保存 ZIP写入 文件输出 持久化存储
+// 关键词: file.Save, ZIP保存, 文件写入, 数据持久化
+// =============================================================================
+
+println(f"\n保存 ZIP 文件到: ${output_zip}")
+
+// 保存压缩数据到文件
+// 关键词: 文件保存, Save, ZIP输出, 数据写入
+save_err = file.Save(output_zip, compressed_data)
+if save_err != nil {
+    log.error("Failed to save ZIP file: %v", save_err)
+    assert false, f"保存 ZIP 文件失败: ${save_err}"
+}
+
+log.info("ZIP file saved successfully: %s", output_zip)
+
+// 验证保存的文件
+// 关键词: 文件验证, 文件检查, 存在性验证, 大小检查
+assert file.IsFile(output_zip), f"输出文件应该存在: ${output_zip}"
+
+stat_info = file.Stat(output_zip)
+saved_size = len(file.ReadFile(output_zip)~)
+assert saved_size == compressed_size, f"保存的文件大小 (${saved_size}) 应该与压缩数据大小 (${compressed_size}) 一致"
+
+log.info("Saved file size verified: %d bytes", saved_size)
+
+// =============================================================================
+// 5. 验证 ZIP 内容
+// ZIP验证 内容检查 压缩包验证 完整性检查
+// 关键词: zip.Recursive, ZIP遍历, 内容验证, 完整性检查
+// =============================================================================
+
+println("\n验证 ZIP 文件内容...")
+
+// 遍历 ZIP 文件验证内容
+// 关键词: ZIP遍历, 文件列表, 内容验证, Recursive
+zip_file_count = 0
+zip_total_size = 0
+
+err = zip.Recursive(output_zip, func(isDir, pathName, info) {
+    if !isDir {
+        zip_file_count++
+        zip_total_size += int(info.Size())
+        log.info("ZIP entry: %s (%d bytes)", pathName, info.Size())
+    }
+})
+
+// 遍历结果验证
+// 关键词: 结果验证, 数量检查, 完整性验证, 断言检查
+if err != nil {
+    log.error("Failed to verify ZIP contents: %v", err)
+    assert false, f"ZIP 内容验证失败: ${err}"
+}
+
+println(f"\nZIP 内容验证:")
+println(f"  ZIP 中文件数: ${zip_file_count}")
+println(f"  原始收集文件数: ${total_files}")
+
+assert zip_file_count == total_files, f"ZIP 中的文件数 (${zip_file_count}) 应该等于收集的文件数 (${total_files})"
+
+log.info("ZIP content verification passed: %d files", zip_file_count)
+
+// =============================================================================
+// 6. 显示 ZIP 文件摘要信息
+// ZIP摘要 统计信息 文件分布 扩展名统计
+// 关键词: 文件统计, 扩展名分布, 文件夹分布, 摘要信息
+// =============================================================================
+
+println("\n生成 ZIP 文件摘要信息...")
+
+// 统计各文件夹的文件数量
+// 关键词: 文件夹统计, 目录分布, 文件计数, 分布统计
+folder_stats = {}
+extension_stats = {}
+
+for file_path, _ in collected_files {
+    // 统计文件夹
+    // 关键词: 路径解析, 文件夹提取, 目录统计
+    parts = str.Split(file_path, "/")
+    if len(parts) > 0 {
+        folder_name = parts[0]
+        if folder_stats[folder_name] == nil {
+            folder_stats[folder_name] = 0
+        }
+        folder_stats[folder_name] = folder_stats[folder_name] + 1
+    }
+    
+    // 统计扩展名
+    // 关键词: 扩展名统计, 文件类型, 类型分布
+    ext = file.GetExt(file_path)
+    if extension_stats[ext] == nil {
+        extension_stats[ext] = 0
+    }
+    extension_stats[ext] = extension_stats[ext] + 1
+}
+
+// 显示统计信息
+// 关键词: 统计显示, 数据汇总, 信息输出
+println("\n=== 文件夹分布 ===")
+for folder, count in folder_stats {
+    println(f"  ${folder}: ${count} 个文件")
+}
+
+println("\n=== 文件类型分布 ===")
+for ext, count in extension_stats {
+    println(f"  ${ext}: ${count} 个文件")
+}
+
+// =============================================================================
+// 7. 最终总结
+// 任务完成 执行总结 最终报告
+// 关键词: 任务完成, 执行摘要, 最终报告
+// =============================================================================
+
+println("\n=== 任务完成 ===")
+println(f"✓ 成功收集 ${total_files} 个文件")
+println(f"✓ 压缩率: ${sprintf('%.2f%%', compression_ratio)}")
+println(f"✓ 输出文件: ${output_zip}")
+println(f"✓ 文件大小: ${compressed_size} 字节")
+
+log.info("Document compression task completed successfully")
+
