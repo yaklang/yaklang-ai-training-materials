@@ -1,0 +1,251 @@
+// POC 库完整学习指南 - 验证示例代码
+// 这个文件验证 POC 库的所有功能模块
+
+println("=== POC 库完整验证示例 ===")
+
+// 准备测试数据包（不需要网络）
+testResponse = `HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 27
+
+{"status": "ok", "method": "GET"}`
+
+testRequest = `GET /api HTTP/1.1
+Host: example.com
+User-Agent: test-agent
+
+`
+
+// =============================================================================
+// 1. 响应解析函数模块测试
+// =============================================================================
+println("\n1. 响应解析函数模块测试")
+
+println("1.1 GetStatusCodeFromResponse - 获取状态码")
+statusCode = poc.GetStatusCodeFromResponse(testResponse)
+println("状态码:", statusCode)
+assert statusCode == 200
+
+println("1.2 GetHTTPPacketHeader - 获取响应头")
+contentType = poc.GetHTTPPacketHeader(testResponse, "Content-Type")
+println("Content-Type:", contentType)
+assert contentType == "application/json"
+
+println("1.3 GetHTTPPacketBody - 获取响应体")
+body = poc.GetHTTPPacketBody(testResponse)
+println("响应体:", string(body))
+assert string(body).Contains("status")
+
+println("1.4 GetHTTPPacketFirstLine - 获取第一行")
+proto, statusCode, statusText = poc.GetHTTPPacketFirstLine(testResponse)
+println("协议:", proto, "状态码:", statusCode, "状态文本:", statusText)
+assert proto == "HTTP/1.1"
+assert statusCode == "200"
+
+println("1.5 Split - 分割 header 和 body")
+header, body = poc.Split(testResponse)
+println("Header 长度:", len(header), "Body 长度:", len(body))
+assert len(header) > 0
+assert len(body) > 0
+
+println("1.6 ParseBytesToHTTPResponse - 解析为响应结构体")
+httpResp, err = poc.ParseBytesToHTTPResponse(testResponse)
+if err != nil {
+    println("解析响应错误:", err)
+} else {
+    println("响应状态:", httpResp.Status)
+    println("内容类型:", httpResp.Header.Get("Content-Type"))
+    assert httpResp.StatusCode == 200
+}
+
+println("1.7 ParseBytesToHTTPRequest - 解析为请求结构体")
+httpReq, err = poc.ParseBytesToHTTPRequest(testRequest)
+if err != nil {
+    println("解析请求错误:", err)
+} else {
+    println("请求方法:", httpReq.Method)
+    println("请求路径:", httpReq.URL.Path)
+    println("User-Agent:", httpReq.Header.Get("User-Agent"))
+    assert httpReq.Method == "GET"
+}
+
+// =============================================================================
+// 2. 请求修改函数模块测试
+// =============================================================================
+println("\n2. 请求修改函数模块测试")
+
+basePacket = `GET /api HTTP/1.1
+Host: example.com
+User-Agent: test-agent
+Content-Length: 0
+
+`
+
+println("2.1 ReplaceHTTPPacketMethod - 替换请求方法")
+modified = poc.ReplaceHTTPPacketMethod(basePacket, "POST")
+println("修改后包含 POST:", string(modified).Contains("POST"))
+assert string(modified).Contains("POST")
+
+println("2.2 ReplaceHTTPPacketPath - 替换请求路径")
+modified = poc.ReplaceHTTPPacketPath(basePacket, "/api/v2")
+println("修改后包含 /api/v2:", string(modified).Contains("/api/v2"))
+assert string(modified).Contains("/api/v2")
+
+println("2.3 ReplaceHTTPPacketHeader - 替换请求头")
+modified = poc.ReplaceHTTPPacketHeader(basePacket, "User-Agent", "New-Agent/1.0")
+println("修改后包含 New-Agent:", string(modified).Contains("New-Agent"))
+assert string(modified).Contains("New-Agent")
+
+println("2.4 ReplaceHTTPPacketHost - 替换主机")
+modified = poc.ReplaceHTTPPacketHost(basePacket, "newhost.com")
+println("修改后包含 newhost.com:", string(modified).Contains("newhost.com"))
+assert string(modified).Contains("newhost.com")
+
+println("2.5 ReplaceHTTPPacketBody - 替换请求体")
+packetWithBody = `POST /api HTTP/1.1
+Host: example.com
+Content-Length: 10
+
+old body`
+modified = poc.ReplaceHTTPPacketBody(packetWithBody, []byte("new body"))
+println("修改后包含 new body:", string(modified).Contains("new body"))
+assert string(modified).Contains("new body")
+
+println("2.6 AppendHTTPPacketHeader - 追加请求头")
+modified = poc.AppendHTTPPacketHeader(basePacket, "X-Custom", "test-value")
+println("追加后包含 X-Custom:", string(modified).Contains("X-Custom"))
+assert string(modified).Contains("X-Custom")
+
+println("2.7 DeleteHTTPPacketHeader - 删除请求头")
+packetWithExtra = `GET /api HTTP/1.1
+Host: example.com
+X-Remove: value
+User-Agent: test
+
+`
+modified = poc.DeleteHTTPPacketHeader(packetWithExtra, "X-Remove")
+println("删除后不包含 X-Remove:", !string(modified).Contains("X-Remove"))
+assert !string(modified).Contains("X-Remove")
+
+// =============================================================================
+// 3. 查询参数修改函数测试
+// =============================================================================
+println("\n3. 查询参数修改函数测试")
+
+queryPacket = `GET /api?param1=value1&param2=value2 HTTP/1.1
+Host: example.com
+
+`
+
+println("3.1 ReplaceHTTPPacketQueryParam - 替换查询参数")
+modified = poc.ReplaceHTTPPacketQueryParam(queryPacket, "param1", "newvalue1")
+println("修改后包含 newvalue1:", string(modified).Contains("newvalue1"))
+assert string(modified).Contains("newvalue1")
+
+println("3.2 AppendHTTPPacketQueryParam - 追加查询参数")
+modified = poc.AppendHTTPPacketQueryParam(queryPacket, "param3", "value3")
+println("追加后包含 param3=value3:", string(modified).Contains("param3=value3"))
+assert string(modified).Contains("param3=value3")
+
+println("3.3 DeleteHTTPPacketQueryParam - 删除查询参数")
+modified = poc.DeleteHTTPPacketQueryParam(queryPacket, "param1")
+println("删除后不包含 param1:", !string(modified).Contains("param1="))
+assert !string(modified).Contains("param1=")
+
+// =============================================================================
+// 4. POST 参数修改函数测试
+// =============================================================================
+println("\n4. POST 参数修改函数测试")
+
+postPacket = `POST /api HTTP/1.1
+Host: example.com
+Content-Type: application/x-www-form-urlencoded
+
+param1=value1&param2=value2`
+
+println("4.1 ReplaceHTTPPacketPostParam - 替换 POST 参数")
+modified = poc.ReplaceHTTPPacketPostParam(postPacket, "param1", "newvalue1")
+println("修改后包含 newvalue1:", string(modified).Contains("newvalue1"))
+assert string(modified).Contains("newvalue1")
+
+println("4.2 AppendHTTPPacketPostParam - 追加 POST 参数")
+modified = poc.AppendHTTPPacketPostParam(postPacket, "param3", "value3")
+println("追加后包含 param3=value3:", string(modified).Contains("param3=value3"))
+assert string(modified).Contains("param3=value3")
+
+println("4.3 DeleteHTTPPacketPostParam - 删除 POST 参数")
+modified = poc.DeleteHTTPPacketPostParam(postPacket, "param1")
+println("删除后不包含 param1:", !string(modified).Contains("param1="))
+assert !string(modified).Contains("param1=")
+
+// =============================================================================
+// 5. Cookie 操作函数测试
+// =============================================================================
+println("\n5. Cookie 操作函数测试")
+
+cookiePacket = `GET /api HTTP/1.1
+Host: example.com
+Cookie: session=abc123; user=test
+
+`
+
+println("5.1 ReplaceHTTPPacketCookie - 替换 Cookie")
+modified = poc.ReplaceHTTPPacketCookie(cookiePacket, "session", "newabc123")
+println("修改后包含 newabc123:", string(modified).Contains("newabc123"))
+assert string(modified).Contains("newabc123")
+
+println("5.2 AppendHTTPPacketCookie - 追加 Cookie")
+modified = poc.AppendHTTPPacketCookie(cookiePacket, "token", "xyz789")
+println("追加后包含 token=xyz789:", string(modified).Contains("token=xyz789"))
+assert string(modified).Contains("token=xyz789")
+
+println("5.3 DeleteHTTPPacketCookie - 删除 Cookie")
+modified = poc.DeleteHTTPPacketCookie(cookiePacket, "session")
+println("删除后不包含 session:", !string(modified).Contains("session="))
+assert !string(modified).Contains("session=")
+
+// =============================================================================
+// 6. 数据包处理工具函数测试
+// =============================================================================
+println("\n6. 数据包处理工具函数测试")
+
+println("6.1 FixHTTPRequest - 修复 HTTP 请求")
+brokenPacket = `GET /api HTTP/1.1
+Host: example.com
+Content-Length: 100
+
+short`
+fixedPacket = poc.FixHTTPRequest(brokenPacket)
+println("修复请求成功，长度变化:", len(fixedPacket) != len(brokenPacket))
+assert len(fixedPacket) != len(brokenPacket)
+
+println("6.2 FixHTTPResponse - 修复 HTTP 响应")
+brokenResponse = `HTTP/1.1 200 OK
+Content-Length: 100
+
+short`
+fixedResponse = poc.FixHTTPResponse(brokenResponse)
+println("修复响应成功，长度变化:", len(fixedResponse) != len(brokenResponse))
+assert len(fixedResponse) != len(brokenResponse)
+
+println("6.3 BuildRequest - 构建请求")
+basePacket = poc.BasicRequest()
+builtPacket = poc.BuildRequest(basePacket,
+    poc.replaceMethod("POST"),
+    poc.replacePath("/api/test"),
+    poc.replaceHeader("User-Agent", "Test-Agent"),
+    poc.replaceBody("test data", false))
+println("构建请求包含 POST:", string(builtPacket).Contains("POST"))
+println("构建请求包含 /api/test:", string(builtPacket).Contains("/api/test"))
+println("构建请求包含 Test-Agent:", string(builtPacket).Contains("Test-Agent"))
+assert string(builtPacket).Contains("POST")
+assert string(builtPacket).Contains("/api/test")
+assert string(builtPacket).Contains("Test-Agent")
+
+println("6.4 BasicRequest 和 BasicResponse - 基础模板")
+basicReq = poc.BasicRequest()
+basicResp = poc.BasicResponse()
+println("基础请求长度:", len(basicReq))
+println("基础响应长度:", len(basicResp))
+assert len(basicReq) > 0
+assert len(basicResp) > 0
