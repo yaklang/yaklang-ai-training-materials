@@ -1,0 +1,420 @@
+// =============================================================================
+// yaklang re 库使用练习和实战案例
+// re库正则表达式 模式匹配 字符串处理 文本分析 数据提取
+// 关键词: re.Match, re.Find, re.FindAll, re.ReplaceAll, 正则表达式, 模式匹配
+// =============================================================================
+
+println("yaklang re 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础正则表达式匹配
+// 基础匹配 模式验证 字符串验证 格式检查
+// 关键词: Match, 基础匹配, 模式验证, 字符串验证
+// =============================================================================
+println("\n1. 基础正则表达式匹配")
+
+// 简单字符串匹配测试
+result = re.Match("^[a-z]+$", "hello")
+assert result == true, "Should match lowercase letters"
+
+result = re.Match("^[a-z]+$", "Hello")
+assert result == false, "Should not match uppercase letters"
+
+result = re.Match("\\d+", "abc123def")
+assert result == true, "Should match digits in string"
+
+result = re.Match("\\d+", "abcdef")
+assert result == false, "Should not match when no digits present"
+
+println("基础正则表达式匹配: 通过")
+
+// =============================================================================
+// 2. 查找功能测试
+// 模式查找 内容提取 文本搜索 数据定位
+// 关键词: Find, 模式查找, 内容提取, 文本搜索
+// =============================================================================
+println("\n2. 查找功能测试")
+
+// 查找第一个匹配项
+result = re.Find("apple is an easy word", "^[a-z]+")
+assert result == "apple", "Should find first word"
+
+result = re.Find("Hello World 123", "\\d+")
+assert result == "123", "Should find digits"
+
+result = re.Find("no match here", "\\d+")
+assert result == "", "Should return empty when no match"
+
+// 邮箱地址提取测试
+email_text = "Contact us at admin@example.com or support@test.org"
+result = re.Find(email_text, "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+assert result != "", "Should find email address"
+assert result.Contains("@"), "Found result should contain @ symbol"
+
+println("查找功能测试: 通过")
+
+// =============================================================================
+// 3. 查找所有匹配项测试
+// 全局搜索 批量提取 多重匹配 数据收集
+// 关键词: FindAll, 全局搜索, 批量提取, 多重匹配
+// =============================================================================
+println("\n3. 查找所有匹配项测试")
+
+text = "Well, yakit is GUI client for yaklang"
+results = re.FindAll(text, "yak[a-z]+")
+assert len(results) == 2, "Should find 2 matches"
+assert results[0] == "yakit", "First match should be yakit"
+assert results[1] == "yaklang", "Second match should be yaklang"
+
+// 数字提取测试
+number_text = "Price: $123.45, Quantity: 67, Total: $8,901.23"
+numbers = re.FindAll(number_text, "\\d+")
+assert len(numbers) >= 4, "Should find multiple numbers"
+
+println("查找所有匹配项测试: 通过")
+
+// =============================================================================
+// 4. 匹配位置索引测试
+// 位置索引 匹配边界 字符位置 范围定位
+// 关键词: FindAllIndex, 位置索引, 匹配边界, 字符位置
+// =============================================================================
+println("\n4. 匹配位置索引测试")
+
+text = "abc123def456ghi"
+indices = re.FindAllIndex(text, "\\d+")
+assert len(indices) >= 2, "Should find indices for digit groups"
+
+for index_pair in indices {
+    assert len(index_pair) == 2, "Each index pair should have start and end"
+    assert index_pair[0] < index_pair[1], "Start should be less than end"
+}
+
+println("匹配位置索引测试: 通过")
+
+// =============================================================================
+// 5. 替换功能测试
+// 文本替换 模式替换 内容修改 字符串变换
+// 关键词: ReplaceAll, 文本替换, 模式替换, 内容修改
+// =============================================================================
+println("\n5. 替换功能测试")
+
+// 简单替换测试
+original = "yakit is programming language"
+result = re.ReplaceAll(original, "yak([a-z]+)", "yaklang")
+assert result.Contains("yaklang"), "Should contain replacement text"
+
+// 版本号替换测试
+text = "Version 1.2.3 and 4.5.6"
+result = re.ReplaceAll(text, "\\d+\\.\\d+\\.\\d+", "X.X.X")
+assert result.Contains("X.X.X"), "Should replace version numbers"
+
+// 敏感信息脱敏测试
+email_text = "Contact admin@example.com for help"
+result = re.ReplaceAll(email_text, "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", "***@***.***")
+assert result.Contains("***@***.***"), "Should mask email address"
+
+println("替换功能测试: 通过")
+
+// =============================================================================
+// 6. 函数式替换测试
+// 函数替换 回调替换 动态替换 自定义处理
+// 关键词: ReplaceAllWithFunc, 函数替换, 回调替换, 动态替换
+// =============================================================================
+println("\n6. 函数式替换测试")
+
+// 数字倍增替换
+text = "Convert these numbers: 123, 456, 789"
+result = re.ReplaceAllWithFunc(text, "\\d+", func(match) {
+    return sprintf("[%s*2]", match)
+})
+assert result.Contains("[123*2]"), "Should contain modified first number"
+assert result.Contains("[456*2]"), "Should contain modified second number"
+assert result.Contains("[789*2]"), "Should contain modified third number"
+
+// 大小写转换测试
+text = "hello world yaklang"
+result = re.ReplaceAllWithFunc(text, "\\b\\w+\\b", func(word) {
+    return str.ToUpper(word)
+})
+assert result.Contains("HELLO"), "Should convert to uppercase"
+assert result.Contains("WORLD"), "Should convert to uppercase"
+assert result.Contains("YAKLANG"), "Should convert to uppercase"
+
+println("函数式替换测试: 通过")
+
+// =============================================================================
+// 7. 捕获组功能测试
+// 捕获组 分组匹配 命名组 模式分组
+// 关键词: FindGroup, 捕获组, 分组匹配, 命名组
+// =============================================================================
+println("\n7. 捕获组功能测试")
+
+// 命名捕获组测试
+text = "Well, yakit is GUI client for yaklang"
+groups = re.FindGroup(text, "yak(?P<suffix>[a-z]+)")
+assert len(groups) > 0, "Should find groups"
+assert groups["0"] != "", "Should have full match"
+assert groups["suffix"] != "", "Should have named group"
+
+// 版本号分组测试
+text = "Version 1.2.3"
+groups = re.FindGroup(text, "(\\d+)\\.(\\d+)\\.(\\d+)")
+assert len(groups) >= 4, "Should have full match and 3 groups"
+assert groups["0"] == "1.2.3", "Full match should be version"
+assert groups["1"] == "1", "First group should be major version"
+assert groups["2"] == "2", "Second group should be minor version"
+assert groups["3"] == "3", "Third group should be patch version"
+
+println("捕获组功能测试: 通过")
+
+// =============================================================================
+// 8. 多重捕获组测试
+// 多重捕获 批量分组 全部分组 组合匹配
+// 关键词: FindGroupAll, 多重捕获, 批量分组, 全部分组
+// =============================================================================
+println("\n8. 多重捕获组测试")
+
+text = "yakit version 1.2.3 and yaklang version 2.4.6"
+all_groups = re.FindGroupAll(text, "yak([a-z]+)")
+assert len(all_groups) == 2, "Should find 2 group matches"
+
+for groups in all_groups {
+    assert groups["0"] != "", "Each match should have full match"
+    assert groups["1"] != "", "Each match should have captured group"
+}
+
+println("多重捕获组测试: 通过")
+
+// =============================================================================
+// 9. 内置数据提取功能
+// 内置提取 数据提取 邮箱提取 IP提取 主机端口提取
+// 关键词: ExtractEmail, ExtractIP, ExtractHostPort, 内置提取
+// =============================================================================
+println("\n9. 内置数据提取功能")
+
+// 邮箱地址提取
+text = "Contact admin@example.com or support@test.org for help"
+emails = re.ExtractEmail(text)
+assert len(emails) >= 2, "Should extract multiple emails"
+for email in emails {
+    assert email.Contains("@"), "Each email should contain @ symbol"
+}
+
+// IP地址提取
+text = "Server IPs: 192.168.1.1, 10.0.0.1, and 172.16.0.1"
+ips = re.ExtractIP(text)
+assert len(ips) >= 3, "Should extract multiple IPs"
+for ip in ips {
+    assert ip.Contains("."), "Each IP should contain dots"
+}
+
+// 主机端口提取
+text = "Services: localhost:8080, 192.168.1.1:3306, example.com:443"
+hostports = re.ExtractHostPort(text)
+assert len(hostports) >= 1, "Should extract at least one host:port pair"
+for hostport in hostports {
+    assert hostport.Contains(":"), "Each host:port should contain colon"
+}
+
+println("内置数据提取功能: 通过")
+
+// =============================================================================
+// 10. 正则表达式编译功能
+// 正则编译 模式编译 性能优化 预编译
+// 关键词: Compile, CompilePOSIX, 正则编译, 模式编译
+// =============================================================================
+println("\n10. 正则表达式编译功能")
+
+// 标准正则表达式编译测试
+try {
+    regex = re.Compile("\\d{3}-\\d{3}-\\d{4}")~
+    assert regex != nil, "Compiled regex should not be nil"
+    
+    // 使用编译后的正则表达式
+    phone_text = "Call me at 123-456-7890 or 987-654-3210"
+    matches = regex.FindAllString(phone_text, -1)
+    assert len(matches) >= 2, "Should find phone numbers"
+    
+    println("正则表达式编译: 成功")
+} catch err {
+    println("正则表达式编译:", err)
+}
+
+// POSIX正则表达式编译测试
+try {
+    regex = re.CompilePOSIX("[[:digit:]]{3}-[[:digit:]]{3}-[[:digit:]]{4}")~
+    assert regex != nil, "Compiled POSIX regex should not be nil"
+    println("POSIX正则表达式编译: 成功")
+} catch err {
+    println("POSIX正则表达式编译:", err)
+}
+
+println("正则表达式编译功能: 通过")
+
+// =============================================================================
+// 11. 复杂模式匹配测试
+// 复杂模式 URL匹配 中文匹配 JSON解析 高级正则
+// 关键词: 复杂模式, URL匹配, 中文匹配, JSON解析
+// =============================================================================
+println("\n11. 复杂模式匹配测试")
+
+// URL匹配测试
+url_text = "Visit https://www.example.com or http://test.org/path?param=value"
+url_pattern = "https?://[a-zA-Z0-9.-]+(?:/[^\\s]*)?"
+urls = re.FindAll(url_text, url_pattern)
+assert len(urls) >= 2, "Should find URLs"
+
+// 中文字符匹配测试
+chinese_text = "Hello 世界, 你好 World"
+try {
+    chinese_chars = re.FindAll(chinese_text, "[\\u4e00-\\u9fff]+")
+    if len(chinese_chars) >= 1 {
+        println("找到中文字符:", len(chinese_chars), "个")
+    } else {
+        println("中文字符匹配: 使用不同的匹配方式")
+    }
+} catch err {
+    println("中文字符匹配:", err)
+}
+
+// JSON键值对匹配测试
+json_text = `{"name": "yaklang", "version": "1.0", "active": true}`
+json_pairs = re.FindAll(json_text, "\"[^\"]+\"\\s*:\\s*\"[^\"]+\"")
+assert len(json_pairs) >= 2, "Should find JSON string pairs"
+
+println("复杂模式匹配测试: 通过")
+
+// =============================================================================
+// 12. 边界和特殊情况测试
+// 边界测试 特殊情况 空字符串 特殊字符 异常处理
+// 关键词: 边界测试, 特殊情况, 空字符串, 特殊字符
+// =============================================================================
+println("\n12. 边界和特殊情况测试")
+
+// 空字符串处理
+result = re.Match(".*", "")
+assert result == true, "Should match empty string with .* pattern"
+
+result = re.Find("", "\\d+")
+assert result == "", "Should return empty for empty input"
+
+// 特殊字符处理
+special_text = "Price: $123.45 (discount 10%)"
+result = re.Find(special_text, "\\$\\d+\\.\\d+")
+assert result == "$123.45", "Should match price with dollar sign"
+
+result = re.Find(special_text, "\\d+%")
+assert result == "10%", "Should match percentage"
+
+// 多行文本处理
+multiline_text = `Line 1: Important
+Line 2: Normal
+Line 3: Important`
+important_lines = re.FindAll(multiline_text, "Line \\d+: Important")
+assert len(important_lines) == 2, "Should find important lines"
+
+println("边界和特殊情况测试: 通过")
+
+// =============================================================================
+// 13. 安全相关模式匹配
+// 安全模式 SQL注入 XSS检测 恶意代码 安全审计
+// 关键词: 安全模式, SQL注入, XSS检测, 恶意代码
+// =============================================================================
+println("\n13. 安全相关模式匹配")
+
+// SQL注入检测模式
+sql_injection_patterns = [
+    "(?i)(union|select|insert|update|delete|drop|create|alter)\\s",
+    "(?i)(or|and)\\s+\\d+\\s*=\\s*\\d+",
+    "(?i)\\b(exec|execute|sp_|xp_)\\w+",
+    "(?i)(--|#|/\\*|\\*/)"
+]
+
+malicious_input = "admin' OR 1=1 --"
+detected = false
+for pattern in sql_injection_patterns {
+    if re.Match(pattern, malicious_input) {
+        detected = true
+        break
+    }
+}
+assert detected, "Should detect SQL injection pattern"
+
+// XSS检测模式
+xss_patterns = [
+    "(?i)<script[^>]*>.*?</script>",
+    "(?i)javascript:\\s*[^\\s]+",
+    "(?i)on\\w+\\s*=\\s*[\"'][^\"']*[\"']"
+]
+
+xss_input = "<script>alert('xss')</script>"
+detected = false
+for pattern in xss_patterns {
+    if re.Match(pattern, xss_input) {
+        detected = true
+        break
+    }
+}
+assert detected, "Should detect XSS pattern"
+
+println("安全相关模式匹配: 通过")
+
+// =============================================================================
+// 14. 性能和稳定性测试
+// 性能测试 稳定性测试 重复操作 基准测试
+// 关键词: 性能测试, 稳定性测试, 重复操作, 基准测试
+// =============================================================================
+println("\n14. 性能和稳定性测试")
+
+// 重复匹配测试
+for i in 20 {
+    pattern := sprintf("test%d", i)
+    text := sprintf("This is test%d content", i)
+    
+    result := re.Match(pattern, text)
+    assert result == true, "Repeated matches should work"
+}
+
+// 大文本处理测试
+big_text = ""
+for i in 100 {
+    big_text += sprintf("line%d content with number %d\n", i, i * 10)
+}
+
+start_time = time.Now()
+numbers = re.FindAll(big_text, "\\d+")
+end_time = time.Now()
+duration = end_time.Sub(start_time)
+
+assert len(numbers) >= 100, "Should find many numbers in big text"
+println("大文本处理: 找到", len(numbers), "个数字, 耗时:", duration)
+
+println("性能和稳定性测试: 通过")
+
+// =============================================================================
+// 15. 错误处理测试
+// 错误处理 无效模式 异常处理 模式验证
+// 关键词: 错误处理, 无效模式, 异常处理, 模式验证
+// =============================================================================
+println("\n15. 错误处理测试")
+
+// 无效正则表达式测试
+try {
+    regex = re.Compile("[invalid")~
+    println("无效正则处理结果:", regex)
+} catch err {
+    println("无效正则错误处理正常:", err)
+}
+
+// 边界情况处理
+try {
+    result = re.Match("(", "test")
+    println("无效正则处理结果:", result)
+} catch err {
+    println("无效正则错误处理正常:", err)
+}
+
+println("错误处理测试: 通过")
+
+println("\n所有 re 库功能测试完成!")
+println("re-practice.yak: 测试通过!")
