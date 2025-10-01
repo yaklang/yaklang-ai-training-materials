@@ -1,0 +1,401 @@
+// =============================================================================
+// filesys 库完整演示案例 - 文件系统操作和遍历
+// filesys库 文件系统 文件遍历 目录操作 虚拟文件系统 本地文件系统
+// 关键词: filesys, Recursive, NewLocalFs, NewVirtualFs, WithFileStat, WithDirStat
+// =============================================================================
+
+// =============================================================================
+// 1. filesys 库基础功能演示
+// =============================================================================
+println("1. filesys 库基础功能演示")
+
+// ===== 1.1 创建测试目录结构 =====
+// 关键词: 测试目录, 目录结构, 文件创建, 测试环境
+println("1.1 创建测试目录结构")
+testDir = "/tmp/filesys_test"
+os.RemoveAll(testDir)  // 清理旧的测试目录
+
+// 创建测试目录结构
+// 关键词: 目录创建, MkdirAll, 文件写入, 测试数据
+err = file.MkdirAll(testDir + "/subdir1")
+assert err == nil, f"创建目录失败: ${err}"
+
+err = file.MkdirAll(testDir + "/subdir2/nested")
+assert err == nil, f"创建嵌套目录失败: ${err}"
+
+// 创建测试文件
+// 关键词: 测试文件, 文件内容, WriteFile, 文件数据
+testFiles = [
+    {"path": testDir + "/file1.txt", "content": "This is file 1 content"},
+    {"path": testDir + "/file2.log", "content": "Log file content\nLine 2\nLine 3"},
+    {"path": testDir + "/subdir1/nested_file.txt", "content": "Nested file content"},
+    {"path": testDir + "/subdir2/data.json", "content": `{"key": "value", "number": 123}`},
+    {"path": testDir + "/subdir2/nested/deep_file.md", "content": "# Deep File\nMarkdown content"},
+]
+
+for fileInfo in testFiles {
+    err = file.Save(fileInfo["path"], fileInfo["content"])
+    assert err == nil, f"创建测试文件失败 ${fileInfo['path']}: ${err}"
+}
+
+println("✓ 测试目录结构创建完成")
+
+// =============================================================================
+// 2. filesys.Recursive 基础遍历演示
+// =============================================================================
+println("\n2. filesys.Recursive 基础遍历演示")
+
+// ===== 2.1 基础文件遍历 - 统计文件和目录 =====
+// 关键词: filesys.Recursive, 文件遍历, 目录遍历, 统计计数, WithFileStat
+println("2.1 基础文件遍历 - 统计文件和目录")
+fileCount = 0
+dirCount = 0
+
+// 遍历目录并统计文件和目录数量
+// 关键词: 遍历统计, 文件计数, 目录计数, 回调函数
+err = filesys.Recursive(testDir, 
+    filesys.onFileStat((path, info) => {
+        fileCount++
+        log.info("Found file: %s, size: %d bytes", path, info.Size())
+        return nil
+    }),
+    filesys.onDirStat((path, info) => {
+        dirCount++
+        log.info("Found directory: %s", path)
+        return nil
+    })
+)
+
+assert err == nil, f"文件遍历失败: ${err}"
+assert fileCount == 5, f"期望找到5个文件，实际找到${fileCount}个"
+assert dirCount >= 3, f"期望找到至少3个目录，实际找到${dirCount}个"
+println(f"✓ 基础遍历完成: 找到${fileCount}个文件，${dirCount}个目录")
+
+// ===== 2.2 使用 onStat 统一处理文件和目录 =====
+// 关键词: onStat, 统一处理, 文件类型判断, 统一回调
+println("\n2.2 使用 onStat 统一处理文件和目录")
+totalCount = 0
+filesByExt = {}
+
+err = filesys.Recursive(testDir,
+    filesys.onStat((isDir, path, info) => {
+        totalCount++
+        if isDir {
+            log.info("Directory: %s", path)
+        } else {
+            // 统计文件扩展名
+            // 关键词: 文件扩展名, 文件分类, 扩展名统计
+            ext = file.GetExt(path)
+            if ext == "" {
+                ext = "no_ext"
+            }
+            if filesByExt[ext] == nil {
+                filesByExt[ext] = 0
+            }
+            filesByExt[ext] = filesByExt[ext] + 1
+            log.info("File: %s, ext: %s, size: %d", path, ext, info.Size())
+        }
+        return nil
+    })
+)
+
+assert err == nil, f"统一遍历失败: ${err}"
+assert totalCount >= 8, f"期望找到至少8个项目，实际找到${totalCount}个"
+println(f"✓ 统一遍历完成: 总共${totalCount}个项目")
+println("文件扩展名统计:")
+for ext, count in filesByExt {
+    println(f"  .${ext}: ${count}个文件")
+}
+
+// =============================================================================
+// 3. 高级遍历选项演示
+// =============================================================================
+println("\n3. 高级遍历选项演示")
+
+// ===== 3.1 条件过滤遍历 - 只处理特定文件类型 =====
+// 关键词: 条件过滤, 文件类型过滤, 扩展名过滤, 选择性处理
+println("3.1 条件过滤遍历 - 只处理文本文件")
+textFileCount = 0
+textFileContent = []
+
+err = filesys.Recursive(testDir,
+    filesys.onFileStat((path, info) => {
+        // 只处理文本文件
+        // 关键词: 文件过滤, 扩展名判断, 条件处理
+        ext = file.GetExt(path)
+        if ext == ".txt" || ext == ".md" || ext == ".log" {
+            textFileCount++
+        // 读取文件内容
+        // 关键词: 文件读取, 内容获取, ReadFile
+        content, readErr = file.ReadFile(path)
+            if readErr == nil {
+                textFileContent = append(textFileContent, {
+                    "path": path,
+                    "size": info.Size(),
+                    "content": string(content)
+                })
+                log.info("Text file: %s, size: %d", path, info.Size())
+            }
+        }
+        return nil
+    })
+)
+
+assert err == nil, f"文本文件遍历失败: ${err}"
+assert textFileCount == 4, f"期望找到4个文本文件，实际找到${textFileCount}个"
+assert len(textFileContent) == 4, f"期望读取4个文件内容，实际读取${len(textFileContent)}个"
+println(f"✓ 文本文件遍历完成: 找到${textFileCount}个文本文件")
+
+// 验证文件内容
+// 关键词: 内容验证, 文件内容检查, 数据验证
+for fileInfo in textFileContent {
+    assert len(fileInfo["content"]) > 0, f"文件内容不应为空: ${fileInfo['path']}"
+    assert fileInfo["size"] == len(fileInfo["content"]), f"文件大小不匹配: ${fileInfo['path']}"
+}
+println("✓ 文件内容验证通过")
+
+// ===== 3.2 目录级别限制遍历 =====
+// 关键词: 目录级别, 深度限制, 递归控制, 层级遍历
+println("\n3.2 目录级别限制遍历")
+rootLevelCount = 0
+allLevelCount = 0
+
+// 先统计所有级别
+err = filesys.Recursive(testDir,
+    filesys.onFileStat((path, info) => {
+        allLevelCount++
+        return nil
+    })
+)
+assert err == nil, f"全级别遍历失败: ${err}"
+
+// 只遍历根级别（通过路径判断）
+// 关键词: 根级别遍历, 路径深度判断, 级别控制
+err = filesys.Recursive(testDir,
+    filesys.onFileStat((path, info) => {
+        // 计算相对于测试目录的路径深度
+        // 关键词: 路径深度, 相对路径, 深度计算
+        relativePath = str.TrimPrefix(path, testDir + "/")
+        if !str.Contains(relativePath, "/") {
+            rootLevelCount++
+            log.info("Root level file: %s", path)
+        }
+        return nil
+    })
+)
+
+assert err == nil, f"根级别遍历失败: ${err}"
+assert rootLevelCount == 2, f"期望根级别有2个文件，实际找到${rootLevelCount}个"
+assert allLevelCount > rootLevelCount, f"全级别文件数${allLevelCount}应该大于根级别${rootLevelCount}"
+println(f"✓ 级别限制遍历完成: 根级别${rootLevelCount}个文件，全级别${allLevelCount}个文件")
+
+// ===== 4.1 filesys.Glance 快速预览 =====
+// 关键词: filesys.Glance, 快速预览, 目录概览, 文件系统概览
+println("4.1 filesys.Glance 快速预览")
+glanceResult = filesys.Glance(testDir)
+
+println("目录快速预览结果:")
+println(glanceResult)
+assert len(glanceResult) > 0, "快速预览结果不应为空"
+println("✓ 快速预览完成")
+
+// ===== 4.2 文件路径操作（使用 file 库） =====
+// 关键词: 路径操作, 文件路径, Join, Split, Base
+println("\n4.2 文件路径操作")
+// 使用 file 库进行路径操作
+// 关键词: file库路径, 路径处理, 文件路径接口
+testPath = file.Join("dir1", "dir2", "file.txt")
+println(f"路径连接结果: ${testPath}")
+assert str.Contains(testPath, "dir1"), "路径应包含dir1"
+assert str.Contains(testPath, "dir2"), "路径应包含dir2"
+assert str.Contains(testPath, "file.txt"), "路径应包含file.txt"
+
+// 路径分割
+// 关键词: 路径分割, Split, 目录和文件名分离
+dir, filename = file.Split(testPath)
+println(f"路径分割: 目录=${dir}, 文件名=${filename}")
+assert filename == "file.txt", f"文件名应为file.txt，实际为${filename}"
+
+// 获取基础名称
+// 关键词: 基础名称, GetBase, 文件名提取
+baseName = file.GetBase(testPath)
+println(f"基础名称: ${baseName}")
+assert baseName == "file.txt", f"基础名称应为file.txt，实际为${baseName}"
+
+// 获取扩展名
+// 关键词: 扩展名, GetExt, 文件扩展名获取
+ext = file.GetExt(testPath)
+println(f"扩展名: ${ext}")
+assert ext == ".txt", f"扩展名应为.txt，实际为${ext}"
+
+println("✓ 路径操作验证通过")
+
+// =============================================================================
+// 5. 错误处理和边界情况演示
+// =============================================================================
+println("\n5. 错误处理和边界情况演示")
+
+// ===== 5.1 不存在目录的处理 =====
+// 关键词: 错误处理, 不存在目录, 异常处理, 错误捕获
+println("5.1 不存在目录的处理")
+nonExistentDir = "/tmp/non_existent_directory_12345"
+err = filesys.Recursive(nonExistentDir,
+    filesys.onFileStat((path, info) => {
+        return nil
+    })
+)
+assert err != nil, "遍历不存在的目录应该返回错误"
+println(f"✓ 不存在目录错误处理正确: ${err}")
+
+// ===== 5.2 空目录的处理 =====
+// 关键词: 空目录, 空目录处理, 边界情况, 空目录遍历
+println("\n5.2 空目录的处理")
+emptyDir = "/tmp/empty_test_dir"
+os.RemoveAll(emptyDir)
+err = file.MkdirAll(emptyDir)
+assert err == nil, f"创建空目录失败: ${err}"
+
+emptyDirFileCount = 0
+err = filesys.Recursive(emptyDir,
+    filesys.onFileStat((path, info) => {
+        emptyDirFileCount++
+        return nil
+    })
+)
+assert err == nil, f"遍历空目录失败: ${err}"
+assert emptyDirFileCount == 0, f"空目录应该没有文件，实际找到${emptyDirFileCount}个"
+println("✓ 空目录处理正确")
+
+// ===== 5.3 权限问题处理（如果可能的话）=====
+// 关键词: 权限问题, 访问权限, 权限错误, 权限处理
+println("\n5.3 权限问题处理")
+// 注意：这个测试可能在某些系统上不适用
+restrictedDir = "/tmp/restricted_test_dir"
+os.RemoveAll(restrictedDir)
+err = file.MkdirAll(restrictedDir)
+if err == nil {
+    // 创建一个文件
+    restrictedFile = restrictedDir + "/test_file.txt"
+    file.Save(restrictedFile, "test content")
+    
+    // 尝试修改权限（可能需要特殊权限）
+    os.Chmod(restrictedDir, 0000)
+    
+    // 尝试遍历（可能会失败）
+    err = filesys.Recursive(restrictedDir,
+        filesys.onFileStat((path, info) => {
+            return nil
+        })
+    )
+    
+    // 恢复权限以便清理
+    os.Chmod(restrictedDir, 0755)
+    
+    if err != nil {
+        println(f"✓ 权限限制正确处理: ${err}")
+    } else {
+        println("✓ 权限测试跳过（可能具有特殊权限）")
+    }
+}
+
+// =============================================================================
+// 6. 性能和大量文件处理演示
+// =============================================================================
+println("\n6. 性能和大量文件处理演示")
+
+// ===== 6.1 创建大量文件进行性能测试 =====
+// 关键词: 性能测试, 大量文件, 批量创建, 性能评估
+println("6.1 创建大量文件进行性能测试")
+perfTestDir = "/tmp/filesys_perf_test"
+os.RemoveAll(perfTestDir)
+err = file.MkdirAll(perfTestDir)
+assert err == nil, f"创建性能测试目录失败: ${err}"
+
+// 创建100个测试文件
+// 关键词: 批量文件创建, 性能测试文件, 大量文件生成
+fileCreateCount = 100
+for i := 0; i < fileCreateCount; i++ {
+    fileName = f"${perfTestDir}/perf_file_${i}.txt"
+    content = f"Performance test file ${i}\nContent line 2\nContent line 3"
+    err = file.Save(fileName, content)
+    assert err == nil, f"创建性能测试文件失败 ${fileName}: ${err}"
+}
+
+// 创建一些子目录
+// 关键词: 子目录创建, 目录结构, 嵌套目录
+for i := 0; i < 10; i++ {
+    subDir = f"${perfTestDir}/subdir_${i}"
+    err = file.MkdirAll(subDir)
+    assert err == nil, f"创建子目录失败 ${subDir}: ${err}"
+    
+    // 在每个子目录中创建几个文件
+    for j := 0; j < 5; j++ {
+        fileName = f"${subDir}/nested_file_${j}.log"
+        content = f"Nested file ${i}-${j}"
+        err = file.Save(fileName, content)
+        assert err == nil, f"创建嵌套文件失败 ${fileName}: ${err}"
+    }
+}
+
+println(f"✓ 性能测试环境创建完成: ${fileCreateCount}个文件 + 10个子目录(每个5个文件)")
+
+// ===== 6.2 性能测试遍历 =====
+// 关键词: 性能测试, 遍历性能, 时间测量, 性能评估
+println("\n6.2 性能测试遍历")
+startTime = time.Now()
+perfFileCount = 0
+perfDirCount = 0
+totalSize = 0
+
+err = filesys.Recursive(perfTestDir,
+    filesys.onFileStat((path, info) => {
+        perfFileCount++
+        totalSize += int(info.Size())
+        return nil
+    }),
+    filesys.onDirStat((path, info) => {
+        perfDirCount++
+        return nil
+    })
+)
+
+endTime = time.Now()
+duration = endTime.Sub(startTime)
+
+assert err == nil, f"性能测试遍历失败: ${err}"
+expectedFiles = fileCreateCount + (10 * 5)  // 100 + 50 = 150
+assert perfFileCount == expectedFiles, f"期望找到${expectedFiles}个文件，实际找到${perfFileCount}个"
+assert perfDirCount >= 10, f"期望找到至少10个目录，实际找到${perfDirCount}个"
+
+println(f"✓ 性能测试完成:")
+println(f"  - 遍历${perfFileCount}个文件，${perfDirCount}个目录")
+println(f"  - 总文件大小: ${totalSize} bytes")
+println(f"  - 耗时: ${duration.Milliseconds()} ms")
+println(f"  - 平均每文件: ${duration.Milliseconds()/int64(perfFileCount)} ms")
+
+// 性能断言
+// 关键词: 性能断言, 性能要求, 时间限制, 性能验证
+assert duration.Milliseconds() < 5000, f"遍历${perfFileCount}个文件耗时不应超过5秒，实际耗时${duration.Milliseconds()}ms"
+println("✓ 性能要求满足")
+
+// =============================================================================
+// 7. 清理测试环境
+// =============================================================================
+println("\n7. 清理测试环境")
+
+// 清理所有测试目录
+// 关键词: 环境清理, 测试清理, 目录删除, 资源清理
+testDirs = [testDir, emptyDir, restrictedDir, perfTestDir]
+for dir in testDirs {
+    err = os.RemoveAll(dir)
+    if err != nil {
+        log.warn("清理目录失败 %s: %v", dir, err)
+    } else {
+        log.info("清理目录成功: %s", dir)
+    }
+}
+
+println("✓ 测试环境清理完成")
+
+println("\n=== filesys 库功能完整验证完成 ===")
+println("✓ 所有测试通过，filesys 库功能正常")
