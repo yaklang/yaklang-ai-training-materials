@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "=== Downloading Yaklang Engine v1.4.4-alpha1003 ==="
           YAK_VERSION="1.4.4-alpha1003"
-          YAK_URL="https://oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
           
           echo "Downloading from: $YAK_URL"
           wget -q --show-progress -O ./yak "$YAK_URL"
