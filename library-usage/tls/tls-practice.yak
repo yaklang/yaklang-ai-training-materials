@@ -1,0 +1,438 @@
+# =============================================================================
+# TLS库完整实践案例
+# TLS证书 密钥生成 X509证书 RSA加密 SM2加密
+# 关键词: tls, 证书, 密钥, RSA, SM2, X509, CA, PEM
+# =============================================================================
+
+# =============================================================================
+# 1. RSA密钥对生成功能演示
+# RSA密钥生成 公钥私钥 PEM格式 密钥对
+# 关键词: RSA, 密钥对, GenerateRSAKeyPair, 公钥, 私钥, PEM, 密钥生成
+# =============================================================================
+println("1. RSA密钥对生成功能演示")
+
+# ===== 1.1 通用RSA密钥对生成 - 自定义位数 =====
+# 关键词: RSA密钥生成, GenerateRSAKeyPair, 2048位, RSA密钥对, 自定义位数
+println("\n1.1 通用RSA密钥对生成(2048位)")
+// 生成2048位RSA密钥对
+// 关键词: tls.GenerateRSAKeyPair, RSA密钥生成函数, 指定位数, PEM格式输出
+pubKey2048, priKey2048, err = tls.GenerateRSAKeyPair(2048)
+if err != nil {
+    die("生成2048位RSA密钥对失败: " + err.Error())
+}
+println("公钥(前100字符):", string(pubKey2048)[:100])
+println("私钥(前100字符):", string(priKey2048)[:100])
+// 验证PEM格式
+// 关键词: PEM格式验证, PUBLIC KEY头部, RSA PRIVATE KEY头部, PEM块
+assert str.HasPrefix(string(pubKey2048), "-----BEGIN PUBLIC KEY-----"), "公钥应该是PEM格式"
+assert str.HasPrefix(string(priKey2048), "-----BEGIN RSA PRIVATE KEY-----"), "私钥应该是PEM格式"
+println("✓ 通用RSA密钥对生成验证通过")
+
+# ===== 1.2 快捷RSA密钥对生成 - 1024位 =====
+# 关键词: RSA1024, GenerateRSA1024KeyPair, 1024位密钥, 快捷生成
+println("\n1.2 快捷RSA密钥对生成(1024位)")
+// 生成1024位RSA密钥对 - 不推荐用于生产环境
+// 关键词: tls.GenerateRSA1024KeyPair, 1024位RSA, 快速密钥生成, 测试用途
+pubKey1024, priKey1024, err = tls.GenerateRSA1024KeyPair()
+if err != nil {
+    die("生成1024位RSA密钥对失败: " + err.Error())
+}
+println("1024位公钥长度:", len(pubKey1024), "字节")
+println("1024位私钥长度:", len(priKey1024), "字节")
+// 验证密钥格式
+// 关键词: PEM格式校验, 密钥长度验证, RSA密钥格式
+assert str.HasPrefix(string(pubKey1024), "-----BEGIN PUBLIC KEY-----"), "1024位公钥应该是PEM格式"
+assert str.HasPrefix(string(priKey1024), "-----BEGIN RSA PRIVATE KEY-----"), "1024位私钥应该是PEM格式"
+println("✓ 1024位RSA密钥对生成验证通过")
+
+# ===== 1.3 标准RSA密钥对生成 - 2048位 =====
+# 关键词: RSA2048, GenerateRSA2048KeyPair, 2048位密钥, 标准密钥长度
+println("\n1.3 标准RSA密钥对生成(2048位)")
+// 生成2048位RSA密钥对 - 当前推荐标准
+// 关键词: tls.GenerateRSA2048KeyPair, 2048位标准, 推荐密钥长度, 安全强度
+pubKey2048v2, priKey2048v2, err = tls.GenerateRSA2048KeyPair()
+if err != nil {
+    die("生成2048位RSA密钥对失败: " + err.Error())
+}
+println("2048位公钥长度:", len(pubKey2048v2), "字节")
+println("2048位私钥长度:", len(priKey2048v2), "字节")
+assert len(pubKey2048v2) > len(pubKey1024), "2048位公钥应该比1024位更长"
+assert len(priKey2048v2) > len(priKey1024), "2048位私钥应该比1024位更长"
+println("✓ 2048位RSA密钥对生成验证通过")
+
+# ===== 1.4 高强度RSA密钥对生成 - 4096位 =====
+# 关键词: RSA4096, GenerateRSA4096KeyPair, 4096位密钥, 高强度加密
+println("\n1.4 高强度RSA密钥对生成(4096位)")
+// 生成4096位RSA密钥对 - 高安全性需求
+// 关键词: tls.GenerateRSA4096KeyPair, 4096位高强度, 高安全级别, 金融级加密
+pubKey4096, priKey4096, err = tls.GenerateRSA4096KeyPair()
+if err != nil {
+    die("生成4096位RSA密钥对失败: " + err.Error())
+}
+println("4096位公钥长度:", len(pubKey4096), "字节")
+println("4096位私钥长度:", len(priKey4096), "字节")
+// 验证密钥长度递增关系
+// 关键词: 密钥长度比较, 安全强度对比, 密钥大小关系
+assert len(pubKey4096) > len(pubKey2048v2), "4096位公钥应该比2048位更长"
+assert len(priKey4096) > len(priKey2048v2), "4096位私钥应该比2048位更长"
+println("✓ 4096位RSA密钥对生成验证通过")
+
+# =============================================================================
+# 2. SM2国密密钥对生成演示
+# SM2密钥 国密算法 椭圆曲线 中国密码算法
+# 关键词: SM2, 国密, GenerateSM2KeyPair, 椭圆曲线, 国密算法, GM
+# =============================================================================
+println("\n2. SM2国密密钥对生成演示")
+
+# ===== 2.1 SM2密钥对生成 - 中国国密标准 =====
+# 关键词: SM2生成, 国密SM2, tls.GenerateSM2KeyPair, 国密标准, ECC
+println("\n2.1 SM2密钥对生成")
+// 生成SM2椭圆曲线密钥对 - 中国国密标准
+// 关键词: SM2密钥生成, 国密ECC, 椭圆曲线密钥, 中国标准算法
+sm2PubKey, sm2PriKey, err = tls.GenerateSM2KeyPair()
+if err != nil {
+    die("生成SM2密钥对失败: " + err.Error())
+}
+println("SM2公钥(前100字符):", string(sm2PubKey)[:100])
+println("SM2私钥(前100字符):", string(sm2PriKey)[:100])
+// 验证SM2密钥PEM格式
+// 关键词: SM2 PEM格式, 国密密钥格式, EC私钥, 椭圆曲线公钥
+assert str.Contains(string(sm2PubKey), "PUBLIC KEY"), "SM2公钥应该包含PUBLIC KEY标识"
+assert str.Contains(string(sm2PriKey), "PRIVATE KEY") || str.Contains(string(sm2PriKey), "EC PRIVATE KEY"), "SM2私钥应该包含PRIVATE KEY标识"
+println("✓ SM2国密密钥对生成验证通过")
+
+# =============================================================================
+# 3. 根证书CA生成演示
+# 根证书 CA证书 自签名证书 证书颁发机构
+# 关键词: CA, 根证书, GenerateRootCA, 自签名, Certificate Authority
+# =============================================================================
+println("\n3. 根证书CA生成演示")
+
+# ===== 3.1 生成根CA证书 =====
+# 关键词: 根CA生成, GenerateRootCA, 自签名根证书, CA证书创建
+println("\n3.1 生成根CA证书")
+// 生成自签名根CA证书和私钥
+// 关键词: tls.GenerateRootCA, 根证书生成, CommonName设置, 自签名CA
+caCert, caKey, err = tls.GenerateRootCA("YaklangRootCA")
+if err != nil {
+    die("生成根CA失败: " + err.Error())
+}
+println("CA证书(前150字符):", string(caCert)[:150])
+println("CA私钥(前150字符):", string(caKey)[:150])
+// 验证CA证书和密钥格式
+// 关键词: CA证书验证, PEM证书格式, RSA私钥格式, 证书密钥对
+assert str.HasPrefix(string(caCert), "-----BEGIN CERTIFICATE-----"), "CA证书应该是PEM格式"
+assert str.HasPrefix(string(caKey), "-----BEGIN RSA PRIVATE KEY-----"), "CA私钥应该是PEM格式"
+println("✓ 根CA证书生成验证通过")
+
+# =============================================================================
+# 4. X509服务器证书签名演示
+# X509证书 服务器证书 证书签名 服务器认证
+# 关键词: X509, 服务器证书, SignX509ServerCertAndKey, 证书签名, Server Auth
+# =============================================================================
+println("\n4. X509服务器证书签名演示")
+
+# ===== 4.1 签名X509服务器证书(带客户端认证) =====
+# 关键词: X509服务器证书, SignX509ServerCertAndKey, CA签名, 双向认证
+println("\n4.1 签名X509服务器证书(带客户端认证)")
+// 使用CA证书和私钥签名服务器证书
+// 关键词: tls.SignX509ServerCertAndKey, 服务器证书签发, CA签名证书, 客户端认证
+serverCert, serverKey, err = tls.SignX509ServerCertAndKey(caCert, caKey)
+if err != nil {
+    die("签名X509服务器证书失败: " + err.Error())
+}
+println("服务器证书长度:", len(serverCert), "字节")
+println("服务器密钥长度:", len(serverKey), "字节")
+// 验证服务器证书格式
+// 关键词: 服务器证书验证, X509证书格式, 证书密钥对格式
+assert str.HasPrefix(string(serverCert), "-----BEGIN CERTIFICATE-----"), "服务器证书应该是PEM格式"
+assert str.HasPrefix(string(serverKey), "-----BEGIN RSA PRIVATE KEY-----"), "服务器密钥应该是PEM格式"
+println("✓ X509服务器证书签名验证通过")
+
+# ===== 4.2 签名服务器证书(不带认证) =====
+# 关键词: 服务器证书无认证, SignServerCertAndKey, 单向认证, 简化证书
+println("\n4.2 签名服务器证书(不带认证)")
+// 生成不包含客户端认证的服务器证书
+// 关键词: tls.SignServerCertAndKey, 单向认证证书, 无客户端认证, 简化TLS
+serverCertNoAuth, serverKeyNoAuth, err = tls.SignServerCertAndKey(caCert, caKey)
+if err != nil {
+    die("签名服务器证书(无认证)失败: " + err.Error())
+}
+println("服务器证书(无认证)长度:", len(serverCertNoAuth), "字节")
+// 验证无认证证书格式
+// 关键词: 无认证证书验证, 证书PEM格式, 单向TLS证书
+assert str.HasPrefix(string(serverCertNoAuth), "-----BEGIN CERTIFICATE-----"), "服务器证书(无认证)应该是PEM格式"
+println("✓ 服务器证书(不带认证)签名验证通过")
+
+# =============================================================================
+# 5. X509客户端证书签名演示
+# X509证书 客户端证书 客户端认证 双向TLS
+# 关键词: X509, 客户端证书, SignX509ClientCertAndKey, Client Auth, mTLS
+# =============================================================================
+println("\n5. X509客户端证书签名演示")
+
+# ===== 5.1 签名X509客户端证书(带认证) =====
+# 关键词: X509客户端证书, SignX509ClientCertAndKey, 客户端认证证书, mTLS
+println("\n5.1 签名X509客户端证书(带认证)")
+// 使用CA签发客户端认证证书
+// 关键词: tls.SignX509ClientCertAndKey, 客户端证书签发, 双向TLS, 客户端认证
+clientCert, clientKey, err = tls.SignX509ClientCertAndKey(caCert, caKey)
+if err != nil {
+    die("签名X509客户端证书失败: " + err.Error())
+}
+println("客户端证书长度:", len(clientCert), "字节")
+println("客户端密钥长度:", len(clientKey), "字节")
+// 验证客户端证书格式
+// 关键词: 客户端证书验证, X509格式验证, 证书密钥对
+assert str.HasPrefix(string(clientCert), "-----BEGIN CERTIFICATE-----"), "客户端证书应该是PEM格式"
+assert str.HasPrefix(string(clientKey), "-----BEGIN RSA PRIVATE KEY-----"), "客户端密钥应该是PEM格式"
+println("✓ X509客户端证书签名验证通过")
+
+# ===== 5.2 签名客户端证书(不带认证) =====
+# 关键词: 客户端证书无认证, SignClientCertAndKey, 简化客户端证书
+println("\n5.2 签名客户端证书(不带认证)")
+// 生成不包含认证扩展的客户端证书
+// 关键词: tls.SignClientCertAndKey, 无认证客户端证书, 简化证书配置
+clientCertNoAuth, clientKeyNoAuth, err = tls.SignClientCertAndKey(caCert, caKey)
+if err != nil {
+    die("签名客户端证书(无认证)失败: " + err.Error())
+}
+println("客户端证书(无认证)长度:", len(clientCertNoAuth), "字节")
+assert str.HasPrefix(string(clientCertNoAuth), "-----BEGIN CERTIFICATE-----"), "客户端证书(无认证)应该是PEM格式"
+println("✓ 客户端证书(不带认证)签名验证通过")
+
+# =============================================================================
+# 6. RSA PKCS1v15加密解密演示
+# RSA加密 PKCS1v15 非对称加密 公钥加密私钥解密
+# 关键词: RSA加密, PKCS1v15, EncryptWithPkcs1v15, DecryptWithPkcs1v15, 非对称加密
+# =============================================================================
+println("\n6. RSA PKCS1v15加密解密演示")
+
+# ===== 6.1 PKCS1v15加密解密 =====
+# 关键词: PKCS1v15加密, RSA加密解密, 公钥加密, 私钥解密, 非对称密码
+println("\n6.1 PKCS1v15加密解密")
+// 准备测试数据
+// 关键词: 加密测试数据, 明文数据, RSA加密原文
+plaintext = "Hello Yaklang TLS!"
+println("原始数据:", plaintext)
+
+// 使用公钥加密数据
+// 关键词: tls.EncryptWithPkcs1v15, 公钥加密操作, PKCS1v15加密, RSA公钥加密
+encrypted, err = tls.EncryptWithPkcs1v15(pubKey2048, plaintext)
+if err != nil {
+    die("PKCS1v15加密失败: " + err.Error())
+}
+println("加密数据长度:", len(encrypted), "字节")
+println("加密数据(Hex前40字符):", codec.EncodeToHex(encrypted)[:40])
+
+// 使用私钥解密数据
+// 关键词: tls.DecryptWithPkcs1v15, 私钥解密操作, PKCS1v15解密, RSA私钥解密
+decrypted, err = tls.DecryptWithPkcs1v15(priKey2048, encrypted)
+if err != nil {
+    die("PKCS1v15解密失败: " + err.Error())
+}
+println("解密数据:", string(decrypted))
+
+// 验证加密解密正确性
+// 关键词: 加密解密验证, 数据完整性, 明文密文对比, RSA加解密校验
+assert string(decrypted) == plaintext, "解密后的数据应该与原始数据一致"
+assert len(encrypted) > len(plaintext), "加密后的数据应该比原始数据长"
+println("✓ PKCS1v15加密解密验证通过")
+
+# =============================================================================
+# 7. TLS协议检测演示
+# TLS检测 协议探测 HTTP2检测 TLS握手
+# 关键词: TLS检测, Inspect, TLS握手, 协议检测, SSL/TLS
+# =============================================================================
+println("\n7. TLS协议检测演示")
+
+# ===== 7.1 基础TLS检测 - 自动协商 =====
+# 关键词: TLS自动检测, tls.Inspect, 协议自动协商, TLS握手检测
+println("\n7.1 基础TLS检测(自动协商)")
+// 检测目标的TLS协议支持情况
+// 关键词: tls.Inspect函数, TLS协议探测, 自动协商检测, SSL/TLS版本检测
+target = "www.baidu.com:443"
+println("检测目标:", target)
+
+try {
+    for result in tls.Inspect(target)~ {
+        println("协议:", result.Protocol)
+        println("TLS版本:", result.Version)
+        println("密码套件:", result.CipherSuite)
+        // 验证检测结果
+        // 关键词: TLS检测结果验证, 协议字段验证, TLS版本确认
+        assert result.Protocol != "", "应该检测到协议信息"
+        break  // 只检查第一个结果
+    }
+    println("✓ 基础TLS检测验证通过")
+} catch err {
+    println("TLS检测失败(可能是网络问题，跳过验证):", err.Error())
+}
+
+# ===== 7.2 强制HTTP/2检测 =====
+# 关键词: HTTP2强制检测, InspectForceHttp2, H2协议, ALPN协商
+println("\n7.2 强制HTTP/2检测")
+// 强制使用HTTP/2协议进行检测
+// 关键词: tls.InspectForceHttp2, 强制H2协议, HTTP/2 ALPN, 协议强制
+try {
+    foundHttp2 = false
+    for result in tls.InspectForceHttp2(target)~ {
+        println("强制HTTP/2协议:", result.Protocol)
+        if result.Protocol == "h2" {
+            foundHttp2 = true
+        }
+        break
+    }
+    if foundHttp2 {
+        println("✓ 强制HTTP/2检测验证通过")
+    } else {
+        println("目标不支持HTTP/2协议")
+    }
+} catch err {
+    println("强制HTTP/2检测失败(可能是网络问题，跳过验证):", err.Error())
+}
+
+# ===== 7.3 强制HTTP/1.1检测 =====
+# 关键词: HTTP1.1强制检测, InspectForceHttp1_1, HTTP/1.1协议, 协议降级
+println("\n7.3 强制HTTP/1.1检测")
+// 强制使用HTTP/1.1协议进行检测
+// 关键词: tls.InspectForceHttp1_1, 强制HTTP/1.1, 协议降级检测, 兼容性测试
+try {
+    for result in tls.InspectForceHttp1_1(target)~ {
+        println("强制HTTP/1.1协议:", result.Protocol)
+        // 验证HTTP/1.1协议
+        // 关键词: HTTP/1.1验证, 协议版本确认, 降级检测验证
+        assert result.Protocol == "http/1.1", "应该检测到HTTP/1.1协议"
+        break
+    }
+    println("✓ 强制HTTP/1.1检测验证通过")
+} catch err {
+    println("强制HTTP/1.1检测失败(可能是网络问题，跳过验证):", err.Error())
+}
+
+# =============================================================================
+# 8. 完整证书链演示
+# 证书链 CA层级 证书信任链 证书验证
+# 关键词: 证书链, Certificate Chain, CA层级, 信任链, 证书验证
+# =============================================================================
+println("\n8. 完整证书链演示")
+
+# ===== 8.1 创建完整的证书信任链 =====
+# 关键词: 证书信任链, 多级CA, 证书层级, Root CA, Intermediate CA
+println("\n8.1 创建完整的证书信任链")
+// 1. 生成根CA
+// 关键词: 根CA创建, 顶级证书颁发机构, Root Certificate Authority
+rootCA, rootKey, err = tls.GenerateRootCA("Root CA")
+if err != nil {
+    die("生成根CA失败: " + err.Error())
+}
+println("步骤1: 根CA生成成功")
+
+// 2. 使用根CA签发中间CA证书
+// 关键词: 中间CA签发, Intermediate CA, 二级证书颁发机构, CA层级
+intermediateCA, intermediateKey, err = tls.SignX509ServerCertAndKey(rootCA, rootKey)
+if err != nil {
+    die("签发中间CA失败: " + err.Error())
+}
+println("步骤2: 中间CA签发成功")
+
+// 3. 使用中间CA签发最终服务器证书
+// 关键词: 服务器证书签发, 三级证书, 证书链末端, End Entity Certificate
+finalServerCert, finalServerKey, err = tls.SignX509ServerCertAndKey(intermediateCA, intermediateKey)
+if err != nil {
+    die("签发最终服务器证书失败: " + err.Error())
+}
+println("步骤3: 最终服务器证书签发成功")
+
+// 验证证书链完整性
+// 关键词: 证书链验证, 信任链完整性, 证书层级验证, CA层级关系
+assert len(rootCA) > 0, "根CA证书应该存在"
+assert len(intermediateCA) > 0, "中间CA证书应该存在"
+assert len(finalServerCert) > 0, "最终服务器证书应该存在"
+println("✓ 完整证书链创建验证通过")
+
+# =============================================================================
+# 9. 综合应用场景演示
+# 实战应用 证书部署 TLS配置 安全通信
+# 关键词: TLS应用, 证书部署, 安全配置, 生产环境, mTLS
+# =============================================================================
+println("\n9. 综合应用场景演示")
+
+# ===== 9.1 生成完整的mTLS双向认证配置 =====
+# 关键词: mTLS配置, 双向认证, 双向TLS, Mutual TLS, 客户端服务器认证
+println("\n9.1 生成完整的mTLS双向认证配置")
+// 为双向TLS认证准备完整的证书配置
+// 关键词: mTLS证书配置, 双向认证证书, 服务器客户端证书对
+
+// 生成CA
+// 关键词: mTLS CA生成, 双向认证根证书
+mtlsCA, mtlsCAKey, err = tls.GenerateRootCA("mTLS-CA")
+if err != nil {
+    die("生成mTLS CA失败: " + err.Error())
+}
+println("mTLS CA生成成功")
+
+// 生成服务器证书
+// 关键词: mTLS服务器证书, 双向认证服务端, Server Certificate
+mtlsServerCert, mtlsServerKey, err = tls.SignX509ServerCertAndKey(mtlsCA, mtlsCAKey)
+if err != nil {
+    die("签发mTLS服务器证书失败: " + err.Error())
+}
+println("mTLS服务器证书签发成功")
+
+// 生成客户端证书
+// 关键词: mTLS客户端证书, 双向认证客户端, Client Certificate
+mtlsClientCert, mtlsClientKey, err = tls.SignX509ClientCertAndKey(mtlsCA, mtlsCAKey)
+if err != nil {
+    die("签发mTLS客户端证书失败: " + err.Error())
+}
+println("mTLS客户端证书签发成功")
+
+// 验证mTLS配置完整性
+// 关键词: mTLS配置验证, 双向认证验证, 证书配置完整性
+assert len(mtlsCA) > 0 && len(mtlsCAKey) > 0, "mTLS CA应该完整"
+assert len(mtlsServerCert) > 0 && len(mtlsServerKey) > 0, "mTLS服务器证书应该完整"
+assert len(mtlsClientCert) > 0 && len(mtlsClientKey) > 0, "mTLS客户端证书应该完整"
+println("✓ mTLS双向认证配置验证通过")
+
+# ===== 9.2 密钥强度对比演示 =====
+# 关键词: 密钥强度对比, 安全级别, 密钥长度, 加密强度
+println("\n9.2 密钥强度对比演示")
+// 对比不同位数RSA密钥的长度
+// 关键词: RSA密钥对比, 密钥长度对比, 安全强度分析
+
+println("密钥长度对比:")
+println("  1024位公钥:", len(pubKey1024), "字节")
+println("  2048位公钥:", len(pubKey2048), "字节")
+println("  4096位公钥:", len(pubKey4096), "字节")
+
+// 验证密钥强度递增关系
+// 关键词: 密钥强度递增, 安全级别对比, 密钥大小关系验证
+assert len(pubKey1024) < len(pubKey2048), "2048位应该比1024位更长"
+assert len(pubKey2048) < len(pubKey4096), "4096位应该比2048位更长"
+
+println("\n密钥强度建议:")
+println("  1024位: 不推荐使用(已不安全)")
+println("  2048位: 当前标准推荐")
+println("  4096位: 高安全需求场景")
+println("✓ 密钥强度对比验证通过")
+
+# =============================================================================
+# 总结输出
+# =============================================================================
+println("\n" + "="*80)
+println("TLS库完整实践案例执行完成")
+println("="*80)
+println("\n测试覆盖:")
+println("  ✓ RSA密钥对生成(1024/2048/4096位)")
+println("  ✓ SM2国密密钥对生成")
+println("  ✓ 根CA证书生成")
+println("  ✓ X509服务器证书签名")
+println("  ✓ X509客户端证书签名")
+println("  ✓ RSA PKCS1v15加密解密")
+println("  ✓ TLS协议检测(自动/HTTP2/HTTP1.1)")
+println("  ✓ 完整证书链创建")
+println("  ✓ mTLS双向认证配置")
+println("  ✓ 密钥强度对比分析")
+println("\n所有TLS功能测试通过!")
+

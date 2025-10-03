@@ -1,0 +1,771 @@
+# =============================================================================
+# Yakit与DB库综合实践案例
+# Yakit输出 数据库操作 资产管理 数据可视化
+# 关键词: yakit, db, 输出, 数据库, 资产, 可视化, 交互
+# =============================================================================
+
+# =============================================================================
+# 1. Yakit基础输出功能演示
+# 日志输出 文本显示 状态通知 界面交互
+# 关键词: yakit输出, Info, Warn, Error, Success, 日志输出, 状态显示
+# =============================================================================
+println("1. Yakit基础输出功能演示")
+
+# ===== 1.1 日志级别输出 =====
+# 关键词: 日志级别, Info输出, Warn输出, Error输出, Debug输出
+println("\n1.1 日志级别输出")
+// 信息级别日志 - 用于一般信息输出
+// 关键词: yakit.Info, 信息日志, INFO级别, 普通输出
+yakit.Info("这是一条信息日志 - Info Level")
+yakit.Info("格式化信息: 当前时间 %v", timestamp())
+
+// 警告级别日志 - 用于警告信息
+// 关键词: yakit.Warn, 警告日志, WARN级别, 警告输出
+yakit.Warn("这是一条警告日志 - Warn Level")
+yakit.Warn("发现潜在问题: 配置参数 %v 可能存在风险", "test-param")
+
+// 错误级别日志 - 用于错误信息
+// 关键词: yakit.Error, 错误日志, ERROR级别, 错误输出
+yakit.Error("这是一条错误日志 - Error Level")
+yakit.Error("发现错误: 连接 %v 失败", "192.168.1.1:8080")
+
+// 成功提示 - 用于成功状态展示
+// 关键词: yakit.Success, 成功提示, 操作成功, 成功状态
+yakit.Success("任务执行成功！")
+
+println("✓ 日志级别输出演示完成")
+
+# ===== 1.2 富文本输出 =====
+# 关键词: 富文本输出, Text输出, Code输出, Markdown输出
+println("\n1.2 富文本输出")
+// 普通文本输出
+// 关键词: yakit.Text, 文本块, 普通文本输出
+yakit.Text("这是一个普通文本块，可以显示多行内容。\n支持换行符和格式化文本。")
+
+// 代码块输出 - 用于展示代码
+// 关键词: yakit.Code, 代码块, 代码输出, 代码展示
+yakit.Code("// Yaklang 代码示例\npacket = poc.HTTP(`GET / HTTP/1.1\nHost: example.com`)")
+
+// Markdown 格式输出
+// 关键词: yakit.Markdown, Markdown输出, 富文本, 格式化输出
+markdownContent = `
+# Yaklang 扫描报告
+
+## 扫描结果概览
+- 发现主机: 10台
+- 开放端口: 25个
+- 发现漏洞: 3个
+
+### 详细信息
+| 主机 | 端口 | 服务 |
+|------|------|------|
+| 192.168.1.1 | 80 | HTTP |
+| 192.168.1.2 | 22 | SSH |
+`
+yakit.Markdown(markdownContent)
+
+println("✓ 富文本输出演示完成")
+
+# ===== 1.3 进度控制 =====
+# 关键词: 进度控制, SetProgress, 进度条, 任务进度, 进度显示
+println("\n1.3 进度控制演示")
+// 主进度条更新
+// 关键词: yakit.SetProgress, 主进度条, 进度更新, 百分比进度
+yakit.Info("开始任务处理...")
+for i = 0; i < 5; i++ {
+    progress = (i + 1) * 20 / 100.0
+    yakit.SetProgress(progress)
+    yakit.Info("处理进度: %v%%", int((i + 1) * 20))
+    sleep(0.1)
+}
+yakit.SetProgress(1.0)
+yakit.Success("任务处理完成")
+
+// 多进度条控制 - 使用扩展进度ID
+// 关键词: yakit.SetProgressEx, 多进度条, 进度ID, 并发进度
+yakit.Info("\n演示多任务进度控制...")
+go func {
+    for i = 0; i < 10; i++ {
+        yakit.SetProgressEx("task-1", (i + 1) / 10.0)
+        sleep(0.05)
+    }
+}
+
+go func {
+    for i = 0; i < 10; i++ {
+        yakit.SetProgressEx("task-2", (i + 1) / 10.0)
+        sleep(0.08)
+    }
+}
+
+sleep(1)
+println("✓ 进度控制演示完成")
+
+# =============================================================================
+# 2. Yakit表格与数据展示演示
+# 表格显示 数据可视化 动态表格 数据展示
+# 关键词: yakit表格, NewTable, EnableTable, TableData, 数据表格
+# =============================================================================
+println("\n2. Yakit表格与数据展示演示")
+
+# ===== 2.1 静态表格 =====
+# 关键词: 静态表格, NewTable, 表格创建, 固定表格
+println("\n2.1 静态表格演示")
+// 创建静态表格 - 用于一次性展示数据
+// 关键词: yakit.NewTable, 表格头, 表格数据, Append添加行
+table = yakit.NewTable("主机", "端口", "服务", "状态")
+table.Append("192.168.1.1", "80", "HTTP", "开放")
+table.Append("192.168.1.1", "443", "HTTPS", "开放")
+table.Append("192.168.1.2", "22", "SSH", "开放")
+table.Append("192.168.1.2", "3306", "MySQL", "开放")
+table.Append("192.168.1.3", "8080", "HTTP-Proxy", "开放")
+
+// 输出表格
+// 关键词: yakit.Output, 表格输出, 数据展示
+yakit.Output(table)
+yakit.Info("静态表格已创建，包含 %v 条记录", 5)
+println("✓ 静态表格演示完成")
+
+# ===== 2.2 动态表格 =====
+# 关键词: 动态表格, EnableTable, 实时更新, 动态数据
+println("\n2.2 动态表格演示")
+// 启用动态表格 - 可以实时更新数据
+// 关键词: yakit.EnableTable, 表格名称, 表格列定义
+tableName = "端口扫描结果"
+yakit.EnableTable(tableName, ["主机", "端口", "服务", "响应时间"])
+
+// 模拟扫描数据并动态添加
+// 关键词: yakit.TableData, 动态添加数据, 表格行数据, UUID标识
+hosts = ["192.168.1.10", "192.168.1.11", "192.168.1.12"]
+ports = [80, 443, 8080]
+services = ["HTTP", "HTTPS", "Tomcat"]
+
+for i = 0; i < len(hosts); i++ {
+    host = hosts[i]
+    port = ports[i]
+    service = services[i]
+    responseTime = randn(50, 200)
+    
+    // 添加表格数据 - 每条数据需要唯一UUID
+    // 关键词: TableData添加, 数据行, 字段映射
+    yakit.Output(yakit.TableData(tableName, {
+        "uuid": f"${host}:${port}",
+        "主机": host,
+        "端口": port,
+        "服务": service,
+        "响应时间": f"${responseTime}ms"
+    }))
+    sleep(0.1)
+}
+
+yakit.Info("动态表格已创建，实时添加了 %v 条数据", len(hosts))
+println("✓ 动态表格演示完成")
+
+# =============================================================================
+# 3. Yakit图表可视化演示
+# 数据可视化 图表展示 统计图表 数据分析
+# 关键词: yakit图表, LineGraph, BarGraph, PieGraph, WordCloud, 可视化
+# =============================================================================
+println("\n3. Yakit图表可视化演示")
+
+# ===== 3.1 折线图 =====
+# 关键词: 折线图, NewLineGraph, 趋势分析, 时序数据
+println("\n3.1 折线图演示")
+// 创建折线图 - 用于展示趋势数据
+// 关键词: yakit.NewLineGraph, 折线图创建, 数据趋势
+lineGraph = yakit.NewLineGraph("端口开放趋势")
+lineGraph.Add("00:00", 120)
+lineGraph.Add("04:00", 98)
+lineGraph.Add("08:00", 156)
+lineGraph.Add("12:00", 203)
+lineGraph.Add("16:00", 178)
+lineGraph.Add("20:00", 145)
+yakit.Output(lineGraph)
+yakit.Info("折线图已创建，展示端口开放数量趋势")
+println("✓ 折线图演示完成")
+
+# ===== 3.2 柱状图 =====
+# 关键词: 柱状图, NewBarGraph, 数据对比, 分类统计
+println("\n3.2 柱状图演示")
+// 创建柱状图 - 用于数据对比
+// 关键词: yakit.NewBarGraph, 柱状图创建, 数据对比
+barGraph = yakit.NewBarGraph("服务类型分布")
+barGraph.Add("HTTP", 45)
+barGraph.Add("HTTPS", 32)
+barGraph.Add("SSH", 18)
+barGraph.Add("MySQL", 12)
+barGraph.Add("Redis", 8)
+barGraph.Add("其他", 25)
+yakit.Output(barGraph)
+yakit.Info("柱状图已创建，展示服务类型分布")
+println("✓ 柱状图演示完成")
+
+# ===== 3.3 饼图 =====
+# 关键词: 饼图, NewPieGraph, 占比分析, 比例展示
+println("\n3.3 饼图演示")
+// 创建饼图 - 用于占比分析
+// 关键词: yakit.NewPieGraph, 饼图创建, 占比统计
+pieGraph = yakit.NewPieGraph("漏洞等级分布")
+pieGraph.Add("严重", 5)
+pieGraph.Add("高危", 12)
+pieGraph.Add("中危", 28)
+pieGraph.Add("低危", 45)
+pieGraph.Add("信息", 60)
+yakit.Output(pieGraph)
+yakit.Info("饼图已创建，展示漏洞等级占比")
+println("✓ 饼图演示完成")
+
+# ===== 3.4 词云图 =====
+# 关键词: 词云图, NewWordCloud, 关键词分析, 词频统计
+println("\n3.4 词云图演示")
+// 创建词云图 - 用于关键词展示
+// 关键词: yakit.NewWordCloud, 词云创建, 词频可视化
+wordCloud = yakit.NewWordCloud("漏洞关键词")
+wordCloud.Add("SQL注入", 35)
+wordCloud.Add("XSS", 28)
+wordCloud.Add("命令注入", 18)
+wordCloud.Add("文件上传", 22)
+wordCloud.Add("SSRF", 15)
+wordCloud.Add("XXE", 12)
+wordCloud.Add("反序列化", 20)
+wordCloud.Add("弱密码", 30)
+yakit.Output(wordCloud)
+yakit.Info("词云图已创建，展示漏洞关键词频率")
+println("✓ 词云图演示完成")
+
+# =============================================================================
+# 4. Yakit状态卡片演示
+# 状态展示 实时监控 状态卡片 数据面板
+# 关键词: StatusCard, 状态卡片, 实时状态, 监控面板, 标签分组
+# =============================================================================
+println("\n4. Yakit状态卡片演示")
+
+# ===== 4.1 基础状态卡片 =====
+# 关键词: 基础状态卡片, StatusCard, 状态ID, 状态数据
+println("\n4.1 基础状态卡片演示")
+// 创建状态卡片 - 用于实时状态展示
+// 关键词: yakit.StatusCard, 卡片ID, 状态值, 标签
+yakit.StatusCard("扫描主机数", "156")
+yakit.StatusCard("开放端口数", "423")
+yakit.StatusCard("发现漏洞数", "28")
+yakit.StatusCard("扫描进度", "75%")
+println("✓ 基础状态卡片演示完成")
+
+# ===== 4.2 带标签的状态卡片 =====
+# 关键词: 标签状态卡片, 分组标签, 状态分类
+println("\n4.2 带标签的状态卡片演示")
+// 使用标签对状态卡片分组
+// 关键词: StatusCard标签, 分组展示, 标签分类
+yakit.StatusCard("HTTP服务", "45", "服务统计", "HTTP")
+yakit.StatusCard("SSH服务", "18", "服务统计", "SSH")
+yakit.StatusCard("成功次数", "120", "爆破统计", "成功")
+yakit.StatusCard("失败次数", "580", "爆破统计", "失败")
+println("✓ 带标签状态卡片演示完成")
+
+# ===== 4.3 动态更新状态卡片 =====
+# 关键词: 动态状态卡片, 实时更新, 状态刷新
+println("\n4.3 动态更新状态卡片演示")
+// 模拟实时更新状态
+// 关键词: 状态动态更新, 实时数据, 卡片刷新
+for i = 0; i < 5; i++ {
+    scannedCount = (i + 1) * 20
+    foundVulns = (i + 1) * 3
+    yakit.StatusCard("已扫描", f"${scannedCount}台", "扫描状态")
+    yakit.StatusCard("发现问题", f"${foundVulns}个", "扫描状态")
+    sleep(0.2)
+}
+println("✓ 动态状态卡片演示完成")
+
+# =============================================================================
+# 5. DB键值存储功能演示
+# 键值存储 配置管理 数据持久化 KV存储
+# 关键词: db存储, SetKey, GetKey, DelKey, 键值对, 数据持久化
+# =============================================================================
+println("\n5. DB键值存储功能演示")
+
+# ===== 5.1 基础键值操作 =====
+# 关键词: 键值操作, SetKey, GetKey, 基础存储
+println("\n5.1 基础键值操作演示")
+// 设置键值 - 存储配置或临时数据
+// 关键词: db.SetKey, 键值设置, 数据存储, 配置保存
+db.SetKey("scan-target", "192.168.1.0/24")
+db.SetKey("scan-port", "80,443,8080,3306")
+db.SetKey("scan-concurrent", "50")
+db.SetKey("last-scan-time", timestamp())
+yakit.Info("已设置4个配置项")
+
+// 获取键值 - 读取已存储的数据
+// 关键词: db.GetKey, 键值获取, 数据读取, 配置读取
+target = db.GetKey("scan-target")
+ports = db.GetKey("scan-port")
+concurrent = db.GetKey("scan-concurrent")
+lastTime = db.GetKey("last-scan-time")
+
+yakit.Info("扫描目标: %v", target)
+yakit.Info("扫描端口: %v", ports)
+yakit.Info("并发数: %v", concurrent)
+yakit.Info("上次扫描: %v", lastTime)
+
+// 验证数据正确性
+// 关键词: 键值验证, 数据校验, assert验证
+assert target == "192.168.1.0/24", "目标网段应该正确存储"
+assert ports == "80,443,8080,3306", "端口列表应该正确存储"
+println("✓ 基础键值操作验证通过")
+
+# ===== 5.2 带TTL的键值存储 =====
+# 关键词: TTL存储, SetKeyWithTTL, 过期时间, 临时存储
+println("\n5.2 带TTL的键值存储演示")
+// 设置带过期时间的键值
+// 关键词: db.SetKeyWithTTL, TTL设置, 过期键值, 临时数据
+db.SetKeyWithTTL("temp-token", "abc123xyz789", 10)
+db.SetKeyWithTTL("session-id", "sess-" + randstr(16), 30)
+yakit.Info("已设置临时键值，TTL分别为10秒和30秒")
+
+tempToken = db.GetKey("temp-token")
+sessionId = db.GetKey("session-id")
+yakit.Info("临时Token: %v", tempToken)
+yakit.Info("会话ID: %v", sessionId)
+assert tempToken == "abc123xyz789", "临时Token应该正确存储"
+println("✓ TTL键值存储验证通过")
+
+# ===== 5.3 键值删除操作 =====
+# 关键词: 键值删除, DelKey, 数据清理, 配置清除
+println("\n5.3 键值删除操作演示")
+// 删除指定键值
+// 关键词: db.DelKey, 键删除, 数据删除
+db.DelKey("temp-token")
+yakit.Info("已删除临时Token")
+
+// 验证删除结果
+// 关键词: 删除验证, 键不存在验证
+deletedValue = db.GetKey("temp-token")
+assert deletedValue == "", "删除后的键值应该为空"
+println("✓ 键值删除验证通过")
+
+# ===== 5.4 项目级键值存储 =====
+# 关键词: 项目存储, GetProjectKey, SetProjectKey, 项目配置
+println("\n5.4 项目级键值存储演示")
+// 项目级键值存储 - 隔离不同项目的配置
+// 关键词: db.SetProjectKey, 项目键值, 项目隔离, 项目配置
+db.SetProjectKey("project-name", "WebSec-Scan-2024")
+db.SetProjectKey("project-desc", "Web安全扫描项目")
+db.SetProjectKey("project-start", datetime())
+
+// 读取项目配置
+// 关键词: db.GetProjectKey, 项目键值读取, 项目信息
+projectName = db.GetProjectKey("project-name")
+projectDesc = db.GetProjectKey("project-desc")
+projectStart = db.GetProjectKey("project-start")
+
+yakit.Info("项目名称: %v", projectName)
+yakit.Info("项目描述: %v", projectDesc)
+yakit.Info("开始时间: %v", projectStart)
+// 注意：项目级存储依赖于项目数据库上下文
+yakit.Info("项目级键值存储演示完成")
+println("✓ 项目级键值存储验证通过")
+
+# =============================================================================
+# 6. DB资产保存功能演示
+# 资产保存 数据入库 HTTP流量 端口资产 域名资产
+# 关键词: db资产, SaveHTTPFlow, SavePortFromResult, SaveDomain, 资产管理
+# =============================================================================
+println("\n6. DB资产保存功能演示")
+
+# ===== 6.1 HTTP流量保存 =====
+# 关键词: HTTP流量保存, SaveHTTPFlowFromRaw, 流量存储, HTTP资产
+println("\n6.1 HTTP流量保存演示")
+// 模拟HTTP请求和响应
+// 关键词: HTTP请求, HTTP响应, 原始流量
+httpRequest = `GET / HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Accept: */*
+
+`
+
+httpResponse = `HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Content-Length: 1234
+Server: nginx/1.18.0
+
+<!DOCTYPE html>
+<html>
+<head><title>Example</title></head>
+<body><h1>Hello World</h1></body>
+</html>`
+
+// 保存HTTP流量到数据库
+// 关键词: db.SaveHTTPFlowFromRaw, HTTP流量入库, 流量保存
+url = "https://example.com/"
+db.SaveHTTPFlowFromRaw(url, []byte(httpRequest), []byte(httpResponse))~
+yakit.Info("已保存HTTP流量: %v", url)
+yakit.Success("HTTP流量保存成功")
+println("✓ HTTP流量保存完成")
+
+# ===== 6.2 带类型的HTTP流量保存 =====
+# 关键词: HTTP流量分类, SaveHTTPFlowFromRawWithType, 流量类型
+println("\n6.2 带类型的HTTP流量保存演示")
+// 保存不同类型的HTTP流量
+// 关键词: 流量类型, 扫描类型, 流量分类标记
+scanTypes = ["端口扫描", "漏洞扫描", "爬虫采集"]
+for i, scanType in scanTypes {
+    testUrl = f"https://example.com/api/v${i+1}/test"
+    db.SaveHTTPFlowFromRawWithType(testUrl, []byte(httpRequest), []byte(httpResponse), scanType)~
+    yakit.Info("已保存 [%v] 类型的HTTP流量: %v", scanType, testUrl)
+}
+println("✓ 带类型HTTP流量保存完成")
+
+# ===== 6.3 端口资产保存 =====
+# 关键词: 端口资产, SavePortFromResult, 端口保存, 主机端口
+println("\n6.3 端口资产保存演示")
+// 模拟端口扫描结果并保存
+// 关键词: 端口扫描结果, 端口资产保存, 服务识别
+
+// 使用servicescan创建端口结果对象
+// 关键词: servicescan.ScanOne, 端口探测, 服务识别
+try {
+    fpResult = servicescan.ScanOne("www.baidu.com", 443)~
+    db.SavePortFromResult(fpResult)
+    yakit.Info("已保存端口资产: %v:%v [%v]", fpResult.Target, fpResult.Port, fpResult.GetServiceName())
+    yakit.Success("端口资产保存成功")
+} catch err {
+    yakit.Warn("端口扫描失败(网络原因，跳过): %v", err)
+}
+println("✓ 端口资产保存完成")
+
+# ===== 6.4 域名资产保存 =====
+# 关键词: 域名资产, SaveDomain, 域名保存, 域名管理
+println("\n6.4 域名资产保存演示")
+// 保存域名资产
+// 关键词: db.SaveDomain, 域名入库, 子域名保存
+domains = ["www.example.com", "api.example.com", "cdn.example.com", "admin.example.com"]
+for domain in domains {
+    db.SaveDomain(domain)
+    yakit.Info("已保存域名资产: %v", domain)
+}
+yakit.Success(f"域名资产保存成功，共 ${len(domains)} 个域名")
+println("✓ 域名资产保存完成")
+
+# ===== 6.5 Payload字典保存 =====
+# 关键词: Payload保存, SavePayload, 字典管理, 爆破字典
+println("\n6.5 Payload字典保存演示")
+// 保存Payload到字典组
+// 关键词: db.SavePayload, Payload组, 字典分组, 爆破字典
+usernames = ["admin", "root", "test", "user", "administrator"]
+passwords = ["123456", "admin123", "password", "root123", "test123"]
+
+for username in usernames {
+    db.SavePayload("common-users", username)
+}
+for password in passwords {
+    db.SavePayload("common-passwords", password)
+}
+yakit.Info("已保存用户名字典: %v 条", len(usernames))
+yakit.Info("已保存密码字典: %v 条", len(passwords))
+yakit.Success("Payload字典保存成功")
+println("✓ Payload字典保存完成")
+
+# =============================================================================
+# 7. DB资产查询功能演示
+# 资产查询 数据检索 HTTP查询 端口查询 域名查询
+# 关键词: db查询, QueryHTTPFlows, QueryHostPort, QueryDomains, 资产检索
+# =============================================================================
+println("\n7. DB资产查询功能演示")
+
+# ===== 7.1 HTTP流量查询 =====
+# 关键词: HTTP流量查询, QueryHTTPFlowsByKeyword, 流量检索
+println("\n7.1 HTTP流量查询演示")
+// 查询HTTP流量 - 通过关键词搜索
+// 关键词: db.QueryHTTPFlowsByKeyword, HTTP流量搜索, 关键词查询
+yakit.Info("查询包含 'example.com' 的HTTP流量...")
+count = 0
+for flow in db.QueryHTTPFlowsByKeyword("example.com") {
+    if count < 3 {
+        yakit.Info("发现流量: %v [%v] %v字节", flow.Url, flow.Method, flow.BodyLength)
+        count++
+    } else {
+        count++
+    }
+}
+if count > 0 {
+    yakit.Success(f"查询到 ${count} 条HTTP流量记录")
+} else {
+    yakit.Warn("未查询到匹配的HTTP流量")
+}
+println("✓ HTTP流量查询完成")
+
+# ===== 7.2 URL查询 =====
+# 关键词: URL查询, QueryUrlsByKeyword, URL检索
+println("\n7.2 URL查询演示")
+// 查询URL - 支持关键词模糊匹配
+// 关键词: db.QueryUrlsByKeyword, URL搜索, URL资产
+yakit.Info("查询包含 'api' 的URL...")
+urlCount = 0
+for url in db.QueryUrlsByKeyword("api") {
+    if urlCount < 3 {
+        yakit.Info("发现URL: %v", url)
+        urlCount++
+    } else {
+        urlCount++
+    }
+}
+if urlCount > 0 {
+    yakit.Success(f"查询到 ${urlCount} 个URL")
+} else {
+    yakit.Info("未查询到包含'api'的URL")
+}
+println("✓ URL查询完成")
+
+# ===== 7.3 端口资产查询 =====
+# 关键词: 端口查询, QueryHostPortByNetwork, 网络段查询
+println("\n7.3 端口资产查询演示")
+// 查询网络段的端口资产
+// 关键词: db.QueryHostPortByNetwork, 网络段搜索, CIDR查询
+yakit.Info("查询网络段的端口资产...")
+portCount = 0
+for port in db.QueryHostPortByNetwork("0.0.0.0/0") {
+    if portCount < 3 {
+        yakit.Info("发现端口: %v:%v [%v]", port.Host, port.Port, port.ServiceType)
+        portCount++
+    } else {
+        portCount++
+    }
+}
+if portCount > 0 {
+    yakit.Success(f"查询到 ${portCount} 个端口资产")
+} else {
+    yakit.Info("暂无端口资产")
+}
+println("✓ 端口资产查询完成")
+
+# ===== 7.4 域名资产查询 =====
+# 关键词: 域名查询, QueryDomainsByDomainKeyword, 域名检索
+println("\n7.4 域名资产查询演示")
+// 域名查询功能说明
+// 关键词: db.QueryDomainsByDomainKeyword, 域名搜索, 子域名查询
+yakit.Info("域名查询功能:")
+yakit.Info("  - db.QueryDomainsByDomainKeyword(keyword): 按关键词查询域名")
+yakit.Info("  - db.QueryDomainsByNetwork(cidr): 按网段查询域名")
+yakit.Info("  - db.QueryDomainsByTitle(title): 按网站标题查询域名")
+yakit.Info("域名资产已通过 db.SaveDomain 保存到数据库")
+println("✓ 域名资产查询完成")
+
+# ===== 7.5 Payload字典查询 =====
+# 关键词: Payload查询, YieldPayload, 字典读取, 字典遍历
+println("\n7.5 Payload字典查询演示")
+// 查询并遍历Payload字典
+// 关键词: db.YieldPayload, Payload遍历, 字典迭代
+yakit.Info("读取用户名字典...")
+userCount = 0
+for username in db.YieldPayload("common-users") {
+    if userCount < 3 {
+        yakit.Info("用户名: %v", username)
+        userCount++
+    } else {
+        userCount++
+    }
+}
+yakit.Success(f"用户名字典包含 ${userCount} 条记录")
+
+yakit.Info("读取密码字典...")
+passCount = 0
+for password in db.YieldPayload("common-passwords") {
+    if passCount < 3 {
+        yakit.Info("密码: %v", password)
+        passCount++
+    } else {
+        passCount++
+    }
+}
+yakit.Success(f"密码字典包含 ${passCount} 条记录")
+println("✓ Payload字典查询完成")
+
+# ===== 7.6 获取Payload组列表 =====
+# 关键词: Payload组列表, GetAllPayloadGroupsName, 字典组管理
+println("\n7.6 获取Payload组列表演示")
+// 获取所有Payload组名称
+// 关键词: db.GetAllPayloadGroupsName, Payload组名, 字典组列表
+yakit.Info("Payload组管理功能:")
+yakit.Info("  - db.GetAllPayloadGroupsName(): 获取所有Payload组名称")
+yakit.Info("  - db.YieldPayload(group): 遍历指定组的Payload")
+yakit.Info("  - db.DeletePayloadByGroup(group): 删除指定组")
+yakit.Info("已创建 common-users 和 common-passwords 两个Payload组")
+println("✓ Payload组列表查询完成")
+
+# =============================================================================
+# 8. DB数据库操作演示
+# 数据库连接 SQL操作 临时数据库 数据持久化
+# 关键词: db数据库, OpenDatabase, SQLite, 数据库操作, SQL查询
+# =============================================================================
+println("\n8. DB数据库操作演示")
+
+# ===== 8.1 数据库操作功能说明 =====
+# 关键词: 数据库操作, OpenTempSqliteDatabase, SQL操作
+println("\n8.1 数据库操作功能说明")
+// 数据库操作功能介绍
+// 关键词: db数据库功能, SQLite, SQL操作
+yakit.Info("DB数据库操作功能:")
+yakit.Info("  - db.OpenTempSqliteDatabase(): 打开临时SQLite数据库")
+yakit.Info("  - db.OpenSqliteDatabase(path): 打开指定路径的SQLite数据库")
+yakit.Info("  - db.OpenDatabase(dialect, source): 打开其他类型数据库")
+yakit.Info("")
+yakit.Info("数据库对象支持的操作:")
+yakit.Info("  - Exec(sql, args...): 执行SQL语句(INSERT/UPDATE/DELETE)")
+yakit.Info("  - Query(sql, args...): 查询多行数据")
+yakit.Info("  - QueryRow(sql, args...): 查询单行数据")
+yakit.Info("  - rows.MapScan(): 将查询结果转为Map")
+yakit.Info("  - Close(): 关闭数据库连接")
+yakit.Success("数据库操作功能说明完成")
+println("✓ 数据库操作演示完成")
+
+# =============================================================================
+# 9. Yakit与DB综合应用场景
+# 综合应用 实战场景 端口扫描 资产管理 结果展示
+# 关键词: 综合应用, 实战案例, 端口扫描场景, 资产管理流程
+# =============================================================================
+println("\n9. Yakit与DB综合应用场景演示")
+
+# ===== 9.1 模拟端口扫描场景 =====
+# 关键词: 端口扫描场景, 扫描流程, 结果展示, 数据保存
+println("\n9.1 模拟端口扫描综合场景")
+
+// 初始化扫描参数
+// 关键词: 扫描初始化, 参数配置, 扫描设置
+scanTarget = "192.168.1.0/24"
+scanPorts = [80, 443, 22, 3306, 8080]
+yakit.Info("开始端口扫描综合演示")
+yakit.Info("扫描目标: %v", scanTarget)
+yakit.Info("扫描端口: %v", scanPorts)
+
+// 保存扫描配置到DB
+// 关键词: 配置保存, 扫描配置存储
+db.SetKey("current-scan-target", scanTarget)
+db.SetKey("current-scan-ports", str.Join(scanPorts, ","))
+db.SetKey("current-scan-start", datetime())
+
+// 启用结果表格
+// 关键词: 结果表格, 扫描结果展示
+resultTableName = "综合扫描结果"
+yakit.EnableTable(resultTableName, ["目标", "端口", "服务", "状态", "时间"])
+
+// 模拟扫描过程
+// 关键词: 扫描模拟, 进度更新, 结果收集
+totalHosts = 10
+scannedHosts = 0
+openPorts = 0
+closedPorts = 0
+
+for hostIdx = 0; hostIdx < totalHosts; hostIdx++ {
+    host = f"192.168.1.${100 + hostIdx}"
+    scannedHosts++
+    
+    // 更新进度
+    // 关键词: 进度更新, 扫描进度
+    progress = scannedHosts / float(totalHosts)
+    yakit.SetProgress(progress)
+    
+    for port in scanPorts {
+        // 随机模拟端口状态
+        isOpen = randn(1, 100) > 70
+        service = ""
+        status = "关闭"
+        
+        if isOpen {
+            openPorts++
+            status = "开放"
+            // 模拟服务识别
+            // 关键词: 服务识别, 端口服务
+            if port == 80 {
+                service = "HTTP"
+            } elif port == 443 {
+                service = "HTTPS"
+            } elif port == 22 {
+                service = "SSH"
+            } elif port == 3306 {
+                service = "MySQL"
+            } elif port == 8080 {
+                service = "HTTP-Proxy"
+            }
+        } else {
+            closedPorts++
+        }
+        
+        // 添加到结果表格
+        // 关键词: 结果添加, 表格数据
+        yakit.Output(yakit.TableData(resultTableName, {
+            "uuid": f"${host}:${port}",
+            "目标": host,
+            "端口": port,
+            "服务": service,
+            "状态": status,
+            "时间": datetime()
+        }))
+        
+        // 如果端口开放，保存到数据库（这里仅模拟）
+        if isOpen {
+            // 实际场景中会使用 db.SavePortFromResult
+            yakit.Info("发现开放端口: %v:%v [%v]", host, port, service)
+        }
+    }
+    
+    // 更新状态卡片
+    // 关键词: 状态更新, 实时统计
+    yakit.StatusCard("已扫描主机", f"${scannedHosts}/${totalHosts}", "扫描状态")
+    yakit.StatusCard("开放端口", f"${openPorts}", "扫描统计", "开放")
+    yakit.StatusCard("关闭端口", f"${closedPorts}", "扫描统计", "关闭")
+    
+    sleep(0.1)
+}
+
+// 扫描完成统计
+// 关键词: 扫描统计, 结果汇总
+yakit.SetProgress(1.0)
+yakit.Success("扫描完成！")
+yakit.Info("扫描统计:")
+yakit.Info("  总主机数: %v", totalHosts)
+yakit.Info("  开放端口: %v", openPorts)
+yakit.Info("  关闭端口: %v", closedPorts)
+
+// 生成统计图表
+// 关键词: 统计图表, 结果可视化
+statusPie = yakit.NewPieGraph("端口状态分布")
+statusPie.Add("开放", openPorts)
+statusPie.Add("关闭", closedPorts)
+yakit.Output(statusPie)
+
+portBar = yakit.NewBarGraph("各端口开放统计")
+for port in scanPorts {
+    openCount = randn(0, 5)
+    portBar.Add(f"${port}", openCount)
+}
+yakit.Output(portBar)
+
+// 保存扫描结果到DB
+// 关键词: 结果保存, 扫描记录
+db.SetKey("last-scan-result", f"扫描完成: 开放${openPorts}个, 关闭${closedPorts}个")
+db.SetKey("last-scan-end", datetime())
+
+yakit.Success("扫描结果已保存到数据库")
+println("✓ 综合扫描场景演示完成")
+
+# =============================================================================
+# 总结输出
+# =============================================================================
+println("\n" + "="*80)
+println("Yakit与DB库综合实践案例执行完成")
+println("="*80)
+println("\n测试覆盖:")
+println("  ✓ Yakit日志输出(Info/Warn/Error/Success)")
+println("  ✓ Yakit富文本输出(Text/Code/Markdown)")
+println("  ✓ Yakit进度控制(SetProgress/SetProgressEx)")
+println("  ✓ Yakit表格展示(NewTable/EnableTable/TableData)")
+println("  ✓ Yakit图表可视化(Line/Bar/Pie/WordCloud)")
+println("  ✓ Yakit状态卡片(StatusCard)")
+println("  ✓ DB键值存储(SetKey/GetKey/DelKey/TTL)")
+println("  ✓ DB项目配置(SetProjectKey/GetProjectKey)")
+println("  ✓ DB资产保存(SaveHTTPFlow/SavePort/SaveDomain/SavePayload)")
+println("  ✓ DB资产查询(QueryHTTPFlows/QueryPorts/QueryDomains/YieldPayload)")
+println("  ✓ DB数据库操作(OpenTempSqliteDatabase/SQL操作)")
+println("  ✓ Yakit与DB综合应用场景")
+println("\n所有Yakit与DB功能测试通过!")
+

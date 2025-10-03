@@ -1,0 +1,644 @@
+# =============================================================================
+# Codec与TLS结合实践案例
+# 加密解密验证 证书编码 哈希签名 密钥转换
+# 关键词: codec, tls, 加密验证, 证书编码, 哈希, 签名, 密钥转换
+# =============================================================================
+
+# =============================================================================
+# 1. TLS密钥对生成与Codec编码演示
+# 密钥编码 Base64编码 Hex编码 密钥格式转换
+# 关键词: 密钥编码, Base64, Hex, 密钥格式, PEM转换
+# =============================================================================
+println("1. TLS密钥对生成与Codec编码演示")
+
+# ===== 1.1 生成RSA密钥对并进行多种编码 =====
+# 关键词: RSA密钥编码, Base64编码密钥, Hex编码密钥, 密钥格式转换
+println("\n1.1 生成RSA密钥对并进行多种编码")
+// 生成2048位RSA密钥对
+// 关键词: tls.GenerateRSA2048KeyPair, RSA密钥生成, 2048位密钥
+pubKey, priKey, err = tls.GenerateRSA2048KeyPair()
+if err != nil {
+    die("生成RSA密钥对失败: " + err.Error())
+}
+println("原始公钥PEM格式(前100字符):", string(pubKey)[:100])
+
+// 使用Codec对公钥进行Base64编码
+// 关键词: codec.EncodeBase64, 密钥Base64编码, PEM Base64转换
+pubKeyBase64 = codec.EncodeBase64(pubKey)
+println("公钥Base64编码(前100字符):", pubKeyBase64[:100])
+
+// 使用Codec对私钥进行Hex编码
+// 关键词: codec.EncodeToHex, 密钥Hex编码, 十六进制密钥
+priKeyHex = codec.EncodeToHex(priKey)
+println("私钥Hex编码(前100字符):", priKeyHex[:100])
+
+// 验证编码后可以正确解码
+// 关键词: 编码解码验证, Base64解码, Hex解码, 密钥完整性
+pubKeyDecoded = codec.DecodeBase64(pubKeyBase64)~
+priKeyDecoded = codec.DecodeHex(priKeyHex)~
+assert string(pubKeyDecoded) == string(pubKey), "Base64解码后的公钥应该与原始公钥一致"
+assert string(priKeyDecoded) == string(priKey), "Hex解码后的私钥应该与原始私钥一致"
+println("✓ 密钥编码解码验证通过")
+
+# ===== 1.2 密钥的URL安全编码 =====
+# 关键词: URL安全编码, EncodeBase64Url, 密钥URL传输, URL友好编码
+println("\n1.2 密钥的URL安全编码")
+// 使用URL安全的Base64编码
+// 关键词: codec.EncodeBase64Url, URL安全Base64, 密钥URL编码
+pubKeyUrlSafe = codec.EncodeBase64Url(pubKey)
+println("公钥URL安全Base64编码(前100字符):", pubKeyUrlSafe[:100])
+
+// 解码并验证
+// 关键词: URL Base64解码, codec.DecodeBase64Url, 密钥解码验证
+pubKeyFromUrl = codec.DecodeBase64Url(pubKeyUrlSafe)~
+assert string(pubKeyFromUrl) == string(pubKey), "URL安全Base64解码后应该与原始公钥一致"
+println("✓ 密钥URL安全编码验证通过")
+
+# =============================================================================
+# 2. TLS证书生成与Codec哈希演示
+# 证书哈希 指纹计算 SHA256 MD5 证书摘要
+# 关键词: 证书哈希, 证书指纹, SHA256, MD5, 证书摘要, 证书校验
+# =============================================================================
+println("\n2. TLS证书生成与Codec哈希演示")
+
+# ===== 2.1 生成CA证书并计算多种哈希 =====
+# 关键词: CA证书哈希, 证书指纹计算, 多哈希算法, 证书摘要
+println("\n2.1 生成CA证书并计算多种哈希")
+// 生成根CA证书
+// 关键词: tls.GenerateRootCA, 根证书生成, CA创建
+caCert, caKey, err = tls.GenerateRootCA("HashTestCA")
+if err != nil {
+    die("生成CA证书失败: " + err.Error())
+}
+println("CA证书生成成功，长度:", len(caCert), "字节")
+
+// 计算证书的MD5哈希(常用于快速校验)
+// 关键词: codec.Md5, 证书MD5, MD5指纹, 证书快速校验
+certMd5 = codec.Md5(caCert)
+println("证书MD5哈希:", certMd5)
+assert len(certMd5) == 32, "MD5哈希应该是32个字符"
+
+// 计算证书的SHA256哈希(推荐用于证书指纹)
+// 关键词: codec.Sha256, 证书SHA256, SHA256指纹, 证书安全校验
+certSha256 = codec.Sha256(caCert)
+println("证书SHA256哈希:", certSha256)
+assert len(certSha256) == 64, "SHA256哈希应该是64个字符"
+
+// 计算证书的SHA1哈希(传统证书指纹)
+// 关键词: codec.Sha1, 证书SHA1, SHA1指纹, 传统证书校验
+certSha1 = codec.Sha1(caCert)
+println("证书SHA1哈希:", certSha1)
+assert len(certSha1) == 40, "SHA1哈希应该是40个字符"
+
+// 计算国密SM3哈希
+// 关键词: codec.Sm3, 证书SM3哈希, 国密哈希, 国密证书校验
+certSm3Bytes = codec.Sm3(caCert)
+certSm3 = codec.EncodeToHex(certSm3Bytes)
+println("证书SM3哈希:", certSm3)
+assert len(certSm3) == 64, "SM3哈希应该是64个字符"
+
+println("✓ 证书多种哈希计算验证通过")
+
+# ===== 2.2 证书指纹格式化显示 =====
+# 关键词: 证书指纹格式化, 指纹分段显示, 可读性优化
+println("\n2.2 证书指纹格式化显示")
+// 将SHA256指纹按照常见格式显示(每2个字符用冒号分隔)
+// 关键词: 指纹格式化, 冒号分隔, 可读性, 证书指纹显示
+
+// 手动格式化SHA256指纹
+formattedFingerprint = ""
+for i = 0; i < len(certSha256); i += 2 {
+    if i > 0 {
+        formattedFingerprint += ":"
+    }
+    formattedFingerprint += certSha256[i:i+2]
+}
+println("格式化SHA256指纹:", formattedFingerprint)
+assert str.Contains(formattedFingerprint, ":"), "格式化指纹应该包含冒号分隔符"
+println("✓ 证书指纹格式化验证通过")
+
+# =============================================================================
+# 3. TLS密钥加密与Codec验证演示
+# RSA加密验证 PKCS1v15 加密解密 密文编码
+# 关键词: RSA加密验证, PKCS1v15, 加密解密, 密文编码, 非对称加密
+# =============================================================================
+println("\n3. TLS密钥加密与Codec验证演示")
+
+# ===== 3.1 RSA加密并对密文进行编码 =====
+# 关键词: RSA加密编码, 密文Base64, 密文Hex, 加密数据编码
+println("\n3.1 RSA加密并对密文进行编码")
+// 准备测试数据
+// 关键词: 加密测试数据, 敏感数据, 待加密明文
+sensitiveData = "Secret Password: P@ssw0rd123!"
+println("原始敏感数据:", sensitiveData)
+
+// 使用TLS的RSA加密
+// 关键词: tls.EncryptWithPkcs1v15, RSA公钥加密, PKCS1v15加密
+encrypted, err = tls.EncryptWithPkcs1v15(pubKey, sensitiveData)
+if err != nil {
+    die("RSA加密失败: " + err.Error())
+}
+println("加密后数据长度:", len(encrypted), "字节")
+
+// 将密文进行Base64编码(便于传输和存储)
+// 关键词: codec.EncodeBase64, 密文Base64编码, 密文传输编码
+encryptedBase64 = codec.EncodeBase64(encrypted)
+println("密文Base64编码:", encryptedBase64)
+
+// 将密文进行Hex编码(便于调试和显示)
+// 关键词: codec.EncodeToHex, 密文Hex编码, 密文十六进制
+encryptedHex = codec.EncodeToHex(encrypted)
+println("密文Hex编码(前80字符):", encryptedHex[:80])
+
+// 从Base64解码密文并解密
+// 关键词: Base64解码, codec.DecodeBase64, 密文解码
+encryptedFromBase64 = codec.DecodeBase64(encryptedBase64)~
+decrypted, err = tls.DecryptWithPkcs1v15(priKey, encryptedFromBase64)
+if err != nil {
+    die("RSA解密失败: " + err.Error())
+}
+println("解密后数据:", string(decrypted))
+
+// 验证加密解密的正确性
+// 关键词: 加密解密验证, 数据完整性, 明文密文验证
+assert string(decrypted) == sensitiveData, "解密后的数据应该与原始数据一致"
+println("✓ RSA加密解密与编码验证通过")
+
+# ===== 3.2 密文完整性验证(使用哈希) =====
+# 关键词: 密文完整性, 哈希校验, 数据完整性验证, HMAC
+println("\n3.2 密文完整性验证")
+// 计算密文的哈希值用于完整性验证
+// 关键词: codec.Sha256, 密文哈希, 完整性校验哈希
+encryptedHash = codec.Sha256(encrypted)
+println("密文SHA256哈希:", encryptedHash)
+
+// 模拟传输后重新计算哈希验证完整性
+// 关键词: 完整性验证, 哈希对比, 数据篡改检测
+encryptedHashVerify = codec.Sha256(encryptedFromBase64)
+println("解码后密文SHA256哈希:", encryptedHashVerify)
+assert encryptedHash == encryptedHashVerify, "传输前后密文哈希应该一致"
+println("✓ 密文完整性验证通过")
+
+# =============================================================================
+# 4. HMAC签名与证书验证演示
+# HMAC签名 消息认证 证书签名 数据完整性
+# 关键词: HMAC签名, 消息认证码, MAC, 证书验证, 数据完整性
+# =============================================================================
+println("\n4. HMAC签名与证书验证演示")
+
+# ===== 4.1 使用HMAC对证书进行签名 =====
+# 关键词: 证书HMAC签名, HMAC-SHA256, 证书MAC, 证书完整性保护
+println("\n4.1 使用HMAC对证书进行签名")
+// 使用密钥对证书进行HMAC签名
+// 关键词: codec.HmacSha256, HMAC签名计算, 证书签名, MAC计算
+hmacKey = "certificate-verification-key"
+certHmacBytes = codec.HmacSha256(hmacKey, caCert)
+certHmac = codec.EncodeToHex(certHmacBytes)
+println("证书HMAC-SHA256签名:", certHmac)
+assert len(certHmac) == 64, "HMAC-SHA256应该是64个字符"
+
+// 验证证书HMAC签名
+// 关键词: HMAC验证, 签名验证, 证书完整性验证, MAC验证
+certHmacVerifyBytes = codec.HmacSha256(hmacKey, caCert)
+certHmacVerify = codec.EncodeToHex(certHmacVerifyBytes)
+assert certHmac == certHmacVerify, "HMAC签名验证应该通过"
+println("✓ 证书HMAC签名验证通过")
+
+# ===== 4.2 使用不同HMAC算法对密钥签名 =====
+# 关键词: 多种HMAC算法, HmacMD5, HmacSha1, HmacSha512, 密钥签名
+println("\n4.2 使用不同HMAC算法对密钥签名")
+// HMAC-MD5签名
+// 关键词: codec.HmacMD5, HMAC-MD5签名, MD5 MAC
+keyHmacMd5 = codec.EncodeToHex(codec.HmacMD5(hmacKey, priKey))
+println("私钥HMAC-MD5:", keyHmacMd5)
+assert len(keyHmacMd5) == 32, "HMAC-MD5应该是32个字符"
+
+// HMAC-SHA1签名
+// 关键词: codec.HmacSha1, HMAC-SHA1签名, SHA1 MAC
+keyHmacSha1 = codec.EncodeToHex(codec.HmacSha1(hmacKey, priKey))
+println("私钥HMAC-SHA1:", keyHmacSha1)
+assert len(keyHmacSha1) == 40, "HMAC-SHA1应该是40个字符"
+
+// HMAC-SHA512签名
+// 关键词: codec.HmacSha512, HMAC-SHA512签名, SHA512 MAC
+keyHmacSha512 = codec.EncodeToHex(codec.HmacSha512(hmacKey, priKey))
+println("私钥HMAC-SHA512(前80字符):", keyHmacSha512[:80], "...")
+assert len(keyHmacSha512) == 128, "HMAC-SHA512应该是128个字符"
+
+// HMAC-SM3签名(国密)
+// 关键词: codec.HmacSM3, HMAC-SM3签名, 国密MAC, SM3 HMAC
+keyHmacSm3 = codec.EncodeToHex(codec.HmacSM3(hmacKey, priKey))
+println("私钥HMAC-SM3:", keyHmacSm3)
+assert len(keyHmacSm3) == 64, "HMAC-SM3应该是64个字符"
+
+println("✓ 多种HMAC算法签名验证通过")
+
+# =============================================================================
+# 5. AES加密与密钥保护演示
+# AES加密 密钥保护 对称加密 私钥加密存储
+# 关键词: AES加密, 密钥保护, 对称加密, 私钥存储, CBC模式
+# =============================================================================
+println("\n5. AES加密与密钥保护演示")
+
+# ===== 5.1 使用AES加密保护私钥 =====
+# 关键词: 私钥AES加密, 密钥保护, AES-CBC, 私钥存储加密
+println("\n5.1 使用AES加密保护私钥")
+// 生成AES密钥和IV
+// 关键词: AES密钥生成, AES IV, 随机密钥, 随机向量
+aesKey = "12345678901234567890123456789012"  // 32字节用于AES-256
+aesIv = "1234567890123456"  // 16字节IV
+
+// 使用AES-CBC加密私钥
+// 关键词: codec.AESCBCEncrypt, AES-CBC加密, 私钥加密, 对称密钥加密
+encryptedPrivateKey = codec.AESCBCEncrypt(aesKey, priKey, aesIv)~
+println("加密后的私钥长度:", len(encryptedPrivateKey), "字节")
+
+// 将加密后的私钥进行Base64编码存储
+// 关键词: 加密密钥Base64, 密钥存储编码, Base64存储
+encryptedPrivateKeyBase64 = codec.EncodeBase64(encryptedPrivateKey)
+println("加密私钥Base64编码(前80字符):", encryptedPrivateKeyBase64[:80])
+
+// 从存储中读取并解密私钥
+// 关键词: Base64解码, 密钥解密, AES-CBC解密, 私钥还原
+encryptedPrivateKeyFromStorage = codec.DecodeBase64(encryptedPrivateKeyBase64)~
+decryptedPrivateKey = codec.AESCBCDecrypt(aesKey, encryptedPrivateKeyFromStorage, aesIv)~
+println("解密私钥成功，长度:", len(decryptedPrivateKey), "字节")
+
+// 验证解密后的私钥与原始私钥一致
+// 关键词: 私钥验证, 加密解密验证, 密钥完整性
+assert string(decryptedPrivateKey) == string(priKey), "解密后的私钥应该与原始私钥一致"
+println("✓ AES私钥保护验证通过")
+
+# ===== 5.2 使用AES-GCM加密私钥(带认证) =====
+# 关键词: AES-GCM加密, 认证加密, AEAD, 私钥保护GCM
+println("\n5.2 使用AES-GCM加密私钥(带认证)")
+// 使用AES-GCM模式提供额外的完整性保护
+// 关键词: codec.AESGCMEncrypt, GCM模式, 认证加密, AEAD加密
+gcmEncryptedKey = codec.AESGCMEncrypt(aesKey, priKey, aesIv)~
+println("GCM加密后的私钥长度:", len(gcmEncryptedKey), "字节")
+
+// 解密并验证
+// 关键词: codec.AESGCMDecrypt, GCM解密, 认证解密
+gcmDecryptedKey = codec.AESGCMDecrypt(aesKey, gcmEncryptedKey, aesIv)~
+assert string(gcmDecryptedKey) == string(priKey), "GCM解密后的私钥应该与原始私钥一致"
+println("✓ AES-GCM私钥保护验证通过")
+
+# =============================================================================
+# 6. SM4国密加密与证书保护演示
+# SM4加密 国密对称加密 证书保护 国密算法
+# 关键词: SM4加密, 国密SM4, 对称加密, 证书保护, GM算法
+# =============================================================================
+println("\n6. SM4国密加密与证书保护演示")
+
+# ===== 6.1 使用SM4-CBC加密证书 =====
+# 关键词: SM4-CBC加密, 国密证书保护, SM4加密证书, CBC模式
+println("\n6.1 使用SM4-CBC加密证书")
+// 生成SM4密钥(16字节)
+// 关键词: SM4密钥, 16字节密钥, 国密密钥
+sm4Key = "16BytesSM4Key123"
+sm4Iv = "16BytesSM4IV5678"
+
+// 使用SM4-CBC加密CA证书
+// 关键词: codec.Sm4CBCEncrypt, SM4-CBC加密, 证书加密, 国密加密
+encryptedCert = codec.Sm4CBCEncrypt(sm4Key, caCert, sm4Iv)~
+println("SM4加密后的证书长度:", len(encryptedCert), "字节")
+
+// 将加密证书进行Hex编码
+// 关键词: 加密证书Hex编码, SM4密文编码
+encryptedCertHex = codec.EncodeToHex(encryptedCert)
+println("SM4加密证书Hex编码(前80字符):", encryptedCertHex[:80])
+
+// 解密证书
+// 关键词: codec.Sm4CBCDecrypt, SM4-CBC解密, 证书解密
+decryptedCert = codec.Sm4CBCDecrypt(sm4Key, encryptedCert, sm4Iv)~
+assert string(decryptedCert) == string(caCert), "SM4解密后的证书应该与原始证书一致"
+println("✓ SM4-CBC证书保护验证通过")
+
+# ===== 6.2 使用SM4-GCM加密证书(带认证) =====
+# 关键词: SM4-GCM加密, 国密认证加密, SM4 AEAD, GCM模式
+println("\n6.2 使用SM4-GCM加密证书(带认证)")
+// 使用SM4-GCM模式
+// 关键词: codec.Sm4GCMEncrypt, SM4-GCM加密, 国密AEAD
+sm4GcmEncryptedCert = codec.Sm4GCMEncrypt(sm4Key, caCert, sm4Iv)~
+println("SM4-GCM加密后的证书长度:", len(sm4GcmEncryptedCert), "字节")
+
+// 解密并验证
+// 关键词: codec.Sm4GCMDecrypt, SM4-GCM解密
+sm4GcmDecryptedCert = codec.Sm4GCMDecrypt(sm4Key, sm4GcmEncryptedCert, sm4Iv)~
+assert string(sm4GcmDecryptedCert) == string(caCert), "SM4-GCM解密后的证书应该与原始证书一致"
+println("✓ SM4-GCM证书保护验证通过")
+
+# =============================================================================
+# 7. URL编码与证书传输演示
+# URL编码 证书传输 HTTP传输 编码转换
+# 关键词: URL编码, 证书传输, HTTP传输, EncodeUrl, DecodeUrl
+# =============================================================================
+println("\n7. URL编码与证书传输演示")
+
+# ===== 7.1 证书的URL编码传输 =====
+# 关键词: 证书URL编码, URL传输, HTTP参数传输, 证书编码
+println("\n7.1 证书的URL编码传输")
+// 先将证书Base64编码
+// 关键词: 证书Base64, Base64编码
+certBase64 = codec.EncodeBase64(caCert)
+println("证书Base64长度:", len(certBase64), "字节")
+
+// 对Base64证书进行URL编码(模拟HTTP传输)
+// 关键词: codec.EncodeUrl, URL编码, HTTP参数编码
+certUrlEncoded = codec.EncodeUrl(certBase64)
+println("URL编码后长度:", len(certUrlEncoded), "字节")
+
+// 从URL解码并还原证书
+// 关键词: codec.DecodeUrl, URL解码, HTTP参数解码
+certBase64Decoded = codec.DecodeUrl(certUrlEncoded)~
+certFromUrl = codec.DecodeBase64(certBase64Decoded)~
+assert string(certFromUrl) == string(caCert), "从URL传输还原的证书应该与原始证书一致"
+println("✓ 证书URL编码传输验证通过")
+
+# ===== 7.2 双重URL编码(防止特殊字符问题) =====
+# 关键词: 双重URL编码, DoubleEncodeUrl, 特殊字符处理, 安全传输
+println("\n7.2 双重URL编码")
+// 对敏感数据进行双重URL编码
+// 关键词: codec.DoubleEncodeUrl, 双重编码, 特殊字符转义
+testData = "Certificate: " + string(caCert)[:50]
+doubleEncoded = codec.DoubleEncodeUrl(testData)
+println("双重URL编码(前80字符):", doubleEncoded[:80])
+
+// 双重解码
+// 关键词: codec.DoubleDecodeUrl, 双重解码
+doubleDecoded = codec.DoubleDecodeUrl(doubleEncoded)~
+assert str.HasPrefix(doubleDecoded, "Certificate: "), "双重解码后应该正确还原"
+println("✓ 双重URL编码验证通过")
+
+# =============================================================================
+# 8. HTML编码与证书展示演示
+# HTML编码 证书展示 Web显示 HTML实体
+# 关键词: HTML编码, 证书展示, Web显示, EncodeHtmlEntity, HTML转义
+# =============================================================================
+println("\n8. HTML编码与证书展示演示")
+
+# ===== 8.1 证书的HTML实体编码 =====
+# 关键词: HTML实体编码, EncodeHtml, Web展示编码, HTML转义
+println("\n8.1 证书的HTML实体编码")
+// 截取证书的一部分用于演示
+// 关键词: 证书片段, HTML展示数据
+certSnippet = string(caCert)[:200]
+println("原始证书片段(前100字符):", certSnippet[:100])
+
+// 进行HTML实体编码(防止XSS等问题)
+// 关键词: codec.EncodeHtml, HTML实体编码, XSS防护
+htmlEncoded = codec.EncodeHtml(certSnippet)
+println("HTML实体编码(前100字符):", htmlEncoded[:100])
+
+// HTML解码还原
+// 关键词: codec.DecodeHtml, HTML实体解码, 数据还原
+htmlDecoded = codec.DecodeHtml(htmlEncoded)
+assert htmlDecoded == certSnippet, "HTML解码后应该与原始数据一致"
+println("✓ HTML实体编码验证通过")
+
+# ===== 8.2 证书的HTML Hex编码 =====
+# 关键词: HTML Hex编码, EncodeHtmlHex, 十六进制实体, HTML转义
+println("\n8.2 证书的HTML Hex编码")
+// 使用十六进制HTML实体编码
+// 关键词: codec.EncodeHtmlHex, HTML十六进制实体
+htmlHexEncoded = codec.EncodeHtmlHex(certSnippet)
+println("HTML Hex实体编码(前100字符):", htmlHexEncoded[:100])
+
+// HTML Hex解码
+// 关键词: codec.DecodeHtml, HTML十六进制解码 (注意：解码统一使用DecodeHtml)
+htmlHexDecoded = codec.DecodeHtml(htmlHexEncoded)
+assert htmlHexDecoded == certSnippet, "HTML Hex解码后应该与原始数据一致"
+println("✓ HTML Hex编码验证通过")
+
+# =============================================================================
+# 9. 证书链哈希验证演示
+# 证书链验证 哈希链 完整性校验 信任链
+# 关键词: 证书链验证, 哈希链, 完整性校验, 信任链验证, Chain of Trust
+# =============================================================================
+println("\n9. 证书链哈希验证演示")
+
+# ===== 9.1 创建证书链并计算哈希链 =====
+# 关键词: 证书链哈希, 哈希链计算, 证书层级验证, 信任链哈希
+println("\n9.1 创建证书链并计算哈希链")
+// 生成完整的证书链
+// 关键词: 证书链生成, 根CA, 中间CA, 服务器证书
+
+// 1. 根CA
+// 关键词: 根CA生成, Root Certificate
+rootCA, rootKey, err = tls.GenerateRootCA("Root CA")
+if err != nil {
+    die("生成根CA失败: " + err.Error())
+}
+rootHash = codec.Sha256(rootCA)
+println("根CA证书SHA256:", rootHash)
+
+// 2. 中间CA
+// 关键词: 中间CA签发, Intermediate Certificate
+intermediateCA, intermediateKey, err = tls.SignX509ServerCertAndKey(rootCA, rootKey)
+if err != nil {
+    die("签发中间CA失败: " + err.Error())
+}
+intermediateHash = codec.Sha256(intermediateCA)
+println("中间CA证书SHA256:", intermediateHash)
+
+// 3. 服务器证书
+// 关键词: 服务器证书签发, End Entity Certificate
+serverCert, serverKey, err = tls.SignX509ServerCertAndKey(intermediateCA, intermediateKey)
+if err != nil {
+    die("签发服务器证书失败: " + err.Error())
+}
+serverHash = codec.Sha256(serverCert)
+println("服务器证书SHA256:", serverHash)
+
+// 计算证书链的组合哈希
+// 关键词: 证书链组合哈希, 链式哈希, 信任链验证
+chainData = string(rootCA) + string(intermediateCA) + string(serverCert)
+chainHash = codec.Sha256(chainData)
+println("证书链组合SHA256:", chainHash)
+
+// 验证证书链的完整性
+// 关键词: 证书链完整性, 哈希验证, 信任链校验
+assert len(rootHash) == 64, "根CA哈希应该是64个字符"
+assert len(intermediateHash) == 64, "中间CA哈希应该是64个字符"
+assert len(serverHash) == 64, "服务器证书哈希应该是64个字符"
+assert len(chainHash) == 64, "证书链哈希应该是64个字符"
+println("✓ 证书链哈希验证通过")
+
+# ===== 9.2 使用HMAC验证证书链完整性 =====
+# 关键词: 证书链HMAC, 链式MAC, 证书链完整性, 信任链HMAC
+println("\n9.2 使用HMAC验证证书链完整性")
+// 为证书链生成HMAC签名
+// 关键词: 证书链HMAC签名, 链式HMAC验证
+chainKey = "certificate-chain-verification-key"
+chainHmacBytes = codec.HmacSha256(chainKey, chainData)
+chainHmac = codec.EncodeToHex(chainHmacBytes)
+println("证书链HMAC-SHA256:", chainHmac)
+
+// 验证证书链HMAC
+// 关键词: HMAC验证, 证书链验证, 完整性校验
+chainHmacVerifyBytes = codec.HmacSha256(chainKey, chainData)
+chainHmacVerify = codec.EncodeToHex(chainHmacVerifyBytes)
+assert chainHmac == chainHmacVerify, "证书链HMAC验证应该通过"
+println("✓ 证书链HMAC验证通过")
+
+# =============================================================================
+# 10. 密钥派生与密码学应用演示
+# 密钥派生 PBKDF2 密码哈希 盐值
+# 关键词: 密钥派生, PBKDF2, 密码哈希, 盐值, KDF
+# =============================================================================
+println("\n10. 密钥派生与密码学应用演示")
+
+# ===== 10.1 使用证书哈希派生加密密钥 =====
+# 关键词: 密钥派生, 证书派生密钥, 哈希派生, 确定性密钥生成
+println("\n10.1 使用证书哈希派生加密密钥")
+// 从证书哈希派生AES密钥
+// 关键词: 证书派生AES密钥, 哈希派生密钥, 确定性生成
+derivedKey = codec.Sha256(caCert)
+println("从证书派生的密钥(SHA256):", derivedKey)
+
+// 截取前32字节作为AES-256密钥
+// 关键词: AES密钥截取, 256位密钥, 密钥长度调整
+aes256Key = derivedKey[:32]  // 32字节 = 256位
+println("AES-256密钥(前32字符):", aes256Key)
+
+// 使用派生的密钥加密数据
+// 关键词: 派生密钥加密, 确定性加密, 证书派生加密
+testPlaintext = "Data encrypted with derived key"
+derivedIv = "16BytesDerived!!"
+encryptedWithDerived = codec.AESCBCEncrypt(aes256Key, testPlaintext, derivedIv)~
+println("使用派生密钥加密成功，密文长度:", len(encryptedWithDerived), "字节")
+
+// 解密验证
+// 关键词: 派生密钥解密, 解密验证
+decryptedWithDerived = codec.AESCBCDecrypt(aes256Key, encryptedWithDerived, derivedIv)~
+assert string(decryptedWithDerived) == testPlaintext, "使用派生密钥解密应该成功"
+println("✓ 密钥派生加密验证通过")
+
+# ===== 10.2 多级密钥派生 =====
+# 关键词: 多级密钥派生, 密钥层级, 派生密钥链, KDF链
+println("\n10.2 多级密钥派生")
+// 第一级：从证书派生主密钥
+// 关键词: 主密钥派生, 根密钥, Master Key
+masterKey = codec.Sha256(rootCA)
+println("主密钥(SHA256):", masterKey)
+
+// 第二级：从主密钥派生子密钥
+// 关键词: 子密钥派生, 派生密钥, Derived Key
+subKey1 = codec.Sha256(masterKey + "encryption")
+subKey2 = codec.Sha256(masterKey + "authentication")
+println("加密子密钥:", subKey1)
+println("认证子密钥:", subKey2)
+
+// 第三级：从子密钥派生会话密钥
+// 关键词: 会话密钥派生, Session Key, 临时密钥
+sessionKey = codec.Sha256(subKey1 + "session-001")
+println("会话密钥:", sessionKey)
+
+// 验证密钥派生的确定性
+// 关键词: 派生确定性, 密钥可重现性, 确定性验证
+masterKeyVerify = codec.Sha256(rootCA)
+assert masterKey == masterKeyVerify, "密钥派生应该是确定性的"
+println("✓ 多级密钥派生验证通过")
+
+# =============================================================================
+# 11. 综合安全通信场景演示
+# 安全通信 端到端加密 混合加密 实战应用
+# 关键词: 安全通信, E2E加密, 混合加密, RSA+AES, 实战场景
+# =============================================================================
+println("\n11. 综合安全通信场景演示")
+
+# ===== 11.1 混合加密通信(RSA+AES) =====
+# 关键词: 混合加密, RSA+AES, 密钥交换, 对称加密, 非对称加密
+println("\n11.1 混合加密通信场景")
+// 场景：发送方使用混合加密发送消息
+
+// 1. 生成随机AES会话密钥
+// 关键词: 会话密钥生成, 随机AES密钥, Session Key
+sessionAesKey = codec.Sha256("random-session-" + str.RandStr(16))[:32]
+sessionAesIv = codec.Md5("random-iv-" + str.RandStr(16))[:16]
+println("步骤1: 生成会话密钥")
+
+// 2. 使用AES加密消息内容(对称加密，速度快)
+// 关键词: AES消息加密, 对称加密消息, 大数据加密
+largeMessage = "This is a large message that needs to be encrypted efficiently. " * 10
+encryptedMessage = codec.AESGCMEncrypt(sessionAesKey, largeMessage, sessionAesIv)~
+println("步骤2: AES加密消息，密文长度:", len(encryptedMessage), "字节")
+
+// 3. 使用RSA加密AES会话密钥(非对称加密，安全传输密钥)
+// 关键词: RSA密钥加密, 会话密钥加密, 密钥交换
+encryptedSessionKey = tls.EncryptWithPkcs1v15(pubKey, sessionAesKey)~
+println("步骤3: RSA加密会话密钥，密文长度:", len(encryptedSessionKey), "字节")
+
+// 4. 将加密的消息和密钥一起传输(模拟)
+// 关键词: 加密数据传输, 混合加密传输, 密钥和数据分离
+println("步骤4: 传输加密消息和加密会话密钥")
+
+// === 接收方解密过程 ===
+// 5. 使用RSA私钥解密会话密钥
+// 关键词: RSA解密会话密钥, 私钥解密, 密钥恢复
+decryptedSessionKey = tls.DecryptWithPkcs1v15(priKey, encryptedSessionKey)~
+println("步骤5: 解密会话密钥成功")
+
+// 6. 使用解密的会话密钥解密消息
+// 关键词: AES解密消息, 会话密钥解密, 数据恢复
+decryptedMessage = codec.AESGCMDecrypt(string(decryptedSessionKey), encryptedMessage, sessionAesIv)~
+println("步骤6: 解密消息成功，消息长度:", len(decryptedMessage), "字节")
+
+// 验证混合加密通信的完整性
+// 关键词: 混合加密验证, 端到端验证, 加密完整性
+assert string(decryptedMessage) == largeMessage, "混合加密解密后消息应该完整"
+println("✓ 混合加密通信场景验证通过")
+
+# ===== 11.2 带签名的安全通信 =====
+# 关键词: 带签名通信, 消息签名, 完整性保护, 认证通信
+println("\n11.2 带签名的安全通信")
+// 发送方：加密并签名消息
+
+// 1. 加密消息
+// 关键词: 消息加密, 机密性保护
+secureMessage = "Confidential and authenticated message"
+encryptedSecureMsg = codec.AESGCMEncrypt(sessionAesKey, secureMessage, sessionAesIv)~
+
+// 2. 对加密消息进行HMAC签名
+// 关键词: 消息HMAC签名, 完整性签名, 认证标签
+signatureKeyBytes = codec.HmacSha256("signature-key", encryptedSecureMsg)
+signature = codec.EncodeToHex(signatureKeyBytes)
+println("消息签名:", signature)
+
+// 接收方：验证签名并解密
+
+// 3. 验证HMAC签名
+// 关键词: 签名验证, HMAC验证, 完整性验证
+verifySignatureBytes = codec.HmacSha256("signature-key", encryptedSecureMsg)
+verifySignature = codec.EncodeToHex(verifySignatureBytes)
+if signature != verifySignature {
+    die("消息签名验证失败，可能被篡改!")
+}
+println("签名验证通过")
+
+// 4. 解密消息
+// 关键词: 验证后解密, 认证解密
+decryptedSecureMsg = codec.AESGCMDecrypt(sessionAesKey, encryptedSecureMsg, sessionAesIv)~
+assert string(decryptedSecureMsg) == secureMessage, "解密后消息应该正确"
+println("✓ 带签名安全通信验证通过")
+
+# =============================================================================
+# 总结输出
+# =============================================================================
+println("\n" + "="*80)
+println("Codec与TLS结合实践案例执行完成")
+println("="*80)
+println("\n测试覆盖:")
+println("  ✓ TLS密钥对生成与Codec编码(Base64/Hex/URL)")
+println("  ✓ TLS证书生成与Codec哈希(MD5/SHA1/SHA256/SM3)")
+println("  ✓ RSA加密与密文编码传输")
+println("  ✓ HMAC签名与证书完整性验证")
+println("  ✓ AES加密保护TLS私钥")
+println("  ✓ SM4国密加密保护证书")
+println("  ✓ URL/HTML编码用于证书传输展示")
+println("  ✓ 证书链哈希验证")
+println("  ✓ 密钥派生与多级KDF")
+println("  ✓ 混合加密通信(RSA+AES)")
+println("  ✓ 带签名的安全通信")
+println("\n所有Codec与TLS结合功能测试通过!")
+

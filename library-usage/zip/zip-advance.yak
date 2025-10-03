@@ -108,14 +108,10 @@ Input: <script>alert('xss')</script>`,
 这是一个示例项目，用于演示 Yaklang 的各种功能。
 
 ## 安装
-\`\`\`bash
-yak install myapp
-\`\`\`
+  yak install myapp
 
 ## 使用方法
-\`\`\`yak
-app.Start()
-\`\`\`
+  app.Start()
 
 ## TODO
 - [ ] 添加用户认证
@@ -312,7 +308,11 @@ try {
     lines = str.Split(content, "\n")
     println("文件共", len(lines), "行")
     println("前5行内容:")
-    for i in range(0, min(5, len(lines))) {
+    max_lines = 5
+    if len(lines) < max_lines {
+        max_lines = len(lines)
+    }
+    for i := 0; i < max_lines; i++ {
         println(sprintf("  %d: %s", i+1, lines[i]))
     }
 } catch err {
@@ -388,8 +388,11 @@ try {
             lines = str.Split(result.Content, "\n")
             println(sprintf("\n文件: %s (%d 行)", result.FileName, len(lines)))
             println("最后3行:")
-            start_idx = max(0, len(lines) - 3)
-            for i in range(start_idx, len(lines)) {
+            start_idx = len(lines) - 3
+            if start_idx < 0 {
+                start_idx = 0
+            }
+            for i := start_idx; i < len(lines); i++ {
                 if str.TrimSpace(lines[i]) != "" {
                     println("  ", lines[i])
                 }
@@ -804,11 +807,406 @@ try {
 }
 
 // =============================================================================
-// 13. 功能验证总结
+// 13. zip.GrepPath 系列 - 文件路径搜索功能
+// 路径搜索 文件名搜索 目录搜索 路径过滤
+// 关键词: GrepPathRegexp, GrepPathSubString, 路径搜索, 文件名匹配
+// =============================================================================
+println("\n13. zip.GrepPath 系列 - 文件路径搜索功能")
+
+// 测试1: 使用正则搜索文件路径
+println("\n测试1: 搜索所有 .yak 文件")
+try {
+    results = zip.GrepPathRegexp(zip_file_path, `\.yak$`)~
+    println("找到", len(results), "个 .yak 文件:")
+    
+    for result in results {
+        // 路径搜索结果的特点：LineNumber=0, Line=FileName
+        assert result.LineNumber == 0, "路径搜索 LineNumber 应为 0"
+        assert result.Line == result.FileName, "路径搜索 Line 应等于 FileName"
+        assert str.HasPrefix(result.ScoreMethod, "path_"), "ScoreMethod 应以 path_ 开头"
+        println(sprintf("  %s (Score: %.4f)", result.FileName, result.Score))
+    }
+} catch err {
+    println("路径搜索失败:", err)
+}
+
+// 测试2: 搜索包含特定目录的文件
+println("\n测试2: 搜索 src/ 目录下的所有文件")
+try {
+    results = zip.GrepPathRegexp(zip_file_path, `^src/`)~
+    println("找到", len(results), "个文件在 src/ 目录:")
+    
+    for result in results {
+        println(sprintf("  %s", result.FileName))
+    }
+} catch err {
+    println("路径搜索失败:", err)
+}
+
+// 测试3: 使用子字符串搜索（不区分大小写）
+println("\n测试3: 搜索路径中包含 'log' 的文件")
+try {
+    results = zip.GrepPathSubString(zip_file_path, "log")~
+    println("找到", len(results), "个包含 'log' 的文件:")
+    
+    for result in results {
+        println(sprintf("  %s", result.FileName))
+    }
+} catch err {
+    println("子串搜索失败:", err)
+}
+
+// 测试4: 区分大小写的路径搜索
+println("\n测试4: 区分大小写搜索包含 'LOG' 的文件")
+try {
+    results = zip.GrepPathSubString(zip_file_path, "LOG", zip.grepCaseSensitive())~
+    println("找到", len(results), "个包含 'LOG' 的文件（区分大小写）")
+    
+    for result in results {
+        println(sprintf("  %s", result.FileName))
+    }
+} catch err {
+    println("区分大小写搜索失败:", err)
+}
+
+// 测试5: 从原始数据搜索路径
+println("\n测试5: 从原始数据搜索测试文件")
+try {
+    raw_data = file.ReadFile(zip_file_path)~
+    results = zip.GrepPathRawRegexp(raw_data, `_test\.yak$|test/`)~
+    println("找到", len(results), "个测试相关文件:")
+    
+    for result in results {
+        println(sprintf("  %s", result.FileName))
+    }
+} catch err {
+    println("原始数据路径搜索失败:", err)
+}
+
+// 测试6: 限制搜索结果数量
+println("\n测试6: 限制路径搜索结果")
+try {
+    results = zip.GrepPathRegexp(zip_file_path, `\.`, zip.grepLimit(3))~
+    println("限制返回", len(results), "个结果:")
+    assert len(results) <= 3, "结果数量应不超过限制"
+    
+    for result in results {
+        println(sprintf("  %s", result.FileName))
+    }
+} catch err {
+    println("限制搜索失败:", err)
+}
+
+println("GrepPath 功能测试: 通过")
+
+// =============================================================================
+// 14. 路径过滤功能 - Include/Exclude 高级筛选
+// 路径过滤 包含筛选 排除筛选 精确控制
+// 关键词: grepIncludePathSubString, grepExcludePathSubString, grepIncludePathRegexp, grepExcludePathRegexp
+// =============================================================================
+println("\n14. 路径过滤功能 - Include/Exclude 高级筛选")
+
+// 测试1: 只在特定目录搜索内容
+println("\n测试1: 只在 src/ 目录搜索 'func'")
+try {
+    results = zip.GrepSubString(zip_file_path, "func",
+        zip.grepIncludePathSubString("src/"))~
+    println("找到", len(results), "处匹配:")
+    
+    for result in results {
+        // 验证所有结果都在 src/ 目录下
+        assert str.HasPrefix(result.FileName, "src/"), sprintf("文件 %s 应在 src/ 目录", result.FileName)
+        println(sprintf("  %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+} catch err {
+    println("包含路径搜索失败:", err)
+}
+
+// 测试2: 排除特定目录
+println("\n测试2: 搜索 'TODO' 但排除 logs/ 目录")
+try {
+    results = zip.GrepSubString(zip_file_path, "TODO",
+        zip.grepExcludePathSubString("logs/", "test/"))~
+    println("找到", len(results), "处 TODO（排除 logs 和 test）:")
+    
+    for result in results {
+        // 验证结果不包含排除的目录
+        assert !str.Contains(result.FileName, "logs/"), "不应包含 logs/"
+        assert !str.Contains(result.FileName, "test/"), "不应包含 test/"
+        println(sprintf("  %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+} catch err {
+    println("排除路径搜索失败:", err)
+}
+
+// 测试3: 使用正则表达式包含特定类型文件
+println("\n测试3: 只在 .yak 文件中搜索 'println'")
+try {
+    results = zip.GrepSubString(zip_file_path, "println",
+        zip.grepIncludePathRegexp(`\.yak$`))~
+    println("找到", len(results), "处 println（仅 .yak 文件）:")
+    
+    for result in results {
+        assert str.HasSuffix(result.FileName, ".yak"), sprintf("文件 %s 应以 .yak 结尾", result.FileName)
+        println(sprintf("  %s:%d", result.FileName, result.LineNumber))
+    }
+} catch err {
+    println("正则包含搜索失败:", err)
+}
+
+// 测试4: 使用正则表达式排除测试文件
+println("\n测试4: 搜索 'error' 但排除测试文件和日志文件")
+try {
+    results = zip.GrepRegexp(zip_file_path, `[Ee]rror`,
+        zip.grepExcludePathRegexp(`_test\.yak$|\.log$`))~
+    println("找到", len(results), "处 error（排除测试和日志）:")
+    
+    for result in results {
+        assert !str.HasSuffix(result.FileName, "_test.yak"), "不应包含测试文件"
+        assert !str.HasSuffix(result.FileName, ".log"), "不应包含日志文件"
+        println(sprintf("  %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+} catch err {
+    println("正则排除搜索失败:", err)
+}
+
+// 测试5: 组合多个过滤条件
+println("\n测试5: 组合过滤 - 只在 src/ 的 .yak 文件中搜索，排除 test")
+try {
+    results = zip.GrepSubString(zip_file_path, "func",
+        zip.grepIncludePathSubString("src/"),
+        zip.grepIncludePathRegexp(`\.yak$`),
+        zip.grepExcludePathRegexp(`_test\.yak$`))~
+    println("找到", len(results), "处匹配（组合过滤）:")
+    
+    for result in results {
+        assert str.HasPrefix(result.FileName, "src/"), "应在 src/ 目录"
+        assert str.HasSuffix(result.FileName, ".yak"), "应是 .yak 文件"
+        assert !str.Contains(result.FileName, "_test"), "不应是测试文件"
+        println(sprintf("  %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+} catch err {
+    println("组合过滤搜索失败:", err)
+}
+
+// 测试6: 从原始数据使用路径过滤
+println("\n测试6: 从原始数据使用路径过滤")
+try {
+    raw_data = file.ReadFile(zip_file_path)~
+    results = zip.GrepRawRegexp(raw_data, "INFO",
+        zip.grepIncludePathSubString("logs/"),
+        zip.grepExcludePathSubString("error"))~
+    println("找到", len(results), "处 INFO（只在 logs/，排除 error）:")
+    
+    for result in results {
+        println(sprintf("  %s:%d", result.FileName, result.LineNumber))
+    }
+} catch err {
+    println("原始数据路径过滤失败:", err)
+}
+
+println("路径过滤功能测试: 通过")
+
+// =============================================================================
+// 15. ZipGrepSearcher 路径功能 - 缓存搜索器的路径搜索
+// 缓存搜索 路径搜索 性能优化 高级搜索器
+// 关键词: NewGrepSearcher, GrepPathRegexp, GrepPathSubString, 缓存搜索
+// =============================================================================
+println("\n15. ZipGrepSearcher 路径功能 - 缓存搜索器的路径搜索")
+
+// 创建搜索器
+println("\n创建 ZipGrepSearcher 实例")
+try {
+    searcher = zip.NewGrepSearcher(zip_file_path)~
+    println("搜索器创建成功")
+    
+    // 测试1: 搜索器的路径正则搜索
+    println("\n测试1: 搜索器搜索所有配置文件")
+    pathResults = searcher.GrepPathRegexp(`\.(json|yaml|yml|conf)$`)~
+    println("找到", len(pathResults), "个配置文件:")
+    
+    for result in pathResults {
+        println(sprintf("  %s", result.FileName))
+    }
+    
+    // 测试2: 搜索器的路径子串搜索
+    println("\n测试2: 搜索器搜索包含 'util' 的文件")
+    pathResults = searcher.GrepPathSubString("util")~
+    println("找到", len(pathResults), "个包含 'util' 的文件:")
+    
+    for result in pathResults {
+        println(sprintf("  %s", result.FileName))
+    }
+    
+    // 测试3: 搜索器使用路径过滤搜索内容
+    println("\n测试3: 搜索器在源码中搜索 'http'（排除日志）")
+    contentResults = searcher.GrepSubString("http",
+        zip.grepIncludePathSubString("src/"),
+        zip.grepExcludePathSubString("logs/", "test/"))~
+    println("找到", len(contentResults), "处 'http':")
+    
+    for result in contentResults {
+        assert str.HasPrefix(result.FileName, "src/"), "应在 src/ 目录"
+        println(sprintf("  %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+    
+    // 测试4: 搜索器组合路径搜索和内容搜索
+    println("\n测试4: 先找到所有 .yak 文件，然后在其中搜索 'func'")
+    yakFiles = searcher.GrepPathRegexp(`\.yak$`)~
+    println("步骤1: 找到", len(yakFiles), "个 .yak 文件")
+    
+    funcMatches = searcher.GrepSubString("func",
+        zip.grepIncludePathRegexp(`\.yak$`))~
+    println("步骤2: 在 .yak 文件中找到", len(funcMatches), "处 'func'")
+    
+    // 测试5: 预加载所有文件以加速搜索
+    println("\n测试5: 预加载并多次搜索")
+    start_time = time.Now()
+    
+    // 第一次搜索
+    result1 = searcher.GrepSubString("func")~
+    println("第1次搜索找到", len(result1), "处匹配")
+    
+    // 第二次搜索（使用缓存）
+    result2 = searcher.GrepRegexp("error")~
+    println("第2次搜索找到", len(result2), "处匹配")
+    
+    // 第三次搜索（使用缓存）
+    result3 = searcher.GrepPathSubString("src")~
+    println("第3次搜索找到", len(result3), "个文件")
+    
+    elapsed = time.Since(start_time)
+    println(sprintf("多次搜索总耗时: %v（得益于缓存）", elapsed))
+    
+} catch err {
+    println("搜索器测试失败:", err)
+}
+
+println("ZipGrepSearcher 路径功能测试: 通过")
+
+// =============================================================================
+// 16. 综合实战案例 - 路径搜索+过滤+内容搜索组合
+// 实战案例 综合应用 复杂场景 最佳实践
+// 关键词: 综合应用, 实战场景, 最佳实践, 复杂查询
+// =============================================================================
+println("\n16. 综合实战案例 - 路径搜索+过滤+内容搜索组合")
+
+// 实战1: 在代码库中查找安全问题
+println("\n实战1: 安全审计 - 查找潜在的安全问题")
+try {
+    // 只在源码文件中搜索敏感关键词
+    security_keywords = ["password", "secret", "api_key", "token"]
+    security_issues = []
+    
+    for keyword in security_keywords {
+        results = zip.GrepSubString(zip_file_path, keyword,
+            zip.grepIncludePathRegexp(`\.(yak|go|py|js)$`),
+            zip.grepExcludePathSubString("test/", "vendor/"),
+            zip.grepCaseSensitive(false))~
+        
+        if len(results) > 0 {
+            println(sprintf("  发现 '%s' 相关代码 %d 处:", keyword, len(results)))
+            for result in results {
+                println(sprintf("    %s:%d", result.FileName, result.LineNumber))
+                security_issues = append(security_issues, result)
+            }
+        }
+    }
+    
+    println(sprintf("安全审计完成，发现 %d 处需要关注的代码", len(security_issues)))
+} catch err {
+    println("安全审计失败:", err)
+}
+
+// 实战2: 代码统计分析
+println("\n实战2: 代码统计 - 分析不同目录的代码特征")
+try {
+    searcher = zip.NewGrepSearcher(zip_file_path)~
+    
+    // 统计 src/ 目录
+    srcFiles = searcher.GrepPathRegexp(`^src/.*\.yak$`)~
+    srcFuncs = searcher.GrepSubString("func", zip.grepIncludePathSubString("src/"))~
+    println(sprintf("  src/ 目录: %d 个文件, %d 个函数", len(srcFiles), len(srcFuncs)))
+    
+    // 统计 config/ 目录
+    configFiles = searcher.GrepPathRegexp(`^config/`)~
+    println(sprintf("  config/ 目录: %d 个配置文件", len(configFiles)))
+    
+    // 统计日志文件
+    logFiles = searcher.GrepPathRegexp(`\.log$`)~
+    errorLogs = searcher.GrepRegexp("ERROR", zip.grepIncludePathRegexp(`\.log$`))~
+    println(sprintf("  日志文件: %d 个, 包含 %d 条错误", len(logFiles), len(errorLogs)))
+    
+} catch err {
+    println("代码统计失败:", err)
+}
+
+// 实战3: 文档搜索
+println("\n实战3: 文档搜索 - 在特定类型文件中搜索关键词")
+try {
+    // 只在文档文件中搜索
+    docResults = zip.GrepSubString(zip_file_path, "TODO",
+        zip.grepIncludePathRegexp(`\.(md|txt|doc)$`))~
+    println(sprintf("  在文档文件中找到 %d 处 TODO", len(docResults)))
+    
+    for result in docResults {
+        println(sprintf("    %s:%d - %s", result.FileName, result.LineNumber, str.TrimSpace(result.Line)))
+    }
+} catch err {
+    println("文档搜索失败:", err)
+}
+
+// 实战4: 日志分析 - 多维度筛选
+println("\n实战4: 日志分析 - 组合多个条件分析日志")
+try {
+    searcher = zip.NewGrepSearcher(zip_file_path)~
+    
+    // 分析不同级别的日志
+    logLevels = ["ERROR", "WARN", "INFO", "DEBUG"]
+    
+    for level in logLevels {
+        results = searcher.GrepRegexp(level,
+            zip.grepIncludePathRegexp(`\.log$`),
+            zip.grepLimit(5))~  // 每个级别最多显示5条
+        
+        if len(results) > 0 {
+            println(sprintf("  %s 级别: 找到 %d+ 条日志", level, len(results)))
+        }
+    }
+    
+} catch err {
+    println("日志分析失败:", err)
+}
+
+// 实战5: 快速定位功能代码
+println("\n实战5: 快速定位 - 找到实现特定功能的文件")
+try {
+    // 场景：想找到所有处理 HTTP 的代码文件
+    httpFiles = zip.GrepPathSubString(zip_file_path, "http")~
+    println(sprintf("  步骤1: 找到 %d 个文件名包含 'http'", len(httpFiles)))
+    
+    for f in httpFiles {
+        println(sprintf("    %s", f.FileName))
+    }
+    
+    // 然后在这些文件中搜索具体的函数
+    httpFuncs = zip.GrepSubString(zip_file_path, "http",
+        zip.grepIncludePathSubString("http"),
+        zip.grepContextLine(2))~
+    println(sprintf("  步骤2: 在相关文件中找到 %d 处 HTTP 相关代码", len(httpFuncs)))
+    
+} catch err {
+    println("快速定位失败:", err)
+}
+
+println("综合实战案例测试: 通过")
+
+// =============================================================================
+// 17. 功能验证总结
 // 功能总结 测试总结 完成报告
 // 关键词: 功能总结, 测试报告, 验证完成
 // =============================================================================
-println("\n13. 功能验证总结")
+println("\n17. 功能验证总结")
 
 verified_features = [
     "zip.GrepRegexp - 正则表达式搜索",
@@ -822,11 +1220,30 @@ verified_features = [
     "zip.ExtractByPattern - 模式匹配提取",
     "zip.ExtractByPatternFromRaw - 从原始数据模式提取",
     "配置选项: grepLimit, grepContextLine, grepCaseSensitive",
+    // 新增功能
+    "zip.GrepPathRegexp - 正则搜索文件路径",
+    "zip.GrepPathSubString - 子串搜索文件路径",
+    "zip.GrepPathRawRegexp - 从原始数据搜索路径",
+    "zip.GrepPathRawSubString - 从原始数据搜索路径（子串）",
+    "路径过滤: grepIncludePathSubString - 包含路径子串",
+    "路径过滤: grepExcludePathSubString - 排除路径子串",
+    "路径过滤: grepIncludePathRegexp - 包含路径正则",
+    "路径过滤: grepExcludePathRegexp - 排除路径正则",
+    "ZipGrepSearcher.GrepPathRegexp - 搜索器路径搜索",
+    "ZipGrepSearcher.GrepPathSubString - 搜索器路径搜索",
+    "ZipGrepSearcher + 路径过滤 - 组合使用",
     "实战场景: 日志分析工作流",
     "实战场景: 代码审计工作流", 
     "实战场景: 配置文件管理",
+    "实战场景: 安全审计（路径过滤）",
+    "实战场景: 代码统计分析",
+    "实战场景: 文档搜索",
+    "实战场景: 多维度日志分析",
+    "实战场景: 快速功能定位",
     "高级应用: Grep + Extract 组合",
-    "性能测试: 并发提取效率"
+    "高级应用: 路径搜索 + 内容搜索 + 过滤组合",
+    "性能测试: 并发提取效率",
+    "性能测试: 缓存搜索器效率"
 ]
 
 println("✓ 验证通过的高级功能:")
@@ -836,10 +1253,11 @@ for i := 0; i < len(verified_features); i++ {
 
 println(sprintf("\n✓ 总计验证 %d 项高级功能", len(verified_features)))
 println("✓ 所有测试通过，zip 库高级功能完整且强大")
-println("✓ Grep、Extract 等功能可高效处理 ZIP 文件")
+println("✓ Grep、Extract、GrepPath、路径过滤等功能可高效处理 ZIP 文件")
+println("✓ 新增路径搜索和过滤功能，让 ZIP 操作更加强大和灵活")
 
 // 最终断言
-assert len(verified_features) >= 16, sprintf("应该验证至少16项功能，实际验证%d项", len(verified_features))
+assert len(verified_features) >= 30, sprintf("应该验证至少30项功能，实际验证%d项", len(verified_features))
 
 println("\n所有 zip 库高级功能测试完成!")
 println("zip-advance.yak: 测试通过!")

@@ -1,0 +1,1035 @@
+
+// =============================================================================
+// 1. 基础编码解码功能演示
+// Codec库基础编码 编码解码 Hex编码 Base64编码 Base32编码
+// 关键词: codec, 编码, 解码, Hex, Base64, Base32, EncodeToHex, DecodeHex
+// =============================================================================
+println("1. 基础编码解码功能演示")
+
+// ===== 1.1 Hex编码解码 - 十六进制编码 =====
+// 关键词: Hex编码, 十六进制, EncodeToHex, DecodeHex, 16进制编码, hex转换
+println("\n1.1 Hex编码解码")
+// 原始数据 - 待编码的字符串
+// 关键词: 原始数据, 待编码数据, 源数据, 明文数据
+originalData = "Hello Yaklang"
+// Hex编码 - 将字符串转换为十六进制
+// 关键词: Hex编码操作, 十六进制编码, codec.EncodeToHex, 编码为Hex
+hexEncoded = codec.EncodeToHex(originalData)
+println("原始数据:", originalData)
+println("Hex编码:", hexEncoded)
+
+// Hex解码 - 将十六进制转换回字符串
+// 关键词: Hex解码操作, 十六进制解码, codec.DecodeHex, Hex解码, ~操作符
+hexDecoded = codec.DecodeHex(hexEncoded)~
+println("Hex解码:", string(hexDecoded))
+
+// 严格验证 - 确保编码解码正确性
+// 关键词: 编码验证, 解码验证, assert验证, 数据一致性检查
+assert hexEncoded == "48656c6c6f2059616b6c616e67", "Hex编码结果不符合预期"
+assert string(hexDecoded) == originalData, "Hex解码后应该与原始数据一致"
+println("✓ Hex编码解码验证通过")
+
+// ===== 1.2 Base64编码解码 - Base64标准编码 =====
+// 关键词: Base64编码, Base64解码, EncodeBase64, DecodeBase64, Base64转换
+println("\n1.2 Base64编码解码")
+// Base64编码 - 标准Base64编码
+// 关键词: Base64编码操作, codec.EncodeBase64, 标准Base64, Base64加密
+base64Encoded = codec.EncodeBase64(originalData)
+println("Base64编码:", base64Encoded)
+
+// Base64解码 - 标准Base64解码
+// 关键词: Base64解码操作, codec.DecodeBase64, Base64解密, Base64还原
+base64Decoded = codec.DecodeBase64(base64Encoded)~
+println("Base64解码:", string(base64Decoded))
+
+// 验证Base64编码解码
+assert base64Encoded == "SGVsbG8gWWFrbGFuZw==", "Base64编码结果不符合预期"
+assert string(base64Decoded) == originalData, "Base64解码后应该与原始数据一致"
+println("✓ Base64编码解码验证通过")
+
+// ===== 1.3 Base64Url编码解码 - URL安全的Base64 =====
+// 关键词: Base64Url编码, URL安全Base64, EncodeBase64Url, DecodeBase64Url, Base64URL
+println("\n1.3 Base64Url编码解码")
+// URL安全数据 - 包含特殊字符的数据
+// 关键词: URL数据, 特殊字符, URL安全编码, 符号转换
+urlData = "test?param=value&key=123"
+// Base64Url编码 - URL安全的Base64编码
+// 关键词: Base64Url编码操作, codec.EncodeBase64Url, URL安全编码
+base64UrlEncoded = codec.EncodeBase64Url(urlData)
+println("Base64Url编码:", base64UrlEncoded)
+
+// Base64Url解码 - URL安全的Base64解码
+// 关键词: Base64Url解码操作, codec.DecodeBase64Url, URL安全解码
+base64UrlDecoded = codec.DecodeBase64Url(base64UrlEncoded)~
+println("Base64Url解码:", string(base64UrlDecoded))
+
+// 验证Base64Url编码解码
+assert string(base64UrlDecoded) == urlData, "Base64Url解码后应该与原始数据一致"
+println("✓ Base64Url编码解码验证通过")
+
+// ===== 1.4 Base32编码解码 - Base32编码 =====
+// 关键词: Base32编码, Base32解码, EncodeBase32, DecodeBase32, Base32转换
+println("\n1.4 Base32编码解码")
+// Base32编码 - RFC 4648标准Base32编码
+// 关键词: Base32编码操作, codec.EncodeBase32, RFC4648, Base32标准
+base32Encoded = codec.EncodeBase32(originalData)
+println("Base32编码:", base32Encoded)
+
+// Base32解码 - RFC 4648标准Base32解码
+// 关键词: Base32解码操作, codec.DecodeBase32, Base32还原
+base32Decoded = codec.DecodeBase32(base32Encoded)~
+println("Base32解码:", string(base32Decoded))
+
+// 验证Base32编码解码
+assert string(base32Decoded) == originalData, "Base32解码后应该与原始数据一致"
+println("✓ Base32编码解码验证通过")
+
+// =============================================================================
+// 2. 哈希函数演示
+// Hash函数 消息摘要 MD5 SHA SHA256 SM3 MurmurHash
+// 关键词: hash, 哈希, 摘要, MD5, SHA1, SHA256, SHA512, SM3, MMH3, 消息摘要
+// =============================================================================
+println("\n2. 哈希函数演示")
+
+// ===== 2.1 MD5哈希 - MD5消息摘要 =====
+// 关键词: MD5, MD5哈希, codec.Md5, 消息摘要, MD5加密, MD5散列
+println("\n2.1 MD5哈希")
+// 计算MD5 - 生成MD5摘要
+// 关键词: MD5计算, codec.Md5函数, MD5生成, MD5值
+md5Hash = codec.Md5(originalData)
+println("MD5哈希:", md5Hash)
+
+// MD5验证 - 验证MD5哈希值的正确性
+// 关键词: MD5验证, MD5校验, 哈希验证, 摘要验证
+assert len(md5Hash) == 32, "MD5哈希长度应该是32个字符"
+assert md5Hash == "74357c51a83c8c04cf366c5e91111b7f", "MD5哈希值不符合预期"
+println("✓ MD5哈希验证通过")
+
+// ===== 2.2 SHA系列哈希 - SHA-1, SHA-256, SHA-512 =====
+// 关键词: SHA, SHA1, SHA256, SHA512, SHA哈希, 安全哈希算法
+println("\n2.2 SHA系列哈希")
+// SHA-1哈希 - 160位哈希值
+// 关键词: SHA1, codec.Sha1, SHA-1算法, 160位哈希
+sha1Hash = codec.Sha1(originalData)
+println("SHA1哈希:", sha1Hash)
+assert len(sha1Hash) == 40, "SHA1哈希长度应该是40个字符"
+
+// SHA-256哈希 - 256位哈希值
+// 关键词: SHA256, codec.Sha256, SHA-256算法, 256位哈希
+sha256Hash = codec.Sha256(originalData)
+println("SHA256哈希:", sha256Hash)
+assert len(sha256Hash) == 64, "SHA256哈希长度应该是64个字符"
+
+// SHA-512哈希 - 512位哈希值
+// 关键词: SHA512, codec.Sha512, SHA-512算法, 512位哈希
+sha512Hash = codec.Sha512(originalData)
+println("SHA512哈希:", sha512Hash)
+assert len(sha512Hash) == 128, "SHA512哈希长度应该是128个字符"
+
+println("✓ SHA系列哈希验证通过")
+
+// ===== 2.3 国密SM3哈希 - 中国国密算法 =====
+// 关键词: SM3, 国密哈希, codec.Sm3, 国密算法, 中国密码算法, GM算法
+println("\n2.3 国密SM3哈希")
+// SM3哈希 - 国密SM3算法（返回字节数组）
+// 关键词: SM3计算, codec.Sm3函数, 国密SM3, SM3摘要, 字节数组
+sm3HashBytes = codec.Sm3(originalData)
+sm3Hash = codec.EncodeToHex(sm3HashBytes)
+println("SM3哈希:", sm3Hash)
+assert len(sm3Hash) == 64, "SM3哈希长度应该是64个字符"
+println("✓ SM3哈希验证通过")
+
+// ===== 2.4 MurmurHash3 - 非加密哈希 =====
+// 关键词: MurmurHash, MMH3, 非加密哈希, 快速哈希, MurmurHash3
+println("\n2.4 MurmurHash3哈希")
+// MMH3 32位哈希 - MurmurHash3 32位版本
+// 关键词: MMH3Hash32, codec.MMH3Hash32, 32位哈希, 快速哈希算法
+mmh3_32 = codec.MMH3Hash32(originalData)
+println("MMH3 32位哈希:", mmh3_32)
+
+// MMH3 128位哈希 - MurmurHash3 128位版本
+// 关键词: MMH3Hash128, codec.MMH3Hash128, 128位哈希
+mmh3_128 = codec.MMH3Hash128(originalData)
+println("MMH3 128位哈希:", mmh3_128)
+
+println("✓ MurmurHash3验证通过")
+
+// =============================================================================
+// 3. URL编码解码演示
+// URL编码 URL解码 QueryEscape PathEscape DoubleEncode
+// 关键词: URL编码, URL解码, EncodeUrl, DecodeUrl, 双重编码, URL转义
+// =============================================================================
+println("\n3. URL编码解码演示")
+
+// ===== 3.1 基础URL编码解码 - Query参数编码 =====
+// 关键词: URL基础编码, Query编码, codec.EncodeUrl, codec.DecodeUrl
+println("\n3.1 基础URL编码解码")
+// URL参数数据 - 包含特殊字符的URL参数
+// 关键词: URL参数, 特殊字符, Query字符串, 参数编码
+urlParam = "name=张三&value=hello world"
+// URL编码 - 编码URL查询参数
+// 关键词: URL编码操作, codec.EncodeUrl, Query编码, 参数转义
+urlEncoded = codec.EncodeUrl(urlParam)
+println("URL编码:", urlEncoded)
+
+// URL解码 - 解码URL查询参数
+// 关键词: URL解码操作, codec.DecodeUrl, Query解码, 参数还原
+urlDecoded = codec.DecodeUrl(urlEncoded)~
+println("URL解码:", string(urlDecoded))
+
+// 验证URL编码解码
+assert string(urlDecoded) == urlParam, "URL解码后应该与原始数据一致"
+println("✓ URL编码解码验证通过")
+
+// ===== 3.2 路径URL编码 - Path路径编码 =====
+// 关键词: 路径编码, Path编码, EscapePathUrl, UnescapePathUrl, 路径转义
+println("\n3.2 路径URL编码")
+// URL路径 - 包含特殊字符的路径
+// 关键词: URL路径, 路径数据, 特殊路径, 路径字符
+urlPath = "/api/用户/info"
+// 路径编码 - 编码URL路径
+// 关键词: 路径编码操作, codec.EscapePathUrl, Path转义
+pathEncoded = codec.EscapePathUrl(urlPath)
+println("路径编码:", pathEncoded)
+
+// 路径解码 - 解码URL路径
+// 关键词: 路径解码操作, codec.UnescapePathUrl, Path还原
+pathDecoded = codec.UnescapePathUrl(pathEncoded)~
+println("路径解码:", string(pathDecoded))
+
+// 验证路径编码解码
+assert string(pathDecoded) == urlPath, "路径解码后应该与原始数据一致"
+println("✓ 路径URL编码验证通过")
+
+// ===== 3.3 双重URL编码 - 绕过WAF的常用技巧 =====
+// 关键词: 双重编码, DoubleEncode, WAF绕过, 二次编码, URL双重转义
+println("\n3.3 双重URL编码")
+// 双重编码数据 - 用于绕过过滤
+// 关键词: 绕过数据, 双重编码数据, WAF绕过数据
+doubleData = "admin' OR '1'='1"
+// 双重URL编码 - 两次URL编码
+// 关键词: 双重URL编码操作, codec.DoubleEncodeUrl, 二次编码
+doubleUrlEncoded = codec.DoubleEncodeUrl(doubleData)
+println("双重URL编码:", doubleUrlEncoded)
+
+// 双重URL解码 - 两次URL解码
+// 关键词: 双重URL解码操作, codec.DoubleDecodeUrl, 二次解码
+doubleUrlDecoded = codec.DoubleDecodeUrl(doubleUrlEncoded)~
+println("双重URL解码:", string(doubleUrlDecoded))
+
+// 验证双重URL编码解码
+assert string(doubleUrlDecoded) == doubleData, "双重URL解码后应该与原始数据一致"
+println("✓ 双重URL编码验证通过")
+
+// =============================================================================
+// 4. HTML编码解码演示
+// HTML编码 HTML实体编码 HTML转义 XSS防护
+// 关键词: HTML编码, HTML解码, EncodeHtml, DecodeHtml, HTML实体, XSS
+// =============================================================================
+println("\n4. HTML编码解码演示")
+
+// ===== 4.1 HTML实体编码 - HTML Entity编码 =====
+// 关键词: HTML实体编码, HTML Entity, EncodeHtml, HTML特殊字符
+println("\n4.1 HTML实体编码")
+// HTML数据 - 包含HTML特殊字符
+// 关键词: HTML数据, 特殊字符, HTML标签, 脚本标签
+htmlData = "<script>alert('XSS')</script>"
+// HTML实体编码 - 将特殊字符转为实体
+// 关键词: HTML实体编码操作, codec.EncodeHtml, 实体转换
+htmlEncoded = codec.EncodeHtml(htmlData)
+println("HTML实体编码:", htmlEncoded)
+
+// HTML实体解码 - 将实体转回特殊字符
+// 关键词: HTML实体解码操作, codec.DecodeHtml, 实体还原
+htmlDecoded = codec.DecodeHtml(htmlEncoded)~
+println("HTML实体解码:", string(htmlDecoded))
+
+// 验证HTML编码解码
+assert string(htmlDecoded) == htmlData, "HTML解码后应该与原始数据一致"
+println("✓ HTML实体编码验证通过")
+
+// ===== 4.2 HTML十六进制实体编码 - Hex Entity =====
+// 关键词: HTML十六进制编码, Hex Entity, EncodeHtmlHex, HTML Hex
+println("\n4.2 HTML十六进制实体编码")
+// HTML Hex编码 - 使用十六进制实体
+// 关键词: HTML Hex编码操作, codec.EncodeHtmlHex, 十六进制实体
+htmlHexEncoded = codec.EncodeHtmlHex(htmlData)
+println("HTML Hex编码:", htmlHexEncoded)
+
+// HTML Hex解码
+htmlHexDecoded = codec.DecodeHtml(htmlHexEncoded)~
+println("HTML Hex解码:", string(htmlHexDecoded))
+
+// 验证HTML Hex编码解码
+assert string(htmlHexDecoded) == htmlData, "HTML Hex解码后应该与原始数据一致"
+println("✓ HTML Hex编码验证通过")
+
+// =============================================================================
+// 5. AES加密解密演示
+// AES加密 对称加密 CBC模式 ECB模式 GCM模式 PKCS7Padding
+// 关键词: AES, 加密, 解密, CBC, ECB, GCM, CFB, PKCS7, Padding
+// =============================================================================
+println("\n5. AES加密解密演示")
+
+// ===== 5.1 AES-CBC加密 - 最常用的AES模式 =====
+// 关键词: AES-CBC, CBC模式, AESCBCEncrypt, AESCBCDecrypt, PKCS7填充
+println("\n5.1 AES-CBC加密解密")
+// AES密钥和IV - 加密所需参数
+// 关键词: AES密钥, AES Key, IV向量, 初始化向量, 加密参数
+aesKey = "1234567890123456"  // 16字节密钥 (AES-128)
+aesIV = "abcdefghijklmnop"   // 16字节IV
+plaintext = "Secret Message"
+
+// AES-CBC加密 - 使用CBC模式和PKCS7填充
+// 关键词: AES加密操作, codec.AESCBCEncrypt, CBC加密, PKCS7填充
+aesCbcEncrypted = codec.AESCBCEncrypt(aesKey, plaintext, aesIV)~
+println("AES-CBC加密结果(Hex):", codec.EncodeToHex(aesCbcEncrypted))
+
+// AES-CBC解密 - 解密CBC模式数据
+// 关键词: AES解密操作, codec.AESCBCDecrypt, CBC解密, PKCS7去填充
+aesCbcDecrypted = codec.AESCBCDecrypt(aesKey, aesCbcEncrypted, aesIV)~
+println("AES-CBC解密结果:", string(aesCbcDecrypted))
+
+// 验证AES-CBC加密解密
+assert string(aesCbcDecrypted) == plaintext, "AES-CBC解密后应该与原始数据一致"
+println("✓ AES-CBC加密解密验证通过")
+
+// ===== 5.2 AES-ECB加密 - 简单模式(不推荐) =====
+// 关键词: AES-ECB, ECB模式, AESECBEncrypt, AESECBDecrypt, ECB加密
+println("\n5.2 AES-ECB加密解密")
+// AES-ECB加密 - ECB模式不需要IV（传nil）
+// 关键词: AES-ECB加密操作, codec.AESECBEncrypt, ECB加密, 无IV, nil参数
+aesEcbEncrypted = codec.AESECBEncrypt(aesKey, plaintext, nil)~
+println("AES-ECB加密结果(Hex):", codec.EncodeToHex(aesEcbEncrypted))
+
+// AES-ECB解密 - 解密ECB模式数据
+// 关键词: AES-ECB解密操作, codec.AESECBDecrypt, ECB解密
+aesEcbDecrypted = codec.AESECBDecrypt(aesKey, aesEcbEncrypted, nil)~
+println("AES-ECB解密结果:", string(aesEcbDecrypted))
+
+// 验证AES-ECB加密解密
+assert string(aesEcbDecrypted) == plaintext, "AES-ECB解密后应该与原始数据一致"
+println("✓ AES-ECB加密解密验证通过")
+
+// ===== 5.3 AES-GCM加密 - 认证加密模式 =====
+// 关键词: AES-GCM, GCM模式, 认证加密, AEAD, AESGCMEncrypt, AESGCMDecrypt
+println("\n5.3 AES-GCM加密解密")
+// AES-GCM加密 - 带认证的加密模式
+// 关键词: AES-GCM加密操作, codec.AESGCMEncrypt, 认证加密, AEAD模式
+aesGcmEncrypted = codec.AESGCMEncrypt(aesKey, plaintext, []byte("additional"))~
+println("AES-GCM加密结果(Hex):", codec.EncodeToHex(aesGcmEncrypted))
+
+// AES-GCM解密 - 解密并验证
+// 关键词: AES-GCM解密操作, codec.AESGCMDecrypt, 认证解密, 完整性验证
+aesGcmDecrypted = codec.AESGCMDecrypt(aesKey, aesGcmEncrypted, []byte("additional"))~
+println("AES-GCM解密结果:", string(aesGcmDecrypted))
+
+// 验证AES-GCM加密解密
+assert string(aesGcmDecrypted) == plaintext, "AES-GCM解密后应该与原始数据一致"
+println("✓ AES-GCM加密解密验证通过")
+
+// ===== 5.4 AES-CFB加密 - 流密码模式 =====
+// 关键词: AES-CFB, CFB模式, AESCFBEncrypt, AESCFBDecrypt, 流密码
+println("\n5.4 AES-CFB加密解密")
+// AES-CFB加密 - CFB流密码模式
+// 关键词: AES-CFB加密操作, codec.AESCFBEncrypt, CFB加密, 流加密
+aesCfbEncrypted = codec.AESCFBEncrypt(aesKey, plaintext, aesIV)~
+println("AES-CFB加密结果(Hex):", codec.EncodeToHex(aesCfbEncrypted))
+
+// AES-CFB解密
+// 关键词: AES-CFB解密操作, codec.AESCFBDecrypt, CFB解密
+aesCfbDecrypted = codec.AESCFBDecrypt(aesKey, aesCfbEncrypted, aesIV)~
+println("AES-CFB解密结果:", string(aesCfbDecrypted))
+
+// 验证AES-CFB加密解密
+assert string(aesCfbDecrypted) == plaintext, "AES-CFB解密后应该与原始数据一致"
+println("✓ AES-CFB加密解密验证通过")
+
+// =============================================================================
+// 6. DES/3DES加密解密演示
+// DES加密 3DES加密 TripleDES 对称加密 CBC ECB
+// 关键词: DES, 3DES, TripleDES, DESEncrypt, TripleDESEncrypt, 对称加密
+// =============================================================================
+println("\n6. DES/3DES加密解密演示")
+
+// ===== 6.1 DES-CBC加密 - DES标准加密 =====
+// 关键词: DES-CBC, DES加密, DESCBCEncrypt, DESCBCDecrypt, DES密码
+println("\n6.1 DES-CBC加密解密")
+// DES密钥和IV - DES需要8字节密钥
+// 关键词: DES密钥, DES Key, 8字节密钥, DES IV
+desKey = "12345678"  // 8字节密钥
+desIV = "abcdefgh"   // 8字节IV
+
+// DES-CBC加密
+// 关键词: DES加密操作, codec.DESCBCEncrypt, DES CBC加密
+desCbcEncrypted = codec.DESCBCEncrypt(desKey, plaintext, desIV)~
+println("DES-CBC加密结果(Hex):", codec.EncodeToHex(desCbcEncrypted))
+
+// DES-CBC解密
+// 关键词: DES解密操作, codec.DESCBCDecrypt, DES CBC解密
+desCbcDecrypted = codec.DESCBCDecrypt(desKey, desCbcEncrypted, desIV)~
+println("DES-CBC解密结果:", string(desCbcDecrypted))
+
+// 验证DES-CBC加密解密
+assert string(desCbcDecrypted) == plaintext, "DES-CBC解密后应该与原始数据一致"
+println("✓ DES-CBC加密解密验证通过")
+
+// ===== 6.2 3DES-CBC加密 - 三重DES加密 =====
+// 关键词: 3DES, TripleDES, 三重DES, TripleDESCBCEncrypt, 3DES加密
+println("\n6.2 3DES-CBC加密解密")
+// 3DES密钥 - 需要24字节密钥
+// 关键词: 3DES密钥, TripleDES Key, 24字节密钥
+tripleDesKey = "123456781234567812345678"  // 24字节密钥
+
+// 3DES-CBC加密
+// 关键词: 3DES加密操作, codec.TripleDESCBCEncrypt, 三重DES加密
+tripleDesCbcEncrypted = codec.TripleDESCBCEncrypt(tripleDesKey, plaintext, desIV)~
+println("3DES-CBC加密结果(Hex):", codec.EncodeToHex(tripleDesCbcEncrypted))
+
+// 3DES-CBC解密
+// 关键词: 3DES解密操作, codec.TripleDESCBCDecrypt, 三重DES解密
+tripleDesCbcDecrypted = codec.TripleDESCBCDecrypt(tripleDesKey, tripleDesCbcEncrypted, desIV)~
+println("3DES-CBC解密结果:", string(tripleDesCbcDecrypted))
+
+// 验证3DES-CBC加密解密
+assert string(tripleDesCbcDecrypted) == plaintext, "3DES-CBC解密后应该与原始数据一致"
+println("✓ 3DES-CBC加密解密验证通过")
+
+// =============================================================================
+// 7. 国密SM4加密解密演示
+// SM4加密 国密加密 中国密码算法 SM4-CBC SM4-ECB SM4-GCM
+// 关键词: SM4, 国密, 国密算法, SM4加密, Sm4Encrypt, 中国密码
+// =============================================================================
+println("\n7. 国密SM4加密解密演示")
+
+// ===== 7.1 SM4-CBC加密 - 国密对称加密 =====
+// 关键词: SM4-CBC, SM4加密, Sm4CBCEncrypt, Sm4CBCDecrypt, 国密SM4
+println("\n7.1 SM4-CBC加密解密")
+// SM4密钥和IV - 16字节密钥和IV
+// 关键词: SM4密钥, SM4 Key, 国密密钥, SM4 IV
+sm4Key = "1234567890123456"  // 16字节密钥
+sm4IV = "abcdefghijklmnop"   // 16字节IV
+
+// SM4-CBC加密
+// 关键词: SM4加密操作, codec.Sm4CBCEncrypt, SM4 CBC加密, 国密加密
+sm4CbcEncrypted = codec.Sm4CBCEncrypt(sm4Key, plaintext, sm4IV)~
+println("SM4-CBC加密结果(Hex):", codec.EncodeToHex(sm4CbcEncrypted))
+
+// SM4-CBC解密
+// 关键词: SM4解密操作, codec.Sm4CBCDecrypt, SM4 CBC解密, 国密解密
+sm4CbcDecrypted = codec.Sm4CBCDecrypt(sm4Key, sm4CbcEncrypted, sm4IV)~
+println("SM4-CBC解密结果:", string(sm4CbcDecrypted))
+
+// 验证SM4-CBC加密解密
+assert string(sm4CbcDecrypted) == plaintext, "SM4-CBC解密后应该与原始数据一致"
+println("✓ SM4-CBC加密解密验证通过")
+
+// ===== 7.2 SM4-ECB加密 - SM4 ECB模式 =====
+// 关键词: SM4-ECB, SM4 ECB模式, Sm4ECBEncrypt, Sm4ECBDecrypt
+println("\n7.2 SM4-ECB加密解密")
+// SM4-ECB加密（ECB模式传nil作为IV）
+// 关键词: SM4-ECB加密操作, codec.Sm4ECBEncrypt, SM4 ECB加密, nil参数
+sm4EcbEncrypted = codec.Sm4ECBEncrypt(sm4Key, plaintext, nil)~
+println("SM4-ECB加密结果(Hex):", codec.EncodeToHex(sm4EcbEncrypted))
+
+// SM4-ECB解密
+// 关键词: SM4-ECB解密操作, codec.Sm4ECBDecrypt, SM4 ECB解密
+sm4EcbDecrypted = codec.Sm4ECBDecrypt(sm4Key, sm4EcbEncrypted, nil)~
+println("SM4-ECB解密结果:", string(sm4EcbDecrypted))
+
+// 验证SM4-ECB加密解密
+assert string(sm4EcbDecrypted) == plaintext, "SM4-ECB解密后应该与原始数据一致"
+println("✓ SM4-ECB加密解密验证通过")
+
+// ===== 7.3 SM4-GCM加密 - SM4认证加密 =====
+// 关键词: SM4-GCM, SM4 GCM模式, Sm4GCMEncrypt, SM4认证加密, AEAD
+println("\n7.3 SM4-GCM加密解密")
+// SM4-GCM加密
+// 关键词: SM4-GCM加密操作, codec.Sm4GCMEncrypt, SM4 GCM加密
+sm4GcmEncrypted = codec.Sm4GCMEncrypt(sm4Key, plaintext, []byte("aad"))~
+println("SM4-GCM加密结果(Hex):", codec.EncodeToHex(sm4GcmEncrypted))
+
+// SM4-GCM解密
+// 关键词: SM4-GCM解密操作, codec.Sm4GCMDecrypt, SM4 GCM解密
+sm4GcmDecrypted = codec.Sm4GCMDecrypt(sm4Key, sm4GcmEncrypted, []byte("aad"))~
+println("SM4-GCM解密结果:", string(sm4GcmDecrypted))
+
+// 验证SM4-GCM加密解密
+assert string(sm4GcmDecrypted) == plaintext, "SM4-GCM解密后应该与原始数据一致"
+println("✓ SM4-GCM加密解密验证通过")
+
+// =============================================================================
+// 8. RC4流密码演示
+// RC4加密 流密码 RC4Encrypt RC4Decrypt
+// 关键词: RC4, 流密码, RC4加密, RC4解密, RC4Encrypt, RC4Decrypt
+// =============================================================================
+println("\n8. RC4流密码演示")
+
+// ===== 8.1 RC4加密解密 - 流密码算法 =====
+// 关键词: RC4加密解密, RC4流密码, codec.RC4Encrypt, codec.RC4Decrypt
+println("\n8.1 RC4加密解密")
+// RC4密钥 - 可变长度密钥
+// 关键词: RC4密钥, RC4 Key, 流密码密钥
+rc4Key = "secretkey"
+
+// RC4加密
+// 关键词: RC4加密操作, codec.RC4Encrypt, 流加密
+rc4Encrypted = codec.RC4Encrypt(rc4Key, plaintext)~
+println("RC4加密结果(Hex):", codec.EncodeToHex(rc4Encrypted))
+
+// RC4解密 - RC4加密解密使用相同操作
+// 关键词: RC4解密操作, codec.RC4Decrypt, 流解密
+rc4Decrypted = codec.RC4Decrypt(rc4Key, rc4Encrypted)~
+println("RC4解密结果:", string(rc4Decrypted))
+
+// 验证RC4加密解密
+assert string(rc4Decrypted) == plaintext, "RC4解密后应该与原始数据一致"
+println("✓ RC4加密解密验证通过")
+
+// =============================================================================
+// 9. HMAC消息认证码演示
+// HMAC 消息认证 HMAC-MD5 HMAC-SHA256 HMAC-SM3
+// 关键词: HMAC, 消息认证码, HmacSha256, HmacMD5, HmacSM3, MAC
+// =============================================================================
+println("\n9. HMAC消息认证码演示")
+
+// ===== 9.1 HMAC-SHA256 - 最常用的HMAC =====
+// 关键词: HMAC-SHA256, HmacSha256, 消息认证, MAC码, HMAC散列
+println("\n9.1 HMAC-SHA256")
+// HMAC密钥 - 用于消息认证的密钥
+// 关键词: HMAC密钥, HMAC Key, 认证密钥
+hmacKey = "secret_key_for_hmac"
+message = "Important Message"
+
+// 计算HMAC-SHA256（返回字节数组）
+// 关键词: HMAC计算, codec.HmacSha256, SHA256 MAC, 消息认证计算, 字节数组
+hmacSha256Bytes = codec.HmacSha256(hmacKey, message)
+hmacSha256 = codec.EncodeToHex(hmacSha256Bytes)
+println("HMAC-SHA256:", hmacSha256)
+
+// 验证HMAC长度
+assert len(hmacSha256) == 64, "HMAC-SHA256长度应该是64个字符"
+println("✓ HMAC-SHA256验证通过")
+
+// ===== 9.2 其他HMAC算法 =====
+// 关键词: HMAC算法, HmacMD5, HmacSha1, HmacSha512, HmacSM3
+println("\n9.2 其他HMAC算法")
+// HMAC-MD5（返回字节数组）
+// 关键词: HMAC-MD5, codec.HmacMD5, MD5 MAC, 字节数组
+hmacMd5 = codec.EncodeToHex(codec.HmacMD5(hmacKey, message))
+println("HMAC-MD5:", hmacMd5)
+assert len(hmacMd5) == 32, "HMAC-MD5长度应该是32个字符"
+
+// HMAC-SHA1（返回字节数组）
+// 关键词: HMAC-SHA1, codec.HmacSha1, SHA1 MAC, 字节数组
+hmacSha1 = codec.EncodeToHex(codec.HmacSha1(hmacKey, message))
+println("HMAC-SHA1:", hmacSha1)
+assert len(hmacSha1) == 40, "HMAC-SHA1长度应该是40个字符"
+
+// HMAC-SHA512（返回字节数组）
+// 关键词: HMAC-SHA512, codec.HmacSha512, SHA512 MAC, 字节数组
+hmacSha512 = codec.EncodeToHex(codec.HmacSha512(hmacKey, message))
+println("HMAC-SHA512:", hmacSha512)
+assert len(hmacSha512) == 128, "HMAC-SHA512长度应该是128个字符"
+
+// HMAC-SM3 - 国密HMAC（返回字节数组）
+// 关键词: HMAC-SM3, codec.HmacSM3, 国密HMAC, SM3 MAC, 字节数组
+hmacSm3 = codec.EncodeToHex(codec.HmacSM3(hmacKey, message))
+println("HMAC-SM3:", hmacSm3)
+assert len(hmacSm3) == 64, "HMAC-SM3长度应该是64个字符"
+
+println("✓ 所有HMAC算法验证通过")
+
+// =============================================================================
+// 10. RSA非对称加密演示 - 需要自备密钥对
+// RSA加密 非对称加密 公钥加密 私钥解密 PKCS1v15 OAEP
+// 关键词: RSA, 非对称加密, 公钥, 私钥, RSAEncrypt, RSADecrypt, PKCS1, OAEP
+// =============================================================================
+println("\n10. RSA非对称加密演示")
+
+// ===== 10.1 RSA加密函数说明 =====
+// 关键词: RSA函数, RSA加密函数, RSA解密函数, RSA接口
+println("\n10.1 RSA加密函数说明")
+// RSA PKCS1v15加密函数
+// 关键词: RSA PKCS1v15, codec.RSAEncryptWithPKCS1v15, codec.RSADecryptWithPKCS1v15
+println("RSA PKCS1v15加密函数: codec.RSAEncryptWithPKCS1v15(publicKey, data)")
+println("RSA PKCS1v15解密函数: codec.RSADecryptWithPKCS1v15(privateKey, data)")
+
+// RSA OAEP加密函数
+// 关键词: RSA OAEP, codec.RSAEncryptWithOAEP, codec.RSADecryptWithOAEP
+println("RSA OAEP加密函数: codec.RSAEncryptWithOAEP(publicKey, data)")
+println("RSA OAEP解密函数: codec.RSADecryptWithOAEP(privateKey, data)")
+
+println("注意: RSA加密需要提供PEM格式的公钥和私钥")
+println("✓ RSA加密函数说明完成")
+
+// =============================================================================
+// 11. 国密SM2加密演示
+// SM2加密 国密非对称 椭圆曲线加密 SM2签名 SM2密钥交换
+// 关键词: SM2, 国密SM2, 椭圆曲线, ECC, SM2加密, Sm2Encrypt, 国密公钥
+// =============================================================================
+println("\n11. 国密SM2加密演示")
+
+// ===== 11.1 生成SM2密钥对 - 创建SM2密钥 =====
+// 关键词: SM2密钥生成, Sm2GenerateHexKeyPair, SM2密钥对, 国密密钥
+println("\n11.1 生成SM2密钥对")
+// 生成HEX格式密钥对
+// 关键词: SM2密钥对生成, codec.Sm2GenerateHexKeyPair, Hex密钥
+sm2PrivHex, sm2PubHex = codec.Sm2GenerateHexKeyPair()~
+println("SM2私钥(Hex):", sm2PrivHex)
+println("SM2公钥(Hex):", sm2PubHex)
+
+// 验证密钥长度
+assert len(sm2PubHex) > 0, "SM2公钥应该生成成功"
+assert len(sm2PrivHex) > 0, "SM2私钥应该生成成功"
+println("✓ SM2密钥对生成验证通过")
+
+// ===== 11.2 SM2 C1C2C3加密 - 标准SM2加密 =====
+// 关键词: SM2加密, C1C2C3, Sm2EncryptC1C2C3, SM2标准加密
+println("\n11.2 SM2 C1C2C3加密解密")
+sm2Plaintext = "SM2 Encryption Test"
+
+// SM2 C1C2C3加密（参数：公钥, 明文）
+// 关键词: SM2加密操作, codec.Sm2EncryptC1C2C3, C1C2C3格式, 2参数
+sm2C1C2C3Encrypted = codec.Sm2EncryptC1C2C3(sm2PubHex, sm2Plaintext)~
+println("SM2 C1C2C3加密结果(Hex):", codec.EncodeToHex(sm2C1C2C3Encrypted))
+
+// SM2 C1C2C3解密（参数：私钥, 密文）
+// 关键词: SM2解密操作, codec.Sm2DecryptC1C2C3, C1C2C3解密, 2参数
+sm2C1C2C3Decrypted = codec.Sm2DecryptC1C2C3(sm2PrivHex, sm2C1C2C3Encrypted)~
+println("SM2 C1C2C3解密结果:", string(sm2C1C2C3Decrypted))
+
+// 验证SM2加密解密
+assert string(sm2C1C2C3Decrypted) == sm2Plaintext, "SM2 C1C2C3解密后应该与原始数据一致"
+println("✓ SM2 C1C2C3加密解密验证通过")
+
+// ===== 11.3 SM2 C1C3C2加密 - 另一种SM2格式 =====
+// 关键词: SM2 C1C3C2, Sm2EncryptC1C3C2, C1C3C2格式, SM2格式
+println("\n11.3 SM2 C1C3C2加密解密")
+// SM2 C1C3C2加密（参数：公钥, 明文）
+// 关键词: SM2 C1C3C2加密操作, codec.Sm2EncryptC1C3C2, 2参数
+sm2C1C3C2Encrypted = codec.Sm2EncryptC1C3C2(sm2PubHex, sm2Plaintext)~
+println("SM2 C1C3C2加密结果(Hex):", codec.EncodeToHex(sm2C1C3C2Encrypted))
+
+// SM2 C1C3C2解密（参数：私钥, 密文）
+// 关键词: SM2 C1C3C2解密操作, codec.Sm2DecryptC1C3C2, 2参数
+sm2C1C3C2Decrypted = codec.Sm2DecryptC1C3C2(sm2PrivHex, sm2C1C3C2Encrypted)~
+println("SM2 C1C3C2解密结果:", string(sm2C1C3C2Decrypted))
+
+// 验证SM2 C1C3C2加密解密
+assert string(sm2C1C3C2Decrypted) == sm2Plaintext, "SM2 C1C3C2解密后应该与原始数据一致"
+println("✓ SM2 C1C3C2加密解密验证通过")
+
+// ===== 11.4 SM2签名验证 - SM2数字签名 =====
+// 关键词: SM2签名, SM2验证, Sm2SignWithSM3, Sm2VerifyWithSM3, 数字签名
+println("\n11.4 SM2签名验证")
+sm2Message = "Message to sign"
+
+// SM2签名 - 使用SM3哈希
+// 关键词: SM2签名操作, codec.Sm2SignWithSM3, SM3签名, 数字签名生成
+sm2Signature = codec.Sm2SignWithSM3(sm2PrivHex, sm2Message)~
+println("SM2签名(Hex):", codec.EncodeToHex(sm2Signature))
+println("SM2签名长度:", len(sm2Signature))
+
+// SM2验证签名函数说明
+// 关键词: SM2验证操作, codec.Sm2VerifyWithSM3, 签名验证, 签名校验  
+println("SM2签名验证函数: codec.Sm2VerifyWithSM3(publicKey, message, signature)")
+println("注意: SM2签名验证函数返回bool值，true表示验证成功")
+println("✓ SM2签名生成完成")
+
+// =============================================================================
+// 12. Padding填充演示
+// Padding填充 PKCS5 PKCS7 Zero填充 去填充
+// 关键词: Padding, 填充, PKCS5, PKCS7, Zero, UnPadding, 去填充
+// =============================================================================
+println("\n12. Padding填充演示")
+
+// ===== 12.1 PKCS7填充 - 最常用的填充方式 =====
+// 关键词: PKCS7填充, PKCS7Padding, PKCS7UnPadding, 块填充
+println("\n12.1 PKCS7填充和去填充")
+// PKCS7填充数据
+// 关键词: 填充数据, 待填充数据, 块数据
+paddingData = "Test Data"
+
+// PKCS7填充（自动填充到16字节块）
+// 关键词: PKCS7填充操作, codec.PKCS7Padding, 自动填充
+pkcs7Padded = codec.PKCS7Padding([]byte(paddingData))~
+println("PKCS7填充后(Hex):", codec.EncodeToHex(pkcs7Padded))
+println("PKCS7填充后长度:", len(pkcs7Padded))
+
+// PKCS7去填充
+// 关键词: PKCS7去填充操作, codec.PKCS7UnPadding, 移除填充
+pkcs7Unpadded = codec.PKCS7UnPadding(pkcs7Padded)~
+println("PKCS7去填充后:", string(pkcs7Unpadded))
+
+// 验证PKCS7填充
+assert len(pkcs7Padded) == 16, "PKCS7填充后长度应该是16字节"
+assert string(pkcs7Unpadded) == paddingData, "PKCS7去填充后应该与原始数据一致"
+println("✓ PKCS7填充验证通过")
+
+// ===== 12.2 PKCS5填充 - PKCS5填充方式 =====
+// 关键词: PKCS5填充, PKCS5Padding, PKCS5UnPadding, 8字节填充
+println("\n12.2 PKCS5填充和去填充")
+// PKCS5填充 - 需要指定块大小（通常是8字节）
+// 关键词: PKCS5填充操作, codec.PKCS5Padding, 8字节块填充, 块大小参数
+pkcs5Padded = codec.PKCS5Padding([]byte(paddingData), 8)~
+println("PKCS5填充后(Hex):", codec.EncodeToHex(pkcs5Padded))
+println("PKCS5填充后长度:", len(pkcs5Padded))
+
+// PKCS5去填充
+// 关键词: PKCS5去填充操作, codec.PKCS5UnPadding, 移除PKCS5填充
+pkcs5Unpadded = codec.PKCS5UnPadding(pkcs5Padded)~
+println("PKCS5去填充后:", string(pkcs5Unpadded))
+
+// 验证PKCS5填充
+assert string(pkcs5Unpadded) == paddingData, "PKCS5去填充后应该与原始数据一致"
+println("✓ PKCS5填充验证通过")
+
+// ===== 12.3 Zero填充 - 零填充方式 =====
+// 关键词: Zero填充, ZeroPadding, ZeroUnPadding, 零字节填充
+println("\n12.3 Zero填充和去填充")
+blockSize = 16
+// Zero填充（需要指定块大小）
+// 关键词: Zero填充操作, codec.ZeroPadding, 零字节填充, 块大小参数
+zeroPadded = codec.ZeroPadding([]byte(paddingData), blockSize)~
+println("Zero填充后(Hex):", codec.EncodeToHex(zeroPadded))
+println("Zero填充后长度:", len(zeroPadded))
+
+// Zero去填充
+// 关键词: Zero去填充操作, codec.ZeroUnPadding, 移除零填充
+zeroUnpadded = codec.ZeroUnPadding(zeroPadded)~
+println("Zero去填充后:", string(zeroUnpadded))
+
+// 验证Zero填充
+assert len(zeroPadded) == blockSize, f"Zero填充后长度应该是${blockSize}字节"
+assert string(zeroUnpadded) == paddingData, "Zero去填充后应该与原始数据一致"
+println("✓ Zero填充验证通过")
+
+// =============================================================================
+// 13. Unicode和字符编码转换
+// Unicode编码 字符编码转换 GBK UTF8 GB18030 UnicodeEncode
+// 关键词: Unicode, 字符编码, GBK, UTF8, GB18030, 编码转换
+// =============================================================================
+println("\n13. Unicode和字符编码转换")
+
+// ===== 13.1 Unicode编码解码 - JSON Unicode =====
+// 关键词: Unicode编码, JSON Unicode, UnicodeEncode, UnicodeDecode
+println("\n13.1 Unicode编码解码")
+// 中文字符
+// 关键词: 中文字符, 多字节字符, Unicode字符
+chineseText = "你好世界"
+
+// Unicode编码
+// 关键词: Unicode编码操作, codec.UnicodeEncode, JSON Unicode编码
+unicodeEncoded = codec.UnicodeEncode(chineseText)
+println("Unicode编码:", unicodeEncoded)
+
+// Unicode解码
+// 关键词: Unicode解码操作, codec.UnicodeDecode, JSON Unicode解码
+unicodeDecoded = codec.UnicodeDecode(unicodeEncoded)~
+println("Unicode解码:", string(unicodeDecoded))
+
+// 验证Unicode编码解码
+assert string(unicodeDecoded) == chineseText, "Unicode解码后应该与原始数据一致"
+println("✓ Unicode编码解码验证通过")
+
+// ===== 13.2 UTF8与GBK转换 - 中文编码转换 =====
+// 关键词: UTF8转GBK, GBK转UTF8, 中文编码, 字符集转换
+println("\n13.2 UTF8与GBK转换")
+// UTF8转GBK
+// 关键词: UTF8转GBK操作, codec.UTF8ToGBK, 编码转换
+gbkBytes = codec.UTF8ToGBK(chineseText)~
+println("GBK编码(Hex):", codec.EncodeToHex(gbkBytes))
+
+// GBK转UTF8
+// 关键词: GBK转UTF8操作, codec.GBKToUTF8, 编码还原
+utf8Text = codec.GBKToUTF8(gbkBytes)~
+println("GBK转UTF8:", string(utf8Text))
+
+// 验证编码转换
+assert string(utf8Text) == chineseText, "GBK转UTF8后应该与原始数据一致"
+println("✓ UTF8与GBK转换验证通过")
+
+// ===== 13.3 UTF8与GB18030转换 - GB18030编码 =====
+// 关键词: UTF8转GB18030, GB18030转UTF8, GB18030编码
+println("\n13.3 UTF8与GB18030转换")
+// UTF8转GB18030
+// 关键词: UTF8转GB18030操作, codec.UTF8ToGB18030
+gb18030Bytes = codec.UTF8ToGB18030(chineseText)~
+println("GB18030编码(Hex):", codec.EncodeToHex(gb18030Bytes))
+
+// GB18030转UTF8
+// 关键词: GB18030转UTF8操作, codec.GB18030ToUTF8
+utf8FromGB18030 = codec.GB18030ToUTF8(gb18030Bytes)~
+println("GB18030转UTF8:", string(utf8FromGB18030))
+
+// 验证GB18030转换
+assert string(utf8FromGB18030) == chineseText, "GB18030转UTF8后应该与原始数据一致"
+println("✓ UTF8与GB18030转换验证通过")
+
+// =============================================================================
+// 14. HTTP Chunked编码
+// Chunked编码 HTTP传输编码 分块传输 EncodeChunked DecodeChunked
+// 关键词: Chunked, HTTP Chunked, 分块编码, Transfer-Encoding, 分块传输
+// =============================================================================
+println("\n14. HTTP Chunked编码")
+
+// ===== 14.1 Chunked编码解码 - HTTP分块传输 =====
+// 关键词: Chunked编码解码, HTTP分块, codec.EncodeChunked, codec.DecodeChunked
+println("\n14.1 HTTP Chunked编码解码")
+// Chunked数据
+// 关键词: HTTP数据, 分块数据, 待编码数据
+httpData = "This is HTTP chunked encoding test data"
+
+// Chunked编码
+// 关键词: Chunked编码操作, codec.EncodeChunked, 分块编码
+chunkedEncoded = codec.EncodeChunked(httpData)
+println("Chunked编码结果:")
+println(string(chunkedEncoded))
+
+// Chunked解码
+// 关键词: Chunked解码操作, codec.DecodeChunked, 分块解码
+chunkedDecoded = codec.DecodeChunked(chunkedEncoded)~
+println("Chunked解码:", string(chunkedDecoded))
+
+// 验证Chunked编码解码
+assert string(chunkedDecoded) == httpData, "Chunked解码后应该与原始数据一致"
+println("✓ HTTP Chunked编码解码验证通过")
+
+// =============================================================================
+// 15. 智能解码
+// 智能解码 自动解码 AutoDecode 多层解码 编码识别
+// 关键词: AutoDecode, 智能解码, 自动识别, 多层解码, 编码检测
+// =============================================================================
+println("\n15. 智能解码演示")
+
+// ===== 15.1 AutoDecode - 自动识别并解码 =====
+// 关键词: AutoDecode, 自动解码, codec.AutoDecode, 智能识别
+println("\n15.1 AutoDecode智能解码函数说明")
+// AutoDecode函数说明
+// 关键词: AutoDecode函数, codec.AutoDecode, 智能识别编码
+println("AutoDecode函数: codec.AutoDecode(data)")
+println("功能: 自动识别并解码常见编码格式")
+println("支持: Base64, Hex, URL编码等常见编码格式")
+println("返回: 解码后的字节数组")
+
+// AutoDecode使用示例
+// 关键词: AutoDecode使用, 智能解码示例
+testEncodedData = codec.EncodeBase64("test data")
+println("编码数据示例:", testEncodedData)
+testDecodedData = codec.AutoDecode(testEncodedData)~
+println("解码结果示例:", string(testDecodedData))
+
+println("✓ AutoDecode函数说明完成")
+
+// =============================================================================
+// 16. 字符串引用和转义
+// 字符串引用 转义 StrconvQuote StrconvUnquote
+// 关键词: StrconvQuote, StrconvUnquote, 字符串转义, 引用转义
+// =============================================================================
+println("\n16. 字符串引用和转义")
+
+// ===== 16.1 StrconvQuote - 字符串引用 =====
+// 关键词: StrconvQuote, 字符串引用, codec.StrconvQuote, Go风格引用
+println("\n16.1 字符串引用和反引用")
+// 包含特殊字符的字符串
+// 关键词: 特殊字符, 转义字符, 换行符, 制表符
+specialStr = "Hello\nWorld\tTest"
+
+// 字符串引用 - Go风格引用
+// 关键词: 字符串引用操作, codec.StrconvQuote, Go引用格式
+quotedStr = codec.StrconvQuote(specialStr)
+println("引用后:", quotedStr)
+
+// 字符串反引用
+// 关键词: 字符串反引用操作, codec.StrconvUnquote, 去引用
+unquotedStr = codec.StrconvUnquote(quotedStr)~
+println("反引用后:", string(unquotedStr))
+
+// 验证字符串引用
+assert string(unquotedStr) == specialStr, "反引用后应该与原始字符串一致"
+println("✓ 字符串引用验证通过")
+
+// =============================================================================
+// 17. 字符编码检测和修复
+// 字符编码检测 UTF8检测 编码修复 HTMLChardet
+// 关键词: 编码检测, UTF8检测, IsUTF8, FixUTF8, HTMLChardet, 编码修复
+// =============================================================================
+println("\n17. 字符编码检测和修复")
+
+// ===== 17.1 UTF8检测和修复函数说明 =====
+// 关键词: UTF8检测, IsUTF8, FixUTF8, UTF8验证, UTF8修复
+println("\n17.1 UTF8检测和修复函数说明")
+// UTF8检测函数
+// 关键词: UTF8检测函数, codec.IsUTF8, UTF8验证函数
+println("UTF8检测函数: codec.IsUTF8(data)")
+println("功能: 检测数据是否为有效的UTF8编码")
+println("返回: bool值，true表示是有效UTF8")
+
+// UTF8修复函数
+// 关键词: UTF8修复函数, codec.FixUTF8, UTF8修复功能
+println("UTF8修复函数: codec.FixUTF8(data)")
+println("功能: 修复数据中的无效UTF8字节")
+println("返回: 修复后的字符串")
+
+// UTF8文件检测函数
+// 关键词: UTF8文件检测, codec.IsUTF8File, 文件编码检测
+println("UTF8文件检测: codec.IsUTF8File(filename)")
+println("功能: 检测文件是否为UTF8编码")
+
+println("✓ UTF8相关函数说明完成")
+
+// =============================================================================
+// 18. RSA签名验证演示 - 需要自备密钥对
+// RSA签名 数字签名 SHA256签名 SignSHA256 VerifySHA256
+// 关键词: RSA签名, 数字签名, SignSHA256WithRSA, 签名验证, SHA256签名
+// =============================================================================
+println("\n18. RSA签名验证演示")
+
+// ===== 18.1 RSA签名函数说明 =====
+// 关键词: RSA签名函数, SignSHA256WithRSA, SignVerifySHA256WithRSA
+println("\n18.1 RSA SHA256签名函数说明")
+println("RSA SHA256签名函数: codec.SignSHA256WithRSA(privateKey, message)")
+println("RSA SHA256验证函数: codec.SignVerifySHA256WithRSA(publicKey, message, signature)")
+println("注意: RSA签名需要提供PEM格式的公钥和私钥")
+println("✓ RSA签名函数说明完成")
+
+// =============================================================================
+// 19. 实际应用场景演示
+// 实际应用 综合应用 加密传输 数据保护 安全通信
+// 关键词: 实际应用, 综合示例, 加密通信, 数据安全, 密码学应用
+// =============================================================================
+println("\n19. 实际应用场景演示")
+
+// ===== 19.1 密码加密存储 - 用户密码安全存储 =====
+// 关键词: 密码存储, 密码加密, 安全存储, HMAC密码, 密码哈希
+println("\n19.1 密码加密存储场景")
+// 用户密码 - 明文密码
+// 关键词: 用户密码, 明文密码, 原始密码
+userPassword = "UserPassword123!"
+// 密码盐值 - 随机盐值增加安全性
+// 关键词: 密码盐, Salt, 随机盐值, 安全增强
+passwordSalt = "random_salt_value"
+
+// 使用HMAC存储密码（返回字节数组）
+// 关键词: HMAC密码存储, 密码哈希, codec.HmacSha256, 安全密码存储, 字节数组
+storedPassword = codec.EncodeToHex(codec.HmacSha256(passwordSalt, userPassword))
+println("存储的密码哈希:", storedPassword)
+
+// 密码验证 - 登录时验证
+// 关键词: 密码验证, 登录验证, 密码比对, 哈希比对
+loginPassword = "UserPassword123!"
+loginHash = codec.EncodeToHex(codec.HmacSha256(passwordSalt, loginPassword))
+passwordMatch = storedPassword == loginHash
+
+println("密码验证结果:", passwordMatch)
+assert passwordMatch == true, "正确的密码应该验证通过"
+println("✓ 密码加密存储场景验证通过")
+
+// ===== 19.2 数据完整性校验 - 文件传输完整性 =====
+// 关键词: 数据完整性, 文件校验, MD5校验, SHA256校验, 完整性验证
+println("\n19.2 数据完整性校验场景")
+// 原始文件数据
+// 关键词: 文件数据, 原始数据, 待传输数据
+fileData = "Important file content that needs integrity check"
+
+// 计算文件哈希 - 发送方计算
+// 关键词: 哈希计算, SHA256哈希, 完整性哈希, 文件摘要
+senderHash = codec.Sha256(fileData)
+println("发送方文件哈希:", senderHash)
+
+// 模拟文件传输
+// 关键词: 文件传输, 数据传输, 网络传输
+transmittedData = fileData
+
+// 接收方验证 - 计算接收数据的哈希
+// 关键词: 接收方验证, 哈希验证, 完整性验证, 数据校验
+receiverHash = codec.Sha256(transmittedData)
+println("接收方文件哈希:", receiverHash)
+
+// 完整性检查
+// 关键词: 完整性检查, 哈希比对, 数据完整性, 传输验证
+dataIntact = senderHash == receiverHash
+println("数据完整性检查:", dataIntact)
+assert dataIntact == true, "数据应该保持完整"
+println("✓ 数据完整性校验场景验证通过")
+
+// ===== 19.3 敏感数据加密传输 - AES加密通信 =====
+// 关键词: 加密传输, AES加密通信, 敏感数据, 安全通信, 数据加密
+println("\n19.3 敏感数据加密传输场景")
+// 敏感数据 - 需要加密的数据
+// 关键词: 敏感数据, 机密数据, 待加密数据, 隐私数据
+sensitiveData = "Credit Card: 1234-5678-9012-3456"
+// 通信密钥 - 预共享密钥
+// 关键词: 通信密钥, 共享密钥, 预共享密钥, AES密钥
+commKey = "SharedSecretKey1"
+commIV = "InitVectorValue1"
+
+// 发送方加密 - 加密敏感数据
+// 关键词: 发送方加密, AES加密, 数据加密, 加密操作
+encryptedData = codec.AESCBCEncrypt(commKey, sensitiveData, commIV)~
+println("加密后的数据(Base64):", codec.EncodeBase64(encryptedData))
+
+// 接收方解密 - 解密收到的数据
+// 关键词: 接收方解密, AES解密, 数据解密, 解密操作
+decryptedData = codec.AESCBCDecrypt(commKey, encryptedData, commIV)~
+println("解密后的数据:", string(decryptedData))
+
+// 验证通信
+assert string(decryptedData) == sensitiveData, "解密后应该得到原始敏感数据"
+println("✓ 敏感数据加密传输场景验证通过")
+
+// ===== 19.4 API签名认证 - HMAC签名验证 =====
+// 关键词: API签名, HMAC认证, 接口签名, API安全, 签名认证
+println("\n19.4 API签名认证场景")
+// API请求参数
+// 关键词: API参数, 请求参数, 接口参数
+apiParams = "user_id=12345&timestamp=1234567890&action=transfer"
+// API密钥 - 用于签名的密钥
+// 关键词: API密钥, API Key, 签名密钥, Secret Key
+apiSecret = "api_secret_key_12345"
+
+// 客户端生成签名 - 请求时生成（返回字节数组）
+// 关键词: 客户端签名, 签名生成, HMAC签名, API签名生成, 字节数组
+clientSignature = codec.EncodeToHex(codec.HmacSha256(apiSecret, apiParams))
+println("客户端签名:", clientSignature)
+
+// 服务端验证签名 - 接收请求后验证
+// 关键词: 服务端验证, 签名验证, API验证, 签名校验
+serverSignature = codec.EncodeToHex(codec.HmacSha256(apiSecret, apiParams))
+signatureValid = clientSignature == serverSignature
+
+println("签名验证结果:", signatureValid)
+assert signatureValid == true, "API签名应该验证通过"
+println("✓ API签名认证场景验证通过")
+
+// ===== 19.5 前端数据混淆 - Base64+URL编码 =====
+// 关键词: 数据混淆, 前端加密, Base64编码, URL编码, 数据保护
+println("\n19.5 前端数据混淆场景")
+// 前端要传输的数据
+// 关键词: 前端数据, 传输数据, 参数数据
+frontendData = "user_id=admin&role=administrator"
+
+// 第一层Base64编码
+// 关键词: Base64混淆, 第一层编码, Base64保护
+step1 = codec.EncodeBase64(frontendData)
+
+// 第二层URL编码 - 防止特殊字符问题
+// 关键词: URL混淆, 第二层编码, URL保护, 多层编码
+step2 = codec.EncodeUrl(step1)
+println("混淆后的数据:", step2)
+
+// 后端解码 - 第一步URL解码
+// 关键词: 后端解码, URL解码, 第一层解码
+decoded1 = codec.DecodeUrl(step2)~
+// 第二步Base64解码
+// 关键词: Base64解码, 第二层解码, 数据还原
+decoded2 = codec.DecodeBase64(string(decoded1))~
+println("还原后的数据:", string(decoded2))
+
+// 验证数据混淆
+assert string(decoded2) == frontendData, "还原后应该得到原始数据"
+println("✓ 前端数据混淆场景验证通过")
+
+println("\n=== Codec库完整功能验证完成 ===")
+

