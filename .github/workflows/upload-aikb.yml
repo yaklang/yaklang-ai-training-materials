@@ -1,0 +1,291 @@
+name: Upload AIKB to OSS
+
+on:
+  # 当指定文件夹有改动时触发
+  push:
+    branches:
+      - main
+    paths:
+      - 'awesome-scripts/**'
+      - 'basic-syntax/**'
+      - 'library-usage/**'
+      - 'practice/**'
+      - 'scripts/merge-in-one-text.yak'
+      - '.github/workflows/upload-aikb.yml'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+# 确保同一时间只运行一个上传任务
+concurrency:
+  group: upload-aikb
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Print trigger information
+        run: |
+          echo "============================================"
+          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "============================================"
+      
+      - name: Download Yaklang Engine (v1.4.4-alpha1003)
+        run: |
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1003 ==="
+          YAK_VERSION="1.4.4-alpha1003"
+          YAK_URL="https://oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
+          
+          echo "Downloading from: $YAK_URL"
+          wget -q --show-progress -O ./yak "$YAK_URL"
+          
+          if [ ! -f ./yak ]; then
+            echo "ERROR: Failed to download yak engine"
+            echo "Trying alternative URL..."
+            YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
+            wget -q --show-progress -O ./yak "$YAK_URL" || exit 1
+          fi
+          
+          chmod +x ./yak
+          
+          # 验证下载的文件
+          echo ""
+          echo "=== Downloaded file info ==="
+          ls -lh ./yak
+          file ./yak
+          
+          # 测试执行
+          echo ""
+          echo "=== Testing yak engine ==="
+          ./yak version || echo "Note: yak version command may not be available in this version"
+          
+          echo ""
+          echo "✓ Yaklang engine downloaded and verified successfully"
+      
+      - name: Generate AIKB ZIP file
+        run: |
+          echo "=== Generating AIKB ZIP file ==="
+          
+          # 运行 merge-in-one-text.yak 生成 ZIP
+          echo "Running merge-in-one-text.yak..."
+          ./yak scripts/merge-in-one-text.yak --output yaklang-aikb.zip
+          
+          if [ ! -f yaklang-aikb.zip ]; then
+            echo "ERROR: Failed to generate yaklang-aikb.zip"
+            echo "DEBUG: Checking current directory contents:"
+            ls -lh
+            exit 1
+          fi
+          
+          # 验证生成的文件
+          echo ""
+          echo "=== Generated ZIP file info ==="
+          ls -lh yaklang-aikb.zip
+          
+          # 尝试列出 ZIP 内容以验证其有效性
+          echo ""
+          echo "=== ZIP file contents (first 20 entries) ==="
+          unzip -l yaklang-aikb.zip | head -25 || {
+            echo "ERROR: Generated ZIP file appears to be invalid"
+            exit 1
+          }
+          
+          # 统计文件数和大小
+          FILE_COUNT=$(unzip -l yaklang-aikb.zip | tail -1 | awk '{print $2}')
+          FILE_SIZE=$(stat -c%s yaklang-aikb.zip 2>/dev/null || stat -f%z yaklang-aikb.zip)
+          
+          echo ""
+          echo "=== ZIP Statistics ==="
+          echo "Files in ZIP: $FILE_COUNT"
+          echo "ZIP size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
+          
+          echo ""
+          echo "✓ AIKB ZIP file generated successfully"
+      
+      - name: Create upload timestamp file
+        run: |
+          echo "=== Creating timestamp file ==="
+          
+          # 生成时间戳文件
+          UPLOAD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          COMMIT_SHA="${{ github.sha }}"
+          COMMIT_SHORT="${COMMIT_SHA:0:7}"
+          
+          cat > yaklang-aikb.updated_at.txt << EOF
+Upload Time: $UPLOAD_TIME
+Commit: $COMMIT_SHORT ($COMMIT_SHA)
+Branch: ${{ github.ref_name }}
+Actor: ${{ github.actor }}
+Workflow Run: ${{ github.run_number }}
+EOF
+          
+          echo ""
+          echo "=== Timestamp file content ==="
+          cat yaklang-aikb.updated_at.txt
+          
+          echo ""
+          echo "✓ Timestamp file created successfully"
+      
+      - name: Upload files to OSS
+        env:
+          OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
+        run: |
+          echo "=== Uploading files to OSS ==="
+          
+          if [ -z "$OSS_KEY_ID" ] || [ -z "$OSS_KEY_SECRET" ]; then
+            echo "ERROR: OSS credentials not found"
+            echo "Please ensure OSS_KEY_ID and OSS_KEY_SECRET secrets are set"
+            exit 1
+          fi
+          
+          BUCKET="yaklang"
+          ENDPOINT="oss-accelerate.aliyuncs.com"
+          
+          # 上传 ZIP 文件
+          echo ""
+          echo "Uploading yaklang-aikb.zip..."
+          ./yak upload-oss \
+            -b "$BUCKET" \
+            --endpoint "$ENDPOINT" \
+            -ak "$OSS_KEY_ID" \
+            -sk "$OSS_KEY_SECRET" \
+            -t 10 \
+            -f "yaklang-aikb.zip:/ai-knowledge-base/yaklang-aikb.zip"
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to upload yaklang-aikb.zip"
+            exit 1
+          fi
+          
+          echo "✓ yaklang-aikb.zip uploaded successfully"
+          
+          # 上传时间戳文件
+          echo ""
+          echo "Uploading yaklang-aikb.updated_at.txt..."
+          ./yak upload-oss \
+            -b "$BUCKET" \
+            --endpoint "$ENDPOINT" \
+            -ak "$OSS_KEY_ID" \
+            -sk "$OSS_KEY_SECRET" \
+            -t 5 \
+            -f "yaklang-aikb.updated_at.txt:/ai-knowledge-base/yaklang-aikb.updated_at.txt"
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to upload yaklang-aikb.updated_at.txt"
+            exit 1
+          fi
+          
+          echo "✓ yaklang-aikb.updated_at.txt uploaded successfully"
+          
+          echo ""
+          echo "✓ All files uploaded to OSS successfully"
+      
+      - name: Verify OSS upload with HEAD requests
+        run: |
+          echo "=== Verifying OSS uploads ==="
+          
+          OSS_DOMAIN="oss-qn.yaklang.com"
+          BASE_URL="https://${OSS_DOMAIN}/ai-knowledge-base"
+          
+          # 验证 ZIP 文件
+          echo ""
+          echo "Verifying yaklang-aikb.zip..."
+          ZIP_URL="${BASE_URL}/yaklang-aikb.zip"
+          
+          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$ZIP_URL")
+          CONTENT_LENGTH=$(curl -I -s "$ZIP_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+          LAST_MODIFIED=$(curl -I -s "$ZIP_URL" | grep -i last-modified | cut -d' ' -f2- | tr -d '\r')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Content-Length: $CONTENT_LENGTH bytes"
+          echo "Last-Modified: $LAST_MODIFIED"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: yaklang-aikb.zip verification failed (HTTP $HTTP_CODE)"
+            echo "URL: $ZIP_URL"
+            exit 1
+          fi
+          
+          if [ -z "$CONTENT_LENGTH" ] || [ "$CONTENT_LENGTH" -lt 1000 ]; then
+            echo "ERROR: yaklang-aikb.zip size is suspiciously small ($CONTENT_LENGTH bytes)"
+            exit 1
+          fi
+          
+          echo "✓ yaklang-aikb.zip verified successfully"
+          
+          # 验证时间戳文件
+          echo ""
+          echo "Verifying yaklang-aikb.updated_at.txt..."
+          TIMESTAMP_URL="${BASE_URL}/yaklang-aikb.updated_at.txt"
+          
+          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$TIMESTAMP_URL")
+          TIMESTAMP_CONTENT=$(curl -s "$TIMESTAMP_URL")
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Content:"
+          echo "$TIMESTAMP_CONTENT"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: yaklang-aikb.updated_at.txt verification failed (HTTP $HTTP_CODE)"
+            echo "URL: $TIMESTAMP_URL"
+            exit 1
+          fi
+          
+          if [ -z "$TIMESTAMP_CONTENT" ]; then
+            echo "ERROR: yaklang-aikb.updated_at.txt is empty"
+            exit 1
+          fi
+          
+          echo "✓ yaklang-aikb.updated_at.txt verified successfully"
+          
+          echo ""
+          echo "============================================"
+          echo "✓ All verifications passed!"
+          echo "============================================"
+          echo ""
+          echo "AIKB files are now available at:"
+          echo "  ZIP: $ZIP_URL"
+          echo "  Timestamp: $TIMESTAMP_URL"
+          echo ""
+      
+      - name: Upload artifacts (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aikb-files
+          path: |
+            yaklang-aikb.zip
+            yaklang-aikb.updated_at.txt
+          retention-days: 7
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ AIKB Upload Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The AI Knowledge Base has been successfully built and uploaded to OSS." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Files" >> $GITHUB_STEP_SUMMARY
+          echo "- \`yaklang-aikb.zip\` - Knowledge base archive" >> $GITHUB_STEP_SUMMARY
+          echo "- \`yaklang-aikb.updated_at.txt\` - Upload timestamp" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Access URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- ZIP: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Info" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+

@@ -1,0 +1,186 @@
+// =============================================================================
+// 检查线上 AIKB 状态
+// =============================================================================
+// 本脚本用于检查 OSS 上的 AIKB 文件状态
+// 关键词: AIKB检查, OSS验证, 在线状态, 文件验证
+// =============================================================================
+
+println("=" * 80)
+println("检查线上 AIKB 状态")
+println("=" * 80)
+
+// OSS 配置
+ossDomain = "oss-qn.yaklang.com"
+baseUrl = sprintf("https://%v/ai-knowledge-base", ossDomain)
+zipUrl = sprintf("%v/yaklang-aikb.zip", baseUrl)
+timestampUrl = sprintf("%v/yaklang-aikb.updated_at.txt", baseUrl)
+
+println(sprintf("\nOSS 域名: %v", ossDomain))
+println(sprintf("基础路径: %v", baseUrl))
+
+// =============================================================================
+// 1. 检查 ZIP 文件
+// =============================================================================
+println("\n[1/2] 检查 yaklang-aikb.zip...")
+println(sprintf("URL: %v", zipUrl))
+
+// 使用 HTTP HEAD 请求检查
+rsp, err = http.Head(zipUrl)~
+if err != nil {
+    yakit.Error(sprintf("HTTP HEAD 请求失败: %v", err))
+    die("无法连接到 OSS")
+}
+
+println(sprintf("\nHTTP 状态码: %v", rsp.StatusCode))
+
+if rsp.StatusCode == 200 {
+    yakit.Success("✓ ZIP 文件存在")
+    
+    // 获取文件信息
+    contentLength = rsp.Header.Get("Content-Length")
+    lastModified = rsp.Header.Get("Last-Modified")
+    etag = rsp.Header.Get("ETag")
+    
+    if contentLength != "" {
+        sizeBytes = parseInt(contentLength)~
+        sizeMB = float(sizeBytes) / 1024 / 1024
+        println(sprintf("文件大小: %v bytes (%.2f MB)", contentLength, sizeMB))
+    }
+    
+    if lastModified != "" {
+        println(sprintf("最后修改: %v", lastModified))
+    }
+    
+    if etag != "" {
+        println(sprintf("ETag: %v", etag))
+    }
+    
+    // 获取其他响应头
+    println("\n所有响应头:")
+    for key, values in rsp.Header {
+        for value in values {
+            println(sprintf("  %v: %v", key, value))
+        }
+    }
+    
+} else if rsp.StatusCode == 404 {
+    yakit.Error("✗ ZIP 文件不存在 (404)")
+} else {
+    yakit.Warn(sprintf("✗ 意外的状态码: %v", rsp.StatusCode))
+}
+
+// =============================================================================
+// 2. 检查时间戳文件
+// =============================================================================
+println("\n[2/2] 检查 yaklang-aikb.updated_at.txt...")
+println(sprintf("URL: %v", timestampUrl))
+
+// 使用 HTTP GET 请求获取内容
+rsp2, err = http.Get(timestampUrl)~
+if err != nil {
+    yakit.Error(sprintf("HTTP GET 请求失败: %v", err))
+} else {
+    println(sprintf("\nHTTP 状态码: %v", rsp2.StatusCode))
+    
+    if rsp2.StatusCode == 200 {
+        yakit.Success("✓ 时间戳文件存在")
+        
+        // 读取并显示内容
+        body = rsp2.Body~
+        content = string(body)
+        
+        println("\n时间戳文件内容:")
+        println("-" * 60)
+        println(content)
+        println("-" * 60)
+        
+        // 解析上传时间
+        lines = str.Split(content, "\n")
+        for line in lines {
+            if str.HasPrefix(line, "Upload Time:") {
+                uploadTime = str.TrimSpace(str.TrimPrefix(line, "Upload Time:"))
+                yakit.Info(sprintf("上传时间: %v", uploadTime))
+            } else if str.HasPrefix(line, "Commit:") {
+                commit = str.TrimSpace(str.TrimPrefix(line, "Commit:"))
+                yakit.Info(sprintf("提交信息: %v", commit))
+            }
+        }
+        
+    } else if rsp2.StatusCode == 404 {
+        yakit.Error("✗ 时间戳文件不存在 (404)")
+    } else {
+        yakit.Warn(sprintf("✗ 意外的状态码: %v", rsp2.StatusCode))
+    }
+}
+
+// =============================================================================
+// 3. 下载并验证 ZIP（可选）
+// =============================================================================
+println("\n[可选] 下载并验证 ZIP 文件...")
+
+downloadZip = cli.YesNo("是否下载 ZIP 文件进行完整验证？(这可能需要一些时间)")
+if downloadZip {
+    println("\n开始下载...")
+    
+    downloadPath = file.Join(os.TempDir(), "yaklang-aikb-downloaded.zip")
+    
+    // 下载文件
+    startTime = time.Now()
+    rsp3, err = http.Get(zipUrl)~
+    if err != nil {
+        yakit.Error(sprintf("下载失败: %v", err))
+    } else {
+        body = rsp3.Body~
+        file.Save(downloadPath, body)~
+        
+        duration = time.Since(startTime)
+        fileSize = len(body)
+        
+        yakit.Success(sprintf("下载完成！耗时: %v", duration))
+        yakit.Info(sprintf("保存路径: %v", downloadPath))
+        yakit.Info(sprintf("文件大小: %.2f MB", float(fileSize)/1024/1024))
+        
+        // 验证 ZIP 完整性
+        println("\n验证 ZIP 完整性...")
+        result, err = exec.System(sprintf("unzip -t %v 2>&1 | tail -3", downloadPath))
+        if err == nil {
+            println(string(result))
+            if str.Contains(string(result), "No errors detected") || str.Contains(string(result), "OK") {
+                yakit.Success("✓ ZIP 文件完整性验证通过")
+            }
+        }
+        
+        // 列出文件内容
+        println("\n列出 ZIP 内容（前20个文件）...")
+        result2, _ = exec.System(sprintf("unzip -l %v 2>&1 | head -25", downloadPath))
+        println(string(result2))
+        
+        // 统计
+        result3, _ = exec.System(sprintf("unzip -l %v 2>&1 | tail -1", downloadPath))
+        println("\nZIP 统计信息:")
+        println(string(result3))
+        
+        println(sprintf("\n下载的文件: %v", downloadPath))
+        println("记得删除临时文件:")
+        println(sprintf("  rm %v", downloadPath))
+    }
+}
+
+// =============================================================================
+// 总结
+// =============================================================================
+println("\n" + "=" * 80)
+println("检查完成")
+println("=" * 80)
+
+println("\n访问地址:")
+println(sprintf("  ZIP: %v", zipUrl))
+println(sprintf("  时间戳: %v", timestampUrl))
+
+println("\n相关配置:")
+println("  配置文件: yaklang/common/thirdparty_bin/bin_cfg.yml")
+println("  配置项: yaklang-aikb")
+
+println("")
+yakit.Success("检查完成！")
+
