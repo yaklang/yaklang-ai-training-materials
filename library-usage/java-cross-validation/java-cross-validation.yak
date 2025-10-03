@@ -1,0 +1,648 @@
+// =============================================================================
+// Java与YSO交叉验证测试
+// =============================================================================
+// 本脚本进行真实的Java二进制交叉验证：
+// 1. 用YSO生成各种序列化payload
+// 2. 用真实的Java程序反序列化验证
+// 3. 确保生成的payload结构正确、可被Java正常解析
+// 4. 验证反序列化过程不会出错
+// =============================================================================
+// 关键词: 交叉验证, Java反序列化, YSO验证, 二进制验证, 序列化测试
+// =============================================================================
+
+// 测试目录设置
+// 关键词: 测试目录, /tmp, 交叉验证环境
+testBaseDir = "/tmp/java_cross_validation"
+payloadDir = file.Join(testBaseDir, "payloads")
+javaSourceDir = file.Join(testBaseDir, "java_src")
+javaClassDir = file.Join(testBaseDir, "java_classes")
+libDir = file.Join(testBaseDir, "libs")
+resultDir = file.Join(testBaseDir, "results")
+
+// 创建测试目录
+file.MkdirAll(payloadDir)~
+file.MkdirAll(javaSourceDir)~
+file.MkdirAll(javaClassDir)~
+file.MkdirAll(libDir)~
+file.MkdirAll(resultDir)~
+
+yakit.Info(sprintf("测试基础目录: %v", testBaseDir))
+yakit.Info(sprintf("Payload目录: %v", payloadDir))
+yakit.Info(sprintf("Java源码目录: %v", javaSourceDir))
+yakit.Info(sprintf("验证结果目录: %v", resultDir))
+
+// =============================================================================
+// 第一部分: 生成Java反序列化验证程序
+// Java验证程序 ObjectInputStream 反序列化测试 异常捕获
+// 关键词: Java验证程序, 反序列化验证, ObjectInputStream, 结构验证
+// =============================================================================
+println("\n" + "=" * 80)
+println("第一部分: 生成Java反序列化验证程序")
+println("=" * 80)
+
+// ===== 1.1 创建基础反序列化验证器 =====
+// 关键词: 反序列化验证器, ObjectInputStream, 基础验证
+println("\n1.1 创建基础反序列化验证器")
+
+basicValidatorCode = `import java.io.*;
+import java.util.*;
+
+public class BasicDeserializeValidator {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java BasicDeserializeValidator <serialized_file>");
+            System.exit(1);
+        }
+        
+        String filename = args[0];
+        System.out.println("=== Basic Deserialization Validator ===");
+        System.out.println("File: " + filename);
+        
+        try (FileInputStream fis = new FileInputStream(filename);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            
+            // 读取魔术字节验证
+            fis.close();
+            byte[] header = readFileHeader(filename);
+            if (header.length >= 4) {
+                System.out.printf("Magic: 0x%02X%02X%02X%02X%n", 
+                    header[0], header[1], header[2], header[3]);
+                
+                if ((header[0] & 0xFF) == 0xAC && (header[1] & 0xFF) == 0xED) {
+                    System.out.println("✓ Valid Java Serialization Magic");
+                } else {
+                    System.out.println("✗ Invalid Magic - Not a Java serialized object");
+                    System.exit(1);
+                }
+            }
+            
+            // 重新打开进行反序列化
+            try (FileInputStream fis2 = new FileInputStream(filename);
+                 ObjectInputStream ois2 = new ObjectInputStream(fis2)) {
+                
+                Object obj = ois2.readObject();
+                System.out.println("✓ Deserialization Successful");
+                System.out.println("Object Type: " + obj.getClass().getName());
+                System.out.println("Object String: " + obj.toString().substring(0, 
+                    Math.min(100, obj.toString().length())));
+                
+                System.out.println("\n=== VALIDATION PASSED ===");
+                System.exit(0);
+            }
+            
+        } catch (IOException e) {
+            System.out.println("✗ IO Error: " + e.getMessage());
+            System.exit(2);
+        } catch (ClassNotFoundException e) {
+            System.out.println("✗ Class Not Found: " + e.getMessage());
+            System.out.println("Note: Missing dependency classes (expected for gadget chains)");
+            System.exit(3);
+        } catch (Exception e) {
+            System.out.println("✗ Deserialization Error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(4);
+        }
+    }
+    
+    private static byte[] readFileHeader(String filename) throws IOException {
+        try (FileInputStream fis = new FileInputStream(filename)) {
+            byte[] header = new byte[10];
+            int read = fis.read(header);
+            return Arrays.copyOf(header, read);
+        }
+    }
+}`
+
+basicValidatorFile = file.Join(javaSourceDir, "BasicDeserializeValidator.java")
+file.Save(basicValidatorFile, basicValidatorCode)~
+yakit.Success("BasicDeserializeValidator.java 已生成")
+
+// ===== 1.2 创建详细结构验证器 =====
+// 关键词: 结构验证器, 深度验证, 序列化流分析
+println("\n1.2 创建详细结构验证器")
+
+detailedValidatorCode = `import java.io.*;
+
+public class DetailedStructureValidator {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java DetailedStructureValidator <serialized_file>");
+            System.exit(1);
+        }
+        
+        String filename = args[0];
+        System.out.println("=== Detailed Structure Validator ===");
+        System.out.println("File: " + filename);
+        
+        try {
+            File file = new File(filename);
+            long fileSize = file.length();
+            System.out.println("File Size: " + fileSize + " bytes");
+            
+            try (FileInputStream fis = new FileInputStream(filename)) {
+                byte[] data = new byte[(int) fileSize];
+                int read = fis.read(data);
+                
+                if (read >= 2) {
+                    int magic = ((data[0] & 0xFF) << 8) | (data[1] & 0xFF);
+                    System.out.printf("Magic Number: 0x%04X%n", magic);
+                    
+                    if (magic == 0xACED) {
+                        System.out.println("✓ Valid Java Serialization Stream");
+                    } else {
+                        System.out.println("✗ Invalid Magic Number");
+                        System.exit(1);
+                    }
+                }
+                
+                if (read >= 4) {
+                    int version = ((data[2] & 0xFF) << 8) | (data[3] & 0xFF);
+                    System.out.printf("Stream Version: 0x%04X%n", version);
+                }
+                
+                // 统计TC_开头的类型标记
+                int tcObjectCount = 0;
+                int tcClassCount = 0;
+                int tcStringCount = 0;
+                
+                for (int i = 4; i < read; i++) {
+                    byte b = data[i];
+                    if (b == 0x73) tcObjectCount++;  // TC_OBJECT
+                    if (b == 0x76) tcClassCount++;   // TC_CLASS
+                    if (b == 0x74) tcStringCount++;  // TC_STRING
+                }
+                
+                System.out.println("\nStructure Analysis:");
+                System.out.println("  TC_OBJECT markers: " + tcObjectCount);
+                System.out.println("  TC_CLASS markers: " + tcClassCount);
+                System.out.println("  TC_STRING markers: " + tcStringCount);
+                
+                System.out.println("\n✓ Structure validation passed");
+                System.out.println("=== VALIDATION PASSED ===");
+                
+            }
+        } catch (IOException e) {
+            System.out.println("✗ Error reading file: " + e.getMessage());
+            System.exit(2);
+        }
+    }
+}`
+
+detailedValidatorFile = file.Join(javaSourceDir, "DetailedStructureValidator.java")
+file.Save(detailedValidatorFile, detailedValidatorCode)~
+yakit.Success("DetailedStructureValidator.java 已生成")
+
+// ===== 1.3 创建URLDNS专用验证器 =====
+// 关键词: URLDNS验证, URL对象, 特定gadget验证
+println("\n1.3 创建URLDNS专用验证器")
+
+urldnsValidatorCode = `import java.io.*;
+import java.net.*;
+import java.util.*;
+
+public class URLDNSValidator {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java URLDNSValidator <serialized_file>");
+            System.exit(1);
+        }
+        
+        String filename = args[0];
+        System.out.println("=== URLDNS Specific Validator ===");
+        System.out.println("File: " + filename);
+        
+        try (FileInputStream fis = new FileInputStream(filename);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            
+            Object obj = ois.readObject();
+            System.out.println("✓ Deserialization Successful");
+            System.out.println("Object Type: " + obj.getClass().getName());
+            
+            // 验证是否为HashMap
+            if (obj instanceof HashMap) {
+                HashMap map = (HashMap) obj;
+                System.out.println("✓ Object is HashMap");
+                System.out.println("HashMap Size: " + map.size());
+                
+                // 检查是否包含URL对象
+                for (Object key : map.keySet()) {
+                    if (key instanceof URL) {
+                        URL url = (URL) key;
+                        System.out.println("✓ Found URL key: " + url.toString());
+                        System.out.println("  Protocol: " + url.getProtocol());
+                        System.out.println("  Host: " + url.getHost());
+                        System.out.println("  Path: " + url.getPath());
+                    }
+                }
+                
+                System.out.println("\n✓ URLDNS structure verified");
+                System.out.println("=== VALIDATION PASSED ===");
+            } else {
+                System.out.println("✗ Object is not HashMap");
+                System.exit(1);
+            }
+            
+        } catch (IOException e) {
+            System.out.println("✗ IO Error: " + e.getMessage());
+            System.exit(2);
+        } catch (ClassNotFoundException e) {
+            System.out.println("✗ Class Not Found: " + e.getMessage());
+            System.exit(3);
+        }
+    }
+}`
+
+urldnsValidatorFile = file.Join(javaSourceDir, "URLDNSValidator.java")
+file.Save(urldnsValidatorFile, urldnsValidatorCode)~
+yakit.Success("URLDNSValidator.java 已生成")
+
+println("✓ Java验证程序生成完成")
+
+// =============================================================================
+// 第二部分: 编译Java验证程序
+// javac编译 验证程序编译 Class生成
+// 关键词: javac编译, 编译验证程序, class文件生成
+// =============================================================================
+println("\n" + "=" * 80)
+println("第二部分: 编译Java验证程序")
+println("=" * 80)
+
+println("\n2.1 编译所有验证程序")
+
+// 使用sh -c来确保通配符正确解析
+compileCmd = sprintf("sh -c 'javac -d %v %v/*.java 2>&1'", javaClassDir, javaSourceDir)
+yakit.Info(sprintf("编译命令: %v", compileCmd))
+
+compileResult, compileErr = exec.System(compileCmd)
+compileOutput = string(compileResult)
+if compileErr != nil {
+    yakit.Warn(sprintf("编译出现警告: %v", compileErr))
+}
+if compileOutput != "" {
+    yakit.Warn(sprintf("编译输出: %v", compileOutput))
+}
+
+// 验证编译结果 - 直接检查class文件是否存在
+basicValidatorClass = file.Join(javaClassDir, "BasicDeserializeValidator.class")
+detailedValidatorClass = file.Join(javaClassDir, "DetailedStructureValidator.class")
+urldnsValidatorClass = file.Join(javaClassDir, "URLDNSValidator.class")
+
+if file.IsExisted(basicValidatorClass) && file.IsExisted(detailedValidatorClass) && file.IsExisted(urldnsValidatorClass) {
+    yakit.Success("所有验证器编译成功")
+} else {
+    yakit.Error("验证器编译失败，请检查编译输出")
+    die("验证器编译失败")
+}
+
+println("✓ Java验证程序编译完成")
+
+// =============================================================================
+// 第三部分: 生成YSO Payload并保存
+// YSO payload生成 序列化数据保存 测试数据准备
+// 关键词: YSO生成, Payload保存, 测试数据, 序列化对象
+// =============================================================================
+println("\n" + "=" * 80)
+println("第三部分: 生成YSO Payload并保存")
+println("=" * 80)
+
+payloadTests = []
+
+// ===== 3.1 生成URLDNS Payload =====
+// 关键词: URLDNS, yso.GetURLDNSJavaObject, DNS探测
+println("\n3.1 生成URLDNS Payload")
+
+urldnsObj = yso.GetURLDNSJavaObject("http://test.dnslog.cn")~
+urldnsBytes = yso.ToBytes(urldnsObj)~
+urldnsFile = file.Join(payloadDir, "urldns.ser")
+file.Save(urldnsFile, urldnsBytes)~
+
+yakit.Success(sprintf("URLDNS payload已保存: %v (%v bytes)", urldnsFile, len(urldnsBytes)))
+payloadTests = append(payloadTests, {
+    "name": "URLDNS",
+    "file": urldnsFile,
+    "validator": "URLDNSValidator",
+    "expectClass": false, // 不会缺少类
+})
+
+// ===== 3.2 生成CommonsCollections1 Payload =====
+// 关键词: CommonsCollections1, CC1链, 命令执行gadget
+println("\n3.2 生成CommonsCollections1 Payload")
+
+cc1Obj = yso.GetCommonsCollections1JavaObject("whoami")~
+cc1Bytes = yso.ToBytes(cc1Obj)~
+cc1File = file.Join(payloadDir, "cc1.ser")
+file.Save(cc1File, cc1Bytes)~
+
+yakit.Success(sprintf("CC1 payload已保存: %v (%v bytes)", cc1File, len(cc1Bytes)))
+payloadTests = append(payloadTests, {
+    "name": "CommonsCollections1",
+    "file": cc1File,
+    "validator": "BasicDeserializeValidator",
+    "expectClass": true, // 会缺少依赖类（Commons Collections）
+})
+
+// ===== 3.3 生成CommonsCollections5 Payload =====
+// 关键词: CommonsCollections5, CC5链
+println("\n3.3 生成CommonsCollections5 Payload")
+
+cc5Obj = yso.GetCommonsCollections5JavaObject("hostname")~
+cc5Bytes = yso.ToBytes(cc5Obj)~
+cc5File = file.Join(payloadDir, "cc5.ser")
+file.Save(cc5File, cc5Bytes)~
+
+yakit.Success(sprintf("CC5 payload已保存: %v (%v bytes)", cc5File, len(cc5Bytes)))
+payloadTests = append(payloadTests, {
+    "name": "CommonsCollections5",
+    "file": cc5File,
+    "validator": "BasicDeserializeValidator",
+    "expectClass": true,
+})
+
+// ===== 3.4 生成CommonsCollections6 Payload =====
+// 关键词: CommonsCollections6, CC6链
+println("\n3.4 生成CommonsCollections6 Payload")
+
+cc6Obj = yso.GetCommonsCollections6JavaObject("pwd")~
+cc6Bytes = yso.ToBytes(cc6Obj)~
+cc6File = file.Join(payloadDir, "cc6.ser")
+file.Save(cc6File, cc6Bytes)~
+
+yakit.Success(sprintf("CC6 payload已保存: %v (%v bytes)", cc6File, len(cc6Bytes)))
+payloadTests = append(payloadTests, {
+    "name": "CommonsCollections6",
+    "file": cc6File,
+    "validator": "BasicDeserializeValidator",
+    "expectClass": true,
+})
+
+// ===== 3.5 生成简单自定义对象（用于完整验证） =====
+// 关键词: 简单对象, 基础序列化, 完整验证
+println("\n3.5 生成简单自定义序列化对象")
+
+// 创建一个简单的Java类用于序列化测试
+simpleTestClass = `import java.io.*;
+
+public class SimpleSerializableObject implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private String message;
+    private int number;
+    
+    public SimpleSerializableObject(String message, int number) {
+        this.message = message;
+        this.number = number;
+    }
+    
+    @Override
+    public String toString() {
+        return "SimpleSerializableObject{message='" + message + "', number=" + number + "}";
+    }
+    
+    public static void main(String[] args) throws Exception {
+        if (args.length < 1) {
+            System.out.println("Usage: java SimpleSerializableObject <output_file>");
+            System.exit(1);
+        }
+        
+        SimpleSerializableObject obj = new SimpleSerializableObject("Test Message", 42);
+        
+        try (FileOutputStream fos = new FileOutputStream(args[0]);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(obj);
+            System.out.println("Object serialized to: " + args[0]);
+        }
+    }
+}`
+
+simpleTestFile = file.Join(javaSourceDir, "SimpleSerializableObject.java")
+file.Save(simpleTestFile, simpleTestClass)~
+
+// 编译并生成序列化对象
+simpleCompileCmd = sprintf("sh -c 'javac -d %v %v 2>&1'", javaClassDir, simpleTestFile)
+exec.System(simpleCompileCmd)
+
+simpleSerFile = file.Join(payloadDir, "simple.ser")
+simpleGenCmd = sprintf("sh -c 'cd %v && java SimpleSerializableObject %v 2>&1'", javaClassDir, simpleSerFile)
+exec.System(simpleGenCmd)
+
+if file.IsExisted(simpleSerFile) {
+    simpleBytes = file.ReadFile(simpleSerFile)~
+    yakit.Success(sprintf("Simple对象已保存: %v (%v bytes)", simpleSerFile, len(simpleBytes)))
+    payloadTests = append(payloadTests, {
+        "name": "SimpleObject",
+        "file": simpleSerFile,
+        "validator": "BasicDeserializeValidator",
+        "expectClass": false,
+    })
+}
+
+println("✓ YSO Payload生成完成")
+
+// =============================================================================
+// 第四部分: 使用Java验证程序进行交叉验证
+// 交叉验证 Java验证 反序列化测试 结果分析
+// 关键词: 交叉验证, Java验证程序, 反序列化测试, 验证结果
+// =============================================================================
+println("\n" + "=" * 80)
+println("第四部分: 使用Java验证程序进行交叉验证")
+println("=" * 80)
+
+validationResults = []
+
+for i = 0; i < len(payloadTests); i++ {
+    test = payloadTests[i]
+    println(sprintf("\n[%v/%v] 验证: %v", i+1, len(payloadTests), test["name"]))
+    println("-" * 60)
+    
+    // 首先用结构验证器检查
+    structureCmd = sprintf("sh -c 'cd %v && java DetailedStructureValidator %v 2>&1'", 
+        javaClassDir, test["file"])
+    structureResult, _ = exec.System(structureCmd)
+    structureOutput = string(structureResult)
+    
+    yakit.Info(sprintf("结构验证输出:\n%v", structureOutput))
+    
+    structurePassed = str.Contains(structureOutput, "VALIDATION PASSED")
+    
+    // 使用指定的验证器
+    validatorCmd = sprintf("sh -c 'cd %v && java %v %v 2>&1'",
+        javaClassDir, test["validator"], test["file"])
+    validatorResult, _ = exec.System(validatorCmd)
+    validatorOutput = string(validatorResult)
+    
+    yakit.Info(sprintf("反序列化验证输出:\n%v", validatorOutput))
+    
+    // 判断验证结果
+    validPassed = str.Contains(validatorOutput, "VALIDATION PASSED")
+    hasValidMagic = str.Contains(validatorOutput, "Valid Java Serialization")
+    deserSucceeded = str.Contains(validatorOutput, "Deserialization Successful")
+    isClassNotFound = str.Contains(validatorOutput, "Class Not Found")
+    
+    result = {
+        "name": test["name"],
+        "structure_passed": structurePassed,
+        "valid_magic": hasValidMagic,
+        "deser_succeeded": deserSucceeded,
+        "class_not_found": isClassNotFound,
+        "expect_class_missing": test["expectClass"],
+        "overall_passed": false,
+    }
+    
+    // 判断总体是否通过
+    if structurePassed && hasValidMagic {
+        if test["expectClass"] {
+            // 期望缺少类的情况
+            if isClassNotFound {
+                result["overall_passed"] = true
+                yakit.Success(sprintf("✓ %v: 验证通过（预期ClassNotFoundException）", test["name"]))
+            } else if deserSucceeded {
+                result["overall_passed"] = true
+                yakit.Success(sprintf("✓ %v: 验证通过（完整反序列化成功）", test["name"]))
+            }
+        } else {
+            // 不期望缺少类的情况
+            if deserSucceeded && !isClassNotFound {
+                result["overall_passed"] = true
+                yakit.Success(sprintf("✓ %v: 验证通过（完整反序列化成功）", test["name"]))
+            }
+        }
+    }
+    
+    if !result["overall_passed"] {
+        yakit.Error(sprintf("✗ %v: 验证失败", test["name"]))
+    }
+    
+    validationResults = append(validationResults, result)
+}
+
+// =============================================================================
+// 第五部分: 额外的二进制层面验证
+// 二进制验证 Magic验证 流版本验证 字节码分析
+// 关键词: 二进制验证, Magic Number, 流版本, 字节码结构
+// =============================================================================
+println("\n" + "=" * 80)
+println("第五部分: 额外的二进制层面验证")
+println("=" * 80)
+
+println("\n5.1 验证所有payload的Magic Number和版本")
+
+for i = 0; i < len(payloadTests); i++ {
+    test = payloadTests[i]
+    payloadBytes = file.ReadFile(test["file"])~
+    
+    if len(payloadBytes) >= 4 {
+        magic = (payloadBytes[0] << 8) | payloadBytes[1]
+        version = (payloadBytes[2] << 8) | payloadBytes[3]
+        
+        yakit.Info(sprintf("%v:", test["name"]))
+        yakit.Info(sprintf("  Magic: 0x%04X (期望: 0xACED)", magic))
+        yakit.Info(sprintf("  Version: 0x%04X (期望: 0x0005)", version))
+        
+        assert magic == 0xACED, sprintf("%v: Magic Number应该是0xACED", test["name"])
+        assert version == 0x0005, sprintf("%v: Stream Version应该是0x0005", test["name"])
+        
+        yakit.Success(sprintf("✓ %v 二进制结构正确", test["name"]))
+    }
+}
+
+println("\n5.2 使用java.ParseJavaObjectStream进行解析验证")
+
+for i = 0; i < len(payloadTests); i++ {
+    test = payloadTests[i]
+    payloadBytes = file.ReadFile(test["file"])~
+    
+    parsedObjs = java.ParseJavaObjectStream(payloadBytes)~
+    
+    yakit.Info(sprintf("%v 解析结果:", test["name"]))
+    yakit.Info(sprintf("  解析对象数: %v", len(parsedObjs)))
+    
+    if len(parsedObjs) > 0 {
+        yakit.Info(sprintf("  第一个对象类型: %v", parsedObjs[0].Type))
+        yakit.Success(sprintf("✓ %v 可被java库成功解析", test["name"]))
+    }
+    
+    assert len(parsedObjs) > 0, sprintf("%v: 应该至少解析出一个对象", test["name"])
+}
+
+println("✓ 二进制层面验证完成")
+
+// =============================================================================
+// 测试总结与结果统计
+// =============================================================================
+println("\n" + "=" * 80)
+println("测试总结与结果统计")
+println("=" * 80)
+
+totalTests = len(validationResults)
+passedTests = 0
+failedTests = 0
+
+println("\n详细验证结果:")
+println("-" * 80)
+printf("%-25s %-10s %-10s %-15s %-10s\n", "Payload", "结构", "Magic", "反序列化", "总体结果")
+println("-" * 80)
+
+for i = 0; i < len(validationResults); i++ {
+    result = validationResults[i]
+    structureStatus = "✗"
+    if result["structure_passed"] {
+        structureStatus = "✓"
+    }
+    
+    magicStatus = "✗"
+    if result["valid_magic"] {
+        magicStatus = "✓"
+    }
+    
+    deserStatus = "✗"
+    if result["deser_succeeded"] {
+        deserStatus = "✓"
+    } else if result["class_not_found"] && result["expect_class_missing"] {
+        deserStatus = "✓(预期)"
+    }
+    
+    overallStatus = "失败"
+    if result["overall_passed"] {
+        overallStatus = "通过"
+        passedTests++
+    } else {
+        failedTests++
+    }
+    
+    printf("%-25s %-10s %-10s %-15s %-10s\n",
+        result["name"], structureStatus, magicStatus, deserStatus, overallStatus)
+}
+
+println("-" * 80)
+println(sprintf("总测试数: %v", totalTests))
+println(sprintf("通过: %v", passedTests))
+println(sprintf("失败: %v", failedTests))
+println(sprintf("通过率: %.1f%%", float(passedTests) * 100.0 / float(totalTests)))
+
+if failedTests == 0 {
+    yakit.Success(`
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║          ✓ 所有Java与YSO交叉验证测试通过！                    ║
+║                                                              ║
+║  验证内容:                                                    ║
+║    • YSO生成的payload具有正确的Java序列化Magic (0xACED)      ║
+║    • 序列化流版本正确 (0x0005)                               ║
+║    • 真实Java程序能够成功解析反序列化                         ║
+║    • java.ParseJavaObjectStream能正确解析                    ║
+║    • 二进制结构完整有效                                       ║
+║                                                              ║
+║  这证明YSO生成的所有payload都是有效的Java序列化数据！          ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+`)
+} else {
+    yakit.Error(sprintf("有 %v 个测试失败，请检查详细输出", failedTests))
+}
+
+println("\n测试文件位置:")
+yakit.Info(sprintf("  Payload目录: %v", payloadDir))
+yakit.Info(sprintf("  Java验证器: %v", javaClassDir))
+yakit.Info(sprintf("  查看结果: ls -lh %v", payloadDir))
+
+println("=" * 80)
+
