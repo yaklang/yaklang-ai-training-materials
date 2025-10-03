@@ -121,13 +121,12 @@ jobs:
           COMMIT_SHA="${{ github.sha }}"
           COMMIT_SHORT="${COMMIT_SHA:0:7}"
           
-          cat > yaklang-aikb.updated_at.txt << EOF
-Upload Time: $UPLOAD_TIME
-Commit: $COMMIT_SHORT ($COMMIT_SHA)
-Branch: ${{ github.ref_name }}
-Actor: ${{ github.actor }}
-Workflow Run: ${{ github.run_number }}
-EOF
+          # 直接写入文件内容
+          echo "Upload Time: $UPLOAD_TIME" > yaklang-aikb.updated_at.txt
+          echo "Commit: $COMMIT_SHORT ($COMMIT_SHA)" >> yaklang-aikb.updated_at.txt
+          echo "Branch: ${{ github.ref_name }}" >> yaklang-aikb.updated_at.txt
+          echo "Actor: ${{ github.actor }}" >> yaklang-aikb.updated_at.txt
+          echo "Workflow Run: ${{ github.run_number }}" >> yaklang-aikb.updated_at.txt
           
           echo ""
           echo "=== Timestamp file content ==="
