@@ -1,19 +1,18 @@
-# Level 2: 密码哈希与验证
+# Level 2: 密码哈希与验证系统
 
 ## 题目描述
 
-编写一个 Yak 脚本，实现一个简单的密码存储和验证系统。
+编写一个 Yak 脚本，实现安全的密码存储和验证系统，使用 HMAC-SHA256 进行哈希。
 
 要求：
-1. 对密码进行 HMAC-SHA256 哈希（加盐）
-2. 存储用户名和密码哈希
-3. 实现密码验证功能
-4. 支持多个用户
-5. 统计验证成功率
+1. 用户注册时计算密码哈希
+2. 存储密码哈希（而非明文）
+3. 登录时验证密码
+4. 统计登录成功率
 
 ## 输入
 
-用户信息：
+用户数据：
 ```
 users = [
     {"username": "admin", "password": "Admin@123"},
@@ -22,9 +21,9 @@ users = [
 ]
 ```
 
-验证测试：
+登录测试：
 ```
-login_attempts = [
+loginAttempts = [
     {"username": "admin", "password": "Admin@123"},  // 正确
     {"username": "admin", "password": "wrongpass"},  // 错误
     {"username": "user1", "password": "Pass123!"},   // 正确
@@ -39,11 +38,11 @@ login_attempts = [
 
 [Registration] Registering 3 users...
 ✓ User 'admin' registered
-  Password hash: 8f5e21c3a2b1...
+  Password hash: f29b7d91d1014930...
 ✓ User 'user1' registered
-  Password hash: 6a3d42e5f8c9...
+  Password hash: fe57610dfffc08eb...
 ✓ User 'user2' registered
-  Password hash: 4b7a91f2d6e8...
+  Password hash: ca3c98f122d719bc...
 
 [Login Tests] Testing 4 login attempts...
 [1/4] admin / Admin@123
@@ -60,44 +59,46 @@ Total attempts: 4
 Successful: 2
 Failed: 2
 Success rate: 50.00%
+
+✓ All tests passed!
 ```
 
 ## 解题思路
 
-1. **哈希函数选择**
-   - 使用 `codec.HmacSha256(salt, password)` 进行哈希
-   - 需要一个固定的盐值（salt）
+1. **密码哈希**
+   - 使用 `codec.HmacSha256()` 计算哈希
+   - 添加盐值（salt）增强安全性
+   - 使用 `codec.EncodeToHex()` 转换为十六进制
 
 2. **用户注册**
-   - 计算密码哈希
-   - 存储用户名和哈希值的映射
+   - 遍历用户列表
+   - 计算每个密码的哈希
+   - 存储到用户数据库（map）
 
 3. **密码验证**
-   - 根据用户名查找存储的哈希
    - 计算输入密码的哈希
-   - 比较两个哈希值
+   - 与存储的哈希比较
+   - 返回验证结果
 
-4. **统计功能**
-   - 记录验证成功和失败次数
+4. **统计分析**
+   - 记录成功和失败次数
    - 计算成功率
 
 ## 关键知识点
 
 - `codec.HmacSha256(key, data)` - HMAC-SHA256 哈希
 - `codec.EncodeToHex(bytes)` - 字节转十六进制
-- Map/字典存储
-- 字符串比较
+- 密码安全存储原则
+- 哈希比较逻辑
 - 统计计算
 
 ## 难度等级
 
-⭐⭐ Level 2 - 考察密码学哈希和系统设计
+⭐⭐ Level 2 - 考察哈希算法和安全编程
 
 ## 评分标准
 
-- 正确实现哈希函数 (30%)
-- 正确实现用户存储 (20%)
-- 正确实现密码验证 (30%)
-- 统计功能完整 (15%)
-- 错误处理 (5%)
-
+- 正确实现密码哈希 (30%)
+- 正确存储和查询 (25%)
+- 正确验证密码 (25%)
+- 统计分析正确 (20%)

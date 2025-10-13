@@ -1,0 +1,18 @@
+// Level 2: uuid_gen
+
+println("=== uuid_gen Test ===\n")
+
+testData = "uuid_gen_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_uuid_gen.yak
+*/

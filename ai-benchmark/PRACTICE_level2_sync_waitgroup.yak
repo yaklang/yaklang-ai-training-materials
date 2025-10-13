@@ -1,0 +1,49 @@
+// Level 2: Sync WaitGroup 并发控制
+
+println("=== Sync WaitGroup ===\n")
+
+// 1. 创建 WaitGroup 和结果 channel
+wg = sync.NewWaitGroup()
+resultChan = make(chan string, 10)
+
+// 2. 启动多个 goroutine
+taskCount = 5
+println(f"Starting ${taskCount} tasks...")
+
+for i = 1; i <= taskCount; i++ {
+    wg.Add(1)
+    taskId = i
+    
+    task = func(id) {
+        defer wg.Done()
+        
+        // 模拟任务
+        result = f"Task ${id} completed"
+        resultChan <- result
+        println(result)
+    }
+    
+    go task(taskId)
+}
+
+// 3. 等待所有任务完成
+println("Waiting for all tasks...")
+wg.Wait()
+close(resultChan)
+
+// 4. 收集结果
+results = []
+for result = range resultChan {
+    results = append(results, result)
+}
+
+println(f"\nAll ${len(results)} tasks finished")
+assert len(results) == taskCount
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_sync_waitgroup.yak
+*/
+

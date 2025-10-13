@@ -1,0 +1,50 @@
+// Level 2: 字符串高级处理
+
+println("=== String Advanced Processing ===\n")
+
+testData = "  username=admin&password=123456&token=abc123  "
+
+// 1. TrimSpace
+cleaned = str.TrimSpace(testData)
+println(f"Cleaned: ${cleaned}")
+assert !str.HasPrefix(cleaned, " ")
+
+// 2. Split 解析参数
+params = str.Split(cleaned, "&")
+println(f"Params count: ${len(params)}")
+assert len(params) == 3
+
+// 3. 解析键值对
+paramMap = {}
+for param in params {
+    parts = str.Split(param, "=")
+    if len(parts) == 2 {
+        paramMap[parts[0]] = parts[1]
+    }
+}
+println(f"Username: ${paramMap['username']}")
+println(f"Password: ${paramMap['password']}")
+assert paramMap["username"] == "admin"
+
+// 4. Join 重组
+newParams = []
+for key, val in paramMap {
+    newParams = append(newParams, f"${key}=${val}")
+}
+rejoined = str.Join(newParams, "&")
+println(f"Rejoined: ${rejoined}")
+assert len(rejoined) > 0
+
+// 5. Replace 替换敏感信息
+masked = str.ReplaceAll(rejoined, paramMap["password"], "***")
+println(f"Masked: ${masked}")
+assert str.Contains(masked, "***")
+assert !str.Contains(masked, "123456")
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_str_advanced.yak
+*/
+

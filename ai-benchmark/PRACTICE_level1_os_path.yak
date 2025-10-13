@@ -1,0 +1,28 @@
+// Level 1: 操作系统路径操作
+
+println("=== OS Path Operations ===\n")
+
+// 1. 获取当前工作目录
+cwd, err = os.Getwd()
+die(err)
+println(f"Current Directory: ${cwd}")
+assert len(cwd) > 0, "Current directory should not be empty"
+
+// 2. 获取临时目录
+tempDir = os.TempDir()
+println(f"Temp Directory: ${tempDir}")
+assert len(tempDir) > 0, "Temp directory should not be empty"
+
+// 3. 获取主机名
+hostname, err = os.Hostname()
+die(err)
+println(f"Hostname: ${hostname}")
+assert len(hostname) > 0, "Hostname should not be empty"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_os_path.yak
+*/
+

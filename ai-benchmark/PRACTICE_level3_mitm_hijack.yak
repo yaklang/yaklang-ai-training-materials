@@ -1,0 +1,55 @@
+// Level 3: MITM 劫持与修改 (MOCK模式)
+
+println("=== MITM Hijack (MOCK Mode) ===\n")
+
+// MOCK 模式 - 模拟 MITM 功能
+mockRequest = `GET /api/user HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Cookie: session=old_session
+
+`
+
+mockResponse = `HTTP/1.1 200 OK
+Content-Type: application/json
+Set-Cookie: session=new_session
+
+{"user": "admin", "role": "user"}`
+
+println("=== 模拟请求劫持 ===")
+
+// 1. 修改请求头
+modifiedReq = poc.ReplaceHTTPPacketHeader(mockRequest, "User-Agent", "Custom-Agent/1.0")
+assert str.Contains(string(modifiedReq), "Custom-Agent")
+println("✓ Request User-Agent modified")
+
+// 2. 修改 Cookie
+modifiedReq = poc.ReplaceHTTPPacketCookie(modifiedReq, "session", "hijacked_session")
+assert str.Contains(string(modifiedReq), "hijacked_session")
+println("✓ Request Cookie hijacked")
+
+println("\n=== 模拟响应劫持 ===")
+
+// 3. 修改响应体
+hijackedBody = `{"user": "admin", "role": "admin"}`
+modifiedResp = poc.ReplaceHTTPPacketBody(mockResponse, []byte(hijackedBody))
+assert str.Contains(string(modifiedResp), `"role": "admin"`)
+println("✓ Response body hijacked (role elevated)")
+
+// 4. 修改响应头
+modifiedResp = poc.AppendHTTPPacketHeader(modifiedResp, "X-Hijacked", "true")
+assert str.Contains(string(modifiedResp), "X-Hijacked")
+println("✓ Response header added")
+
+// 5. 统计修改
+println(f"\nRequest size: ${len(mockRequest)} -> ${len(modifiedReq)}")
+println(f"Response size: ${len(mockResponse)} -> ${len(modifiedResp)}")
+
+println("\n✓ All MITM operations completed (MOCK)!")
+println("Note: This is a MOCK test. Real MITM requires network.")
+
+/*
+验证方法：
+  yak PRACTICE_level3_mitm_hijack.yak
+*/
+

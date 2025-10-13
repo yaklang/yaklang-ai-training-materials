@@ -1,0 +1,31 @@
+// Level 1: 数组操作 01
+
+println("=== Array Operations 01 ===\n")
+
+// 创建数组
+arr = [1, 2, 3, 4, 5]
+println(f"Array: ${arr}")
+
+// 数组长度
+length = len(arr)
+println(f"Length: ${length}")
+assert length == 5
+
+// 访问元素
+first = arr[0]
+last = arr[4]
+println(f"First: ${first}, Last: ${last}")
+assert first == 1
+assert last == 5
+
+// 添加元素
+arr = append(arr, 6)
+println(f"After append: ${arr}")
+assert len(arr) == 6
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_array_01.yak
+*/

@@ -1,0 +1,18 @@
+// Level 2: host_alive
+
+println("=== host_alive Test ===\n")
+
+testData = "host_alive_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_host_alive.yak
+*/

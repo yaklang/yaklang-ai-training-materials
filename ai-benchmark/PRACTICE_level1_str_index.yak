@@ -1,0 +1,38 @@
+// Level 1: 字符串索引查找
+
+println("=== String Index Search ===\n")
+
+testStr = "yaklang is a language for security, yaklang is powerful"
+
+// 1. Index - 查找第一个匹配
+firstIndex = str.Index(testStr, "yaklang")
+println(f"First 'yaklang' at: ${firstIndex}")
+assert firstIndex == 0
+
+// 2. LastIndex - 查找最后一个匹配
+lastIndex = str.LastIndex(testStr, "yaklang")
+println(f"Last 'yaklang' at: ${lastIndex}")
+assert lastIndex == 36
+
+// 3. Count - 计数出现次数
+count = str.Count(testStr, "yaklang")
+println(f"Count of 'yaklang': ${count}")
+assert count == 2
+
+// 4. 不存在的查找
+notFound = str.Index(testStr, "python")
+println(f"'python' index: ${notFound}")
+assert notFound == -1
+
+// 5. 单字符查找
+spaceIndex = str.Index(testStr, " ")
+println(f"First space at: ${spaceIndex}")
+assert spaceIndex == 7
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_str_index.yak
+*/
+

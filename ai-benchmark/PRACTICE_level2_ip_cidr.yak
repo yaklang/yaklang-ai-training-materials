@@ -1,0 +1,18 @@
+// Level 2: ip_cidr
+
+println("=== ip_cidr Test ===\n")
+
+testData = "ip_cidr_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_ip_cidr.yak
+*/

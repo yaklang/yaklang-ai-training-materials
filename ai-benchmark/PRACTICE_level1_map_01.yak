@@ -1,0 +1,42 @@
+// Level 1: Map 映射操作 01
+
+println("=== Map Operations 01 ===\n")
+
+// 创建 map
+m = {
+    "key1": "value1",
+    "count": 1,
+    "active": true
+}
+
+println(f"Map: ${m}")
+
+// 访问元素
+value = m["key1"]
+println(f"Value: ${value}")
+assert value == "value1"
+
+// 检查键是否存在
+if m["count"] != undefined {
+    println(f"Count exists: ${m['count']}")
+    assert m["count"] == 1
+}
+
+// 添加新键
+m["new1"] = "newvalue1"
+assert m["new1"] == "newvalue1"
+
+// 统计键数量
+keyCount = 0
+for k, v in m {
+    keyCount++
+}
+println(f"Total keys: ${keyCount}")
+assert keyCount == 4
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_map_01.yak
+*/

@@ -1,0 +1,40 @@
+// Level 2: POC 库 - HTTP 包构造
+
+println("=== POC HTTP Packet Building ===\n")
+
+// 1. 创建基础请求
+baseReq = poc.BasicRequest()
+println("Basic request created")
+assert len(baseReq) > 0
+
+// 2. 修改方法
+modified = poc.ReplaceHTTPPacketMethod(baseReq, "POST")
+assert str.Contains(string(modified), "POST")
+println("✓ Method replaced to POST")
+
+// 3. 修改路径
+modified = poc.ReplaceHTTPPacketPath(modified, "/api/test")
+assert str.Contains(string(modified), "/api/test")
+println("✓ Path replaced to /api/test")
+
+// 4. 添加 Header
+modified = poc.ReplaceHTTPPacketHeader(modified, "X-Custom", "test-value")
+assert str.Contains(string(modified), "X-Custom")
+println("✓ Custom header added")
+
+// 5. 添加 Body
+modified = poc.ReplaceHTTPPacketBody(modified, []byte("test data"))
+assert str.Contains(string(modified), "test data")
+println("✓ Body added")
+
+// 6. 验证完整性
+println(f"Final packet size: ${len(modified)} bytes")
+assert len(modified) > len(baseReq)
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_poc_build.yak
+*/
+

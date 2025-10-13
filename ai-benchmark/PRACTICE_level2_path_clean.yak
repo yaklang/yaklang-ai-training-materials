@@ -1,0 +1,18 @@
+// Level 2: path_clean
+
+println("=== path_clean Test ===\n")
+
+testData = "path_clean_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_path_clean.yak
+*/

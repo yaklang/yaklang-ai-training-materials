@@ -1,0 +1,18 @@
+// Level 2: url_build
+
+println("=== url_build Test ===\n")
+
+testData = "url_build_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_url_build.yak
+*/

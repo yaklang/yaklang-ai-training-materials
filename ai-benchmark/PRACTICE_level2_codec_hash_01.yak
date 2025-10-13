@@ -1,0 +1,27 @@
+// Level 2: 哈希计算 01
+
+println("=== Hash Calculation 01 ===\n")
+
+testData = "yaklang security test data 1"
+
+// MD5
+md5Hash = codec.Md5(testData)
+println(f"MD5: ${md5Hash}")
+assert len(md5Hash) == 32
+
+// SHA1
+sha1Hash = codec.Sha1(testData)
+println(f"SHA1: ${sha1Hash}")
+assert len(sha1Hash) == 40
+
+// SHA256
+sha256Hash = codec.Sha256(testData)
+println(f"SHA256: ${sha256Hash}")
+assert len(sha256Hash) == 64
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_codec_hash_01.yak
+*/

@@ -1,0 +1,22 @@
+// Level 2: 正则匹配 02
+
+println("=== Regex Match 02 ===\n")
+
+testStr = "test2@example.com, user2@test.org"
+
+// 提取邮箱
+emails = re.ExtractEmail(testStr)
+println(f"Emails: ${emails}")
+assert len(emails) >= 2
+
+// 匹配数字
+numbers = re.FindAll(testStr, "\\d+")
+println(f"Numbers: ${numbers}")
+assert len(numbers) >= 2
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_re_match_02.yak
+*/

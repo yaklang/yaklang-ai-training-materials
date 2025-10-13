@@ -1,0 +1,48 @@
+// Level 2: Context 基础使用
+
+println("=== Context Basics ===\n")
+
+// 1. 创建基础 context
+ctx = context.New()
+println("Context created")
+assert ctx != nil
+
+// 2. 创建带超时的 context (简化版)
+ctx2 = context.WithTimeoutSeconds(3, ctx)
+println("Context with 3s timeout created")
+assert ctx2 != nil
+
+// 3. 模拟快速任务
+println("Starting quick task...")
+time.Sleep(0.1)
+println("✓ Task completed")
+
+// 4. Context 用于传递取消信号
+done = make(chan bool)
+cancelChan = make(chan bool)
+
+go func() {
+    time.Sleep(0.2)
+    cancelChan <- true
+}()
+
+go func() {
+    time.Sleep(0.1)
+    done <- true
+}()
+
+// 等待完成
+<-done
+println("✓ Task finished before cancel")
+
+// 清理
+<-cancelChan
+println("✓ Context basics tested")
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_context_timeout.yak
+*/
+

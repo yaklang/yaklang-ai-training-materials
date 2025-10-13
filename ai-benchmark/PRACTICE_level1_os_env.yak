@@ -1,0 +1,51 @@
+// Level 1: 操作系统环境变量操作
+
+println("=== OS Environment Variables ===\n")
+
+// 1. 获取 PATH 环境变量
+path = os.Getenv("PATH")
+println(f"PATH: ${path[:min(50, len(path))]}...")
+assert len(path) > 0, "PATH should not be empty"
+
+// 2. 获取 HOME 环境变量
+home = os.Getenv("HOME")
+if home != "" {
+    println(f"HOME: ${home}")
+}
+
+// 3. 设置自定义环境变量
+testVarName = "YAKLANG_TEST_VAR"
+testVarValue = "hello_yaklang"
+os.Setenv(testVarName, testVarValue)~
+println(f"Custom variable set: ${testVarName}=${testVarValue}")
+
+// 4. 验证设置成功
+getValue = os.Getenv(testVarName)
+assert getValue == testVarValue, "Should get the set value"
+
+// 5. 检查环境变量是否存在
+value, exists = os.LookupEnv(testVarName)
+println(f"Variable exists: ${exists}")
+assert exists == true, "Variable should exist"
+
+// 6. 删除环境变量
+os.Unsetenv(testVarName)~
+_, exists2 = os.LookupEnv(testVarName)
+println(f"Variable deleted: ${exists2}")
+assert exists2 == false, "Variable should be deleted"
+
+// 辅助函数
+min = func(a, b) {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_os_env.yak
+*/
+

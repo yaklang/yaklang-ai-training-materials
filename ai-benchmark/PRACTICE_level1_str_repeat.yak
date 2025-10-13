@@ -1,0 +1,37 @@
+// Level 1: 字符串重复和填充
+
+println("=== String Repeat and Padding ===\n")
+
+// 1. Repeat - 重复字符串
+line = str.Repeat("=", 30)
+println(f"Line: ${line}")
+assert len(line) == 30
+
+// 2. 创建分隔线
+separator = str.Repeat("-", 20)
+println(f"Separator: ${separator}")
+assert separator == "--------------------"
+
+// 3. 创建空格填充
+spaces = str.Repeat(" ", 5)
+paddedText = "Hello" + spaces + "World"
+println(f"Padded: '${paddedText}'")
+assert len(paddedText) == 15
+
+// 4. 重复多个字符
+pattern = str.Repeat("ab", 5)
+println(f"Pattern: ${pattern}")
+assert pattern == "ababababab"
+
+// 5. 零次重复
+empty = str.Repeat("x", 0)
+println(f"Empty: '${empty}'")
+assert empty == ""
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_str_repeat.yak
+*/
+

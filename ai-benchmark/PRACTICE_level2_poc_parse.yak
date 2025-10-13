@@ -1,0 +1,43 @@
+// Level 2: POC 库 - HTTP 响应解析
+
+println("=== POC HTTP Response Parsing ===\n")
+
+testResp = `HTTP/1.1 200 OK
+Content-Type: application/json
+Set-Cookie: session=abc123; Path=/
+Content-Length: 27
+
+{"status":"ok","code":200}`
+
+// 1. 获取状态码
+statusCode = poc.GetStatusCodeFromResponse(testResp)
+println(f"Status Code: ${statusCode}")
+assert statusCode == 200
+
+// 2. 获取 Content-Type
+contentType = poc.GetHTTPPacketHeader(testResp, "Content-Type")
+println(f"Content-Type: ${contentType}")
+assert contentType == "application/json"
+
+// 3. 获取 Cookie
+cookies = poc.GetHTTPPacketCookies(testResp)
+println(f"Cookies: ${cookies}")
+assert cookies["session"] == "abc123"
+
+// 4. 获取 Body
+body = poc.GetHTTPPacketBody(testResp)
+println(f"Body: ${string(body)}")
+assert str.Contains(string(body), "ok")
+
+// 5. 分割 Header 和 Body
+header, bodyPart = poc.Split(testResp)
+println(f"Header length: ${len(header)}, Body length: ${len(bodyPart)}")
+assert len(header) > 0 && len(bodyPart) > 0
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_poc_parse.yak
+*/
+

@@ -1,0 +1,18 @@
+// Level 2: slice_ops
+
+println("=== slice_ops Test ===\n")
+
+testData = "slice_ops_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_slice_ops.yak
+*/

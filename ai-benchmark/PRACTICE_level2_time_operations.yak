@@ -1,0 +1,41 @@
+// Level 2: Time 时间操作
+
+println("=== Time Operations ===\n")
+
+// 1. 获取当前时间戳
+nowUnix = time.Now().Unix()
+println(f"Current timestamp: ${nowUnix}")
+assert nowUnix > 1700000000  // 2023年以后
+
+// 2. 时间格式化
+formatted = time.Now().Format("2006-01-02 15:04:05")
+println(f"Formatted: ${formatted}")
+assert len(formatted) == 19
+
+// 3. 解析时间字符串
+timeStr = "2024-01-01 12:00:00"
+parsed, err = time.Parse("2006-01-02 15:04:05", timeStr)
+die(err)
+println(f"Parsed: ${parsed}")
+assert parsed.Unix() > 0
+
+// 4. 时间戳操作
+nowTs = time.Now().Unix()
+futureTs = nowTs + 3600  // +1小时
+println(f"Future timestamp: ${futureTs}")
+assert futureTs > nowTs
+
+// 5. Sleep
+println("Sleeping 100ms...")
+start = time.Now().Unix()
+time.Sleep(0.1)
+end = time.Now().Unix()
+println(f"Sleep completed (${end - start}s elapsed)")
+assert end >= start
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_time_operations.yak
+*/

@@ -1,0 +1,64 @@
+// Level 3: XSS 检测 (MOCK模式)
+
+println("=== XSS Detection (MOCK Mode) ===\n")
+
+// XSS Payloads
+xssPayloads = [
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "<svg onload=alert(1)>",
+    "javascript:alert(1)",
+    "<iframe src=javascript:alert(1)>",
+]
+
+// 模拟目标URL
+mockTargetURL = "http://test.local/search?q=FUZZ"
+
+println(f"Testing ${len(xssPayloads)} XSS payloads...\n")
+
+vulnerable = []
+safe = []
+
+for i, payload in xssPayloads {
+    // 模拟注入
+    testURL = str.ReplaceAll(mockTargetURL, "FUZZ", payload)
+    
+    // MOCK 响应 - 模拟不同场景
+    mockResp = ""
+    if str.Contains(payload, "<script>") || str.Contains(payload, "onerror") {
+        // 模拟反射型 XSS（payload 被直接返回）
+        mockResp = f`<html><body>Search: ${payload}</body></html>`
+        vulnerable = append(vulnerable, payload)
+        println(f"[VULN] Payload ${i+1}: ${payload[:min(30, len(payload))]}...")
+    } else {
+        // 模拟过滤/编码
+        encoded = str.ReplaceAll(payload, "<", "&lt;")
+        encoded = str.ReplaceAll(encoded, ">", "&gt;")
+        mockResp = f`<html><body>Search: ${encoded}</body></html>`
+        safe = append(safe, payload)
+        println(f"[SAFE] Payload ${i+1}: Filtered")
+    }
+}
+
+// 统计结果
+println(f"\n=== Detection Summary ===")
+println(f"Total payloads: ${len(xssPayloads)}")
+println(f"Potentially vulnerable: ${len(vulnerable)}")
+println(f"Filtered/Safe: ${len(safe)}")
+
+assert len(vulnerable) + len(safe) == len(xssPayloads)
+
+// 辅助函数
+min = func(a, b) {
+    if a < b { return a }
+    return b
+}
+
+println("\n✓ XSS detection completed (MOCK)!")
+println("Note: This is a MOCK test. Real detection requires network.")
+
+/*
+验证方法：
+  yak PRACTICE_level3_xss_detect.yak
+*/
+

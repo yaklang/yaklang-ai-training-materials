@@ -1,0 +1,58 @@
+// Level 2: JSON 高级提取
+
+println("=== JSON Advanced Extraction ===\n")
+
+jsonData = `{
+    "users": [
+        {"id": 1, "name": "Alice", "role": "admin", "score": 95},
+        {"id": 2, "name": "Bob", "role": "user", "score": 80},
+        {"id": 3, "name": "Charlie", "role": "admin", "score": 88}
+    ],
+    "total": 3,
+    "meta": {"version": "1.0", "timestamp": 1234567890}
+}`
+
+parsed = json.loads(jsonData)~
+
+// 1. 提取用户数组
+users = parsed["users"]
+println(f"Total users: ${len(users)}")
+assert len(users) == 3
+
+// 2. 过滤管理员
+adminCount = 0
+for user in users {
+    if user["role"] == "admin" {
+        adminCount++
+        println(f"Admin: ${user['name']} (score: ${user['score']})")
+    }
+}
+assert adminCount == 2
+
+// 3. 计算平均分
+totalScore = 0
+for user in users {
+    totalScore += user["score"]
+}
+avgScore = totalScore / len(users)
+println(f"Average score: ${avgScore}")
+assert avgScore > 85 && avgScore < 90
+
+// 4. 提取嵌套数据
+version = parsed["meta"]["version"]
+println(f"Version: ${version}")
+assert version == "1.0"
+
+// 5. 序列化回 JSON
+newData = {"test": "value", "count": 42}
+serialized = json.dumps(newData)
+println(f"Serialized: ${serialized}")
+assert str.Contains(serialized, "test")
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_json_extract.yak
+*/
+

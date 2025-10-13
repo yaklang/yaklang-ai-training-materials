@@ -1,0 +1,38 @@
+// Level 1: 字符串包含检查
+
+println("=== String Contains Check ===\n")
+
+testStr = "Hello Yaklang World! Welcome to security testing."
+
+// 1. Contains 检查
+hasYaklang = str.Contains(testStr, "Yaklang")
+println(f"Contains 'Yaklang': ${hasYaklang}")
+assert hasYaklang == true
+
+// 2. HasPrefix 检查
+hasHello = str.HasPrefix(testStr, "Hello")
+println(f"HasPrefix 'Hello': ${hasHello}")
+assert hasHello == true
+
+// 3. HasSuffix 检查
+hasTesting = str.HasSuffix(testStr, "testing.")
+println(f"HasSuffix 'testing.': ${hasTesting}")
+assert hasTesting == true
+
+// 4. 不存在的检查
+hasPython = str.Contains(testStr, "Python")
+println(f"Contains 'Python': ${hasPython}")
+assert hasPython == false
+
+// 5. 空字符串检查
+emptyCheck = str.Contains(testStr, "")
+println(f"Contains empty string: ${emptyCheck}")
+assert emptyCheck == true
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_str_contains.yak
+*/
+

@@ -47,10 +47,12 @@ anomalies = []
 baselineLength = 4500  // 模拟的基准响应长度
 
 // 模拟测试每个用例
-for i, testCase in testCases {
-    if i >= 10 {  // 只显示前10个
+testIndex = 0
+for testCase in testCases {
+    if testIndex >= 10 {  // 只显示前10个
         break
     }
+    i = testIndex
     
     // 模拟响应（实际应该发送 HTTP 请求）
     // 这里我们模拟不同的响应情况
@@ -111,6 +113,7 @@ for i, testCase in testCases {
     }
     
     println("")
+    testIndex++
 }
 
 if total > 10 {

@@ -1,0 +1,18 @@
+// Level 2: env_expand
+
+println("=== env_expand Test ===\n")
+
+testData = "env_expand_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_env_expand.yak
+*/

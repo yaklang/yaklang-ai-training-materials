@@ -130,7 +130,7 @@ if len(allFiles) < topN {
 
 for i = 0; i < topN; i++ {
     fileInfo = allFiles[i]
-    fileName = file.Base(fileInfo["path"])
+    fileName = file.GetBase(fileInfo["path"])
     sizeKB = float(fileInfo["size"]) / 1024.0
     println(f"   ${i+1}. ${fileName} (${sprintf('%.1f', sizeKB)} KB)")
 }
@@ -144,7 +144,7 @@ level2Files = []
 level3Files = []
 
 for fileInfo in allFiles {
-    fileName = file.Base(fileInfo["path"])
+    fileName = file.GetBase(fileInfo["path"])
     if str.Contains(fileName, "level1") {
         level1Files = append(level1Files, fileInfo)
     } elif str.Contains(fileName, "level2") {

@@ -1,0 +1,32 @@
+// Level 1: 基础数学运算 03
+
+println("=== Math Operations 03 ===\n")
+
+// 加法
+a = 3
+b = 6
+sum = a + b
+println(f"Sum: ${a} + ${b} = ${sum}")
+assert sum == 9
+
+// 减法
+diff = b - a
+println(f"Diff: ${b} - ${a} = ${diff}")
+assert diff == 3
+
+// 乘法
+product = a * 3
+println(f"Product: ${a} * 3 = ${product}")
+assert product == 9
+
+// 除法
+quotient = b / a
+println(f"Quotient: ${b} / ${a} = ${quotient}")
+assert quotient == 2
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_math_03.yak
+*/

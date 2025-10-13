@@ -1,0 +1,49 @@
+// Level 2: Exec 库 - 简单命令执行
+
+println("=== Exec Simple Commands ===\n")
+
+isWindows = os.OS == "windows"
+
+// 1. 执行 echo 命令
+echoCmd = "echo Hello Yaklang"
+if isWindows {
+    echoCmd = "cmd /c echo Hello Yaklang"
+}
+
+result, err = exec.System(echoCmd)
+die(err)
+println(f"Echo output: ${string(result)}")
+assert str.Contains(string(result), "Hello")
+
+// 2. 获取当前用户
+userCmd = "whoami"
+if isWindows {
+    userCmd = "cmd /c echo %USERNAME%"
+}
+
+result, err = exec.System(userCmd)
+if err == nil {
+    println(f"Current user: ${str.TrimSpace(string(result))}")
+    assert len(result) > 0
+}
+
+// 3. 列出文件（限制输出）
+listCmd = "ls -1 | head -5"
+if isWindows {
+    listCmd = "cmd /c dir /B | findstr /N ."
+}
+
+result, err = exec.System(listCmd)
+if err == nil {
+    lines = str.Split(string(result), "\n")
+    println(f"Files: ${len(lines)} items")
+    assert len(lines) > 0
+}
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_exec_simple.yak
+*/
+

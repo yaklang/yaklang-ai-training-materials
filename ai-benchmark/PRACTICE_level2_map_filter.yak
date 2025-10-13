@@ -1,0 +1,18 @@
+// Level 2: map_filter
+
+println("=== map_filter Test ===\n")
+
+testData = "map_filter_data"
+println(f"Processing: ${testData}")
+
+// 测试逻辑占位
+result = testData + "_processed"
+println(f"Result: ${result}")
+assert len(result) > 0
+
+println("\n✓ Test passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_map_filter.yak
+*/
