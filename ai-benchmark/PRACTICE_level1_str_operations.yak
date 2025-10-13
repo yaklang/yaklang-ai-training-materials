@@ -1,0 +1,165 @@
+// Level 1: 字符串高级操作
+// 演示 str 库的各种字符串操作函数
+
+println("=== String Operations ===\n")
+
+// 原始字符串
+original = "  Hello, Yaklang World! Welcome to Security Testing.  "
+println(f"Original: \"${original}\"\n")
+
+// ========================================
+// 1. Trim 操作
+// ========================================
+
+println("1. Trim Operations")
+
+trimmed = str.TrimSpace(original)
+println(f"   TrimSpace: \"${trimmed}\"")
+
+trimPrefixed = str.TrimPrefix(original, "  Hello, ")
+println(f"   TrimPrefix: \"${trimPrefixed}\"")
+
+trimSuffixed = str.TrimSuffix(original, " Testing.  ")
+println(f"   TrimSuffix: \"${trimSuffixed}\"\n")
+
+// ========================================
+// 2. 大小写操作
+// ========================================
+
+println("2. Case Operations")
+
+upper = str.ToUpper(original)
+println(f"   ToUpper: \"${upper}\"")
+
+lower = str.ToLower(original)
+println(f"   ToLower: \"${lower}\"")
+
+title = str.Title(original)
+println(f"   Title: \"${title}\"\n")
+
+// ========================================
+// 3. 分割和连接
+// ========================================
+
+println("3. Split & Join")
+
+words = str.Split(trimmed, " ")
+println(f"   Split by space: ${len(words)} parts")
+
+// 过滤空字符串和标点
+cleanWords = []
+for word in words {
+    cleaned = str.TrimRight(word, ",!.")
+    if len(cleaned) > 0 {
+        cleanWords = append(cleanWords, cleaned)
+    }
+}
+
+joined = str.Join(cleanWords, "-")
+println(f"   Join with '-': \"${joined}\"\n")
+
+// ========================================
+// 4. 替换操作
+// ========================================
+
+println("4. Replace Operations")
+
+// Replace 只替换第一个
+replaced1 = str.Replace(trimmed, "Yaklang", "YAK", 1)
+println(f"   Replace 'Yaklang' -> 'YAK': \"${replaced1}\"")
+
+// ReplaceAll 替换所有
+replaced2 = str.ReplaceAll(trimmed, "e", "E")
+println(f"   ReplaceAll 'e' -> 'E': \"${replaced2}\"\n")
+
+// ========================================
+// 5. 检查操作
+// ========================================
+
+println("5. Check Operations")
+
+hasPrefix = str.HasPrefix(trimmed, "Hello")
+println(f"   HasPrefix 'Hello': ${hasPrefix}")
+
+hasSuffix = str.HasSuffix(trimmed, "Testing.")
+println(f"   HasSuffix 'Testing.': ${hasSuffix}")
+
+contains1 = str.Contains(trimmed, "Security")
+println(f"   Contains 'Security': ${contains1}")
+
+contains2 = str.Contains(trimmed, "Python")
+println(f"   Contains 'Python': ${contains2}")
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 验证 Trim
+assert trimmed == "Hello, Yaklang World! Welcome to Security Testing.", "TrimSpace should remove spaces"
+assert len(trimmed) < len(original), "Trimmed should be shorter"
+
+// 验证大小写
+assert str.Contains(upper, "HELLO"), "ToUpper should convert to uppercase"
+assert str.Contains(lower, "hello"), "ToLower should convert to lowercase"
+
+// 验证分割
+assert len(words) > 5, "Should split into multiple words"
+
+// 验证替换
+assert str.Contains(replaced1, "YAK"), "Replace should work"
+assert !str.Contains(replaced1, "Yaklang"), "Original word should be replaced"
+
+// 验证检查
+assert hasPrefix == true, "Should have prefix 'Hello'"
+assert hasSuffix == true, "Should have suffix 'Testing.'"
+assert contains1 == true, "Should contain 'Security'"
+assert contains2 == false, "Should not contain 'Python'"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_str_operations.yak
+
+预期输出：
+  === String Operations ===
+  
+  Original: "  Hello, Yaklang World! Welcome to Security Testing.  "
+  
+  1. Trim Operations
+     TrimSpace: "Hello, Yaklang World! Welcome to Security Testing."
+     TrimPrefix: "Yaklang World! Welcome to Security Testing.  "
+     TrimSuffix: "  Hello, Yaklang World! Welcome to Security"
+  
+  2. Case Operations
+     ToUpper: "  HELLO, YAKLANG WORLD! WELCOME TO SECURITY TESTING.  "
+     ToLower: "  hello, yaklang world! welcome to security testing.  "
+     Title: "  Hello, Yaklang World! Welcome To Security Testing.  "
+  
+  3. Split & Join
+     Split by space: 10 parts
+     Join with '-': "Hello-Yaklang-World-Welcome-to-Security-Testing"
+  
+  4. Replace Operations
+     Replace 'Yaklang' -> 'YAK': "Hello, YAK World! Welcome to Security Testing."
+     ReplaceAll 'e' -> 'E': "HEllo, Yaklang World! WElcomE to SEcurity TEsting."
+  
+  5. Check Operations
+     HasPrefix 'Hello': true
+     HasSuffix 'Testing.': true
+     Contains 'Security': true
+     Contains 'Python': false
+  
+  ✓ All tests passed!
+
+关键函数：
+- str.TrimSpace, str.TrimPrefix, str.TrimSuffix
+- str.ToUpper, str.ToLower, str.Title  
+- str.Split, str.Join
+- str.Replace, str.ReplaceAll
+- str.HasPrefix, str.HasSuffix, str.Contains
+
+参考：
+- library-usage/str/str-basic.md
+*/
+

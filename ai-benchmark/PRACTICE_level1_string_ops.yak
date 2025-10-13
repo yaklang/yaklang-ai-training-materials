@@ -1,0 +1,117 @@
+// Level 1: 字符串处理与格式化
+// 解析日志文本，提取和格式化信息
+
+logText = `2025-01-15 10:23:45 [ERROR] Database connection failed
+2025-01-15 10:23:46 [INFO] Retrying connection...
+2025-01-15 10:23:47 [INFO] Connection established
+2025-01-15 10:24:01 [WARN] Slow query detected: 2.3s
+2025-01-15 10:24:15 [ERROR] Failed to process request
+2025-01-15 10:24:16 [INFO] Request queued for retry`
+
+println("=== Log Analysis ===")
+
+// 1. 分割日志行
+lines = str.Split(logText, "\n")
+println(f"Total lines: ${len(lines)}\n")
+
+// 2. 统计各级别日志数量
+stats = {}
+formattedLogs = []
+
+for line in lines {
+    line = str.TrimSpace(line)
+    if line == "" {
+        continue
+    }
+    
+    // 提取时间（取第二个空格后的时间）
+    parts = str.Split(line, " ")
+    if len(parts) < 3 {
+        continue
+    }
+    
+    time = parts[1]  // 10:23:45
+    
+    // 提取级别（在方括号中）
+    levelStart = str.Index(line, "[")
+    levelEnd = str.Index(line, "]")
+    if levelStart < 0 || levelEnd < 0 {
+        continue
+    }
+    level = line[levelStart+1:levelEnd]
+    
+    // 提取消息（方括号后的内容）
+    message = str.TrimSpace(line[levelEnd+1:])
+    
+    // 统计级别
+    if stats[level] == undefined {
+        stats[level] = 1
+    } else {
+        stats[level] = stats[level] + 1
+    }
+    
+    // 格式化日志
+    formatted = sprintf("[%s] %s: %s", time, level, message)
+    formattedLogs = append(formattedLogs, formatted)
+}
+
+// 3. 输出统计信息
+println("=== Statistics ===")
+if stats["ERROR"] != undefined {
+    println(f"ERROR: ${stats['ERROR']}")
+}
+if stats["INFO"] != undefined {
+    println(f"INFO: ${stats['INFO']}")
+}
+if stats["WARN"] != undefined {
+    println(f"WARN: ${stats['WARN']}")
+}
+
+// 4. 输出格式化的日志
+println("\n=== Formatted Logs ===")
+for log in formattedLogs {
+    println(log)
+}
+
+// ========================================
+// 验证测试
+// ========================================
+
+assert len(lines) == 6, "Should have 6 log lines"
+assert len(formattedLogs) == 6, "Should format 6 logs"
+
+// 验证统计
+assert stats["ERROR"] == 2, "Should have 2 ERROR logs"
+assert stats["INFO"] == 3, "Should have 3 INFO logs"
+assert stats["WARN"] == 1, "Should have 1 WARN log"
+
+// 验证格式化内容
+assert str.Contains(formattedLogs[0], "[10:23:45] ERROR:"), "First log should be formatted correctly"
+assert str.Contains(formattedLogs[0], "Database connection failed"), "Should contain message"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level1_string_ops.yak
+
+预期输出：
+  === Log Analysis ===
+  Total lines: 6
+  
+  === Statistics ===
+  ERROR: 2
+  INFO: 3
+  WARN: 1
+  
+  === Formatted Logs ===
+  [10:23:45] ERROR: Database connection failed
+  [10:23:46] INFO: Retrying connection...
+  [10:23:47] INFO: Connection established
+  [10:24:01] WARN: Slow query detected: 2.3s
+  [10:24:15] ERROR: Failed to process request
+  [10:24:16] INFO: Request queued for retry
+  
+  ✓ All tests passed!
+*/
+

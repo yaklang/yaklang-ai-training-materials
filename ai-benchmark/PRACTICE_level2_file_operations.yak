@@ -1,0 +1,137 @@
+// Level 2: 文件读写与处理
+// 读取主机列表文件，处理后写入新文件
+
+inputFile = "/tmp/hosts_input.txt"
+outputFile = "/tmp/hosts_output.txt"
+
+// 准备测试数据
+testData = `# Host list for scanning
+192.168.1.1:80
+192.168.1.2:443
+
+# Web servers
+10.0.0.1:8080
+10.0.0.2:8443
+
+# Invalid or commented
+# 172.16.0.1:22
+`
+
+println("=== File Processing ===")
+
+// 1. 创建输入文件
+file.Save(inputFile, testData)~
+println(f"Created input file: ${inputFile}")
+
+// 2. 读取文件内容
+content, err = file.ReadFile(inputFile)
+die(err)
+lines = str.Split(string(content), "\n")
+println(f"Read ${len(lines)} lines from file\n")
+
+// 3. 处理数据
+println("=== Processing ===")
+validHosts = []
+skippedCount = 0
+
+for line in lines {
+    line = str.TrimSpace(line)
+    
+    // 跳过空行
+    if line == "" {
+        skippedCount++
+        continue
+    }
+    
+    // 跳过注释行
+    if str.HasPrefix(line, "#") {
+        skippedCount++
+        continue
+    }
+    
+    // 验证格式（应包含冒号）
+    if !str.Contains(line, ":") {
+        skippedCount++
+        continue
+    }
+    
+    // 收集有效主机
+    validHosts = append(validHosts, line)
+}
+
+println(f"Valid hosts found: ${len(validHosts)}")
+for host in validHosts {
+    println(f"  - ${host}")
+}
+
+println(f"\nSkipped lines: ${skippedCount} (comments/empty)\n")
+
+// 4. 写入输出文件
+println("=== Output ===")
+outputData = str.Join(validHosts, "\n")
+file.Save(outputFile, outputData)~
+println(f"Written to: ${outputFile}")
+println("Successfully processed!")
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 验证处理结果
+assert len(validHosts) == 4, "Should have 4 valid hosts"
+assert skippedCount == 7, "Should skip 7 lines"  // 注意：实际是7行（6行注释/空行 + 1行末尾空行）
+
+// 验证第一个主机
+assert validHosts[0] == "192.168.1.1:80", "First host should be correct"
+
+// 验证输出文件内容
+outputContent, err = file.ReadFile(outputFile)
+die(err)
+assert len(outputContent) > 0, "Output file should not be empty"
+assert str.Contains(string(outputContent), "192.168.1.1:80"), "Output should contain first host"
+
+// 清理临时文件
+os.Remove(inputFile)~
+os.Remove(outputFile)~
+println("\n✓ All tests passed! (Temp files cleaned)")
+
+/*
+验证方法：
+  yak PRACTICE_level2_file_operations.yak
+
+预期输出：
+  === File Processing ===
+  Created input file: /tmp/hosts_input.txt
+  Read 10 lines from file
+  
+  === Processing ===
+  Valid hosts found: 4
+    - 192.168.1.1:80
+    - 192.168.1.2:443
+    - 10.0.0.1:8080
+    - 10.0.0.2:8443
+  
+  Skipped lines: 6 (comments/empty)
+  
+  === Output ===
+  Written to: /tmp/hosts_output.txt
+  Successfully processed!
+  
+  ✓ All tests passed! (Temp files cleaned)
+
+测试要点：
+1. 能创建和写入文件
+2. 能读取文件内容
+3. 能正确处理文本行
+4. 能过滤注释和空行
+5. 能验证数据格式
+6. 能写入处理后的数据
+7. 能清理临时文件
+
+扩展练习：
+- 支持不同的注释符号（# 和 //）
+- 验证 IP 和端口格式的有效性
+- 支持读取多个输入文件
+- 添加更多统计信息
+*/
+

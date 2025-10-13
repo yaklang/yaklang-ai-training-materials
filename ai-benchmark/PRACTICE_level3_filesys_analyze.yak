@@ -1,0 +1,240 @@
+// Level 3: 文件系统分析工具
+// 递归遍历目录，统计文件类型、大小等信息
+
+println("=== Filesystem Analysis Tool ===\n")
+
+// 分析目标（使用当前目录）
+targetDir = "/Users/v1ll4n/Projects/yaklang-ai-training-materials/ai-benchmark"
+println(f"Target: ${targetDir}")
+println("Scanning...\n")
+
+// 数据收集变量
+fileCount = 0
+dirCount = 0
+totalSize = 0
+fileTypes = {}  // 扩展名 -> 数量
+fileSizeRanges = {
+    "< 1 KB": 0,
+    "1-10 KB": 0,
+    "10-50 KB": 0,
+    "50-100 KB": 0,
+    "> 100 KB": 0
+}
+allFiles = []  // 存储所有文件信息
+
+// ========================================
+// 遍历文件系统
+// ========================================
+
+filesys.Recursive(targetDir,
+    filesys.onFileStat(func(path, info) {
+        fileCount++
+        size = info.Size()
+        totalSize += size
+        
+        // 统计文件类型
+        ext = file.GetExt(path)
+        if ext == "" {
+            ext = "no_ext"
+        }
+        if fileTypes[ext] == undefined {
+            fileTypes[ext] = 0
+        }
+        fileTypes[ext]++
+        
+        // 统计大小分布
+        sizeKB = float(size) / 1024.0
+        if sizeKB < 1 {
+            fileSizeRanges["< 1 KB"]++
+        } elif sizeKB < 10 {
+            fileSizeRanges["1-10 KB"]++
+        } elif sizeKB < 50 {
+            fileSizeRanges["10-50 KB"]++
+        } elif sizeKB < 100 {
+            fileSizeRanges["50-100 KB"]++
+        } else {
+            fileSizeRanges["> 100 KB"]++
+        }
+        
+        // 保存文件信息
+        fileInfo = {
+            "path": path,
+            "size": size,
+            "ext": ext
+        }
+        allFiles = append(allFiles, fileInfo)
+        
+        return nil
+    }),
+    filesys.onDirStat(func(path, info) {
+        dirCount++
+        return nil
+    })
+)~
+
+// ========================================
+// 生成分析报告
+// ========================================
+
+println("=== Analysis Report ===\n")
+
+// 1. 概览
+println("1. Overview")
+avgSize = 0.0
+if fileCount > 0 {
+    avgSize = float(totalSize) / float(fileCount)
+}
+println(f"   Total files: ${fileCount}")
+println(f"   Total directories: ${dirCount}")
+println(f"   Total size: ${sprintf('%.1f', float(totalSize)/1024.0)} KB")
+println(f"   Average file size: ${sprintf('%.1f', avgSize/1024.0)} KB\n")
+
+// 2. 文件类型分布
+println("2. File Type Distribution")
+for ext, count in fileTypes {
+    percent = float(count) / float(fileCount) * 100
+    println(f"   ${ext} files: ${count} (${sprintf('%.2f', percent)}%)")
+}
+println("")
+
+// 3. 大小分布
+println("3. Size Distribution")
+for rangeName, count in fileSizeRanges {
+    if count > 0 {
+        percent = float(count) / float(fileCount) * 100
+        println(f"   ${rangeName}: ${count} files (${sprintf('%.2f', percent)}%)")
+    }
+}
+println("")
+
+// 4. 前5大文件（使用冒泡排序）
+println("4. Top 5 Largest Files")
+
+// 简单排序（冒泡排序）
+for i = 0; i < len(allFiles) - 1; i++ {
+    for j = 0; j < len(allFiles) - i - 1; j++ {
+        if allFiles[j]["size"] < allFiles[j+1]["size"] {
+            // 交换
+            temp = allFiles[j]
+            allFiles[j] = allFiles[j+1]
+            allFiles[j+1] = temp
+        }
+    }
+}
+
+// 显示前5个
+topN = 5
+if len(allFiles) < topN {
+    topN = len(allFiles)
+}
+
+for i = 0; i < topN; i++ {
+    fileInfo = allFiles[i]
+    fileName = file.Base(fileInfo["path"])
+    sizeKB = float(fileInfo["size"]) / 1024.0
+    println(f"   ${i+1}. ${fileName} (${sprintf('%.1f', sizeKB)} KB)")
+}
+
+println("")
+
+// 5. 按文件名前缀分类（Level 1/2/3）
+println("5. Files by Level")
+level1Files = []
+level2Files = []
+level3Files = []
+
+for fileInfo in allFiles {
+    fileName = file.Base(fileInfo["path"])
+    if str.Contains(fileName, "level1") {
+        level1Files = append(level1Files, fileInfo)
+    } elif str.Contains(fileName, "level2") {
+        level2Files = append(level2Files, fileInfo)
+    } elif str.Contains(fileName, "level3") {
+        level3Files = append(level3Files, fileInfo)
+    }
+}
+
+// 计算各级别总大小
+level1Size = 0
+for f in level1Files {
+    level1Size += f["size"]
+}
+
+level2Size = 0
+for f in level2Files {
+    level2Size += f["size"]
+}
+
+level3Size = 0
+for f in level3Files {
+    level3Size += f["size"]
+}
+
+println(f"   Level 1 files: ${len(level1Files)} files (${sprintf('%.1f', float(level1Size)/1024.0)} KB)")
+println(f"   Level 2 files: ${len(level2Files)} files (${sprintf('%.1f', float(level2Size)/1024.0)} KB)")
+println(f"   Level 3 files: ${len(level3Files)} files (${sprintf('%.1f', float(level3Size)/1024.0)} KB)")
+
+// ========================================
+// 验证测试
+// ========================================
+
+assert fileCount > 0, "Should find at least some files"
+assert totalSize > 0, "Total size should be positive"
+assert len(fileTypes) > 0, "Should have at least one file type"
+
+println("\n✓ Analysis completed!")
+
+/*
+验证方法：
+  yak PRACTICE_level3_filesys_analyze.yak
+
+预期输出：
+  === Filesystem Analysis Tool ===
+  
+  Target: /path/to/ai-benchmark
+  Scanning...
+  
+  === Analysis Report ===
+  
+  1. Overview
+     Total files: 30
+     Total directories: 1
+     Total size: xxx.x KB
+     Average file size: x.x KB
+  
+  2. File Type Distribution
+     .md files: 15 (50.00%)
+     .yak files: 15 (50.00%)
+  
+  3. Size Distribution
+     < 1 KB: x files (x.xx%)
+     1-10 KB: x files (x.xx%)
+     10-50 KB: x files (x.xx%)
+     ...
+  
+  4. Top 5 Largest Files
+     1. filename.yak (xx.x KB)
+     2. filename.md (xx.x KB)
+     ...
+  
+  5. Files by Level
+     Level 1 files: x files (xx.x KB)
+     Level 2 files: x files (xx.x KB)
+     Level 3 files: x files (xx.x KB)
+  
+  ✓ Analysis completed!
+
+关键技术：
+1. filesys.Recursive 递归遍历
+2. 文件信息收集和统计
+3. 数据分类和聚合
+4. 排序算法（冒泡排序）
+5. 格式化报告输出
+
+实际应用：
+- 磁盘空间分析
+- 代码库统计
+- 日志文件分析
+- 项目结构分析
+*/
+

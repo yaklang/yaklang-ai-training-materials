@@ -1,0 +1,143 @@
+// Level 1: JSON 数据解析
+// 解析 JSON 数据并提取关键信息
+
+// 测试 JSON 数据
+jsonData = `{
+  "company": "Example Corp",
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice",
+      "age": 28,
+      "role": "admin",
+      "email": "alice@example.com"
+    },
+    {
+      "id": 2,
+      "name": "Bob",
+      "age": 35,
+      "role": "user",
+      "email": "bob@example.com"
+    },
+    {
+      "id": 3,
+      "name": "Charlie",
+      "age": 42,
+      "role": "admin",
+      "email": "charlie@example.com"
+    },
+    {
+      "id": 4,
+      "name": "David",
+      "age": 31,
+      "role": "user",
+      "email": "david@example.com"
+    }
+  ]
+}`
+
+// 1. 解析 JSON
+data = json.loads(jsonData)
+
+// 2. 提取基本信息
+company = data["company"]
+users = data["users"]
+
+println("=== JSON Data Analysis ===")
+println(f"Company: ${company}")
+println(f"Total users: ${len(users)}\n")
+
+// 3. 筛选管理员用户
+adminUsers = []
+regularUsers = []
+totalAge = 0
+
+for user in users {
+    // 累计年龄用于计算平均值
+    totalAge += user["age"]
+    
+    // 根据角色分类
+    if user["role"] == "admin" {
+        adminUsers = append(adminUsers, user)
+    } else {
+        regularUsers = append(regularUsers, user)
+    }
+}
+
+// 4. 输出管理员用户
+println("=== Admin Users ===")
+idx = 1
+for admin in adminUsers {
+    println(f"${idx}. ${admin['name']} (age: ${admin['age']}, email: ${admin['email']})")
+    idx++
+}
+
+// 5. 计算统计信息
+println("\n=== Statistics ===")
+println(f"Admin count: ${len(adminUsers)}")
+println(f"Regular user count: ${len(regularUsers)}")
+
+// 计算平均年龄
+avgAge = float(totalAge) / float(len(users))
+println(f"Average age: ${sprintf('%.2f', avgAge)}")
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 验证解析成功
+assert data != nil, "JSON parsing should succeed"
+assert company == "Example Corp", "Company name should be correct"
+
+// 验证用户数量
+assert len(users) == 4, "Should have 4 users"
+
+// 验证管理员筛选
+assert len(adminUsers) == 2, "Should have 2 admin users"
+assert adminUsers[0]["name"] == "Alice", "First admin should be Alice"
+assert adminUsers[1]["name"] == "Charlie", "Second admin should be Charlie"
+
+// 验证常规用户
+assert len(regularUsers) == 2, "Should have 2 regular users"
+
+// 验证年龄计算
+assert totalAge == 136, "Total age should be 136"
+assert avgAge == 34.0, "Average age should be 34.0"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+在命令行执行：
+  yak PRACTICE_level1_json_parse.yak
+
+预期输出：
+  === JSON Data Analysis ===
+  Company: Example Corp
+  Total users: 4
+  
+  === Admin Users ===
+  1. Alice (age: 28, email: alice@example.com)
+  2. Charlie (age: 42, email: charlie@example.com)
+  
+  === Statistics ===
+  Admin count: 2
+  Regular user count: 2
+  Average age: 34.00
+  
+  ✓ All tests passed!
+
+测试要点：
+1. 能正确解析 JSON 字符串
+2. 能访问嵌套的 JSON 数据
+3. 能遍历 JSON 数组
+4. 能根据条件筛选数据
+5. 能进行数学计算
+
+扩展练习：
+- 找出年龄最大的用户
+- 按年龄排序用户列表
+- 修改用户数据并生成新的 JSON
+- 处理嵌套更深的 JSON 结构
+*/
+

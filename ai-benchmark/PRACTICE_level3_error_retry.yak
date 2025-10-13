@@ -1,0 +1,239 @@
+// Level 3: 错误处理与重试机制
+// 实现健壮的网络请求重试机制
+
+println("=== Retry Mechanism Test ===\n")
+
+// ========================================
+// 重试函数实现
+// ========================================
+
+// 判断错误是否可重试
+isRetryable = func(statusCode, errMsg) {
+    // 5xx 服务器错误 - 可重试
+    if statusCode >= 500 && statusCode < 600 {
+        return true
+    }
+    
+    // 4xx 客户端错误 - 不可重试
+    if statusCode >= 400 && statusCode < 500 {
+        return false
+    }
+    
+    // 网络错误、超时等 - 可重试
+    if errMsg != "" {
+        if str.Contains(errMsg, "timeout") || 
+           str.Contains(errMsg, "connection") ||
+           str.Contains(errMsg, "refused") {
+            return true
+        }
+    }
+    
+    return false
+}
+
+// 重试函数
+retryRequest = func(requestFunc, maxAttempts) {
+    baseDelay = 1  // 初始延迟1秒
+    
+    for attempt = 1; attempt <= maxAttempts; attempt++ {
+        // 执行请求
+        success, statusCode, errMsg = requestFunc()
+        
+        if success {
+            println(f"Attempt ${attempt}/${maxAttempts}: Request succeeded!")
+            println(f"  Status: ${statusCode}")
+            return {
+                "success": true,
+                "attempts": attempt,
+                "status": statusCode
+            }
+        }
+        
+        // 请求失败
+        println(f"Attempt ${attempt}/${maxAttempts}: Request failed (${errMsg})")
+        
+        // 判断是否可重试
+        if !isRetryable(statusCode, errMsg) {
+            println(f"  Error is not retryable")
+            return {
+                "success": false,
+                "attempts": attempt,
+                "error": errMsg,
+                "retryable": false
+            }
+        }
+        
+        // 如果还有重试机会，等待后重试
+        if attempt < maxAttempts {
+            // 指数退避：1s, 2s, 4s, ...
+            delay = baseDelay * (1 << (attempt - 1))  // 2^(attempt-1)
+            println(f"  Waiting ${delay}s before retry...")
+            sleep(delay)
+        }
+    }
+    
+    // 所有尝试都失败
+    return {
+        "success": false,
+        "attempts": maxAttempts,
+        "error": "Max retries exceeded"
+    }
+}
+
+// ========================================
+// 测试场景
+// ========================================
+
+// 测试1：模拟不稳定服务（最终成功）
+println("[Test 1] Simulating unstable service")
+testAttempt1 = 0
+test1 = func() {
+    testAttempt1++
+    if testAttempt1 == 1 {
+        return false, 0, "timeout"
+    } elif testAttempt1 == 2 {
+        return false, 0, "connection refused"
+    } else {
+        return true, 200, ""
+    }
+}
+
+result1 = retryRequest(test1, 3)
+if result1["success"] {
+    println(f"Result: ✓ Success after ${result1['attempts']} attempts\n")
+} else {
+    println(f"Result: ✗ Failed after ${result1['attempts']} attempts\n")
+}
+
+// 测试2：模拟404错误（不可重试）
+println("[Test 2] Simulating 404 error")
+test2 = func() {
+    return false, 404, "404 Not Found"
+}
+
+result2 = retryRequest(test2, 3)
+if result2["success"] {
+    println(f"Result: ✓ Success\n")
+} else {
+    println(f"Result: ✗ Failed (non-retryable error)\n")
+}
+
+// 测试3：模拟500错误然后成功
+println("[Test 3] Simulating 500 error then success")
+testAttempt3 = 0
+test3 = func() {
+    testAttempt3++
+    if testAttempt3 == 1 {
+        return false, 500, "500 Internal Server Error"
+    } else {
+        return true, 200, ""
+    }
+}
+
+result3 = retryRequest(test3, 3)
+if result3["success"] {
+    println(f"Result: ✓ Success after ${result3['attempts']} attempts\n")
+} else {
+    println(f"Result: ✗ Failed\n")
+}
+
+// ========================================
+// 统计分析
+// ========================================
+
+println("=== Statistics ===")
+
+results = [result1, result2, result3]
+totalTests = len(results)
+successCount = 0
+totalAttempts = 0
+
+for result in results {
+    if result["success"] {
+        successCount++
+    }
+    totalAttempts += result["attempts"]
+}
+
+successRate = float(successCount) / float(totalTests) * 100
+avgAttempts = float(totalAttempts) / float(totalTests)
+
+println(f"Total tests: ${totalTests}")
+println(f"Successful: ${successCount}")
+println(f"Failed: ${totalTests - successCount}")
+println(f"Success rate: ${sprintf('%.2f', successRate)}%")
+println(f"Average attempts: ${sprintf('%.2f', avgAttempts)}")
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 验证结果
+assert result1["success"] == true, "Test 1 should succeed after retries"
+assert result1["attempts"] == 3, "Test 1 should take 3 attempts"
+
+assert result2["success"] == false, "Test 2 should fail (non-retryable)"
+assert result2["attempts"] == 1, "Test 2 should stop after 1 attempt"
+assert result2["retryable"] == false, "Test 2 error should not be retryable"
+
+assert result3["success"] == true, "Test 3 should succeed after retry"
+assert result3["attempts"] == 2, "Test 3 should take 2 attempts"
+
+// 验证统计
+assert successCount == 2, "Should have 2 successful tests"
+assert totalTests == 3, "Should have 3 total tests"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level3_error_retry.yak
+
+预期输出：
+  === Retry Mechanism Test ===
+  
+  [Test 1] Simulating unstable service
+  Attempt 1/3: Request failed (timeout)
+    Waiting 1s before retry...
+  Attempt 2/3: Request failed (connection refused)
+    Waiting 2s before retry...
+  Attempt 3/3: Request succeeded!
+    Status: 200
+  Result: ✓ Success after 3 attempts
+  
+  [Test 2] Simulating 404 error
+  Attempt 1/3: Request failed (404 Not Found)
+    Error is not retryable
+  Result: ✗ Failed (non-retryable error)
+  
+  [Test 3] Simulating 500 error then success
+  Attempt 1/3: Request failed (500 Internal Server Error)
+    Waiting 1s before retry...
+  Attempt 2/3: Request succeeded!
+    Status: 200
+  Result: ✓ Success after 2 attempts
+  
+  === Statistics ===
+  Total tests: 3
+  Successful: 2
+  Failed: 1
+  Success rate: 66.67%
+  Average attempts: 2.33
+  
+  ✓ All tests passed!
+
+关键技术点：
+1. 高阶函数 - 函数作为参数传递
+2. 闭包 - 测试函数捕获外部变量
+3. 指数退避 - 使用位运算 1 << (attempt-1)
+4. 错误分类 - 基于状态码和错误信息
+5. 统计分析 - 计算成功率和平均值
+
+实际应用扩展：
+- 集成到真实的 HTTP 请求中
+- 添加 Jitter（抖动）避免惊群
+- 实现断路器模式
+- 记录详细日志到文件
+- 实现更复杂的重试策略
+*/
+

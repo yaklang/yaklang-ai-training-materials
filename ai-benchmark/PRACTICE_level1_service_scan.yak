@@ -1,0 +1,93 @@
+// Easy: 简单服务扫描
+// 扫描本地端口并统计结果
+
+// 扫描目标和端口
+target = "127.0.0.1"
+ports = "22,80,443,3306,8080"
+
+println(f"Scanning ${target}:${ports}...")
+
+// 统计变量
+openCount = 0
+closedCount = 0
+openPorts = []
+
+// 执行扫描
+results, err = servicescan.Scan(target, ports)
+die(err)
+
+// 遍历结果
+for result in results {
+    // 判断端口状态 - 使用 IsOpen() 方法
+    if result.IsOpen() {
+        openCount++
+        // 收集开放端口信息
+        portInfo = {
+            "port": result.Port,
+            "service": result.Fingerprint.ServiceName,
+            "version": result.Fingerprint.Version
+        }
+        openPorts = append(openPorts, portInfo)
+    } else {
+        closedCount++
+    }
+}
+
+// 输出结果
+println("\nOpen Ports:")
+if len(openPorts) > 0 {
+    for portInfo in openPorts {
+        if portInfo["version"] != "" {
+            println(f"  - ${portInfo['port']}: ${portInfo['service']}[${portInfo['version']}]")
+        } else {
+            println(f"  - ${portInfo['port']}: ${portInfo['service']}")
+        }
+    }
+} else {
+    println("  No open ports found")
+}
+
+println(f"\nClosed Ports: ${closedCount}")
+println(f"Total Scanned: ${openCount + closedCount}")
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 基本断言
+assert openCount >= 0, "Open port count should be non-negative"
+assert closedCount >= 0, "Closed port count should be non-negative"
+assert (openCount + closedCount) == 5, "Total ports should be 5"
+
+println("\n✓ Scan completed successfully!")
+
+/*
+验证方法：
+在命令行执行：
+  yak PRACTICE_easy_service_scan.yak
+
+预期输出：
+  Scanning 127.0.0.1:22,80,443,3306,8080...
+  [INFO] ... (扫描日志)
+  
+  Open Ports:
+    - 80: nginx[1.18.0]
+    - 22: openssh[7.4]
+  
+  Closed Ports: 3
+  Total Scanned: 5
+  
+  ✓ Scan completed successfully!
+
+注意：
+- 实际输出取决于本机开放的端口情况
+- 扫描过程会有 INFO 日志输出
+- 开放端口数 + 关闭端口数 应该等于 5
+
+测试要点：
+1. 脚本能正常执行不报错
+2. 能正确统计开放和关闭的端口数
+3. 总数等于 5
+4. 能显示服务信息（如果有）
+*/
+

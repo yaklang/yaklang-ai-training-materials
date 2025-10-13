@@ -1,0 +1,74 @@
+// Easy: HTTP 数据包头部提取
+// 从 HTTP 请求包中提取关键信息
+
+// 测试数据包
+packet = `GET /api/user/info?id=123 HTTP/1.1
+Host: www.example.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+Cookie: session=abc123; token=xyz789
+Content-Type: application/json
+
+`
+
+// 1. 提取 User-Agent
+userAgent = poc.GetHTTPPacketHeader(packet, "User-Agent")
+println("User-Agent:", userAgent)
+
+// 2. 提取 Host
+host = poc.GetHTTPPacketHeader(packet, "Host")
+println("Host:", host)
+
+// 3. 提取所有 Cookie
+cookies = poc.GetHTTPPacketCookies(packet)
+println("Cookies:", cookies)
+
+// 4. 提取请求方法
+// 方法：从第一行中提取方法名
+firstLine, _, _ = str.Cut(packet, "\n")
+method, _, _ = str.Cut(firstLine, " ")
+println("Method:", method)
+
+// 5. 提取请求路径（不包含 Query 参数）
+path = poc.GetHTTPRequestPathWithoutQuery(packet)
+println("Path:", path)
+
+// ========================================
+// 验证测试
+// ========================================
+
+// 验证 User-Agent
+assert userAgent == "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "User-Agent extraction failed"
+
+// 验证 Host
+assert host == "www.example.com", "Host extraction failed"
+
+// 验证 Cookies
+assert len(cookies) == 2, "Cookie count should be 2"
+assert cookies["session"] == "abc123", "Session cookie incorrect"
+assert cookies["token"] == "xyz789", "Token cookie incorrect"
+
+// 验证 Method
+assert method == "GET", "Method should be GET"
+
+// 验证 Path
+assert path == "/api/user/info", "Path should be /api/user/info"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+在命令行执行：
+  yak PRACTICE_easy_http_header_extract.yak
+
+预期输出：
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+  Host: www.example.com
+  Cookies: map[session:abc123 token:xyz789]
+  Method: GET
+  Path: /api/user/info
+  
+  ✓ All tests passed!
+
+如果所有断言都通过，说明脚本正确实现了所有功能。
+*/
+

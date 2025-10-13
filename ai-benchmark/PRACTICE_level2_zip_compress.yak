@@ -1,0 +1,227 @@
+// Level 2: ZIP 文件压缩与解压
+// 实现文件压缩、解压和验证的完整流程
+
+println("=== ZIP Compression Test ===\n")
+
+// 准备工作目录
+workDir = "/tmp/zip_test_" + str.RandStr(8)
+file.MkdirAll(workDir)~
+
+// ========================================
+// Step 1: 创建测试文件
+// ========================================
+
+println("[Step 1] Creating test files...")
+
+testFiles = {
+    "config.json": `{
+    "app": "yaklang-demo",
+    "version": "1.0.0",
+    "port": 8080
+}`,
+    "readme.md": `# Test Project
+
+This is a test project for ZIP compression.
+
+## Features
+- File compression
+- Data integrity verification
+`,
+    "script.yak": `// Test script
+println("Hello from compressed script!")
+for i in 5 {
+    println("Line", i+1)
+}`,
+    "data.csv": `name,age,city
+Alice,25,Beijing
+Bob,30,Shanghai
+Charlie,35,Guangzhou`
+}
+
+// 保存文件并计算总大小
+totalSize = 0
+for filename, content in testFiles {
+    filepath = workDir + "/" + filename
+    file.Save(filepath, content)~
+    totalSize += len(content)
+    println(f"  Created: ${filename} (${len(content)} bytes)")
+}
+
+println(f"  Total: ${len(testFiles)} files, ${totalSize} bytes\n")
+
+// ========================================
+// Step 2: 压缩文件
+// ========================================
+
+println("[Step 2] Compressing to ZIP...")
+
+// 使用 CompressRaw 进行内存压缩
+zipBytes = zip.CompressRaw(testFiles)~
+zipPath = workDir + "/test_archive.zip"
+file.Save(zipPath, zipBytes)~
+
+zipSize = len(zipBytes)
+compressionRatio = float(zipSize) / float(totalSize) * 100
+
+println(f"  Compressed to: test_archive.zip")
+println(f"  ZIP size: ${zipSize} bytes")
+println(f"  Compression ratio: ${sprintf('%.2f', compressionRatio)}%\n")
+
+// ========================================
+// Step 3: 遍历 ZIP 内容
+// ========================================
+
+println("[Step 3] Listing ZIP contents...")
+
+zipFileList = []
+fileIndex = 1
+
+zip.Recursive(zipPath, func(isDir, pathName, info) {
+    if !isDir {
+        zipFileList = append(zipFileList, pathName)
+        println(f"  ${fileIndex}. ${pathName} (${info.Size()} bytes)")
+        fileIndex++
+    }
+})~
+
+println("")
+
+// ========================================
+// Step 4: 解压 ZIP
+// ========================================
+
+println("[Step 4] Extracting ZIP...")
+
+extractDir = workDir + "/extracted"
+file.MkdirAll(extractDir)~
+
+zip.Decompress(zipPath, extractDir)~
+
+// 统计解压的文件
+extractedCount = 0
+filesys.Recursive(extractDir, filesys.onFileStat(func(path, info) {
+    extractedCount++
+    return nil
+}))~
+
+println(f"  Extracted to: extracted/")
+println(f"  Files extracted: ${extractedCount}\n")
+
+// ========================================
+// Step 5: 验证文件完整性
+// ========================================
+
+println("[Step 5] Verifying integrity...")
+
+allVerified = true
+
+for filename, originalContent in testFiles {
+    extractedPath = extractDir + "/" + filename
+    
+    // 读取解压后的文件
+    extractedContent, err = file.ReadFile(extractedPath)
+    if err != nil {
+        println(f"  ✗ ${filename}: File not found")
+        allVerified = false
+        continue
+    }
+    
+    // 比较内容
+    if string(extractedContent) == originalContent {
+        println(f"  ✓ ${filename}: Content matches")
+    } else {
+        println(f"  ✗ ${filename}: Content mismatch!")
+        allVerified = false
+    }
+}
+
+println("")
+
+// ========================================
+// 总结
+// ========================================
+
+println("=== Summary ===")
+if allVerified {
+    println("All files verified successfully!")
+    savedBytes = totalSize - zipSize
+    savedPercent = float(savedBytes) / float(totalSize) * 100
+    println(f"Compression saved: ${savedBytes} bytes (${sprintf('%.2f', savedPercent)}%)")
+} else {
+    println("Some files failed verification!")
+}
+
+// ========================================
+// 清理
+// ========================================
+
+os.RemoveAll(workDir)~
+println("\n✓ Cleanup completed!")
+
+// ========================================
+// 验证测试
+// ========================================
+
+assert len(zipBytes) > 0, "ZIP file should not be empty"
+assert len(zipFileList) == len(testFiles), "Should list all files in ZIP"
+assert extractedCount == len(testFiles), "Should extract all files"
+assert allVerified, "All files should be verified"
+
+println("\n✓ All tests passed!")
+
+/*
+验证方法：
+  yak PRACTICE_level2_zip_compress.yak
+
+预期输出：
+  === ZIP Compression Test ===
+  
+  [Step 1] Creating test files...
+    Created: config.json (xxx bytes)
+    Created: readme.md (xxx bytes)
+    Created: script.yak (xxx bytes)
+    Created: data.csv (xxx bytes)
+    Total: 4 files, xxx bytes
+  
+  [Step 2] Compressing to ZIP...
+    Compressed to: test_archive.zip
+    ZIP size: xxx bytes
+    Compression ratio: xx.xx%
+  
+  [Step 3] Listing ZIP contents...
+    1. config.json (xxx bytes)
+    2. readme.md (xxx bytes)
+    3. script.yak (xxx bytes)
+    4. data.csv (xxx bytes)
+  
+  [Step 4] Extracting ZIP...
+    Extracted to: extracted/
+    Files extracted: 4
+  
+  [Step 5] Verifying integrity...
+    ✓ config.json: Content matches
+    ✓ readme.md: Content matches
+    ✓ script.yak: Content matches
+    ✓ data.csv: Content matches
+  
+  === Summary ===
+  All files verified successfully!
+  Compression saved: xx bytes (xx.xx%)
+  
+  ✓ Cleanup completed!
+  ✓ All tests passed!
+
+关键技术：
+1. ZIP 文件创建和压缩
+2. ZIP 内容遍历
+3. ZIP 文件解压
+4. 文件完整性验证
+5. 临时文件管理
+
+实际应用：
+- 日志文件打包
+- 项目代码分发
+- 配置文件备份
+- 数据归档存储
+*/
+
