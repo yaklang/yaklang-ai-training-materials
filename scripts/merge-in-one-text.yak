@@ -1,24 +1,58 @@
 // =============================================================================
 // 文档压缩工具 - 将训练材料压缩到单个 ZIP 文件
-// 文档压缩 ZIP创建 文件收集 训练材料打包
-// 关键词: zip.CompressRaw, filesys.Recursive, 文档压缩, 训练材料, 文件收集
+// 功能: 批量收集指定文件夹中的文档文件，压缩打包成ZIP格式
+// 用途: AI训练材料整理、文档归档、批量文件处理、知识库打包
+// 
+// 核心技术栈:
+// - zip.CompressRaw: ZIP压缩核心函数，内存压缩处理
+// - filesys.Recursive: 递归文件遍历，深度目录扫描
+// - file.ReadFile: 文件内容读取，批量文件处理
+// - cli.String: 命令行参数解析，用户交互接口
+//
+// 应用场景: 文档压缩、训练材料打包、批量文件收集、知识库整理
+// 关键词: zip压缩 文件收集 递归遍历 批量处理 文档打包 训练材料 知识库
+// 搜索标签: #zip #compress #file-collection #batch-processing #documentation
 // =============================================================================
 
-// CLI 参数定义
-// 关键词: CLI参数, 命令行参数, 参数解析, 输出路径
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，支持自定义输出路径
+// 技术: cli.String 参数解析，cli.setDefault 默认值设置，cli.setHelp 帮助信息
+// 
+// 参数说明:
+// - output: 指定输出ZIP文件的路径，默认为 "aikb.zip"
+// - 支持相对路径和绝对路径，自动处理路径格式
+//
+// 使用示例: yak merge-in-one-text.yak --output custom.zip
+// 关键词: CLI参数 命令行解析 参数配置 输出路径 用户接口 脚本参数
+// 搜索标签: #cli #command-line #parameters #output-path #user-interface
+// =============================================================================
 output_zip = cli.String("output", cli.setDefault("aikb.zip"), cli.setHelp("输出 ZIP 文件路径"))
 cli.check()
 
 println("开始收集训练材料文档...")
 
 // =============================================================================
-// 1. 确定项目根目录和目标文件夹
-// 项目路径 根目录定位 文件夹配置 目标路径
-// 关键词: 项目根目录, 工作目录, 目标文件夹, 路径配置
+// 项目路径配置模块 - 确定项目根目录和目标文件夹
+// 功能: 自动获取当前工作目录，定义需要收集的文件夹和文件类型
+// 技术: os.Getwd() 获取工作目录，数组定义目标文件夹列表
+//
+// 核心配置:
+// - target_folders: 定义需要扫描的文件夹列表
+// - target_extensions: 定义需要收集的文件扩展名
+// - 支持多种文档格式: .md .mdx .yak
+//
+// 应用场景: 项目文档收集、多目录批量处理、文件类型过滤
+// 关键词: 项目根目录 工作目录 目标文件夹 路径配置 文件夹列表 扩展名过滤
+// 搜索标签: #project-root #working-directory #target-folders #file-extensions
 // =============================================================================
 
 // 获取当前工作目录作为项目根目录
-// 关键词: 工作目录, 当前目录, 基准路径, 项目根路径
+// 功能: 使用 os.Getwd() 获取脚本运行时的当前工作目录
+// 用途: 作为所有相对路径的基准点，确保文件路径的正确性
+// 错误处理: 如果获取失败则终止程序执行
+// 关键词: os.Getwd 工作目录 当前目录 基准路径 项目根路径 路径获取
+// 搜索标签: #os.Getwd #current-directory #base-path #error-handling
 project_root, pwd_err = os.Getwd()
 if pwd_err != nil {
     log.error("Failed to get current directory: %v", pwd_err)
@@ -27,17 +61,37 @@ if pwd_err != nil {
 log.info("Project root directory: %s", project_root)
 
 // 定义需要收集的目标文件夹
-// 关键词: 目标文件夹, 文件夹列表, 收集范围, 文档目录
+// 功能: 指定需要扫描和收集文件的目录列表
+// 配置说明:
+// - awesome-scripts: Yak脚本示例集合
+// - basic-syntax: Yak语言基础语法文档
+// - library-usage: 标准库使用示例和文档
+// - practice: 实践练习和案例
+//
+// 扩展方法: 可以通过修改此数组添加更多目录
+// 关键词: 目标文件夹 文件夹列表 收集范围 文档目录 扫描目录 目录配置
+// 搜索标签: #target-folders #directory-list #scan-directories #folder-config
 target_folders = [
+    "ai-benchmark",
+    "scripts",
     "awesome-scripts",
     "basic-syntax", 
     "library-usage",
-    "practice"
+    "practice",
 ]
 log.info("Target folders: %v", target_folders)
 
 // 定义需要收集的文件扩展名
-// 关键词: 文件扩展名, 文件类型, 过滤规则, 文件格式
+// 功能: 指定需要收集的文件类型，实现文件过滤
+// 支持格式:
+// - .md: Markdown文档格式，用于文档说明
+// - .mdx: Markdown扩展格式，支持JSX组件
+// - .yak: Yak脚本源代码文件
+//
+// 过滤机制: 只有匹配这些扩展名的文件才会被收集
+// 扩展方法: 可以添加更多扩展名如 .txt, .json 等
+// 关键词: 文件扩展名 文件类型 过滤规则 文件格式 类型过滤 扩展名匹配
+// 搜索标签: #file-extensions #file-types #filter-rules #markdown #yak-files
 target_extensions = [".md", ".mdx", ".yak"]
 log.info("Target extensions: %v", target_extensions)
 

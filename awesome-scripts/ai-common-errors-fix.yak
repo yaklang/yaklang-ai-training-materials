@@ -1,0 +1,307 @@
+// =============================================================================
+// AI常见错误修复脚本 - 专门解决AI Agent在编写Yaklang代码时的典型错误
+// 功能: 提供AI循环错误的标准修复方案，减少迭代轮数，提高代码生成成功率
+// 用途: AI错误预防、语法修复、循环问题解决、代码生成优化、AI训练
+//
+// 核心技术栈:
+// - JSON解析: json.loads() 标准解析方法
+// - 字符串格式化: sprintf(), %操作符, f-string简单用法
+// - 数组操作: []声明, append()添加, 遍历访问
+// - 类型转换: int(), float(), string() 内置函数
+// - 错误处理: nil检查, undefined检查, 条件判断
+//
+// AI常见错误类型:
+// 1. JSON数组提取错误 - users, ok := data["users"].([]interface{})
+// 2. 字符串格式化错误 - fmt.Sprintf, strconv.Itoa, f-string复杂格式化
+// 3. 数组声明错误 - []interface{}{}, adminUsers = []
+// 4. 类型断言错误 - user.(map[string]interface{})
+// 5. 包导入错误 - import fmt, import strconv
+//
+// 关键词: AI错误修复 Yaklang语法错误 JSON解析错误 字符串格式化错误 数组声明错误 类型断言错误
+// 搜索标签: #ai-error-fix #yaklang-syntax-fix #json-error #string-format-error #array-error #type-assertion-error
+// AI搜索词: AI语法错误修复 Yaklang常见错误 JSON解析修复 字符串格式化修复 数组操作修复 类型转换修复
+// AI错误关键词: users ok data users interface JSON数组提取 fmt.Sprintf strconv.Itoa f-string格式化
+// AI循环搜索: yaklang json array extract error yaklang string format error yaklang type assertion error
+// 问题解决词: JSON数组提取修复 浮点数格式化修复 数组声明修复 类型断言修复 包导入修复
+// =============================================================================
+
+println("=== AI常见错误修复演示 ===")
+
+// ==========================================
+// 错误1: JSON数组提取的类型断言错误
+// ==========================================
+// AI错误搜索: users ok data users interface JSON数组提取 yaklang json array extract
+// AI问题搜索: JSON数组提取错误 类型断言语法错误 interface{}转换错误
+println("\n【错误1修复】JSON数组提取的类型断言错误")
+
+// ❌ AI常犯的错误写法 (会导致语法错误)
+/*
+错误代码示例:
+users, ok := data["users"].([]interface{})
+if !ok {
+    yakit.Error("无法提取用户列表")
+    return
+}
+*/
+
+// ✅ 正确的修复方法
+jsonData = `{
+    "users": [
+        {"id": 1, "name": "Alice", "role": "admin", "age": 28},
+        {"id": 2, "name": "Bob", "role": "user", "age": 35}
+    ]
+}`
+
+// 正确方法1: 直接解析和访问
+data = json.loads(jsonData)
+users = data["users"]  // 直接访问，无需类型断言
+println(f"✅ 用户数量: ${len(users)}")
+
+// 正确方法2: 带错误检查的访问
+if data == nil {
+    yakit.Error("JSON解析失败")
+} else if users == nil {
+    yakit.Error("无法提取用户列表")
+} else {
+    println(f"✅ 成功提取 ${len(users)} 个用户")
+}
+
+// ==========================================
+// 错误2: 字符串格式化的包导入错误
+// ==========================================
+// AI错误搜索: fmt.Sprintf yaklang fmt未定义 strconv.Itoa yaklang
+// AI问题搜索: fmt包未定义 strconv包未定义 字符串格式化错误
+println("\n【错误2修复】字符串格式化的包导入错误")
+
+// ❌ AI常犯的错误写法 (会导致包未定义错误)
+/*
+错误代码示例:
+import "fmt"
+import "strconv"
+formattedAge = fmt.Sprintf("%.2f", avgAge)
+userCountStr = strconv.Itoa(userCount)
+*/
+
+// ✅ 正确的修复方法
+avgAge = 35.67
+userCount = 10
+
+// 正确方法1: 使用sprintf函数 (推荐)
+formattedAge1 = sprintf("%.2f", avgAge)
+userCountStr1 = sprintf("%d", userCount)
+println(f"✅ sprintf方法: 平均年龄 ${formattedAge1}, 用户数 ${userCountStr1}")
+
+// 正确方法2: 使用%格式化操作符
+formattedAge2 = "%.2f" % avgAge
+userCountStr2 = "%d" % userCount
+println(f"✅ %格式化方法: 平均年龄 ${formattedAge2}, 用户数 ${userCountStr2}")
+
+// 正确方法3: 使用内置类型转换 (简单情况)
+userCountStr3 = string(userCount)
+println(f"✅ 类型转换方法: 用户数 ${userCountStr3}")
+
+// ==========================================
+// 错误3: 数组声明的语法错误
+// ==========================================
+// AI错误搜索: []interface{} yaklang adminUsers := [] 空数组声明
+// AI问题搜索: 数组声明语法错误 空数组初始化错误 interface{}数组错误
+println("\n【错误3修复】数组声明的语法错误")
+
+// ❌ AI常犯的错误写法 (会导致语法错误)
+/*
+错误代码示例:
+adminUsers := []interface{}{}
+adminUsers = []
+adminUsers := []
+*/
+
+// ✅ 正确的修复方法
+// 正确方法1: 空数组声明
+adminUsers = []
+println(f"✅ 空数组长度: ${len(adminUsers)}")
+
+// 正确方法2: 带初始值的数组声明
+adminUsers2 = ["Alice", "Charlie"]
+println(f"✅ 初始化数组: ${adminUsers2}")
+
+// 正确方法3: 使用make创建数组
+adminUsers3 = make([]string, 0)
+println(f"✅ make创建数组长度: ${len(adminUsers3)}")
+
+// 正确方法4: 动态添加元素
+for user in users {
+    if user["role"] == "admin" {
+        adminUsers = append(adminUsers, user["name"])
+    }
+}
+println(f"✅ 动态添加后管理员: ${adminUsers}")
+
+// ==========================================
+// 错误4: 类型断言的语法错误
+// ==========================================
+// AI错误搜索: user.(map[string]interface{}) yaklang type assertion syntax
+// AI问题搜索: 类型断言语法错误 map类型转换错误 interface{}转换错误
+println("\n【错误4修复】类型断言的语法错误")
+
+// ❌ AI常犯的错误写法 (会导致语法错误)
+/*
+错误代码示例:
+for _, user := range users {
+    userMap, ok := user.(map[string]interface{})
+    if !ok {
+        continue
+    }
+    name := userMap["name"]
+}
+*/
+
+// ✅ 正确的修复方法
+// 正确方法: 直接访问，无需类型断言
+userName = ""
+userRole = ""
+userAge = 0
+
+for user in users {
+    // 直接访问map的键值，无需类型断言
+    userName = user["name"]
+    userRole = user["role"]
+    userAge = user["age"]
+    
+    println(f"✅ 用户信息: ${userName}, ${userRole}, ${userAge}岁")
+    
+    // 可以直接进行条件判断
+    if userRole == "admin" {
+        println(f"  → ${userName} 是管理员")
+    }
+}
+
+// ==========================================
+// 错误5: f-string复杂格式化错误
+// ==========================================
+// AI错误搜索: f-string 格式化错误 yaklang f-string syntax error
+// AI问题搜索: f-string浮点数格式化 f-string复杂格式化错误
+println("\n【错误5修复】f-string复杂格式化错误")
+
+// ❌ AI常犯的错误写法 (会导致语法错误)
+/*
+错误代码示例:
+yakit.StatusCard("平均年龄", f"${avgAge:.2f}", "avg-age", "success")
+message = f"用户{userName}的年龄是{userAge:.1f}岁"
+*/
+
+// ✅ 正确的修复方法
+// 正确方法1: f-string只用于简单插值
+simpleMessage = f"用户名: ${userName}"
+println(f"✅ 简单f-string: ${simpleMessage}")
+
+// 正确方法2: 复杂格式化使用sprintf
+complexMessage = sprintf("用户%s的年龄是%.1f岁", userName, float(userAge))
+println(f"✅ sprintf复杂格式化: ${complexMessage}")
+
+// 正确方法3: yakit输出使用sprintf预格式化
+yakit.StatusCard("平均年龄", sprintf("%.2f", avgAge), "avg-age", "success")
+yakit.StatusCard("用户总数", sprintf("%d", len(users)), "total-users", "info")
+
+// ==========================================
+// 错误6: 完整的错误修复流程示例
+// ==========================================
+// AI错误搜索: yaklang complete error fix example 完整错误修复示例
+// AI问题搜索: AI代码生成错误修复 完整语法修复流程
+println("\n【错误6修复】完整的错误修复流程示例")
+
+// 模拟AI经常写错的完整函数，然后展示正确的修复版本
+processUserDataCorrect = func(jsonStr) {
+    // ✅ 正确的JSON解析
+    data = json.loads(jsonStr)
+    if data == nil {
+        yakit.Error("JSON解析失败")
+        return
+    }
+    
+    // ✅ 正确的数组提取
+    users = data["users"]
+    if users == nil {
+        yakit.Error("无法提取用户列表，请检查JSON格式")
+        return
+    }
+    
+    // ✅ 正确的统计变量初始化
+    totalUsers = len(users)
+    adminUsers = []  // 正确的空数组声明
+    totalAge = 0
+    validAgeCount = 0
+    
+    // ✅ 正确的遍历和访问
+    for user in users {
+        // 直接访问map键值，无需类型断言
+        if user["age"] != nil && user["age"] != undefined {
+            totalAge += user["age"]
+            validAgeCount++
+        }
+        
+        if user["role"] == "admin" {
+            adminUsers = append(adminUsers, user)
+        }
+    }
+    
+    // ✅ 正确的输出格式化
+    yakit.StatusCard("用户总数", sprintf("%d", totalUsers), "total-users", "info")
+    yakit.StatusCard("管理员数量", sprintf("%d", len(adminUsers)), "admin-count", "warning")
+    
+    if validAgeCount > 0 {
+        avgAge = float(totalAge) / float(validAgeCount)
+        yakit.StatusCard("平均年龄", sprintf("%.2f", avgAge), "avg-age", "success")
+    } else {
+        yakit.StatusCard("平均年龄", "N/A", "avg-age", "error")
+    }
+    
+    yakit.Info("数据处理完成")
+}
+
+// 测试修复后的函数
+processUserDataCorrect(jsonData)
+
+// ==========================================
+// AI错误预防检查清单
+// ==========================================
+println("\n=== AI错误预防检查清单 ===")
+println("✅ JSON解析: 使用 json.loads()，直接访问键值")
+println("✅ 字符串格式化: 使用 sprintf() 或 % 操作符")
+println("✅ 数组声明: 使用 [] 或 make()")
+println("✅ 类型访问: 直接访问map键值，无需类型断言")
+println("✅ 包导入: 无需导入fmt、strconv等包")
+println("✅ f-string: 仅用于简单插值，复杂格式化用sprintf")
+
+// =============================================================================
+// AI搜索关键词快速索引 - 根据错误信息快速定位解决方案
+// =============================================================================
+/*
+【根据错误信息快速查找解决方案】
+
+错误信息: "Value undefined:fmt"
+→ 解决方案: 使用 sprintf("%.2f", value) 替代 fmt.Sprintf
+
+错误信息: "Value undefined:strconv"
+→ 解决方案: 使用 sprintf("%d", value) 替代 strconv.Itoa
+
+错误信息: "mismatched input '.' expecting"
+→ 解决方案: 移除类型断言语法，直接访问map键值
+
+错误信息: "no viable alternative at input"
+→ 解决方案: 检查f-string语法，使用sprintf处理复杂格式化
+
+错误信息: "基础语法错误"
+→ 解决方案: 检查数组声明语法，使用 arr = [] 而非 arr := []interface{}{}
+
+【AI常见搜索词对应解决方案】
+"json loads yaklang" → data = json.loads(jsonStr)
+"yaklang json array extract" → users = data["users"]
+"fmt.Sprintf yaklang" → sprintf("%.2f", value)
+"strconv.Itoa yaklang" → sprintf("%d", value)
+"[]interface{} yaklang" → arr = []
+"type assertion yaklang" → 直接访问user["key"]
+"f-string 格式化错误" → sprintf("%.2f", value)
+"yakit.StatusCard 参数" → 所有参数必须是字符串
+
+记住: 本文件提供了所有AI常见错误的标准修复方案！
+*/

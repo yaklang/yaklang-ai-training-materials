@@ -1,4 +1,25 @@
-// post-query
+// =============================================================================
+// HTTP参数模糊测试脚本 - 演示如何对HTTP请求参数进行Fuzz测试
+// 功能: 测试POST/GET参数、JSON参数、Base64参数的模糊测试能力
+// 用途: 参数注入测试、模糊测试、安全测试、参数验证
+//
+// 核心技术栈:
+// - fuzz.MustHTTPRequest: HTTP请求模糊测试核心函数
+// - GetCommonParams: 提取HTTP请求中的所有参数
+// - Fuzz: 对参数进行模糊测试，支持FuzzTag语法
+// - http.dump: 将HTTP响应转换为原始格式
+//
+// 测试场景:
+// 1. POST Query参数测试 - application/x-www-form-urlencoded
+// 2. JSON参数测试 - application/json格式
+// 3. Base64编码参数测试 - 自动识别和处理Base64
+//
+// 关键词: HTTP模糊测试 参数Fuzz POST参数 JSON参数 Base64参数 安全测试
+// 搜索标签: #fuzz #http-params #post-query #json-fuzz #base64-fuzz #security-test
+// =============================================================================
+
+// ===== 1. POST Query参数模糊测试 - 表单参数Fuzz =====
+// 关键词: POST Query参数, 表单参数, application/x-www-form-urlencoded, 参数模糊测试
 raw = `POST / HTTP/1.1
 Content-Type: application/json
 Host: www.example.com
@@ -28,7 +49,8 @@ for p in params {
     }
 }
 
-// post-json
+// ===== 2. JSON参数模糊测试 - JSON格式参数Fuzz =====
+// 关键词: JSON参数, JSON模糊测试, application/json, JSON载荷, JSON注入
 raw = `GET / HTTP/1.1
 Host: www.yaklang.com
 
@@ -56,7 +78,8 @@ for p in params {
     }
 }
 
-// base64
+// ===== 3. Base64编码参数模糊测试 - 自动识别Base64参数 =====
+// 关键词: Base64参数, Base64模糊测试, 编码参数, URL编码, 自动解码
 raw = f`GET /?a=cXdl&b=enhjdg%3D%3D HTTP/1.1
 Host: www.yaklang.com
 

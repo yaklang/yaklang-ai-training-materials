@@ -1,0 +1,357 @@
+// =============================================================================
+// Yaklang语法指南 - 专门解决AI Agent常见的语法错误和循环问题
+// 功能: 提供正确的Yaklang语法示例，避免AI在编写代码时陷入语法错误循环
+// 用途: AI训练、语法参考、错误预防、代码生成指导、语法验证
+//
+// 核心技术栈:
+// - json.loads: JSON字符串解析为Yak对象
+// - json.dumps: Yak对象序列化为JSON字符串
+// - sprintf: 字符串格式化函数，支持%格式化
+// - f-string: 字符串模板字面量，使用${}插值
+// - %格式化: 传统的字符串格式化方法
+// - 数组和切片操作: []声明、append添加、len长度
+// - 类型转换: float()、int()、string()等
+//
+// AI常见错误解决方案:
+// 1. JSON解析错误 - 使用json.loads而非复杂的类型断言
+// 2. 字符串格式化错误 - 使用sprintf或%格式化，避免复杂的f-string语法
+// 3. 数组声明错误 - 使用[]或make()，避免interface{}语法
+// 4. 类型断言错误 - 直接访问map键值，避免.(type)语法
+// 5. 导入包错误 - Yaklang内置函数无需导入fmt、strconv等包
+//
+// 关键词: Yaklang语法 AI错误预防 JSON解析 字符串格式化 数组操作 类型转换 语法错误修复 AI循环问题
+// 搜索标签: #yaklang-syntax #ai-guide #json-parsing #string-formatting #array-ops #syntax-fix #ai-loop-fix
+// AI搜索词: Yaklang正确语法 AI语法错误 JSON解析方法 字符串格式化 数组声明 类型转换 语法修复指南
+// AI常见搜索: json loads 怎么用 字符串格式化 sprintf 用法 数组声明 yaklang 类型断言 interface 转换
+// AI错误关键词: fmt未定义 strconv未定义 类型断言语法错误 f-string格式化错误 空数组声明错误
+// AI循环搜索: yaklang json array extract yaklang string format float yaklang type assertion syntax
+// 问题解决词: JSON数组提取 浮点数保留小数 类型转换方法 字符串插值 数组操作 map访问
+// =============================================================================
+
+// ==========================================
+// 1. JSON解析的正确方法 - 解决AI最常见的JSON处理错误
+// ==========================================
+// AI常搜关键词: json loads yaklang json parse array json extract users json array access
+// AI错误搜索: interface{} 转 map yaklang type assertion json users ok data users array
+// AI问题搜索: JSON数组提取 json.loads用法 yaklang json解析 JSON对象访问 map键值访问
+// 错误示例: users, ok := data["users"].([]interface{})  // 这种语法在Yaklang中不支持
+// 正确方法: 直接使用json.loads解析，然后通过键访问
+
+println("=== 1. JSON解析正确示例 ===")
+
+// 测试JSON数据
+jsonData = `{
+    "users": [
+        {"id": 1, "name": "Alice", "role": "admin", "age": 28},
+        {"id": 2, "name": "Bob", "role": "user", "age": 35},
+        {"id": 3, "name": "Charlie", "role": "admin", "age": 42}
+    ],
+    "total": 3,
+    "company": "Example Corp"
+}`
+
+// ✅ 正确的JSON解析方法
+data = json.loads(jsonData)
+
+// ✅ 正确的数组提取方法 - 直接通过键访问
+users = data["users"]
+println(f"用户数量: ${len(users)}")
+
+// ✅ 正确的遍历和访问方法
+adminUsers = []  // 正确的空数组声明
+totalAge = 0
+
+for user in users {
+    // ✅ 正确的map访问方法 - 直接通过键访问，无需类型断言
+    userName = user["name"]
+    userRole = user["role"] 
+    userAge = user["age"]
+    
+    println(f"用户: ${userName}, 角色: ${userRole}, 年龄: ${userAge}")
+    
+    // 累计年龄
+    totalAge += userAge
+    
+    // 筛选管理员
+    if userRole == "admin" {
+        adminUsers = append(adminUsers, user)  // ✅ 正确的数组添加方法
+    }
+}
+
+println(f"管理员数量: ${len(adminUsers)}")
+println(f"总年龄: ${totalAge}")
+
+// ==========================================
+// 2. 字符串格式化的正确方法 - 解决AI最常见的格式化错误
+// ==========================================
+// AI常搜关键词: sprintf yaklang string format float 保留小数 yaklang fmt sprintf 用法
+// AI错误搜索: fmt.Sprintf yaklang fmt未定义 strconv.Itoa yaklang f-string 格式化
+// AI问题搜索: 浮点数保留两位小数 整数转字符串 yaklang字符串格式化 %格式化用法
+// AI循环词: yaklang format float decimal yaklang string interpolation sprintf syntax
+println("\n=== 2. 字符串格式化正确示例 ===")
+
+// ❌ 错误示例: fmt.Sprintf("%.2f", avgAge)  // Yaklang中没有fmt包
+// ❌ 错误示例: f"${avgAge:.2f}"  // f-string不支持复杂格式化
+// ❌ 错误示例: strconv.Itoa(totalUsers)  // Yaklang中没有strconv包
+
+// ✅ 正确的浮点数格式化方法
+avgAge = float(totalAge) / float(len(users))
+
+// 方法1: 使用sprintf函数
+formattedAge1 = sprintf("%.2f", avgAge)
+println(f"平均年龄(sprintf): ${formattedAge1}")
+
+// 方法2: 使用%格式化操作符
+formattedAge2 = "%.2f" % avgAge
+println(f"平均年龄(%格式化): ${formattedAge2}")
+
+// ✅ 正确的整数转字符串方法
+userCount = len(users)
+// 方法1: 使用f-string (简单插值)
+countStr1 = f"${userCount}"
+println(f"用户数量(f-string): ${countStr1}")
+
+// 方法2: 使用%格式化
+countStr2 = "%d" % userCount
+println(f"用户数量(%格式化): ${countStr2}")
+
+// 方法3: 使用sprintf
+countStr3 = sprintf("%d", userCount)
+println(f"用户数量(sprintf): ${countStr3}")
+
+// ==========================================
+// 3. 数组和切片操作的正确方法 - 解决AI数组声明和操作错误
+// ==========================================
+// AI常搜关键词: yaklang array 声明 slice 切片 append 数组添加 empty array
+// AI错误搜索: []interface{} yaklang adminUsers := [] 空数组声明 数组初始化
+// AI问题搜索: yaklang空数组 数组声明语法 append用法 数组遍历 切片操作
+// AI循环词: yaklang array declaration slice syntax empty array initialization
+println("\n=== 3. 数组和切片操作正确示例 ===")
+
+// ✅ 正确的数组声明方法
+emptyArray = []                    // 空数组
+numberArray = [1, 2, 3, 4, 5]     // 带初始值的数组
+stringArray = ["a", "b", "c"]     // 字符串数组
+
+// ❌ 错误示例: adminUsers := []interface{}{}  // 不需要interface{}语法
+// ❌ 错误示例: adminUsers = []  // 赋值时缺少:=
+
+// ✅ 正确的数组操作
+println(f"空数组长度: ${len(emptyArray)}")
+println(f"数字数组: ${numberArray}")
+println(f"字符串数组: ${stringArray}")
+
+// ✅ 正确的数组添加元素
+emptyArray = append(emptyArray, "新元素")
+println(f"添加元素后: ${emptyArray}")
+
+// ✅ 正确的数组遍历
+for i, value in numberArray {
+    println(f"索引 ${i}: 值 ${value}")
+}
+
+// ==========================================
+// 4. 类型转换的正确方法 - 解决AI类型转换和断言错误
+// ==========================================
+// AI常搜关键词: yaklang type conversion 类型转换 float int string 转换函数
+// AI错误搜索: type assertion yaklang .(type) 类型断言 interface{} 转换
+// AI问题搜索: yaklang类型转换 字符串转数字 数字转字符串 类型转换函数
+// AI循环词: yaklang convert type cast string to int float conversion
+println("\n=== 4. 类型转换正确示例 ===")
+
+// ✅ 正确的类型转换函数
+intValue = 42
+floatValue = 3.14159
+stringValue = "123"
+
+// 数字转换
+intToFloat = float(intValue)
+floatToInt = int(floatValue)
+stringToInt = int(stringValue)
+
+println(f"整数转浮点: ${intToFloat}")
+println(f"浮点转整数: ${floatToInt}")
+println(f"字符串转整数: ${stringToInt}")
+
+// 字符串转换
+intToString = string(intValue)
+floatToString = string(floatValue)
+
+println(f"整数转字符串: ${intToString}")
+println(f"浮点转字符串: ${floatToString}")
+
+// ==========================================
+// 5. 常见的yakit输出方法 - 解决AI yakit函数使用错误
+// ==========================================
+// AI常搜关键词: yakit.StatusCard 用法 yakit输出 yakit.Info yakit.Error 参数类型
+// AI错误搜索: yakit.StatusCard 参数错误 数字转字符串 yakit函数调用
+// AI问题搜索: yakit输出方法 StatusCard用法 yakit日志函数 输出格式化
+// AI循环词: yakit output functions StatusCard parameters string conversion
+println("\n=== 5. yakit输出正确示例 ===")
+
+// ✅ 正确的yakit.StatusCard用法
+// 注意: 所有参数都应该是字符串类型
+
+// 使用sprintf格式化数字
+yakit.StatusCard("用户总数", sprintf("%d", len(users)), "total-users", "info")
+yakit.StatusCard("管理员数量", sprintf("%d", len(adminUsers)), "admin-count", "warning")
+yakit.StatusCard("平均年龄", sprintf("%.2f", avgAge), "avg-age", "success")
+
+// 使用%格式化
+yakit.StatusCard("总年龄", sprintf("%d", totalAge), "total-age", "info")
+
+// 使用f-string (简单值)
+yakit.StatusCard("公司名称", f"${data['company']}", "company", "info")
+
+// ==========================================
+// 6. 错误处理和调试输出 - 解决AI错误处理和调试方法
+// ==========================================
+// AI常搜关键词: yakit.Error yakit.Warn yakit.Info 错误处理 调试输出 条件判断
+// AI错误搜索: 错误检查 nil判断 undefined检查 条件语句 错误处理方法
+// AI问题搜索: yaklang错误处理 调试输出方法 条件判断语法 错误检查方式
+// AI循环词: error handling debug output conditional check nil undefined
+println("\n=== 6. 错误处理和调试输出 ===")
+
+// ✅ 正确的错误检查
+if data == nil {
+    yakit.Error("JSON解析失败")
+    return
+}
+
+if len(users) == 0 {
+    yakit.Warn("没有找到用户数据")
+    return
+}
+
+// ✅ 正确的调试输出
+yakit.Info("JSON解析成功，用户数量: %d" % len(users))
+yakit.Info("找到管理员: %d 人" % len(adminUsers))
+
+// ✅ 正确的条件判断和输出
+if len(adminUsers) > 0 {
+    yakit.StatusCard("管理员状态", "正常", "admin-status", "success")
+} else {
+    yakit.StatusCard("管理员状态", "无管理员", "admin-status", "error")
+}
+
+// ==========================================
+// 7. 完整的实际应用示例 - 综合所有正确语法的完整案例
+// ==========================================
+// AI常搜关键词: yaklang complete example 完整示例 JSON处理流程 实际应用案例
+// AI错误搜索: 完整JSON处理 数据统计 错误处理流程 实际项目代码
+// AI问题搜索: yaklang项目示例 JSON数据处理 完整代码案例 最佳实践
+// AI循环词: complete json processing example best practices yaklang workflow
+println("\n=== 7. 完整应用示例 ===")
+
+// 模拟一个完整的JSON处理流程
+processUserData = func(jsonStr) {
+    // 解析JSON
+    data = json.loads(jsonStr)
+    if data == nil {
+        yakit.Error("JSON解析失败")
+        return
+    }
+    
+    // 提取用户数组
+    users = data["users"]
+    if users == nil {
+        yakit.Error("无法提取用户列表")
+        return
+    }
+    
+    // 统计数据
+    adminCount = 0
+    totalAge = 0
+    validAgeCount = 0
+    
+    for user in users {
+        // 检查年龄字段
+        if user["age"] != nil && user["age"] != undefined {
+            totalAge += user["age"]
+            validAgeCount++
+        }
+        
+        // 检查角色
+        if user["role"] == "admin" {
+            adminCount++
+        }
+    }
+    
+    // 输出结果
+    yakit.StatusCard("用户总数", sprintf("%d", len(users)), "total-users", "info")
+    yakit.StatusCard("管理员数量", sprintf("%d", adminCount), "admin-count", "warning")
+    
+    if validAgeCount > 0 {
+        avgAge = float(totalAge) / float(validAgeCount)
+        yakit.StatusCard("平均年龄", sprintf("%.2f", avgAge), "avg-age", "success")
+    } else {
+        yakit.StatusCard("平均年龄", "N/A", "avg-age", "error")
+    }
+    
+    yakit.Info("数据处理完成")
+}
+
+// 测试函数
+processUserData(jsonData)
+
+println("\n✅ 所有语法示例执行完成！")
+println("📝 记住: Yaklang不需要导入fmt、strconv等包，使用内置函数即可")
+println("🔍 搜索关键词: json.loads, sprintf, %格式化, f-string, append, yakit.StatusCard")
+
+// =============================================================================
+// AI搜索关键词索引 - 帮助AI快速找到对应的解决方案
+// =============================================================================
+/*
+AI常见错误搜索词汇表:
+
+【JSON解析相关】
+- "json loads yaklang" → 使用 json.loads(jsonStr) 解析JSON
+- "yaklang json array extract" → 直接通过 data["users"] 访问数组
+- "interface{} 转 map" → 不需要类型断言，直接访问键值
+- "JSON数组提取" → users = data["users"]
+- "yaklang json parse" → json.loads() 函数
+
+【字符串格式化相关】
+- "fmt.Sprintf yaklang" → 使用 sprintf("%.2f", value) 替代
+- "yaklang string format float" → sprintf("%.2f", floatValue)
+- "strconv.Itoa yaklang" → 使用 sprintf("%d", intValue) 替代
+- "浮点数保留小数" → sprintf("%.2f", number) 或 "%.2f" % number
+- "f-string 格式化错误" → 使用简单的 f"${value}" 或 sprintf
+
+【数组操作相关】
+- "yaklang array 声明" → emptyArray = [] 或 array = [1,2,3]
+- "[]interface{} yaklang" → 直接使用 [] 声明空数组
+- "adminUsers := []" → 正确的空数组声明语法
+- "yaklang append 用法" → array = append(array, element)
+- "空数组声明" → arr = [] 即可
+
+【类型转换相关】
+- "yaklang type conversion" → 使用 int(), float(), string() 函数
+- "类型断言 yaklang" → 不需要 .(type)，直接访问
+- "字符串转数字" → int("123") 或 float("3.14")
+- "数字转字符串" → string(123) 或 sprintf("%d", 123)
+
+【yakit输出相关】
+- "yakit.StatusCard 用法" → 所有参数必须是字符串类型
+- "yakit 参数类型" → 使用 sprintf 转换数字为字符串
+- "yakit.Error yakit.Info" → 直接传入字符串消息
+
+【错误处理相关】
+- "yaklang 错误处理" → 使用 if data == nil 检查
+- "nil判断 undefined" → 检查 value == nil 或 value == undefined
+- "条件判断语法" → 标准的 if/else 语句
+
+【常见包导入错误】
+- "fmt未定义" → Yaklang不需要导入fmt，使用sprintf
+- "strconv未定义" → 使用内置的类型转换函数
+- "import fmt yaklang" → 不需要导入，直接使用内置函数
+
+【AI循环问题关键词】
+- "yaklang syntax error" → 参考本文件的正确语法
+- "type assertion syntax" → 不使用Go风格的类型断言
+- "json array access" → 直接通过键访问，无需类型断言
+- "string formatting decimal" → 使用sprintf("%.2f", value)
+- "empty array declaration" → 使用 arr = [] 声明
+
+记住: 当AI搜索这些关键词时，本文件提供了所有问题的标准解决方案！
+*/

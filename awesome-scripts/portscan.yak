@@ -1,29 +1,113 @@
 
+// =============================================================================
+// 端口扫描和服务识别测试脚本 - 演示多种扫描模式的服务识别能力
+// 功能: 测试servicescan库的服务识别功能，验证不同扫描模式的准确性
+// 用途: 端口扫描、服务识别、网络侦察、安全测试、指纹识别
+//
+// 核心技术栈:
+// - tcp.MockTCPProtocol: 创建模拟TCP服务，用于测试
+// - servicescan.Scan: 执行端口扫描和服务识别
+// - servicescan.service: 服务识别模式扫描
+// - servicescan.web: Web服务专用扫描
+// - servicescan.all: 全面扫描模式
+// - servicescan.active: 启用主动扫描
+//
+// 测试场景:
+// 1. 服务模式扫描 - 专门识别网络服务
+// 2. Web模式扫描 - 专门识别Web服务
+// 3. 全面模式扫描 - 综合识别所有服务
+// 4. 扫描结果验证 - 确保识别准确性
+//
+// 关键词: 端口扫描 服务识别 网络侦察 指纹识别 TCP扫描 服务发现
+// 搜索标签: #port-scan #service-discovery #network-recon #fingerprint #tcp-scan
+// =============================================================================
+
+// ===== 1. 测试环境准备 - 创建模拟MySQL服务 =====
+// 关键词: 测试环境, 模拟服务, TCP协议, MySQL服务, 测试准备
+
+// 创建模拟MySQL TCP服务 - 用于测试服务识别功能
+// 关键词: tcp.MockTCPProtocol, 模拟TCP, MySQL协议, 测试服务, 协议模拟
 host,port = tcp.MockTCPProtocol("mysql")
+
+// ===== 2. 服务模式扫描测试 - 专门识别网络服务 =====
+// 关键词: 服务扫描, servicescan.service, 服务识别, 网络服务, 主动扫描
+
+// 初始化服务扫描检查标志
+// 关键词: 检查标志, 测试状态, 验证标记, 扫描结果
 checked = false
+
+// 执行服务模式扫描 - 识别网络服务类型
+// 关键词: servicescan.Scan, servicescan.service, servicescan.active, 服务扫描
+// 参数说明:
+// - host: 目标主机地址
+// - string(port): 目标端口号
+// - servicescan.service(): 服务识别模式
+// - servicescan.active(true): 启用主动扫描
 for result in servicescan.Scan(host, string(port), servicescan.service(),servicescan.active(true))~{
+    // 可选：输出扫描结果详情
+    // 关键词: 扫描结果, 调试输出, 结果详情
     //dump(result)
+    
+    // 验证MySQL服务识别结果
+    // 关键词: 服务名验证, Fingerprint, ServiceName, MySQL识别
     if result.Fingerprint.ServiceName == "mysql" {
         checked = true
     }
 }
 
+// ===== 3. Web模式扫描测试 - 专门识别Web服务 =====
+// 关键词: Web扫描, servicescan.web, Web服务, HTTP识别, Web指纹
 
+// 初始化Web扫描检查标志
+// 关键词: Web检查标志, Web扫描状态, Web验证标记
 checked2 = false
+
+// 执行Web模式扫描 - 专门识别Web服务
+// 关键词: servicescan.web, Web扫描模式, HTTP服务识别, Web指纹识别
 for result in servicescan.Scan(host, string(port), servicescan.web(),servicescan.active(true))~{
+    // 可选：输出Web扫描结果
+    // 关键词: Web扫描结果, Web服务详情
     //dump(result)
+    
+    // 验证Web扫描结果 - MySQL服务不应被识别为Web服务
+    // 关键词: Web服务验证, 服务名检查, 非Web服务, 空服务名
     if result.Fingerprint.ServiceName == "" {
         checked2 = true
     }
 }
 
+// ===== 4. 全面模式扫描测试 - 综合识别所有服务 =====
+// 关键词: 全面扫描, servicescan.all, 综合识别, 全模式扫描, 完整扫描
+
+// 初始化全面扫描检查标志
+// 关键词: 全面检查标志, 综合扫描状态, 全模式验证
 checked3 = false
+
+// 执行全面模式扫描 - 使用所有识别方法
+// 关键词: servicescan.all, 全面扫描模式, 综合服务识别, 完整指纹识别
 for result in servicescan.Scan(host, string(port), servicescan.all(),servicescan.active(true))~{
+    // 可选：输出全面扫描结果
+    // 关键词: 全面扫描结果, 综合扫描详情
     //dump(result)
+    
+    // 验证全面扫描的MySQL识别结果
+    // 关键词: 全面扫描验证, MySQL服务确认, 综合识别结果
     if result.Fingerprint.ServiceName == "mysql" {
         checked3 = true
     }
 }
 
+// ===== 5. 扫描结果验证 - 确保所有扫描模式正常工作 =====
+// 关键词: 结果验证, 扫描测试, 功能验证, 测试断言, 错误检查
 
-if !(checked && checked2 && checked3) { die("ERROR for Mock protocol smoking test!")}
+// 验证所有扫描模式的测试结果
+// 关键词: 测试验证, 逻辑检查, 扫描结果确认, 功能测试
+// 验证条件:
+// - checked: 服务模式应该识别出MySQL
+// - checked2: Web模式应该返回空服务名（因为不是Web服务）
+// - checked3: 全面模式应该识别出MySQL
+if !(checked && checked2 && checked3) { 
+    // 测试失败时输出错误信息
+    // 关键词: 测试失败, 错误处理, die函数, 测试异常
+    die("ERROR for Mock protocol smoking test!")
+}

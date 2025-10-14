@@ -1,51 +1,133 @@
+// =============================================================================
+// XSS跨站脚本攻击检测脚本 - 全面的XSS漏洞自动化检测工具
+// 功能: 检测反射型、存储型、DOM型XSS漏洞，支持多种注入上下文
+// 用途: Web安全测试、XSS漏洞扫描、渗透测试、安全审计、漏洞挖掘
+//
+// 核心技术栈:
+// - fuzz.HTTPRequest: HTTP请求模糊测试框架
+// - xhtml.Find: HTML节点查找和解析
+// - js.ASTWalk: JavaScript语法树分析
+// - risk.NewRisk: 安全风险报告生成
+// - sync.NewSizedWaitGroup: 并发控制
+//
+// 检测类型:
+// 1. 标签内文本注入 - 构造标签闭合逃逸
+// 2. 属性值注入 - 属性闭合和伪协议注入
+// 3. 注释内注入 - 注释闭合逃逸
+// 4. JavaScript上下文注入 - JS代码注入和DOM型XSS
+// 5. 特殊属性注入 - 事件处理器直接注入
+//
+// 检测流程:
+// 1. 参数位置识别 - 确定注入点在HTML中的位置
+// 2. 上下文分析 - 分析注入点的HTML/JS上下文
+// 3. 载荷构造 - 根据上下文构造对应的XSS载荷
+// 4. 危险字符检测 - 检测WAF过滤的字符
+// 5. 载荷过滤 - 过滤被WAF阻止的载荷
+// 6. 并发测试 - 多线程执行XSS检测
+// 7. 结果验证 - 验证XSS载荷是否成功执行
+//
+// 关键词: XSS检测 跨站脚本 Web安全 漏洞扫描 HTML注入 JavaScript注入 DOM XSS
+// 搜索标签: #xss #cross-site-scripting #web-security #html-injection #javascript-injection
+// AI搜索词: XSS漏洞检测 跨站脚本攻击 Web安全扫描 HTML注入检测 反射型XSS 存储型XSS DOM型XSS
+// =============================================================================
+
+// ===== 调试和输出配置 - 控制日志级别和输出方式 =====
+// 关键词: 调试配置, 日志输出, debug模式, yakit输出, 日志级别
+
+// 启用调试模式 - 控制详细日志输出
+// 关键词: debug标志, 调试开关, 日志控制, 开发模式
 debug = true
+
+// 保存原始输出函数 - 用于调试模式切换
+// 关键词: 原始输出, yakit_output, 输出函数备份
 origin_yakit_output = yakit_output
 
+// 配置输出方式 - 根据调试模式选择输出方法
+// 关键词: 输出配置, 条件输出, 调试输出, 生产输出
 yakit_output = 1
 if debug {
+    // 调试模式 - 详细日志和控制台输出
+    // 关键词: 调试日志, log.setLevel, debug级别, 控制台输出
     log.setLevel("debug")
     yakit_output = func(v...) {println(v...)}
 } else {
+    // 生产模式 - 标准日志级别和yakit输出
+    // 关键词: 生产日志, info级别, yakit输出, 标准模式
     log.setLevel("info")
     yakit_output = origin_yakit_output
 }
 
 
-/*
-value: payload
-dangerousChars: 一些可能会被过滤/转义的危险字符
-payloadType: payload类型，
-    1.(tag)标签内文本: 构造标签闭合
-    2.(attr)属性: 构造标签闭合或伪协议,如果是(spec-attr)特殊属性可以直接使用javascript代码
-    3.(comment)注释：构造标签闭合
-    4.(js)script 标签内：构造标签闭合或dom型
-*/
+// ===== XSS载荷数据结构 - 定义XSS测试载荷的数据格式 =====
+// 关键词: XSS载荷, 数据结构, payload结构, 载荷类型, 危险字符
+
+// XSS载荷构造函数 - 创建标准化的XSS测试载荷
+// 关键词: newPayload, 载荷构造, XSS payload, 载荷数据结构
+// 参数说明:
+// - value: XSS载荷内容，实际的注入代码
+// - dangerousChars: 可能被WAF过滤的危险字符集合
+// - payloadType: 载荷类型，决定注入上下文和验证方式
+//   * "tag": 标签内文本注入，需要构造标签闭合逃逸
+//   * "attr": 属性值注入，需要属性闭合或伪协议注入  
+//   * "spec-attr": 特殊属性注入，可直接使用JavaScript代码
+//   * "comment": 注释内注入，需要注释闭合逃逸
+//   * "js": Script标签内注入，JavaScript上下文或DOM型XSS
+// 返回值: 包含载荷信息的字典对象
 newPayload = func(value, dangerousChars, payloadType) {
     return {"value": value, "dangerousChars": dangerousChars, "payloadType": payloadType }
 }
 
-/*
-maybeVuln: 漏洞可能存在(即可能误报)
-url: 漏洞url
-param: 漏洞点参数
-payload: 参考newPayload
-*/
+// ===== XSS检测结果数据结构 - 定义漏洞检测结果的数据格式 =====
+// 关键词: 检测结果, 漏洞结果, XSS结果, 结果数据结构
+
+// XSS检测结果构造函数 - 创建标准化的漏洞检测结果
+// 关键词: newResult, 结果构造, XSS结果, 漏洞报告数据
+// 参数说明:
+// - maybeVuln: 布尔值，表示漏洞可能存在（可能误报）
+// - url: 存在漏洞的URL地址
+// - param: 漏洞参数对象，包含参数名和位置信息
+// - payload: XSS载荷对象，参考newPayload函数返回值
+// - reqRaw: 原始HTTP请求数据，用于漏洞复现
+// - respRaw: 原始HTTP响应数据，包含XSS执行证据
+// 返回值: 包含完整漏洞信息的结果对象
 newResult = func(maybeVuln, url, param, payload, reqRaw, respRaw) {
     return {"maybeVuln": maybeVuln, "url": url, "param": param, "payload": payload, "reqRaw": reqRaw, "respRaw": respRaw }
 }
 
-// 过滤一些特殊的params
+// ===== 参数过滤函数 - 过滤不适合XSS测试的特殊参数 =====
+// 关键词: 参数过滤, filterParams, 参数白名单, 参数黑名单, 测试参数筛选
+
+// 参数过滤函数 - 移除不适合进行XSS测试的特殊参数
+// 关键词: filterParams, 参数筛选, 特殊参数过滤, submit参数过滤
+// 功能: 过滤掉可能影响测试结果或不适合注入的参数
+// 过滤规则:
+// - POST表单中的submit按钮参数
+// - 可扩展添加更多过滤规则
 filterParams = func(params) {
+    // 创建新的参数数组 - 存储过滤后的参数
+    // 关键词: 新参数数组, make函数, 参数容器, 过滤结果
     newParams = make([]var)
+    
+    // 遍历所有参数进行过滤判断
+    // 关键词: 参数遍历, 过滤循环, 参数检查, 条件过滤
     for _, param = range params {
-        // 对post中的submit参数进行过滤
+        // 过滤POST表单中的submit参数 - 避免影响表单提交逻辑
+        // 关键词: submit参数, POST参数, 正则匹配, 参数位置检查
+        // 过滤条件: 参数名为submit且位于POST请求中
         if str.MatchAllOfRegexp(param.Name(), `^(?i)submit$`) && str.HasPrefix(param.PositionVerbose(), "POST") {
+            // 跳过submit参数 - 不进行XSS测试
+            // 关键词: 参数跳过, continue语句, 过滤跳过
             continue   
         }
+        
+        // 添加通过过滤的参数到结果数组
+        // 关键词: 参数添加, append函数, 过滤通过, 有效参数
         newParams = append(newParams, param)
     }
+    
+    // 返回过滤后的参数数组
+    // 关键词: 过滤结果, 返回参数, 有效参数列表
     return newParams
-
 }
 
 // 特殊标签判断
