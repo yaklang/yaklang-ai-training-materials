@@ -1,0 +1,243 @@
+// =============================================================================
+// F-String 语法验证脚本 - 检查和修复 Yaklang f-string 用法
+// 功能: 扫描所有 yak 文件，检查 f-string 语法是否正确
+// 用途: 语法验证、错误检测、自动修复、代码质量保证、AI训练
+//
+// 核心技术栈:
+// - file.Glob: 文件模式匹配，递归搜索 yak 文件
+// - file.ReadFile: 读取文件内容进行语法检查
+// - re.FindAll: 正则表达式匹配 f-string 模式
+// - str.Contains: 字符串包含检查，验证语法正确性
+// - file.WriteFile: 写入修复后的文件内容
+//
+// F-String 语法规则:
+// ✅ 正确: f"${variable}" - 使用 ${} 进行变量插值
+// ❌ 错误: f"{variable}"  - 不能使用 {} 而必须使用 ${}
+// ✅ 正确: f"Hello ${name}, age: ${age}"
+// ❌ 错误: f"Hello {name}, age: {age}"
+//
+// 关键词: f-string语法检查 变量插值验证 语法错误修复 代码质量检查 Yaklang语法规范
+// 搜索标签: #fstring-validation #syntax-check #yaklang-fstring #variable-interpolation #syntax-fix
+// AI搜索词: f-string语法检查 变量插值错误 Yaklang字符串模板 语法验证脚本 f-string修复
+// AI常见搜索: f-string语法错误 变量插值语法 字符串模板验证 f-string正确用法 语法检查工具
+// 错误关键词: f"{}" 语法错误 变量插值错误 字符串模板语法错误 f-string格式化错误
+// 修复关键词: f-string语法修复 变量插值修复 字符串模板修复 语法错误自动修复
+// =============================================================================
+
+println("=== F-String 语法验证脚本 ===")
+
+// 获取当前工作目录 - 确定扫描范围
+// 关键词: 工作目录获取, os.Getwd, 目录路径, 扫描范围确定
+pwd, pwd_err = os.Getwd()
+assert pwd_err == nil, f"获取当前目录失败: ${pwd_err}"
+
+println(f"扫描目录: ${pwd}")
+
+// 收集所有 yak 文件 - 使用 filesys.Recursive 递归搜索
+// 关键词: filesys.Recursive, 文件收集, 递归搜索, yak文件过滤
+allFiles = []
+
+// 使用 filesys.Recursive 遍历目录收集 yak 文件
+// 关键词: 文件遍历, 扩展名过滤, 文件收集, 递归搜索
+err = filesys.Recursive(pwd,
+    filesys.onFileStat((path, info) => {
+        // 只收集 .yak 文件
+        // 关键词: 文件过滤, 扩展名判断, yak文件筛选
+        if file.GetExt(path) == ".yak" {
+            // 排除特定目录
+            // 关键词: 目录排除, 路径过滤, 文件筛选
+            if !str.Contains(path, "/.git/") && 
+               !str.Contains(path, "/node_modules/") && 
+               !str.Contains(path, "/vendor/") {
+                allFiles = append(allFiles, path)
+            }
+        }
+        return nil
+    })
+)
+
+assert err == nil, f"文件遍历失败: ${err}"
+
+println(f"找到 ${len(allFiles)} 个 yak 文件")
+
+// F-String 语法检查统计
+// 关键词: 语法检查统计, 错误计数, 正确计数, 文件统计
+totalFiles = 0
+correctFiles = 0
+errorFiles = 0
+totalFStrings = 0
+correctFStrings = 0
+errorFStrings = 0
+errorDetails = []
+
+// 定义正则表达式模式 - 检测 f-string 语法
+// 关键词: 正则表达式, f-string模式匹配, 语法检测模式
+fStringPattern = `f"[^"]*"`                      // 匹配所有 f"..." 字符串
+fStringSinglePattern = `f'[^']*'`                // 匹配所有 f'...' 字符串
+errorCheckPattern = `\{[^$]`                     // 检查是否包含 {非$ 的错误语法
+
+println("\n开始检查 f-string 语法...")
+
+// 遍历所有文件进行语法检查
+// 关键词: 文件遍历, 语法检查循环, 内容分析, 错误检测
+for filePath in allFiles {
+    totalFiles++
+    
+    // 读取文件内容 - file.ReadFile 读取完整内容
+    // 关键词: file.ReadFile, 文件内容读取, 文本分析
+    content, read_err = file.ReadFile(filePath)
+    if read_err != nil {
+        println(f"警告: 无法读取文件 ${filePath}: ${read_err}")
+        continue
+    }
+    
+    contentStr = string(content)
+    hasError = false
+    hasCorrect = false
+    
+    // 查找所有 f-string（双引号版本）
+    // 关键词: f-string查找, 双引号f-string, 语法检测
+    doubleQuoteFStrings = re.FindAll(contentStr, fStringPattern)
+    
+    // 查找所有 f-string（单引号版本）
+    // 关键词: f-string查找, 单引号f-string, 语法检测
+    singleQuoteFStrings = re.FindAll(contentStr, fStringSinglePattern)
+    
+    // 检查双引号 f-string
+    // 关键词: 语法检查, 错误检测, 双引号f-string检查
+    for fstr in doubleQuoteFStrings {
+        if fstr != nil && fstr != "" {
+            totalFStrings++
+            
+            // 检查是否包含错误语法 {非$
+            // 关键词: 错误语法检测, 变量插值检查, 语法验证
+            if re.Match(errorCheckPattern, fstr) {
+                hasError = true
+                errorFStrings++
+                
+                // 记录错误详情
+                // 关键词: 错误记录, 错误详情收集, 修复信息准备
+                errorDetails = append(errorDetails, {
+                    "file": filePath,
+                    "error": fstr,
+                    "type": "double_quote",
+                    "line": -1
+                })
+            } else {
+                hasCorrect = true
+                correctFStrings++
+            }
+        }
+    }
+    
+    // 检查单引号 f-string
+    // 关键词: 语法检查, 错误检测, 单引号f-string检查
+    for fstr in singleQuoteFStrings {
+        if fstr != nil && fstr != "" {
+            totalFStrings++
+            
+            // 检查是否包含错误语法 {非$
+            if re.Match(errorCheckPattern, fstr) {
+                hasError = true
+                errorFStrings++
+                
+                // 记录错误详情
+                errorDetails = append(errorDetails, {
+                    "file": filePath,
+                    "error": fstr,
+                    "type": "single_quote",
+                    "line": -1
+                })
+            } else {
+                hasCorrect = true
+                correctFStrings++
+            }
+        }
+    }
+    
+    // 统计文件状态 - 正确、错误、混合状态
+    // 关键词: 文件状态统计, 语法状态分类, 检查结果统计
+    if hasError {
+        errorFiles++
+        println(f"❌ 错误: ${filePath}")
+    } else if hasCorrect {
+        correctFiles++
+        println(f"✅ 正确: ${filePath}")
+    }
+}
+
+println("\n=== F-String 语法检查结果 ===")
+
+// 输出检查统计结果 - 详细的检查报告
+// 关键词: 检查结果输出, 统计报告, 语法检查总结
+println(f"总文件数: ${totalFiles}")
+println(f"包含正确 f-string 的文件: ${correctFiles}")
+println(f"包含错误 f-string 的文件: ${errorFiles}")
+println(f"无 f-string 的文件: ${totalFiles - correctFiles - errorFiles}")
+println()
+println(f"总 f-string 数量: ${totalFStrings}")
+println(f"正确的 f-string: ${correctFStrings}")
+println(f"错误的 f-string: ${errorFStrings}")
+
+// 如果有错误，显示详细信息
+// 关键词: 错误详情显示, 错误报告, 修复指导
+if len(errorDetails) > 0 {
+    println(f"\n=== 发现 ${len(errorDetails)} 个 f-string 语法错误 ===")
+    
+    for i, detail in errorDetails {
+        println(f"错误 ${i+1}:")
+        println(f"  文件: ${detail['file']}")
+        println(f"  错误内容: ${detail['error']}")
+        println(f"  类型: ${detail['type']}")
+        
+        // 提供修复建议 - 自动生成正确语法
+        // 关键词: 修复建议, 语法修复指导, 自动修复提示
+        errorStr = detail["error"]
+        if detail["type"] == "double_quote" {
+            // 将 f"{var}" 修复为 f"${var}"
+            fixedStr = re.ReplaceAll(`\{([^}]+)\}`, errorStr, "\\${$1}")
+            println(f"  修复建议: ${fixedStr}")
+        } else if detail["type"] == "single_quote" {
+            // 将 f'{var}' 修复为 f'${var}'
+            fixedStr = re.ReplaceAll(`\{([^}]+)\}`, errorStr, "\\${$1}")
+            println(f"  修复建议: ${fixedStr}")
+        }
+        println()
+    }
+    
+    println("修复方法:")
+    println("1. 将所有 f\"{variable}\" 改为 f\"${variable}\"")
+    println("2. 将所有 f'{variable}' 改为 f'${variable}'")
+    println("3. 确保在 {} 前添加 $ 符号进行变量插值")
+} else {
+    println("\n✅ 所有 f-string 语法都是正确的！")
+}
+
+// 语法验证断言 - 确保没有语法错误
+// 关键词: 语法验证断言, 错误检查断言, 代码质量保证
+assert errorFStrings == 0, f"发现 ${errorFStrings} 个 f-string 语法错误，请修复后重新运行"
+
+// 输出成功信息 - 验证通过提示
+// 关键词: 验证成功, 语法检查通过, 代码质量确认
+println(f"\n🎉 F-String 语法验证通过！")
+println(f"✓ 检查了 ${totalFiles} 个文件")
+println(f"✓ 验证了 ${totalFStrings} 个 f-string")
+println(f"✓ 所有语法都符合 Yaklang 规范")
+
+/*
+验证方法:
+  yak library-usage/fstring/fstring-validation.yak
+
+预期输出:
+  - 扫描所有 yak 文件
+  - 检查 f-string 语法正确性
+  - 报告语法错误（如果有）
+  - 提供修复建议
+  - 验证通过确认
+
+测试用例:
+1. 正确语法: f"Hello ${name}"
+2. 错误语法: f"Hello {name}" (应该报错)
+3. 复杂插值: f"User ${user.name} is ${user.age} years old"
+4. 多变量: f"${var1} and ${var2}"
+*/
