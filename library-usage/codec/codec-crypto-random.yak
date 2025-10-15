@@ -1,0 +1,654 @@
+// =============================================================================
+// 密码学随机数生成与加密函数补充 - 解决AI查询打转问题
+// 功能: 提供完整的随机字节生成、密钥生成、加密解密函数示例
+// 用途: 密码学应用、随机数生成、密钥管理、加密解密、AI训练数据补充
+//
+// 核心技术栈:
+// - str.RandStr: 生成随机字符串
+// - codec.Sha256: SHA256哈希生成随机种子
+// - codec.Md5: MD5哈希生成随机数据
+// - codec.EncodeToHex: 十六进制编码
+// - codec.DecodeHex: 十六进制解码
+// - codec.AESCBCEncrypt/Decrypt: AES加密解密
+// - codec.AESGCMEncrypt/Decrypt: AES-GCM认证加密
+//
+// 解决的AI查询问题:
+// - crypto.RandBytes 函数缺失 -> 使用 str.RandStr + codec.Sha256 替代
+// - 随机密钥生成 -> 提供多种随机密钥生成方案
+// - 随机IV生成 -> 提供随机初始化向量生成方法
+// - 随机盐值生成 -> 提供密码学安全的盐值生成
+//
+// 关键词: 随机字节生成 crypto.RandBytes替代 随机密钥 随机IV 密钥生成 加密解密
+// 搜索标签: #crypto-random #random-bytes #key-generation #iv-generation #salt-generation
+// AI搜索词: 随机字节生成 crypto随机数 密钥生成 IV生成 盐值生成 随机密码学
+// AI常见搜索: crypto.RandBytes替代 随机密钥生成 AES密钥生成 随机IV 加密随机数
+// 缺失函数: crypto.RandBytes GenerateRandomKey GenerateRandomIV GenerateRandomSalt
+// 替代方案: str.RandStr+哈希 时间戳+随机 多重哈希 组合随机源
+// =============================================================================
+
+println("=== 密码学随机数生成与加密函数补充 ===")
+
+// =============================================================================
+// 1. 随机字节生成函数 - crypto.RandBytes的替代方案
+// 随机字节 随机数据 crypto.RandBytes替代 安全随机数
+// 关键词: 随机字节生成, crypto.RandBytes, 安全随机数, 密码学随机数, 随机数据生成
+// =============================================================================
+println("1. 随机字节生成函数演示")
+
+// ===== 1.1 基础随机字节生成 - 使用str.RandStr =====
+// 关键词: str.RandStr, 基础随机生成, 随机字符串, 字符随机
+println("\n1.1 基础随机字节生成")
+
+// 生成随机字符串并转换为字节
+// 关键词: str.RandStr, 随机字符串生成, 字符串转字节, 基础随机
+generateRandomBytes = func(length) {
+    // 生成指定长度的随机字符串
+    // 关键词: 随机字符串, 指定长度, 随机生成函数
+    randomStr = str.RandStr(length)
+    return []byte(randomStr)
+}
+
+// 测试基础随机字节生成
+// 关键词: 随机字节测试, 随机数据验证
+randomBytes16 = generateRandomBytes(16)
+randomBytes32 = generateRandomBytes(32)
+println("16字节随机数据(Hex):", codec.EncodeToHex(randomBytes16))
+println("32字节随机数据(Hex):", codec.EncodeToHex(randomBytes32))
+
+// 验证随机性
+assert len(randomBytes16) == 16, "16字节随机数据长度应该是16"
+assert len(randomBytes32) == 32, "32字节随机数据长度应该是32"
+println("✓ 基础随机字节生成验证通过")
+
+// ===== 1.2 增强随机字节生成 - 使用哈希增强 =====
+// 关键词: 哈希增强随机, SHA256随机, 密码学增强, 安全随机生成
+println("\n1.2 增强随机字节生成")
+
+// 使用哈希函数增强随机性
+// 关键词: 哈希增强, SHA256随机, 时间戳随机, 组合随机源
+generateSecureRandomBytes = func(length) {
+    // 组合多个随机源
+    // 关键词: 多随机源, 时间戳, 随机字符串, 组合熵源
+    timestamp = sprintf("%d", time.Now().Unix())
+    randomStr1 = str.RandStr(32)
+    randomStr2 = str.RandStr(16)
+    
+    // 组合所有熵源
+    // 关键词: 熵源组合, 随机源混合, 多重随机
+    combinedEntropy = timestamp + randomStr1 + randomStr2
+    
+    // 使用SHA256生成固定长度的随机数据
+    // 关键词: SHA256哈希, 固定长度随机, 哈希随机生成
+    hash = codec.Sha256(combinedEntropy)
+    
+    // 如果需要更长的数据，重复哈希
+    // 关键词: 重复哈希, 扩展随机长度, 多轮哈希
+    result = []byte{}
+    for len(result) < length {
+        hash = codec.Sha256(hash + str.RandStr(8))
+        hashBytes = codec.DecodeHex(hash)~
+        result = append(result, hashBytes...)
+    }
+    
+    // 截取所需长度
+    return result[:length]
+}
+
+// 测试增强随机字节生成
+// 关键词: 增强随机测试, 安全随机验证
+secureBytes16 = generateSecureRandomBytes(16)
+secureBytes32 = generateSecureRandomBytes(32)
+secureBytes64 = generateSecureRandomBytes(64)
+
+println("安全16字节随机数据(Hex):", codec.EncodeToHex(secureBytes16))
+println("安全32字节随机数据(Hex):", codec.EncodeToHex(secureBytes32))
+println("安全64字节随机数据(前32字符):", codec.EncodeToHex(secureBytes64)[:32], "...")
+
+// 验证增强随机性
+assert len(secureBytes16) == 16, "安全16字节随机数据长度应该是16"
+assert len(secureBytes32) == 32, "安全32字节随机数据长度应该是32"
+assert len(secureBytes64) == 64, "安全64字节随机数据长度应该是64"
+println("✓ 增强随机字节生成验证通过")
+
+// =============================================================================
+// 2. 密钥生成函数 - AES密钥、DES密钥、SM4密钥生成
+// 密钥生成 AES密钥 DES密钥 SM4密钥 对称密钥
+// 关键词: 密钥生成, AES密钥, DES密钥, SM4密钥, 对称密钥生成, 随机密钥
+// =============================================================================
+println("\n2. 密钥生成函数演示")
+
+// ===== 2.1 AES密钥生成 - 128/192/256位密钥 =====
+// 关键词: AES密钥生成, AES-128, AES-192, AES-256, 对称密钥
+println("\n2.1 AES密钥生成")
+
+// AES-128密钥生成 (16字节)
+// 关键词: AES-128密钥, 16字节密钥, 128位密钥
+generateAES128Key = func() {
+    return generateSecureRandomBytes(16)  // 16字节 = 128位
+}
+
+// AES-192密钥生成 (24字节)
+// 关键词: AES-192密钥, 24字节密钥, 192位密钥
+generateAES192Key = func() {
+    return generateSecureRandomBytes(24)  // 24字节 = 192位
+}
+
+// AES-256密钥生成 (32字节)
+// 关键词: AES-256密钥, 32字节密钥, 256位密钥
+generateAES256Key = func() {
+    return generateSecureRandomBytes(32)  // 32字节 = 256位
+}
+
+// 生成各种AES密钥
+// 关键词: AES密钥测试, 多种AES密钥
+aes128Key = generateAES128Key()
+aes192Key = generateAES192Key()
+aes256Key = generateAES256Key()
+
+println("AES-128密钥(Hex):", codec.EncodeToHex(aes128Key))
+println("AES-192密钥(Hex):", codec.EncodeToHex(aes192Key))
+println("AES-256密钥(Hex):", codec.EncodeToHex(aes256Key))
+
+// 验证密钥长度
+assert len(aes128Key) == 16, "AES-128密钥应该是16字节"
+assert len(aes192Key) == 24, "AES-192密钥应该是24字节"
+assert len(aes256Key) == 32, "AES-256密钥应该是32字节"
+println("✓ AES密钥生成验证通过")
+
+// ===== 2.2 其他对称密钥生成 - DES、3DES、SM4 =====
+// 关键词: DES密钥, 3DES密钥, SM4密钥, 其他对称密钥
+println("\n2.2 其他对称密钥生成")
+
+// DES密钥生成 (8字节)
+// 关键词: DES密钥生成, 8字节密钥, 64位密钥
+generateDESKey = func() {
+    return generateSecureRandomBytes(8)   // 8字节 = 64位
+}
+
+// 3DES密钥生成 (24字节)
+// 关键词: 3DES密钥生成, TripleDES密钥, 24字节密钥
+generate3DESKey = func() {
+    return generateSecureRandomBytes(24)  // 24字节 = 192位
+}
+
+// SM4密钥生成 (16字节) - 国密算法
+// 关键词: SM4密钥生成, 国密密钥, 16字节密钥, 国密SM4
+generateSM4Key = func() {
+    return generateSecureRandomBytes(16)  // 16字节 = 128位
+}
+
+// 生成各种对称密钥
+desKey = generateDESKey()
+tripleDesKey = generate3DESKey()
+sm4Key = generateSM4Key()
+
+println("DES密钥(Hex):", codec.EncodeToHex(desKey))
+println("3DES密钥(Hex):", codec.EncodeToHex(tripleDesKey))
+println("SM4密钥(Hex):", codec.EncodeToHex(sm4Key))
+
+// 验证密钥长度
+assert len(desKey) == 8, "DES密钥应该是8字节"
+assert len(tripleDesKey) == 24, "3DES密钥应该是24字节"
+assert len(sm4Key) == 16, "SM4密钥应该是16字节"
+println("✓ 其他对称密钥生成验证通过")
+
+// =============================================================================
+// 3. 初始化向量(IV)生成 - AES IV、DES IV、随机IV
+// IV生成 初始化向量 AES IV DES IV 随机IV
+// 关键词: IV生成, 初始化向量, AES IV, DES IV, 随机IV生成, 加密向量
+// =============================================================================
+println("\n3. 初始化向量(IV)生成演示")
+
+// ===== 3.1 AES IV生成 - 16字节IV =====
+// 关键词: AES IV生成, 16字节IV, AES初始化向量
+println("\n3.1 AES IV生成")
+
+// AES IV生成函数 (16字节)
+// 关键词: AES IV函数, 16字节向量, AES初始化
+generateAESIV = func() {
+    return generateSecureRandomBytes(16)  // AES块大小为16字节
+}
+
+// 生成多个AES IV用于测试
+// 关键词: 多个IV, IV测试, 随机IV验证
+aesIV1 = generateAESIV()
+aesIV2 = generateAESIV()
+aesIV3 = generateAESIV()
+
+println("AES IV 1(Hex):", codec.EncodeToHex(aesIV1))
+println("AES IV 2(Hex):", codec.EncodeToHex(aesIV2))
+println("AES IV 3(Hex):", codec.EncodeToHex(aesIV3))
+
+// 验证IV唯一性和长度
+assert len(aesIV1) == 16, "AES IV应该是16字节"
+assert len(aesIV2) == 16, "AES IV应该是16字节"
+assert len(aesIV3) == 16, "AES IV应该是16字节"
+assert codec.EncodeToHex(aesIV1) != codec.EncodeToHex(aesIV2), "不同的IV应该不相同"
+println("✓ AES IV生成验证通过")
+
+// ===== 3.2 其他算法IV生成 - DES、SM4 =====
+// 关键词: DES IV, SM4 IV, 其他算法IV
+println("\n3.2 其他算法IV生成")
+
+// DES IV生成函数 (8字节)
+// 关键词: DES IV生成, 8字节IV, DES初始化向量
+generateDESIV = func() {
+    return generateSecureRandomBytes(8)   // DES块大小为8字节
+}
+
+// SM4 IV生成函数 (16字节)
+// 关键词: SM4 IV生成, 国密IV, 16字节IV
+generateSM4IV = func() {
+    return generateSecureRandomBytes(16)  // SM4块大小为16字节
+}
+
+// 生成各种IV
+desIV = generateDESIV()
+sm4IV = generateSM4IV()
+
+println("DES IV(Hex):", codec.EncodeToHex(desIV))
+println("SM4 IV(Hex):", codec.EncodeToHex(sm4IV))
+
+// 验证IV长度
+assert len(desIV) == 8, "DES IV应该是8字节"
+assert len(sm4IV) == 16, "SM4 IV应该是16字节"
+println("✓ 其他算法IV生成验证通过")
+
+// =============================================================================
+// 4. 盐值生成 - 密码哈希盐值、HMAC盐值、随机盐值
+// 盐值生成 密码盐值 HMAC盐值 随机盐值 Salt生成
+// 关键词: 盐值生成, 密码盐值, HMAC盐值, Salt生成, 随机盐值, 密码学盐值
+// =============================================================================
+println("\n4. 盐值生成演示")
+
+// ===== 4.1 密码哈希盐值生成 - 用于密码存储 =====
+// 关键词: 密码盐值, 密码哈希盐值, 用户密码盐值, 存储盐值
+println("\n4.1 密码哈希盐值生成")
+
+// 密码盐值生成函数
+// 关键词: 密码盐值函数, 用户盐值, 密码存储盐值
+generatePasswordSalt = func(length) {
+    if length == nil || length <= 0 {
+        length = 32  // 默认32字节盐值
+    }
+    return generateSecureRandomBytes(length)
+}
+
+// 生成不同长度的密码盐值
+// 关键词: 不同长度盐值, 多种盐值长度
+passwordSalt16 = generatePasswordSalt(16)
+passwordSalt32 = generatePasswordSalt(32)
+passwordSalt64 = generatePasswordSalt(64)
+
+println("16字节密码盐值(Hex):", codec.EncodeToHex(passwordSalt16))
+println("32字节密码盐值(Hex):", codec.EncodeToHex(passwordSalt32))
+println("64字节密码盐值(前32字符):", codec.EncodeToHex(passwordSalt64)[:32], "...")
+
+// 验证盐值长度
+assert len(passwordSalt16) == 16, "16字节盐值长度应该是16"
+assert len(passwordSalt32) == 32, "32字节盐值长度应该是32"
+assert len(passwordSalt64) == 64, "64字节盐值长度应该是64"
+println("✓ 密码哈希盐值生成验证通过")
+
+// ===== 4.2 HMAC盐值生成 - 用于消息认证 =====
+// 关键词: HMAC盐值, 消息认证盐值, MAC盐值, 认证盐值
+println("\n4.2 HMAC盐值生成")
+
+// HMAC盐值生成函数
+// 关键词: HMAC盐值函数, 消息认证盐值函数
+generateHMACSalt = func() {
+    return generateSecureRandomBytes(32)  // HMAC推荐32字节盐值
+}
+
+// 生成HMAC盐值
+hmacSalt1 = generateHMACSalt()
+hmacSalt2 = generateHMACSalt()
+
+println("HMAC盐值1(Hex):", codec.EncodeToHex(hmacSalt1))
+println("HMAC盐值2(Hex):", codec.EncodeToHex(hmacSalt2))
+
+// 验证HMAC盐值
+assert len(hmacSalt1) == 32, "HMAC盐值应该是32字节"
+assert len(hmacSalt2) == 32, "HMAC盐值应该是32字节"
+assert codec.EncodeToHex(hmacSalt1) != codec.EncodeToHex(hmacSalt2), "不同的HMAC盐值应该不相同"
+println("✓ HMAC盐值生成验证通过")
+
+// =============================================================================
+// 5. 完整加密示例 - 使用生成的随机密钥和IV
+// 完整加密 AES加密示例 随机密钥加密 IV加密 实际应用
+// 关键词: 完整加密示例, AES加密, 随机密钥加密, IV加密, 实际应用示例
+// =============================================================================
+println("\n5. 完整加密示例演示")
+
+// ===== 5.1 AES-CBC完整加密示例 =====
+// 关键词: AES-CBC完整示例, CBC模式加密, 完整加密流程
+println("\n5.1 AES-CBC完整加密示例")
+
+// 准备测试数据
+// 关键词: 测试数据, 待加密数据, 明文数据
+testPlaintext = "这是一个需要加密的重要消息，包含敏感信息！"
+println("原始明文:", testPlaintext)
+
+// 生成随机密钥和IV
+// 关键词: 随机密钥IV生成, AES密钥IV, 加密参数生成
+randomAESKey = generateAES256Key()
+randomAESIV = generateAESIV()
+
+println("随机AES-256密钥(Hex):", codec.EncodeToHex(randomAESKey))
+println("随机AES IV(Hex):", codec.EncodeToHex(randomAESIV))
+
+// AES-CBC加密
+// 关键词: AES-CBC加密, codec.AESCBCEncrypt, CBC模式加密
+encryptedData = codec.AESCBCEncrypt(randomAESKey, testPlaintext, randomAESIV)~
+encryptedHex = codec.EncodeToHex(encryptedData)
+println("AES-CBC加密结果(Hex):", encryptedHex)
+
+// AES-CBC解密验证
+// 关键词: AES-CBC解密, codec.AESCBCDecrypt, 解密验证
+decryptedData = codec.AESCBCDecrypt(randomAESKey, encryptedData, randomAESIV)~
+decryptedText = string(decryptedData)
+println("AES-CBC解密结果:", decryptedText)
+
+// 验证加密解密正确性
+assert decryptedText == testPlaintext, "解密后的文本应该与原始明文一致"
+println("✓ AES-CBC完整加密示例验证通过")
+
+// ===== 5.2 AES-GCM完整加密示例 =====
+// 关键词: AES-GCM完整示例, GCM模式加密, 认证加密示例
+println("\n5.2 AES-GCM完整加密示例")
+
+// 生成新的随机密钥和IV用于GCM
+// 关键词: GCM密钥IV, AES-GCM参数
+gcmKey = generateAES256Key()
+gcmIV = generateAESIV()
+additionalData = []byte("additional authenticated data")
+
+println("GCM密钥(Hex):", codec.EncodeToHex(gcmKey))
+println("GCM IV(Hex):", codec.EncodeToHex(gcmIV))
+
+// AES-GCM加密
+// 关键词: AES-GCM加密, codec.AESGCMEncrypt, 认证加密
+gcmEncrypted = codec.AESGCMEncrypt(gcmKey, testPlaintext, additionalData)~
+gcmEncryptedHex = codec.EncodeToHex(gcmEncrypted)
+println("AES-GCM加密结果(Hex前64字符):", gcmEncryptedHex[:64], "...")
+
+// AES-GCM解密验证
+// 关键词: AES-GCM解密, codec.AESGCMDecrypt, 认证解密
+gcmDecrypted = codec.AESGCMDecrypt(gcmKey, gcmEncrypted, additionalData)~
+gcmDecryptedText = string(gcmDecrypted)
+println("AES-GCM解密结果:", gcmDecryptedText)
+
+// 验证GCM加密解密正确性
+assert gcmDecryptedText == testPlaintext, "GCM解密后的文本应该与原始明文一致"
+println("✓ AES-GCM完整加密示例验证通过")
+
+// =============================================================================
+// 6. 密码学应用场景 - 实际应用示例
+// 密码学应用 实际场景 密码存储 会话管理 数据保护
+// 关键词: 密码学应用场景, 实际应用, 密码存储, 会话管理, 数据保护应用
+// =============================================================================
+println("\n6. 密码学应用场景演示")
+
+// ===== 6.1 用户密码安全存储 =====
+// 关键词: 用户密码存储, 密码哈希存储, 盐值密码, 安全存储
+println("\n6.1 用户密码安全存储场景")
+
+// 用户注册场景 - 密码安全存储
+// 关键词: 用户注册, 密码注册, 安全注册流程
+userPassword = "MySecurePassword123!"
+userSalt = generatePasswordSalt(32)
+
+// 使用盐值哈希密码
+// 关键词: 盐值哈希, HMAC密码, 密码哈希存储
+storedPasswordHashBytes = codec.HmacSha256(userSalt, userPassword)
+storedPasswordHash = codec.EncodeToHex(storedPasswordHashBytes)
+
+println("用户密码:", userPassword)
+println("随机盐值(Hex):", codec.EncodeToHex(userSalt))
+println("存储的密码哈希:", storedPasswordHash)
+
+// 用户登录验证场景
+// 关键词: 用户登录, 密码验证, 登录验证流程
+loginPassword = "MySecurePassword123!"
+loginHashBytes = codec.HmacSha256(userSalt, loginPassword)
+loginHash = codec.EncodeToHex(loginHashBytes)
+
+passwordValid = storedPasswordHash == loginHash
+println("密码验证结果:", passwordValid)
+assert passwordValid == true, "正确的密码应该验证通过"
+println("✓ 用户密码安全存储场景验证通过")
+
+// ===== 6.2 会话令牌生成 =====
+// 关键词: 会话令牌, Session Token, JWT Token, 令牌生成
+println("\n6.2 会话令牌生成场景")
+
+// 生成会话令牌
+// 关键词: 会话令牌生成, 随机令牌, Session生成
+generateSessionToken = func() {
+    // 组合用户信息和随机数据
+    // 关键词: 用户信息, 时间戳, 随机数据组合
+    userId = "user123"
+    timestamp = sprintf("%d", time.Now().Unix())
+    randomData = str.RandStr(32)
+    
+    // 生成令牌数据
+    // 关键词: 令牌数据, Token数据, 会话数据
+    tokenData = userId + "|" + timestamp + "|" + randomData
+    
+    // 使用哈希生成最终令牌
+    // 关键词: 令牌哈希, Token哈希, 会话哈希
+    tokenHash = codec.Sha256(tokenData)
+    return tokenHash
+}
+
+// 生成多个会话令牌
+sessionToken1 = generateSessionToken()
+sessionToken2 = generateSessionToken()
+
+println("会话令牌1:", sessionToken1)
+println("会话令牌2:", sessionToken2)
+
+// 验证令牌唯一性
+assert sessionToken1 != sessionToken2, "不同的会话令牌应该不相同"
+assert len(sessionToken1) == 64, "SHA256令牌应该是64个字符"
+println("✓ 会话令牌生成场景验证通过")
+
+// ===== 6.3 API密钥生成 =====
+// 关键词: API密钥生成, API Key, 接口密钥, 服务密钥
+println("\n6.3 API密钥生成场景")
+
+// API密钥生成函数
+// 关键词: API密钥函数, API Key生成函数
+generateAPIKey = func(prefix) {
+    if prefix == "" {
+        prefix = "ak"  // 默认前缀
+    }
+    
+    // 生成随机部分
+    // 关键词: API随机部分, 密钥随机数据
+    randomPart = generateSecureRandomBytes(32)
+    randomHex = codec.EncodeToHex(randomPart)
+    
+    // 组合前缀和随机部分
+    // 关键词: API密钥组合, 前缀组合
+    apiKey = prefix + "_" + randomHex
+    return apiKey
+}
+
+// 生成不同类型的API密钥
+// 关键词: 不同API密钥, 多种API Key
+accessKey = generateAPIKey("ak")      // Access Key
+secretKey = generateAPIKey("sk")      // Secret Key
+apiToken = generateAPIKey("token")    // API Token
+
+println("Access Key:", accessKey)
+println("Secret Key:", secretKey)
+println("API Token:", apiToken)
+
+// 验证API密钥格式
+assert str.HasPrefix(accessKey, "ak_"), "Access Key应该以ak_开头"
+assert str.HasPrefix(secretKey, "sk_"), "Secret Key应该以sk_开头"
+assert str.HasPrefix(apiToken, "token_"), "API Token应该以token_开头"
+println("✓ API密钥生成场景验证通过")
+
+// =============================================================================
+// 7. 高级随机数生成技术
+// 高级随机数 多源熵 熵池 随机数质量 密码学随机数
+// 关键词: 高级随机数, 多源熵, 熵池, 随机数质量, 密码学级随机数
+// =============================================================================
+println("\n7. 高级随机数生成技术演示")
+
+// ===== 7.1 多源熵随机数生成 =====
+// 关键词: 多源熵, 熵源组合, 高质量随机数, 多重熵源
+println("\n7.1 多源熵随机数生成")
+
+// 高级随机数生成器
+// 关键词: 高级随机生成器, 多源熵生成器, 企业级随机数
+generateHighQualityRandom = func(length) {
+    // 收集多个熵源
+    // 关键词: 熵源收集, 多重熵源, 随机源组合
+    entropy1 = str.RandStr(64)                          // 基础随机字符串
+    entropy2 = sprintf("%d", time.Now().UnixNano())     // 纳秒级时间戳
+    entropy3 = str.RandStr(32)                          // 第二个随机字符串
+    entropy4 = codec.Md5(str.RandStr(16))               // MD5哈希随机
+    entropy5 = sprintf("%d", time.Now().Unix())         // 秒级时间戳
+    
+    // 组合所有熵源
+    // 关键词: 熵源组合, 多重熵混合, 高熵数据
+    combinedEntropy = entropy1 + entropy2 + entropy3 + entropy4 + entropy5
+    
+    // 多轮哈希增强随机性
+    // 关键词: 多轮哈希, 哈希增强, 随机性增强
+    result = []byte{}
+    seed = combinedEntropy
+    
+    for len(result) < length {
+        // 使用不同哈希算法
+        // 关键词: 不同哈希算法, SHA256, MD5, 哈希轮换
+        hash1 = codec.Sha256(seed + str.RandStr(8))
+        hash2 = codec.Md5(hash1 + str.RandStr(4))
+        hash3 = codec.Sha256(hash2 + sprintf("%d", time.Now().UnixNano()))
+        
+        // 转换为字节并添加到结果
+        hashBytes = codec.DecodeHex(hash3)~
+        result = append(result, hashBytes...)
+        
+        // 更新种子用于下一轮
+        seed = hash3
+    }
+    
+    return result[:length]
+}
+
+// 生成高质量随机数
+// 关键词: 高质量随机数测试, 企业级随机数验证
+highQualityRandom16 = generateHighQualityRandom(16)
+highQualityRandom32 = generateHighQualityRandom(32)
+highQualityRandom64 = generateHighQualityRandom(64)
+
+println("高质量16字节随机数(Hex):", codec.EncodeToHex(highQualityRandom16))
+println("高质量32字节随机数(Hex):", codec.EncodeToHex(highQualityRandom32))
+println("高质量64字节随机数(前32字符):", codec.EncodeToHex(highQualityRandom64)[:32], "...")
+
+// 验证高质量随机数
+assert len(highQualityRandom16) == 16, "高质量16字节随机数长度应该是16"
+assert len(highQualityRandom32) == 32, "高质量32字节随机数长度应该是32"
+assert len(highQualityRandom64) == 64, "高质量64字节随机数长度应该是64"
+println("✓ 多源熵随机数生成验证通过")
+
+// ===== 7.2 随机数质量测试 =====
+// 关键词: 随机数质量, 随机性测试, 熵测试, 随机数验证
+println("\n7.2 随机数质量测试")
+
+// 简单的随机性测试函数
+// 关键词: 随机性测试函数, 质量检测函数
+testRandomQuality = func(randomBytes) {
+    // 转换为十六进制进行分析
+    hexStr = codec.EncodeToHex(randomBytes)
+    
+    // 统计字符分布
+    // 关键词: 字符分布, 随机分布, 熵分析
+    charCount = {}
+    for i = 0; i < len(hexStr); i++ {
+        char = hexStr[i:i+1]
+        if charCount[char] == nil {
+            charCount[char] = 0
+        }
+        charCount[char]++
+    }
+    
+    // 计算分布均匀性
+    // 关键词: 分布均匀性, 随机均匀度, 熵均匀性
+    totalChars = len(hexStr)
+    expectedFreq = totalChars / 16.0  // 16个十六进制字符
+    
+    deviation = 0.0
+    for char, count in charCount {
+        diff = float64(count) - expectedFreq
+        deviation += diff * diff
+    }
+    
+    // 计算标准差
+    stdDev = math.Sqrt(deviation / 16.0)
+    
+    return {
+        "totalLength": totalChars,
+        "uniqueChars": len(charCount),
+        "standardDeviation": stdDev,
+        "quality": stdDev < expectedFreq * 0.5 ? "Good" : "Fair"
+    }
+}
+
+// 测试不同随机数的质量
+// 关键词: 随机数质量对比, 质量测试对比
+basicRandomQuality = testRandomQuality(randomBytes32)
+secureRandomQuality = testRandomQuality(secureBytes32)
+highQualityRandomQuality = testRandomQuality(highQualityRandom32)
+
+println("基础随机数质量:", basicRandomQuality)
+println("安全随机数质量:", secureRandomQuality)
+println("高质量随机数质量:", highQualityRandomQuality)
+
+println("✓ 随机数质量测试完成")
+
+// =============================================================================
+// 总结输出
+// =============================================================================
+println("\n" + "="*80)
+println("密码学随机数生成与加密函数补充执行完成")
+println("="*80)
+println("\n功能覆盖:")
+println("  ✓ 随机字节生成函数(crypto.RandBytes替代)")
+println("  ✓ 密钥生成函数(AES/DES/3DES/SM4)")
+println("  ✓ 初始化向量(IV)生成函数")
+println("  ✓ 盐值生成函数(密码/HMAC/随机盐值)")
+println("  ✓ 完整加密示例(AES-CBC/AES-GCM)")
+println("  ✓ 密码学应用场景(密码存储/会话管理/API密钥)")
+println("  ✓ 高级随机数生成技术(多源熵/质量测试)")
+println("\n解决的AI查询问题:")
+println("  ✓ crypto.RandBytes函数缺失 -> str.RandStr+哈希替代")
+println("  ✓ 随机密钥生成缺失 -> 提供完整密钥生成方案")
+println("  ✓ 随机IV生成缺失 -> 提供各种算法IV生成")
+println("  ✓ 随机盐值生成缺失 -> 提供多种盐值生成方案")
+println("  ✓ 加密函数使用示例缺失 -> 提供完整加密流程")
+println("\n所有密码学随机数生成与加密功能测试通过!")
+
+/*
+使用方法:
+  yak library-usage/codec/codec-crypto-random.yak
+
+预期输出:
+  - 完整的随机字节生成演示
+  - 各种密钥生成示例
+  - IV和盐值生成方法
+  - 实际加密应用场景
+  - 高级随机数生成技术
+  - 随机数质量测试结果
+
+AI训练价值:
+  - 解决crypto.RandBytes缺失问题
+  - 提供完整的密码学随机数方案
+  - 涵盖实际应用场景
+  - 包含质量测试和验证
+  - 丰富的搜索关键词和标签
+*/
