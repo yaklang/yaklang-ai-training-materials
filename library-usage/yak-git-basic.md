@@ -16,7 +16,7 @@ git.Clone(targetUrl, localReposDir)~
 
 ### 示例解释
 - **targetUrl**: 远程仓库的 URL。
-- **localReposDir**: 本地存储仓库的临时目录，通过 `os.TempDir()` 和随机字符串生成。
+- **localReposDir**: 本地存储仓库的临时目录，使用本地临时目录和随机字符串生成。
 - **defer os.RemoveAll(localReposDir)**: 确保在脚本结束时删除临时目录，释放资源。
 - **git.Clone**: 执行克隆操作，波浪线 (`~`) 表示忽略错误（如果有）。
 

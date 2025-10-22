@@ -507,7 +507,7 @@ cleanMsg = str.TrimPrefix(logEntry, "[ERROR] ")  // 输出 "connection timeout"
 
 ## 核心函数说明
 
-### `str.Trim(s: string, cutset: string) => string`
+### `str.Trim(s, cutset) => string`
 ```
 // 函数签名
 func Trim(s: string, cutset: string) => string
@@ -515,7 +515,7 @@ func Trim(s: string, cutset: string) => string
 - **作用**：同时执行 `TrimLeft` + `TrimRight`，移除**两侧**属于字符集合的字符
 - **匹配规则**：连续移除直到遇到第一个不属于集合的字符
 
-### `str.TrimSpace(s: string) => string`
+### `str.TrimSpace(s) => string`
 ```
 // 函数签名
 func TrimSpace(s: string) => string 
@@ -631,7 +631,7 @@ str.Trim("[[value]]", "[]")  // 单次操作即可，输出 "value"
 
 ## 函数详解
 
-### 1. `str.Split(s: string, sep: string) => []string`
+### 1. `str.Split(s, sepString) => []string`
 **功能特性**：
 - 全量分割模式
 - 自动处理连续分隔符（`"a,,b"` → `["a", "", "b"]`)
@@ -654,7 +654,7 @@ for row in rows {
 
 ---
 
-### 2. `str.SplitN(s: string, sep: string, n: int) => []string`
+### 2. `str.SplitN(s, sepStr, n) => []string`
 **分割规则**：
 - 当 n > 0: 返回最多 n 个子串
 - 当 n == 0: 返回 nil
@@ -676,7 +676,7 @@ parts = str.SplitN(cmdInput, " ", 3)
 
 ---
 
-### 3. `str.SplitAfter(s: string, sep: string) => []string`
+### 3. `str.SplitAfter(s, sep) => []string`
 **核心逻辑**：
 - 分割后保留分隔符
 - 适用于需要后续处理分隔符的场景
@@ -696,7 +696,7 @@ timePart = str.SplitAfter(logEntry, "]")[0]  // => "[2023-08-15T14:30:00Z]"
 
 ---
 
-### 4. `str.SplitAfterN(s: string, sep: string, n: int) => []string`
+### 4. `str.SplitAfterN(s, sep, n) => []string`
 **控制逻辑**：
 - 结合 SplitAfter 和 SplitN 的特性
 - 保留分隔符的同时控制分割次数

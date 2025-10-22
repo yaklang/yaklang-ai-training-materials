@@ -36,9 +36,9 @@ for r in tls.InspectForceHttp1_1(target)~ {
 
 #### 4. 核心功能解析
 1. **tls模块方法**：
-   - `Inspect()`: 自动协商检测支持的协议
-   - `InspectForceHttp2()`: 强制尝试HTTP/2连接
-   - `InspectForceHttp1_1()`: 强制使用HTTP/1.1协议
+   - `tls.Inspect()`: 自动协商检测支持的协议
+   - `tls.InspectForceHttp2()`: 强制尝试HTTP/2连接
+   - `tls.InspectForceHttp1_1()`: 强制使用HTTP/1.1协议
 
 2. **错误处理**：
    - `~`操作符：自动捕获错误
