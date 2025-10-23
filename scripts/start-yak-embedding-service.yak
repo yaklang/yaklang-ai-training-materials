@@ -53,6 +53,8 @@ concurrent = cli.Int(
     cli.setHelp("embedding 并发限制数量")
 )
 
+install = cli.Bool("install", cli.setDefault(false), cli.setHelp("是否安装依赖"))
+
 // 验证参数
 cli.check()
 
@@ -73,63 +75,67 @@ log.info("  Concurrent Limit: %d", concurrent)
 // 3. 初始化 RAG 系统并检查 embedder 是否可用
 // =============================================================================
 
-println("\n=== Step 1: Installing llama-server ===")
 
-// 尝试检查并安装 llama-server
-try {
-    // 检查已安装的工具
-    log.info("Checking installed tools...")
-    installedTools = {}
-    for tool in toolbox.List()~ {
-        installedTools[tool.Name] = tool.Installed
-    }
+if install {
+    println("\n=== Step 1: Installing llama-server ===")
 
-    // 检查并安装 llama-server
-    log.info("Checking llama-server...")
-    if !installedTools["llama-server"] {
-        println("Installing llama-server...")
-        err = toolbox.Install("llama-server")
-        if err != nil {
-            log.error("Failed to install llama-server: %v", err)
-            die(f"Failed to install llama-server: ${err}")
+    // 尝试检查并安装 llama-server
+    try {
+        // 检查已安装的工具
+        log.info("Checking installed tools...")
+        installedTools = {}
+        for tool in toolbox.List()~ {
+            installedTools[tool.Name] = tool.Installed
         }
-        println("✓ llama-server installed successfully")
-    } else {
-        println("✓ llama-server already installed")
-    }
-} catch err {
-    log.error("Failed to install llama-server: %v", err)
-    die(f"Failed to install llama-server: ${err}")
-}
 
-println("\n=== Step 2: Installing Embedding Model ===")
-
-// 安装 Qwen3 Embedding 模型
-try {
-    log.info("Checking Qwen3 Embedding model...")
-    modelName = "model-Qwen3-Embedding-0.6B-Q4"
-    
-    // 重新检查已安装的工具
-    installedTools = {}
-    for tool in toolbox.List()~ {
-        installedTools[tool.Name] = tool.Installed
-    }
-    
-    if !installedTools[modelName] {
-        println(f"Installing ${modelName}...")
-        err = toolbox.Install(modelName)
-        if err != nil {
-            log.error("Failed to install model: %v", err)
-            die(f"Failed to install model: ${err}")
+        // 检查并安装 llama-server
+        log.info("Checking llama-server...")
+        if !installedTools["llama-server"] {
+            println("Installing llama-server...")
+            err = toolbox.Install("llama-server")
+            if err != nil {
+                log.error("Failed to install llama-server: %v", err)
+                die(f"Failed to install llama-server: ${err}")
+            }
+            println("✓ llama-server installed successfully")
+        } else {
+            println("✓ llama-server already installed")
         }
-        println(f"✓ ${modelName} installed successfully")
-    } else {
-        println(f"✓ ${modelName} already installed")
+    } catch err {
+        log.error("Failed to install llama-server: %v", err)
+        die(f"Failed to install llama-server: ${err}")
     }
-} catch err {
-    log.error("Failed to install embedding model: %v", err)
-    die(f"Failed to install embedding model: ${err}")
-}
+
+    println("\n=== Step 2: Installing Embedding Model ===")
+
+    // 安装 Qwen3 Embedding 模型
+    try {
+        log.info("Checking Qwen3 Embedding model...")
+        modelName = "model-Qwen3-Embedding-0.6B-Q4"
+        
+        // 重新检查已安装的工具
+        installedTools = {}
+        for tool in toolbox.List()~ {
+            installedTools[tool.Name] = tool.Installed
+        }
+        
+        if !installedTools[modelName] {
+            println(f"Installing ${modelName}...")
+            err = toolbox.Install(modelName)
+            if err != nil {
+                log.error("Failed to install model: %v", err)
+                die(f"Failed to install model: ${err}")
+            }
+            println(f"✓ ${modelName} installed successfully")
+        } else {
+            println(f"✓ ${modelName} already installed")
+        }
+    } catch err {
+        log.error("Failed to install embedding model: %v", err)
+        die(f"Failed to install embedding model: ${err}")
+    }
+
+} 
 
 println("\n=== Step 3: Checking Embedder ===")
 
