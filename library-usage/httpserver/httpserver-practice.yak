@@ -1,0 +1,569 @@
+// =============================================================================
+// Yaklang httpserver 库实践教程
+// 功能: 演示 httpserver 库的各种用法，包括基础服务、路由处理、请求处理
+// 用途: HTTP 服务器开发、API 服务、Web 服务、文件服务器
+//
+// 核心技术栈:
+// - httpserver.Serve: 启动 HTTP 服务器
+// - httpserver.handler: 设置请求处理函数
+// - context.WithCancel: 管理服务器生命周期
+// - go func{}: 后台运行服务器
+//
+// 应用场景: Web 服务、API 开发、文件服务、代理服务
+// 关键词: httpserver web-server api http-handler request response
+// 搜索标签: #httpserver #web-server #api #http #handler
+// =============================================================================
+
+println("=== Yaklang httpserver 库实践教程 ===\n")
+
+// =============================================================================
+// 示例 1: 基础 HTTP 服务器
+// 功能: 启动一个简单的 HTTP 服务器，返回固定响应
+// 技术: httpserver.Serve(), httpserver.handler(), context 管理
+// =============================================================================
+
+println("=== 示例 1: 基础 HTTP 服务器 ===")
+
+// 创建可取消的上下文用于管理服务器生命周期
+ctx1, cancel1 = context.WithCancel(context.Background())
+
+// 后台启动基础 HTTP 服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8080, 
+        httpserver.context(ctx1),  // 使用 context 控制生命周期
+        httpserver.handler((rsp, req) => {
+            log.info("Basic Server - Received: %s %s", req.Method, req.URL.Path)
+            
+            // 设置响应头
+            rsp.Header().Set("Content-Type", "text/plain; charset=utf-8")
+            
+            // 写入响应
+            rsp.Write(b"Hello from Yak HTTP Server!")
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("Basic server failed: %v", err)
+    }
+}
+
+// 等待服务器启动
+sleep(1)
+println("✓ 基础服务器已启动: http://127.0.0.1:8080")
+
+// 测试基础服务器
+rsp, _, err = poc.HTTP(`GET / HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8080), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    _, body = poc.Split(rsp)
+    println(f"✓ 测试成功 - 状态码: ${statusCode}, 响应: ${string(body)}")
+} else {
+    println(f"✗ 测试失败: ${err}")
+}
+
+// 关闭基础服务器
+cancel1()
+sleep(1)
+println("✓ 基础服务器已关闭\n")
+
+// =============================================================================
+// 示例 2: 处理不同的 HTTP 方法
+// 功能: 根据请求方法返回不同响应
+// 技术: req.Method 判断，响应状态码设置
+// =============================================================================
+
+println("=== 示例 2: 处理不同的 HTTP 方法 ===")
+
+// 创建上下文管理第二个服务器
+ctx2, cancel2 = context.WithCancel(context.Background())
+
+// 启动支持多种 HTTP 方法的服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8081, 
+        httpserver.context(ctx2),
+        httpserver.handler((rsp, req) => {
+            log.info("Method Server - Request: %s %s", req.Method, req.URL.Path)
+            
+            // 根据请求方法处理
+            switch req.Method {
+            case "GET":
+                rsp.Header().Set("Content-Type", "text/plain")
+                rsp.WriteHeader(200)
+                rsp.Write(b"GET request received")
+                
+            case "POST":
+                // 读取请求体
+                body, _ = io.ReadAll(req.Body)
+                log.info("POST body: %s", string(body))
+                
+                rsp.Header().Set("Content-Type", "application/json")
+                rsp.WriteHeader(200)
+                response = json.dumps({"message": "POST received", "body_length": len(body)})
+                rsp.Write(response)
+                
+            case "PUT":
+                rsp.WriteHeader(200)
+                rsp.Write(b"PUT request received")
+                
+            case "DELETE":
+                rsp.WriteHeader(200)
+                rsp.Write(b"DELETE request received")
+                
+            default:
+                rsp.WriteHeader(405)  // Method Not Allowed
+                rsp.Write(b"Method not allowed")
+            }
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("Method server failed: %v", err)
+    }
+}
+
+sleep(1)
+println("✓ 多方法服务器已启动: http://127.0.0.1:8081")
+
+// 测试不同的 HTTP 方法
+methods = ["GET", "POST", "PUT", "DELETE"]
+for method in methods {
+    if method == "POST" {
+        rsp, _, err = poc.HTTP(f`${method} / HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+Content-Length: 13
+
+{"test":"data"}`, poc.host("127.0.0.1"), poc.port(8081), poc.timeout(3))
+    } else {
+        rsp, _, err = poc.HTTP(f`${method} / HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8081), poc.timeout(3))
+    }
+    
+    if err == nil {
+        statusCode = poc.GetStatusCodeFromResponse(rsp)
+        println(f"✓ ${method} 测试成功 - 状态码: ${statusCode}")
+    } else {
+        println(f"✗ ${method} 测试失败: ${err}")
+    }
+}
+
+// 关闭多方法服务器
+cancel2()
+sleep(1)
+println("✓ 多方法服务器已关闭\n")
+
+// =============================================================================
+// 示例 3: 路由处理
+// 功能: 根据请求路径返回不同内容
+// 技术: req.URL.Path 路径判断，路由分发
+// =============================================================================
+
+println("=== 示例 3: 路由处理 ===")
+
+// 创建上下文管理路由服务器
+ctx3, cancel3 = context.WithCancel(context.Background())
+
+// 启动路由服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8082, 
+        httpserver.context(ctx3),
+        httpserver.handler((rsp, req) => {
+            path = req.URL.Path
+            log.info("Route Server - Path: %s", path)
+            
+            // 根据路径分发
+            if path == "/" {
+                rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+                rsp.Write(b"<h1>Welcome to Yak HTTP Server</h1>")
+                
+            } else if path == "/api/hello" {
+                rsp.Header().Set("Content-Type", "application/json")
+                response = json.dumps({"message": "Hello from API", "timestamp": time.Now().Unix()})
+                rsp.Write(response)
+                
+            } else if path == "/api/time" {
+                rsp.Header().Set("Content-Type", "application/json")
+                response = json.dumps({
+                    "current_time": time.Now().Format("2006-01-02 15:04:05"),
+                    "unix_timestamp": time.Now().Unix(),
+                })
+                rsp.Write(response)
+                
+            } else if path == "/health" {
+                rsp.Header().Set("Content-Type", "application/json")
+                rsp.Write(b`{"status": "ok", "service": "yak-http-server"}`)
+                
+            } else {
+                // 404 Not Found
+                rsp.WriteHeader(404)
+                rsp.Header().Set("Content-Type", "text/plain")
+                rsp.Write(b"404 Not Found")
+            }
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("Route server failed: %v", err)
+    }
+}
+
+sleep(1)
+println("✓ 路由服务器已启动: http://127.0.0.1:8082")
+
+// 测试不同的路由
+routes = ["/", "/api/hello", "/api/time", "/health", "/notfound"]
+for route in routes {
+    rsp, _, err = poc.HTTP(f`GET ${route} HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8082), poc.timeout(3))
+    
+    if err == nil {
+        statusCode = poc.GetStatusCodeFromResponse(rsp)
+        println(f"✓ ${route} 测试成功 - 状态码: ${statusCode}")
+    } else {
+        println(f"✗ ${route} 测试失败: ${err}")
+    }
+}
+
+// 关闭路由服务器
+cancel3()
+sleep(1)
+println("✓ 路由服务器已关闭\n")
+
+// =============================================================================
+// 示例 4: 请求头处理
+// 功能: 读取和验证请求头
+// 技术: req.Header.Get() 获取请求头，验证 Authorization
+// =============================================================================
+
+println("=== 示例 4: 请求头处理 ===")
+
+// 创建上下文管理请求头服务器
+ctx4, cancel4 = context.WithCancel(context.Background())
+
+// 启动请求头处理服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8083, 
+        httpserver.context(ctx4),
+        httpserver.handler((rsp, req) => {
+            log.info("Header Server - Request: %s %s", req.Method, req.URL.Path)
+            
+            // 获取各种请求头
+            userAgent = req.Header.Get("User-Agent")
+            contentType = req.Header.Get("Content-Type")
+            authorization = req.Header.Get("Authorization")
+            customHeader = req.Header.Get("X-Custom-Header")
+            
+            // 简单的 token 验证
+            if req.URL.Path == "/api/protected" {
+                if authorization != "Bearer my-secret-token" {
+                    rsp.WriteHeader(401)
+                    rsp.Header().Set("Content-Type", "application/json")
+                    rsp.Write(b`{"error": "Unauthorized", "message": "Invalid or missing token"}`)
+                    return
+                }
+            }
+            
+            // 返回请求头信息
+            rsp.Header().Set("Content-Type", "application/json")
+            response = json.dumps({
+                "user_agent": userAgent,
+                "content_type": contentType,
+                "has_auth": authorization != "",
+                "custom_header": customHeader,
+            })
+            rsp.Write(response)
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("Header server failed: %v", err)
+    }
+}
+
+sleep(1)
+println("✓ 请求头服务器已启动: http://127.0.0.1:8083")
+
+// 测试无认证访问
+rsp, _, err = poc.HTTP(`GET / HTTP/1.1
+Host: 127.0.0.1
+User-Agent: Yak-Test-Client
+X-Custom-Header: test-value
+
+`, poc.host("127.0.0.1"), poc.port(8083), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    println(f"✓ 普通请求测试成功 - 状态码: ${statusCode}")
+}
+
+// 测试受保护的端点（无认证）
+rsp, _, err = poc.HTTP(`GET /api/protected HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8083), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    println(f"✓ 无认证访问受保护端点 - 状态码: ${statusCode} (应为401)")
+}
+
+// 测试受保护的端点（有认证）
+rsp, _, err = poc.HTTP(`GET /api/protected HTTP/1.1
+Host: 127.0.0.1
+Authorization: Bearer my-secret-token
+
+`, poc.host("127.0.0.1"), poc.port(8083), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    println(f"✓ 有认证访问受保护端点 - 状态码: ${statusCode} (应为200)")
+}
+
+// 关闭请求头服务器
+cancel4()
+sleep(1)
+println("✓ 请求头服务器已关闭\n")
+
+// =============================================================================
+// 示例 5: JSON API 服务
+// 功能: 实现一个简单的 RESTful JSON API
+// 技术: json.loads() 解析请求，json.dumps() 生成响应
+// =============================================================================
+
+println("=== 示例 5: JSON API 服务 ===")
+
+// 内存数据存储
+dataStore = {
+    "users": [
+        {"id": 1, "name": "Alice", "email": "alice@example.com"},
+        {"id": 2, "name": "Bob", "email": "bob@example.com"},
+    ]
+}
+
+// 创建上下文管理 JSON API 服务器
+ctx5, cancel5 = context.WithCancel(context.Background())
+
+// 启动 JSON API 服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8084, 
+        httpserver.context(ctx5),
+        httpserver.handler((rsp, req) => {
+            path = req.URL.Path
+            log.info("JSON API Server - %s %s", req.Method, path)
+            
+            // CORS 支持
+            rsp.Header().Set("Access-Control-Allow-Origin", "*")
+            rsp.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+            rsp.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+            
+            // OPTIONS 预检请求
+            if req.Method == "OPTIONS" {
+                rsp.WriteHeader(200)
+                return
+            }
+            
+            // 路由: GET /api/users - 获取所有用户
+            if path == "/api/users" && req.Method == "GET" {
+                rsp.Header().Set("Content-Type", "application/json")
+                response = json.dumps({"users": dataStore["users"]})
+                rsp.Write(response)
+                return
+            }
+            
+            // 路由: POST /api/users - 创建新用户
+            if path == "/api/users" && req.Method == "POST" {
+                body, _ = io.ReadAll(req.Body)
+                userData = json.loads(body)
+                
+                // 添加新用户
+                newId = len(dataStore["users"]) + 1
+                newUser = {
+                    "id": newId,
+                    "name": userData["name"],
+                    "email": userData["email"],
+                }
+                dataStore["users"] = append(dataStore["users"], newUser)
+                
+                rsp.Header().Set("Content-Type", "application/json")
+                rsp.WriteHeader(201)
+                response = json.dumps({"message": "User created", "user": newUser})
+                rsp.Write(response)
+                return
+            }
+            
+            // 404 处理
+            rsp.WriteHeader(404)
+            rsp.Write(b`{"error": "Not found"}`)
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("JSON API server failed: %v", err)
+    }
+}
+
+sleep(1)
+println("✓ JSON API 服务器已启动: http://127.0.0.1:8084")
+
+// 测试 GET /api/users
+rsp, _, err = poc.HTTP(`GET /api/users HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8084), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    println(f"✓ GET /api/users 测试成功 - 状态码: ${statusCode}")
+}
+
+// 测试 POST /api/users
+newUserData = json.dumps({"name": "Charlie", "email": "charlie@example.com"})
+rsp, _, err = poc.HTTP(f`POST /api/users HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+Content-Length: ${len(newUserData)}
+
+${newUserData}`, poc.host("127.0.0.1"), poc.port(8084), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    println(f"✓ POST /api/users 测试成功 - 状态码: ${statusCode}")
+}
+
+// 关闭 JSON API 服务器
+cancel5()
+sleep(1)
+println("✓ JSON API 服务器已关闭\n")
+
+// =============================================================================
+// 示例 6: 查询参数处理
+// 功能: 解析和使用 URL 查询参数
+// 技术: req.URL.Query() 获取查询参数
+// =============================================================================
+
+println("=== 示例 6: 查询参数处理 ===")
+
+// 创建上下文管理查询参数服务器
+ctx6, cancel6 = context.WithCancel(context.Background())
+
+// 启动查询参数处理服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", 8085, 
+        httpserver.context(ctx6),
+        httpserver.handler((rsp, req) => {
+            log.info("Query Server - %s %s", req.Method, req.URL.Path)
+            
+            // 获取查询参数
+            query = req.URL.Query()
+            
+            // 获取单个参数
+            name = query.Get("name")
+            age = query.Get("age")
+            
+            log.info("Query params - name: %s, age: %s", name, age)
+            
+            // 返回查询参数信息
+            rsp.Header().Set("Content-Type", "application/json")
+            response = json.dumps({
+                "name": name,
+                "age": age,
+                "query_string": req.URL.RawQuery,
+            })
+            rsp.Write(response)
+        })
+    )
+    
+    if err != nil && err.Error() != "context canceled" {
+        log.error("Query server failed: %v", err)
+    }
+}
+
+sleep(1)
+println("✓ 查询参数服务器已启动: http://127.0.0.1:8085")
+
+// 测试查询参数
+rsp, _, err = poc.HTTP(`GET /?name=Alice&age=30 HTTP/1.1
+Host: 127.0.0.1
+
+`, poc.host("127.0.0.1"), poc.port(8085), poc.timeout(3))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    _, body = poc.Split(rsp)
+    println(f"✓ 查询参数测试成功 - 状态码: ${statusCode}")
+    println(f"  响应: ${string(body)}")
+}
+
+// 关闭查询参数服务器
+cancel6()
+sleep(1)
+println("✓ 查询参数服务器已关闭\n")
+
+// =============================================================================
+// 核心知识点总结
+// =============================================================================
+
+println("=== httpserver 核心知识点 ===\n")
+
+println("1. **启动服务器**:")
+println("   httpserver.Serve(host, port, httpserver.handler(callback))")
+println("   httpserver.Serve(host, port, httpserver.context(ctx), httpserver.handler(callback))")
+println()
+
+println("2. **处理函数签名**:")
+println("   func(rsp http.ResponseWriter, req *http.Request)")
+println()
+
+println("3. **请求对象 (req) 常用方法**:")
+println("   - req.Method: 获取请求方法 (GET/POST/PUT/DELETE)")
+println("   - req.URL.Path: 获取请求路径")
+println("   - req.URL.Query(): 获取查询参数")
+println("   - req.Header.Get(key): 获取请求头")
+println("   - req.Body: 读取请求体 (io.Reader)")
+println("   - req.RemoteAddr: 获取客户端地址")
+println()
+
+println("4. **响应对象 (rsp) 常用方法**:")
+println("   - rsp.Write(data): 写入响应数据")
+println("   - rsp.WriteHeader(statusCode): 设置 HTTP 状态码")
+println("   - rsp.Header().Set(key, value): 设置响应头")
+println("   - rsp.Header().Add(key, value): 添加响应头")
+println()
+
+println("5. **常用 HTTP 状态码**:")
+println("   - 200: OK")
+println("   - 201: Created")
+println("   - 400: Bad Request")
+println("   - 401: Unauthorized")
+println("   - 404: Not Found")
+println("   - 405: Method Not Allowed")
+println("   - 500: Internal Server Error")
+println()
+
+println("6. **生命周期管理**:")
+println("   - 使用 context.WithCancel() 创建可取消的上下文")
+println("   - 使用 go fn{} 在后台启动服务器")
+println("   - 使用 httpserver.context(ctx) 控制服务器生命周期")
+println("   - 调用 cancel() 优雅关闭服务器")
+println()
+
+println("7. **最佳实践**:")
+println("   - 总是设置正确的 Content-Type")
+println("   - 合理使用 HTTP 状态码")
+println("   - 处理请求错误和边界情况")
+println("   - 记录重要的请求日志")
+println("   - 实现健康检查端点")
+println("   - 使用 context 管理服务器生命周期")
+println()
+
+println("✓ 所有 httpserver 示例测试完成！")
+log.info("httpserver practice examples completed successfully")
+

@@ -1,0 +1,284 @@
+// =============================================================================
+// Yak Embedding TOTP Service Client - 连接带 TOTP 验证的 Embedding 服务客户端
+// 功能: 连接到 Yak Embedding TOTP 服务，使用 TOTP 验证码进行身份验证
+// 用途: 安全地调用 embedding 服务、生成文本向量、语义搜索客户端
+//
+// 核心技术栈:
+// - twofa.GetUTCCode: 生成 UTC 时间的 TOTP 验证码
+// - poc.HTTP: 发送 HTTP 请求
+// - json.loads/json.dumps: JSON 数据处理
+//
+// 使用示例:
+// yak scripts/connect-yak-embedding-totp-service.yak --host 127.0.0.1 --port 9099 --totp-secret my-secret-key --text "Hello World"
+//
+// 应用场景: embedding 客户端、向量化客户端、语义搜索、TOTP 认证
+// 关键词: embedding-client totp-client twofa vector-client semantic-search
+// 搜索标签: #embedding-client #totp #security #vector #semantic-search
+// =============================================================================
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，配置服务器连接和验证信息
+// 技术: cli.String/Int 参数解析，cli.setDefault 默认值，cli.setRequired 必填项
+//
+// 参数说明:
+// - host: 服务器地址，默认 127.0.0.1
+// - port: 服务器端口，默认 9099
+// - totp-secret: TOTP 验证密钥，必填，需要与服务端一致
+// - text: 要生成 embedding 的文本，必填
+//
+// 使用示例:
+// yak connect-yak-embedding-totp-service.yak --host 127.0.0.1 --port 9099 --totp-secret my-secret --text "Hello"
+// =============================================================================
+
+// 服务器地址配置
+host = cli.String(
+    "host",
+    cli.setDefault("127.0.0.1"),
+    cli.setHelp("服务器地址")
+)
+
+// 服务器端口配置
+port = cli.Int(
+    "port",
+    cli.setDefault(9099),
+    cli.setHelp("服务器端口")
+)
+
+// TOTP 密钥配置（必填，需要与服务端一致）
+totpSecret = cli.String(
+    "totp-secret",
+    cli.setRequired(true),
+    cli.setHelp("TOTP 验证密钥（UTC 时间，需要与服务端一致）")
+)
+
+// 待嵌入的文本（必填）
+text = cli.String(
+    "text",
+    cli.setRequired(true),
+    cli.setHelp("要生成 embedding 的文本")
+)
+
+// 验证参数
+cli.check()
+
+log.info("Connecting to Yak Embedding TOTP Service...")
+log.info("Configuration:")
+log.info("  Server: %s:%d", host, port)
+log.info("  TOTP Secret: %s", totpSecret)
+log.info("  Text: %s", text)
+
+// =============================================================================
+// TOTP 验证码生成模块 - 生成 UTC 时间的 TOTP 验证码
+// 功能: 使用 twofa 库生成当前 UTC 时间的 TOTP 验证码
+// 技术: twofa.GetUTCCode() 生成 UTC TOTP 码
+//
+// TOTP 说明:
+// - 使用 UTC 时间确保服务端和客户端时间一致
+// - 验证码每 30 秒更新一次
+// - 验证码为 6 位数字
+// =============================================================================
+
+println("\n=== Generating TOTP Code ===")
+
+// 生成 UTC 时间的 TOTP 验证码
+totpCode = twofa.GetUTCCode(totpSecret)
+log.info("Generated TOTP code: %s", totpCode)
+println(f"✓ TOTP Code: ${totpCode}")
+
+// =============================================================================
+// Embedding 请求模块 - 发送 embedding 请求到服务器
+// 功能: 构建 embedding 请求，添加 TOTP 验证码，发送到服务器
+// 技术: json.dumps() 序列化请求，poc.HTTP() 发送请求
+//
+// 请求格式:
+// POST /embeddings HTTP/1.1
+// Host: {host}:{port}
+// Content-Type: application/json
+// X-TOTP-Code: {totp_code}
+//
+// {
+//   "input": "要嵌入的文本",
+//   "model": "embedding"
+// }
+//
+// 响应格式:
+// {
+//   "object": "list",
+//   "data": [
+//     {
+//       "object": "embedding",
+//       "embedding": [0.1, 0.2, ...],
+//       "index": 0
+//     }
+//   ],
+//   "model": "embedding"
+// }
+// =============================================================================
+
+println("\n=== Sending Embedding Request ===")
+
+// 构建请求体
+requestBody = json.dumps({
+    "input": text,
+    "model": "embedding",
+})
+
+log.info("Request body: %s", requestBody)
+
+// 构建服务器地址
+log.info("Sending request to: http://%s:%d/embeddings", host, port)
+
+// 发送 HTTP 请求
+println(f"Sending request to http://${host}:${port}/embeddings...")
+
+rsp, _, err = poc.HTTP(
+    f`POST /embeddings HTTP/1.1
+Host: ${host}
+Content-Type: application/json
+X-TOTP-Code: ${totpCode}
+Content-Length: ${len(requestBody)}
+
+${requestBody}`,
+    poc.host(host),
+    poc.port(port),
+    poc.timeout(30),
+)
+
+if err != nil {
+    log.error("Failed to send request: %v", err)
+    die(f"Failed to send request: ${err}")
+}
+
+// =============================================================================
+// 响应处理模块 - 解析和显示服务器响应
+// 功能: 提取响应状态码和响应体，解析 JSON 数据，显示结果
+// 技术: poc.Split() 分离响应，poc.GetStatusCodeFromResponse() 获取状态码，json.loads() 解析 JSON
+//
+// 错误处理:
+// - 401: TOTP 验证失败，请检查密钥是否正确
+// - 404: 路径错误
+// - 500: 服务器内部错误
+// - 200: 请求成功
+// =============================================================================
+
+println("\n=== Processing Response ===")
+
+// 获取状态码
+statusCode = poc.GetStatusCodeFromResponse(rsp)~
+
+// 提取响应体
+_, body = poc.Split(rsp)
+log.info("Response status code: %d", statusCode)
+println(f"Status Code: ${statusCode}")
+
+// 检查状态码
+if statusCode != 200 {
+    log.error("Request failed with status code: %d", statusCode)
+    println(f"\n❌ Request Failed")
+    println(f"Status: ${statusCode}")
+    println(f"Response Body:\n${string(body)}")
+    
+    // 尝试解析错误信息
+    errorData, parseErr = json.loads(body)
+    if parseErr == nil && errorData != nil {
+        if errorData["error"] != nil {
+            errorMsg = errorData["error"]["message"]
+            errorType = errorData["error"]["type"]
+            println(f"\nError Type: ${errorType}")
+            println(f"Error Message: ${errorMsg}")
+            
+            if statusCode == 401 {
+                println("\n💡 提示: TOTP 验证失败，请检查:")
+                println("   1. TOTP 密钥是否与服务端一致")
+                println("   2. 客户端和服务端的系统时间是否同步（使用 UTC 时间）")
+            }
+        }
+    }
+    
+    die("Request failed")
+}
+
+// 解析响应体
+println("\n✓ Request Successful")
+log.info("Parsing response body...")
+
+responseData = json.loads(body)
+
+// =============================================================================
+// 结果展示模块 - 显示 embedding 向量信息
+// 功能: 提取和展示 embedding 向量的详细信息
+// 技术: JSON 数据访问，数组/字典操作
+//
+// 展示内容:
+// - 模型名称
+// - 向量维度
+// - 向量预览（前 10 个值）
+// - 向量统计（最小值、最大值、平均值）
+// =============================================================================
+
+println("\n=== Embedding Result ===")
+
+// 提取 embedding 数据
+if responseData["data"] == nil || len(responseData["data"]) == 0 {
+    log.error("No embedding data in response")
+    die("No embedding data in response")
+}
+
+embeddingData = responseData["data"][0]
+embedding = embeddingData["embedding"]
+
+// 显示基本信息
+println(f"Model: ${responseData['model']}")
+println(f"Object Type: ${responseData['object']}")
+println(f"Embedding Dimension: ${len(embedding)}")
+
+// 显示向量预览（前 10 个值）
+println("\nEmbedding Vector Preview (first 10 values):")
+previewCount = 10
+if len(embedding) < previewCount {
+    previewCount = len(embedding)
+}
+
+for i = 0; i < previewCount; i++ {
+    println(f"  [${i}] = ${embedding[i]}")
+}
+
+if len(embedding) > previewCount {
+    println(f"  ... (${len(embedding) - previewCount} more values)")
+}
+
+// 计算统计信息
+println("\nVector Statistics:")
+
+minVal = embedding[0]
+maxVal = embedding[0]
+sumVal = 0.0
+
+for val in embedding {
+    if val < minVal {
+        minVal = val
+    }
+    if val > maxVal {
+        maxVal = val
+    }
+    sumVal = sumVal + val
+}
+
+avgVal = sumVal / len(embedding)
+
+println(f"  Min: ${minVal}")
+println(f"  Max: ${maxVal}")
+println(f"  Avg: ${avgVal}")
+
+// =============================================================================
+// 总结输出
+// =============================================================================
+
+println("\n=== Summary ===")
+println(f"✓ Successfully generated embedding for text: \"${text}\"")
+println(f"✓ Vector dimension: ${len(embedding)}")
+println(f"✓ TOTP authentication: Passed")
+
+log.info("Client execution completed successfully")
+

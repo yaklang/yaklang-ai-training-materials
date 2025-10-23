@@ -1,0 +1,349 @@
+// =============================================================================
+// Yak Embedding TOTP Service - 带 TOTP 验证的 Embedding 服务
+// 功能: 启动一个本地 embedding 服务，使用 TOTP 进行客户端身份验证
+// 用途: 安全的向量嵌入服务、AI 知识库、语义搜索、TOTP 身份验证
+//
+// 核心技术栈:
+// - rag.GetCollection: 获取 RAG 系统集合，自动管理 embedder
+// - httpserver.Serve: 启动 HTTP 服务器
+// - twofa.VerifyUTCCode: 验证 TOTP 码（UTC 时间）
+// - json.loads/json.dumps: JSON 数据处理
+// - sync.NewSizedWaitGroup: 控制 embedding 并发数
+//
+// 使用示例:
+// yak scripts/start-yak-embedding-service.yak --port 9099 --totp-secret my-secret-key --concurrent 5
+//
+// 应用场景: 安全的 embedding 服务、知识库向量化、语义搜索、TOTP 认证
+// 关键词: embedding totp rag httpserver twofa 向量化 语义搜索 并发控制
+// 搜索标签: #embedding #totp #security #rag #httpserver #concurrent
+// =============================================================================
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，支持自定义端口、TOTP 密钥和并发数
+// 技术: cli.String/Int 参数解析，cli.setDefault 默认值，cli.setRequired 必填项
+//
+// 参数说明:
+// - port: 服务监听端口，默认 9099
+// - totp-secret: TOTP 验证密钥，必填项，用于生成和验证 TOTP 码
+// - concurrent: embedding 并发限制，默认 5，避免过载
+//
+// 使用示例: 
+// yak start-yak-embedding-service.yak --port 9099 --totp-secret my-secret --concurrent 5
+// =============================================================================
+
+// 服务端口配置
+port = cli.Int(
+    "port", 
+    cli.setDefault(9099), 
+    cli.setHelp("服务监听端口")
+)
+
+// TOTP 密钥配置（必填）
+totpSecret = cli.String(
+    "totp-secret", 
+    cli.setRequired(true),
+    cli.setHelp("TOTP 验证密钥（UTC 时间）")
+)
+
+// 并发控制配置
+concurrent = cli.Int(
+    "concurrent",
+    cli.setDefault(5),
+    cli.setHelp("embedding 并发限制数量")
+)
+
+// 验证参数
+cli.check()
+
+log.info("Starting Yak Embedding TOTP Service...")
+log.info("Configuration:")
+log.info("  Port: %d", port)
+log.info("  TOTP Secret: %s", totpSecret)
+log.info("  Concurrent Limit: %d", concurrent)
+
+// =============================================================================
+// 依赖安装模块 - 安装 llama-server 和 embedding 模型
+// 功能: 检查并安装必要的依赖，包括 llama-server 和 embedding 模型
+// 技术: toolbox.List() 列出已安装工具，toolbox.Install() 安装工具
+//
+// 安装步骤:
+// 1. 安装 llama-server: 本地模型推理服务器
+// 2. 安装 model-Qwen3-Embedding-0.6B-Q4: Qwen3 embedding 模型（量化版本）
+// 3. 初始化 RAG 系统并检查 embedder 是否可用
+// =============================================================================
+
+println("\n=== Step 1: Installing llama-server ===")
+
+// 尝试检查并安装 llama-server
+try {
+    // 检查已安装的工具
+    log.info("Checking installed tools...")
+    installedTools = {}
+    for tool in toolbox.List()~ {
+        installedTools[tool.Name] = tool.Installed
+    }
+
+    // 检查并安装 llama-server
+    log.info("Checking llama-server...")
+    if !installedTools["llama-server"] {
+        println("Installing llama-server...")
+        err = toolbox.Install("llama-server")
+        if err != nil {
+            log.error("Failed to install llama-server: %v", err)
+            die(f"Failed to install llama-server: ${err}")
+        }
+        println("✓ llama-server installed successfully")
+    } else {
+        println("✓ llama-server already installed")
+    }
+} catch err {
+    log.error("Failed to install llama-server: %v", err)
+    die(f"Failed to install llama-server: ${err}")
+}
+
+println("\n=== Step 2: Installing Embedding Model ===")
+
+// 安装 Qwen3 Embedding 模型
+try {
+    log.info("Checking Qwen3 Embedding model...")
+    modelName = "model-Qwen3-Embedding-0.6B-Q4"
+    
+    // 重新检查已安装的工具
+    installedTools = {}
+    for tool in toolbox.List()~ {
+        installedTools[tool.Name] = tool.Installed
+    }
+    
+    if !installedTools[modelName] {
+        println(f"Installing ${modelName}...")
+        err = toolbox.Install(modelName)
+        if err != nil {
+            log.error("Failed to install model: %v", err)
+            die(f"Failed to install model: ${err}")
+        }
+        println(f"✓ ${modelName} installed successfully")
+    } else {
+        println(f"✓ ${modelName} already installed")
+    }
+} catch err {
+    log.error("Failed to install embedding model: %v", err)
+    die(f"Failed to install embedding model: ${err}")
+}
+
+println("\n=== Step 3: Checking Embedder ===")
+
+// 初始化 RAG 系统并检查 embedder
+log.info("Initializing RAG system...")
+ragSystem, err = rag.GetCollection("default")
+if err != nil {
+    log.error("Failed to get RAG collection: %v", err)
+    die(f"Failed to get RAG collection: ${err}")
+}
+
+// 获取 embedder
+embedder = ragSystem.Embedder
+if embedder == nil {
+    log.error("Failed to get embedder from RAG system")
+    die("Failed to get embedder from RAG system")
+}
+
+log.info("RAG system initialized successfully")
+
+// 测试 embedder 是否可用
+log.info("Testing embedder...")
+testVectors, testErr = embedder.Embedding("test")
+if testErr != nil {
+    log.error("Embedder test failed: %v", testErr)
+    die(f"Embedder test failed: ${testErr}")
+}
+
+println(f"✓ Embedder is working (vector dimension: ${len(testVectors)})")
+println("\n=== All Dependencies Ready ===\n")
+
+// =============================================================================
+// HTTP 服务器启动模块 - 启动带 TOTP 验证的 embedding 服务
+// 功能: 启动 HTTP 服务器，处理 embedding 请求，验证 TOTP 码
+// 技术: httpserver.Serve() 启动服务，httpserver.handler() 设置处理函数
+//
+// API 端点:
+// - POST /embeddings - 生成文本向量
+// 
+// 请求格式:
+// {
+//   "input": "要嵌入的文本",
+//   "model": "embedding"
+// }
+//
+// 响应格式:
+// {
+//   "object": "list",
+//   "data": [
+//     {
+//       "object": "embedding",
+//       "embedding": [0.1, 0.2, ...],
+//       "index": 0
+//     }
+//   ],
+//   "model": "embedding"
+// }
+//
+// 安全验证:
+// - 通过 X-TOTP-Code 请求头传递 TOTP 验证码
+// - 使用 UTC 时间验证 TOTP 码
+// - 验证失败返回 401 Unauthorized
+//
+// 并发控制:
+// - 使用 sync.NewSizedWaitGroup 限制并发 embedding 调用数量
+// - 避免过载，保护服务稳定性
+// =============================================================================
+
+println(f"Starting HTTP server on port ${port}...")
+log.info("Embedding service using RAG system embedder")
+log.info("Concurrent limit: %d", concurrent)
+
+// 创建并发控制的 WaitGroup
+swg = sync.NewSizedWaitGroup(concurrent)
+log.info("Created sized wait group with limit: %d", concurrent)
+
+// 在后台启动 HTTP 服务器
+go fn {
+    err = httpserver.Serve("0.0.0.0", port, httpserver.handler((rsp, req) => {
+    // 记录请求
+    log.info("Received request: %s %s from %s", req.Method, req.URL.Path, req.RemoteAddr)
+    
+    // 检查路径
+    if req.URL.Path != "/embeddings" {
+        log.warn("Invalid path: %s", req.URL.Path)
+        rsp.WriteHeader(404)
+        rsp.Write(b`{"error": {"message": "Not Found", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    // 只接受 POST 请求
+    if req.Method != "POST" {
+        log.warn("Invalid method: %s", req.Method)
+        rsp.WriteHeader(405)
+        rsp.Write(b`{"error": {"message": "Method Not Allowed", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    // 验证 TOTP
+    totpCode = req.Header.Get("X-TOTP-Code")
+    if totpCode == "" {
+        log.warn("Missing TOTP code from %s", req.RemoteAddr)
+        rsp.WriteHeader(401)
+        rsp.Write(b`{"error": {"message": "Missing X-TOTP-Code header", "type": "authentication_error"}}`)
+        return
+    }
+    
+    // 验证 TOTP 码（UTC 时间）
+    if !twofa.VerifyUTCCode(totpSecret, totpCode) {
+        log.warn("Invalid TOTP code from %s: %s", req.RemoteAddr, totpCode)
+        rsp.WriteHeader(401)
+        rsp.Write(b`{"error": {"message": "Invalid TOTP code", "type": "authentication_error"}}`)
+        return
+    }
+    
+    log.info("TOTP verification passed for %s", req.RemoteAddr)
+    
+    // 读取请求体
+    body, readErr = io.ReadAll(req.Body)
+    if readErr != nil {
+        log.error("Failed to read request body: %v", readErr)
+        rsp.WriteHeader(400)
+        rsp.Write(b`{"error": {"message": "Failed to read request body", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    // 解析请求数据
+    requestData = json.loads(body)
+    inputText = requestData["input"]
+    
+    if inputText == "" {
+        log.warn("Empty input text from %s", req.RemoteAddr)
+        rsp.WriteHeader(400)
+        rsp.Write(b`{"error": {"message": "Input text cannot be empty", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    log.info("Processing embedding request for text: %s", inputText)
+    
+    // 使用并发控制调用 embedder
+    // 添加到 wait group（如果达到限制会阻塞等待）
+    swg.Add()
+    
+    log.info("Calling embedder.Embedding()...")
+    
+    // 调用 embedder 生成向量
+    vectors, embErr = embedder.Embedding(inputText)
+    
+    // 完成后立即释放并发槽位
+    swg.Done()
+    
+    if embErr != nil {
+        log.error("Failed to generate embedding: %v", embErr)
+        rsp.WriteHeader(500)
+        errorMsg = json.dumps({
+            "error": {
+                "message": f"Failed to generate embedding: ${embErr}",
+                "type": "embedding_error",
+            }
+        })
+        rsp.Write(errorMsg)
+        return
+    }
+    
+    log.info("Embedding generated successfully (dimension: %d)", len(vectors))
+    
+    // 构建响应数据（兼容 OpenAI API 格式）
+    responseData = {
+        "object": "list",
+        "data": [
+            {
+                "object": "embedding",
+                "embedding": vectors,
+                "index": 0,
+            }
+        ],
+        "model": "embedding",
+        "usage": {
+            "prompt_tokens": len(inputText),
+            "total_tokens": len(inputText),
+        }
+    }
+    
+    // 返回 JSON 响应
+    rsp.Header().Set("Content-Type", "application/json")
+    rsp.WriteHeader(200)
+    responseJSON = json.dumps(responseData)
+    rsp.Write(responseJSON)
+    
+    log.info("Request completed successfully for %s", req.RemoteAddr)
+    }))
+    
+    if err != nil {
+        log.error("Failed to start HTTP server: %v", err)
+        die(f"Failed to start HTTP server: ${err}")
+    }
+}
+
+// 等待服务器启动
+sleep(2)
+
+println(f"\n✓ Embedding service started on http://0.0.0.0:${port}")
+println(f"✓ TOTP authentication enabled")
+println(f"✓ Using RAG system embedder")
+println(f"✓ Concurrent limit: ${concurrent}")
+println("\nService is running. Press Ctrl+C to stop.")
+println("\nExample usage:")
+println(f"  curl -X POST http://localhost:${port}/embeddings \\")
+println(f"    -H 'Content-Type: application/json' \\")
+println(f"    -H 'X-TOTP-Code: <your-totp-code>' \\")
+println(f"    -d '{{\"input\": \"your text here\"}}'")
+
+// 保持脚本运行
+for {
+    sleep(1)
+}
+

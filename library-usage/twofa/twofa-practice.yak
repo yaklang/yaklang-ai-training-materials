@@ -1,0 +1,314 @@
+// =============================================================================
+// Yaklang twofa 库实践教程
+// 功能: 演示 twofa (Two-Factor Authentication) 库的用法
+// 用途: TOTP 验证、双因素认证、一次性密码、身份验证
+//
+// 核心技术栈:
+// - twofa.GetUTCCode: 生成 UTC 时间的 TOTP 验证码
+// - twofa.VerifyUTCCode: 验证 TOTP 码（UTC 时间）
+// - twofa.NewTOTPConfig: 创建 TOTP 配置
+// - twofa.GenerateQRCode: 生成二维码
+//
+// 应用场景: 双因素认证、API 安全、身份验证、一次性密码
+// 关键词: twofa totp 2fa authentication otp security
+// 搜索标签: #twofa #totp #2fa #authentication #otp
+// =============================================================================
+
+// =============================================================================
+// 示例 1: 基础 TOTP 验证码生成
+// 功能: 使用密钥生成 TOTP 验证码
+// 技术: twofa.GetUTCCode() 生成验证码
+// =============================================================================
+
+println("=== 示例 1: 基础 TOTP 验证码生成 ===\n")
+
+// 定义 TOTP 密钥（实际应用中应该安全存储）
+secret = "my-secret-key-12345"
+
+// 生成当前 UTC 时间的 TOTP 验证码
+code = twofa.GetUTCCode(secret)
+println(f"TOTP Secret: ${secret}")
+println(f"Current TOTP Code: ${code}")
+println(f"Code Type: 6-digit numeric")
+println(f"Time Window: 30 seconds")
+println()
+
+// TOTP 工作原理说明
+println("TOTP 工作原理:")
+println("1. 基于时间的一次性密码（Time-based One-Time Password）")
+println("2. 使用共享密钥（secret）和当前 UTC 时间")
+println("3. 每 30 秒生成一个新的 6 位数字验证码")
+println("4. 服务端和客户端使用相同的密钥和时间算法")
+println()
+
+// =============================================================================
+// 示例 2: TOTP 验证码验证
+// 功能: 验证用户提供的 TOTP 码是否正确
+// 技术: twofa.VerifyUTCCode() 验证码验证
+// =============================================================================
+
+println("=== 示例 2: TOTP 验证码验证 ===\n")
+
+// 生成验证码
+secret2 = "test-secret-abc123"
+validCode = twofa.GetUTCCode(secret2)
+
+println(f"Secret: ${secret2}")
+println(f"Valid Code: ${validCode}")
+println()
+
+// 验证正确的码
+isValid = twofa.VerifyUTCCode(secret2, validCode)
+println(f"Verify valid code '${validCode}': ${isValid}")
+assert isValid == true, "Valid code should be accepted"
+
+// 验证错误的码
+invalidCode = "000000"
+isValid = twofa.VerifyUTCCode(secret2, invalidCode)
+println(f"Verify invalid code '${invalidCode}': ${isValid}")
+assert isValid == false, "Invalid code should be rejected"
+
+// 验证过期的码（模拟）
+println()
+println("注意: TOTP 码每 30 秒更新一次")
+println("窗口机制: 通常允许前后 1-2 个时间窗口的码（防止时间同步问题）")
+println()
+
+// =============================================================================
+// 示例 3: 使用 poc.twofa 集成
+// 功能: 在 poc 请求中使用 TOTP 验证
+// 技术: twofa.poc() 自动添加 TOTP 头
+// =============================================================================
+
+println("=== 示例 3: TOTP 与 POC 集成 ===\n")
+
+// TOTP 可以与 poc 包集成，自动在请求中添加验证码
+secret3 = "api-secret-for-poc"
+
+println("使用场景: 调用需要 TOTP 验证的 API")
+println(f"Secret: ${secret3}")
+println()
+
+println("示例代码:")
+println("// 使用 twofa.poc() 选项自动添加 TOTP 验证头")
+println("rsp, err = poc.HTTP(`GET /api/protected HTTP/1.1")
+println("Host: api.example.com")
+println("")
+println("`,")
+println("    poc.https(true),")
+println("    twofa.poc(secret3),  // 自动添加 Y-T-Verify-Code 头")
+println(")")
+println()
+
+println("说明:")
+println("- twofa.poc(secret) 会自动生成当前 UTC TOTP 码")
+println("- 并将其添加到请求头 Y-T-Verify-Code 中")
+println("- 服务端可以使用 twofa.VerifyUTCCode() 验证")
+println()
+
+// =============================================================================
+// 示例 4: 实际应用 - API 认证
+// 功能: 演示如何在 API 认证中使用 TOTP
+// 技术: 结合 TOTP 实现 API 安全访问
+// =============================================================================
+
+println("=== 示例 4: API 认证应用示例 ===\n")
+
+// 模拟服务端存储的密钥
+serverSecret = "api-service-secret-xyz"
+
+println("场景: 客户端访问受保护的 API")
+println()
+
+// 客户端生成 TOTP 码
+println("客户端步骤:")
+clientCode = twofa.GetUTCCode(serverSecret)
+println(f"1. 使用共享密钥生成 TOTP 码: ${clientCode}")
+println(f"2. 在 HTTP 请求头中添加: X-TOTP-Code: ${clientCode}")
+println()
+
+// 服务端验证
+println("服务端步骤:")
+receivedCode = clientCode  // 模拟从请求头接收的码
+println(f"1. 从请求头获取 TOTP 码: ${receivedCode}")
+
+isAuthenticated = twofa.VerifyUTCCode(serverSecret, receivedCode)
+if isAuthenticated {
+    println("2. ✓ 验证通过，允许访问 API")
+} else {
+    println("2. ✗ 验证失败，拒绝访问")
+}
+println()
+
+// =============================================================================
+// 示例 5: 时间窗口和容错
+// 功能: 理解 TOTP 的时间窗口机制
+// 技术: 演示时间窗口的影响
+// =============================================================================
+
+println("=== 示例 5: 时间窗口和容错 ===\n")
+
+secret5 = "window-test-secret"
+code5 = twofa.GetUTCCode(secret5)
+
+println(f"当前验证码: ${code5}")
+println()
+
+println("时间窗口说明:")
+println("1. TOTP 基于 30 秒时间片段")
+println("2. 当前时间戳: ", time.Now().Unix())
+println("3. 时间片段: ", time.Now().Unix() / 30)
+println()
+
+println("容错机制:")
+println("- WindowSize 参数控制允许的时间偏移")
+println("- WindowSize=1: 允许当前窗口 ±1 个时间片（约 ±30 秒）")
+println("- 这样可以容忍客户端和服务端的时间差异")
+println()
+
+println("安全建议:")
+println("- 使用 UTC 时间避免时区问题")
+println("- 密钥应该足够长（至少 16 字节）")
+println("- 密钥应该安全存储和传输")
+println("- 验证码使用后应该记录防止重放攻击")
+println()
+
+// =============================================================================
+// 示例 6: TOTP URL 格式（用于移动应用）
+// 功能: 了解 TOTP URL 格式，用于 Google Authenticator 等应用
+// 技术: 标准 otpauth:// URL 格式
+// =============================================================================
+
+println("=== 示例 6: TOTP URL 格式说明 ===\n")
+
+// TOTP URL 标准格式
+issuer = "YakLang"
+accountName = "user@example.com"
+qrSecret = "user-totp-secret-123"
+
+// 构建标准 TOTP URL（需要 base32 编码密钥）
+// 标准格式: otpauth://totp/ISSUER:ACCOUNT?secret=BASE32SECRET&issuer=ISSUER
+
+println("TOTP URL 格式:")
+println("otpauth://totp/ISSUER:ACCOUNT?secret=BASE32SECRET&issuer=ISSUER")
+println()
+
+println("示例:")
+println(f"Issuer: ${issuer}")
+println(f"Account: ${accountName}")
+println(f"Secret: ${qrSecret}")
+println()
+
+println("使用方法:")
+println("1. 将密钥转换为 Base32 编码")
+println("2. 构建 otpauth:// URL")
+println("3. 生成 QR 码图像（使用 QR 码生成库）")
+println("4. 用户使用 Google Authenticator 扫描")
+println()
+
+println("注意:")
+println("- twofa 库目前主要用于服务端验证")
+println("- QR 码生成功能未在 Yak 中直接导出")
+println("- 可以使用其他工具生成 QR 码")
+println()
+
+// =============================================================================
+// 示例 7: 多用户场景
+// 功能: 演示如何为多个用户管理 TOTP
+// 技术: 使用 map 存储用户密钥
+// =============================================================================
+
+println("=== 示例 7: 多用户 TOTP 管理 ===\n")
+
+// 模拟用户数据库
+users = {
+    "alice@example.com": {
+        "secret": "alice-secret-xyz",
+        "name": "Alice",
+    },
+    "bob@example.com": {
+        "secret": "bob-secret-abc",
+        "name": "Bob",
+    },
+}
+
+println("用户 TOTP 状态:\n")
+
+// 为每个用户生成验证码
+for email, userData in users {
+    secret = userData["secret"]
+    name = userData["name"]
+    code = twofa.GetUTCCode(secret)
+    
+    println(f"用户: ${name} (${email})")
+    println(f"  当前验证码: ${code}")
+    
+    // 模拟验证
+    testCode = code
+    isValid = twofa.VerifyUTCCode(secret, testCode)
+    println(f"  验证结果: ${isValid}")
+    println()
+}
+
+// =============================================================================
+// 核心知识点总结
+// =============================================================================
+
+println("\n=== twofa 核心知识点 ===\n")
+
+println("1. **主要函数**:")
+println("   - twofa.GetUTCCode(secret): 生成 UTC TOTP 验证码")
+println("   - twofa.TOTPCode(secret): GetUTCCode 的别名")
+println("   - twofa.VerifyUTCCode(secret, code): 验证 TOTP 码")
+println("   - twofa.TOTPVerify(secret, code): VerifyUTCCode 的别名")
+println("   - twofa.poc(secret): POC 请求选项，自动添加 TOTP 头")
+println()
+
+println("2. **TOTP 特性**:")
+println("   - 基于时间的一次性密码")
+println("   - 30 秒时间窗口")
+println("   - 6 位数字验证码")
+println("   - 使用 HMAC-SHA1 算法")
+println()
+
+println("3. **安全最佳实践**:")
+println("   - 使用强随机密钥（至少 16 字节）")
+println("   - 安全存储密钥（加密存储）")
+println("   - 使用 UTC 时间避免时区问题")
+println("   - 记录使用过的验证码防止重放")
+println("   - 限制验证失败次数防止暴力破解")
+println()
+
+println("4. **时间窗口说明**:")
+println("   - WindowSize 控制允许的时间偏移")
+println("   - 默认 WindowSize=1（前后各 30 秒）")
+println("   - 可以增大以容忍更大的时间差")
+println("   - 但会降低安全性")
+println()
+
+println("5. **实际应用场景**:")
+println("   - API 认证（如本教程的 embedding 服务）")
+println("   - 用户登录双因素认证")
+println("   - 敏感操作二次验证")
+println("   - 系统间安全通信")
+println()
+
+println("6. **与 Google Authenticator 兼容**:")
+println("   - 生成的验证码与 Google Authenticator 兼容")
+println("   - 可以使用 QR 码导入到移动应用")
+println("   - 支持标准 TOTP 协议 (RFC 6238)")
+println()
+
+println("7. **常见问题**:")
+println("   - Q: 验证码不匹配？")
+println("   - A: 检查系统时间是否同步（使用 NTP）")
+println("   - A: 确认使用相同的密钥")
+println("   - A: 确认都使用 UTC 时间")
+println()
+println("   - Q: 如何防止重放攻击？")
+println("   - A: 记录已使用的验证码和时间戳")
+println("   - A: 在时间窗口内拒绝重复使用")
+println()
+
+log.info("twofa practice examples completed")
+

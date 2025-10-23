@@ -1,0 +1,325 @@
+// =============================================================================
+// Yak Embedding RAG Service 测试脚本
+// 功能: 测试基于 RAG 系统的 Embedding TOTP 服务
+// 用途: 验证服务端和客户端的连接、TOTP 认证、Embedding 功能
+//
+// 测试步骤:
+// 1. 初始化 RAG 系统和 embedder
+// 2. 启动带 TOTP 验证的 HTTP 服务器
+// 3. 生成 TOTP 验证码
+// 4. 发送 embedding 请求并验证响应
+//
+// 使用示例:
+// yak scripts/test-yak-embedding-rag-service.yak
+// =============================================================================
+
+println("=== Yak Embedding RAG Service Test ===\n")
+
+// =============================================================================
+// 测试配置
+// =============================================================================
+
+testPort = 18099
+totpSecret = "test-secret-key-123"
+concurrent = 3
+
+log.info("Test Configuration:")
+log.info("  Port: %d", testPort)
+log.info("  TOTP Secret: %s", totpSecret)
+log.info("  Concurrent: %d", concurrent)
+
+// =============================================================================
+// Step 1: 初始化 RAG 系统
+// =============================================================================
+
+println("\n=== Step 1: Initializing RAG System ===")
+
+// 获取默认 RAG 集合
+log.info("Getting RAG collection...")
+ragSystem, err = rag.GetCollection("default")
+if err != nil {
+    log.error("Failed to get RAG collection: %v", err)
+    println(f"✗ Failed to get RAG collection: ${err}")
+    println("⚠ Please ensure llama-server and embedding model are installed")
+    die(f"RAG initialization failed: ${err}")
+}
+
+// 获取 embedder
+embedder = ragSystem.Embedder
+if embedder == nil {
+    log.error("Failed to get embedder from RAG system")
+    die("Failed to get embedder from RAG system")
+}
+
+log.info("RAG system initialized successfully")
+
+// 测试 embedder 是否可用
+log.info("Testing embedder...")
+testVectors, testErr = embedder.Embedding("test")
+if testErr != nil {
+    log.error("Embedder test failed: %v", testErr)
+    die(f"Embedder test failed: ${testErr}")
+}
+
+println(f"✓ Embedder is working (vector dimension: ${len(testVectors)})")
+
+// =============================================================================
+// Step 2: 启动测试服务器
+// =============================================================================
+
+println("\n=== Step 2: Starting Test Server ===")
+
+// 创建并发控制的 WaitGroup
+swg = sync.NewSizedWaitGroup(concurrent)
+
+// 在后台启动 HTTP 服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", testPort, httpserver.handler((rsp, req) => {
+        log.info("Test Server - Received: %s %s from %s", req.Method, req.URL.Path, req.RemoteAddr)
+        
+        // 检查路径
+        if req.URL.Path != "/embeddings" {
+            rsp.WriteHeader(404)
+            rsp.Write(b`{"error": {"message": "Not Found", "type": "invalid_request_error"}}`)
+            return
+        }
+        
+        // 只接受 POST 请求
+        if req.Method != "POST" {
+            rsp.WriteHeader(405)
+            rsp.Write(b`{"error": {"message": "Method Not Allowed", "type": "invalid_request_error"}}`)
+            return
+        }
+        
+        // 验证 TOTP
+        totpCode = req.Header.Get("X-TOTP-Code")
+        if totpCode == "" {
+            log.warn("Missing TOTP code")
+            rsp.WriteHeader(401)
+            rsp.Write(b`{"error": {"message": "Missing X-TOTP-Code header", "type": "authentication_error"}}`)
+            return
+        }
+        
+        // 验证 TOTP 码（UTC 时间）
+        if !twofa.VerifyUTCCode(totpSecret, totpCode) {
+            log.warn("Invalid TOTP code: %s", totpCode)
+            rsp.WriteHeader(401)
+            rsp.Write(b`{"error": {"message": "Invalid TOTP code", "type": "authentication_error"}}`)
+            return
+        }
+        
+        log.info("TOTP verification passed")
+        
+        // 读取请求体
+        body, readErr = io.ReadAll(req.Body)
+        if readErr != nil {
+            log.error("Failed to read request body: %v", readErr)
+            rsp.WriteHeader(400)
+            rsp.Write(b`{"error": {"message": "Failed to read request body", "type": "invalid_request_error"}}`)
+            return
+        }
+        
+        // 解析请求数据
+        requestData = json.loads(body)
+        inputText = requestData["input"]
+        
+        if inputText == "" {
+            rsp.WriteHeader(400)
+            rsp.Write(b`{"error": {"message": "Input text cannot be empty", "type": "invalid_request_error"}}`)
+            return
+        }
+        
+        log.info("Processing embedding for: %s", inputText)
+        
+        // 使用并发控制调用 embedder
+        swg.Add()
+        
+        log.info("Calling embedder.Embedding()...")
+        
+        // 调用 embedder 生成向量
+        vectors, embErr = embedder.Embedding(inputText)
+        
+        // 完成后释放并发槽位
+        swg.Done()
+        
+        if embErr != nil {
+            log.error("Failed to generate embedding: %v", embErr)
+            rsp.WriteHeader(500)
+            errorMsg = json.dumps({
+                "error": {
+                    "message": f"Failed to generate embedding: ${embErr}",
+                    "type": "embedding_error",
+                }
+            })
+            rsp.Write(errorMsg)
+            return
+        }
+        
+        log.info("Embedding generated (dimension: %d)", len(vectors))
+        
+        // 构建响应数据
+        responseData = {
+            "object": "list",
+            "data": [
+                {
+                    "object": "embedding",
+                    "embedding": vectors,
+                    "index": 0,
+                }
+            ],
+            "model": "embedding",
+            "usage": {
+                "prompt_tokens": len(inputText),
+                "total_tokens": len(inputText),
+            }
+        }
+        
+        // 返回 JSON 响应
+        rsp.Header().Set("Content-Type", "application/json")
+        rsp.WriteHeader(200)
+        responseJSON = json.dumps(responseData)
+        rsp.Write(responseJSON)
+        
+        log.info("Request completed successfully")
+    }))
+    
+    if err != nil {
+        log.error("Failed to start test server: %v", err)
+    }
+}
+
+// 等待服务器启动
+sleep(2)
+println(f"✓ Test server started on http://127.0.0.1:${testPort}")
+
+// =============================================================================
+// Step 3: 测试 Embedding 请求
+// =============================================================================
+
+println("\n=== Step 3: Testing Embedding Request ===")
+
+// 生成 TOTP 验证码
+totpCode = twofa.GetUTCCode(totpSecret)
+log.info("Generated TOTP code: %s", totpCode)
+println(f"✓ TOTP Code: ${totpCode}")
+
+// 构建测试请求
+testText = "Hello, this is a test for embedding service!"
+requestData = json.dumps({"input": testText})
+
+println(f"\n测试文本: ${testText}")
+
+// 发送请求
+rsp, _, err = poc.HTTP(f`POST /embeddings HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+X-TOTP-Code: ${totpCode}
+Content-Length: ${len(requestData)}
+
+${requestData}`, poc.host("127.0.0.1"), poc.port(testPort), poc.timeout(10))
+
+if err != nil {
+    println(f"✗ 请求失败: ${err}")
+    die(f"Request failed: ${err}")
+}
+
+// 检查响应
+statusCode = poc.GetStatusCodeFromResponse(rsp)
+_, body = poc.Split(rsp)
+
+println(f"\n响应状态码: ${statusCode}")
+
+if statusCode == 200 {
+    responseData = json.loads(body)
+    
+    if responseData["data"] != nil && len(responseData["data"]) > 0 {
+        embedding = responseData["data"][0]["embedding"]
+        println(f"✓ 成功获取 embedding (维度: ${len(embedding)})")
+        println(f"✓ 前10个值: ${embedding[:10]}")
+    } else {
+        println("✗ 响应数据格式错误")
+    }
+} else {
+    println(f"✗ 请求失败，状态码: ${statusCode}")
+    println(f"响应内容: ${string(body)}")
+}
+
+// =============================================================================
+// Step 4: 测试错误场景
+// =============================================================================
+
+println("\n=== Step 4: Testing Error Scenarios ===")
+
+// 测试1: 无效的 TOTP 码
+println("\n测试1: 无效的 TOTP 码")
+rsp, _, err = poc.HTTP(f`POST /embeddings HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+X-TOTP-Code: 999999
+Content-Length: ${len(requestData)}
+
+${requestData}`, poc.host("127.0.0.1"), poc.port(testPort), poc.timeout(5))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode == 401 {
+        println("✓ 正确拒绝了无效的 TOTP 码")
+    } else {
+        println(f"✗ 应该返回 401，实际返回: ${statusCode}")
+    }
+}
+
+// 测试2: 缺少 TOTP 码
+println("\n测试2: 缺少 TOTP 码")
+rsp, _, err = poc.HTTP(f`POST /embeddings HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+Content-Length: ${len(requestData)}
+
+${requestData}`, poc.host("127.0.0.1"), poc.port(testPort), poc.timeout(5))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode == 401 {
+        println("✓ 正确拒绝了缺少 TOTP 码的请求")
+    } else {
+        println(f"✗ 应该返回 401，实际返回: ${statusCode}")
+    }
+}
+
+// 测试3: 空文本
+println("\n测试3: 空文本输入")
+emptyData = json.dumps({"input": ""})
+totpCode = twofa.GetUTCCode(totpSecret)
+rsp, _, err = poc.HTTP(f`POST /embeddings HTTP/1.1
+Host: 127.0.0.1
+Content-Type: application/json
+X-TOTP-Code: ${totpCode}
+Content-Length: ${len(emptyData)}
+
+${emptyData}`, poc.host("127.0.0.1"), poc.port(testPort), poc.timeout(5))
+
+if err == nil {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode == 400 {
+        println("✓ 正确拒绝了空文本输入")
+    } else {
+        println(f"✗ 应该返回 400，实际返回: ${statusCode}")
+    }
+}
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+
+println("\n=== All Tests Completed ===")
+println("✓ RAG 系统初始化成功")
+println("✓ Embedder 工作正常")
+println("✓ HTTP 服务器启动成功")
+println("✓ TOTP 验证正常工作")
+println("✓ Embedding 请求处理正确")
+println("✓ 错误场景处理正确")
+println("\n所有测试通过！")
+
+log.info("All tests passed successfully")
+

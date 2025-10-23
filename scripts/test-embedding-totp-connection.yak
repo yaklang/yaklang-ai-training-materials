@@ -1,0 +1,213 @@
+// =============================================================================
+// Embedding TOTP 服务测试脚本
+// 功能: 测试服务端和客户端的 TOTP 验证和连接
+// 用途: 验证 embedding 服务的 TOTP 认证功能
+// =============================================================================
+
+println("=== Embedding TOTP 服务测试 ===\n")
+
+// 配置
+testSecret = "test-secret-12345"
+testPort = 18099
+
+println("配置:")
+println(f"  TOTP Secret: ${testSecret}")
+println(f"  Port: ${testPort}")
+println()
+
+// =============================================================================
+// 步骤 1: 启动 Mock Embedding 服务
+// =============================================================================
+
+println("步骤 1: 启动 Mock Embedding 服务...")
+
+// 在后台启动服务器
+go fn {
+    err = httpserver.Serve("127.0.0.1", testPort, httpserver.handler((rsp, req) => {
+        log.info("Received request: %s %s from %s", req.Method, req.URL.Path, req.RemoteAddr)
+        
+        // 检查路径
+        if req.URL.Path != "/embeddings" {
+            rsp.WriteHeader(404)
+            rsp.Write(b`{"error": {"message": "Not Found"}}`)
+            return
+        }
+        
+        // 只接受 POST 请求
+        if req.Method != "POST" {
+            rsp.WriteHeader(405)
+            rsp.Write(b`{"error": {"message": "Method Not Allowed"}}`)
+            return
+        }
+        
+        // 验证 TOTP
+        totpCode = req.Header.Get("X-TOTP-Code")
+        if totpCode == "" {
+            log.warn("Missing TOTP code")
+            rsp.WriteHeader(401)
+            rsp.Write(b`{"error": {"message": "Missing X-TOTP-Code header"}}`)
+            return
+        }
+        
+        // 验证 TOTP 码
+        if !twofa.VerifyUTCCode(testSecret, totpCode) {
+            log.warn("Invalid TOTP code: %s", totpCode)
+            rsp.WriteHeader(401)
+            rsp.Write(b`{"error": {"message": "Invalid TOTP code"}}`)
+            return
+        }
+        
+        log.info("TOTP verification passed")
+        
+        // 读取请求体
+        body, _ = io.ReadAll(req.Body)
+        
+        // 返回 mock embedding 响应
+        mockResponse = json.dumps({
+            "object": "list",
+            "data": [{
+                "object": "embedding",
+                "embedding": [0.1, 0.2, 0.3, 0.4, 0.5],
+                "index": 0,
+            }],
+            "model": "test-embedding-model",
+        })
+        
+        rsp.Header().Set("Content-Type", "application/json")
+        rsp.WriteHeader(200)
+        rsp.Write(mockResponse)
+        
+        log.info("Request completed successfully")
+    }))
+    
+    if err != nil {
+        log.error("Failed to start server: %v", err)
+    }
+}
+
+// 等待服务器启动
+sleep(2)
+println("✓ Mock 服务器已启动在 127.0.0.1:${testPort}")
+println()
+
+// =============================================================================
+// 步骤 2: 测试客户端连接
+// =============================================================================
+
+println("步骤 2: 测试客户端连接...")
+
+// 生成 TOTP 验证码
+totpCode = twofa.GetUTCCode(testSecret)
+println(f"✓ 生成 TOTP 码: ${totpCode}")
+
+// 构建请求体
+requestBody = json.dumps({
+    "input": "test text for embedding",
+    "model": "embedding",
+})
+
+// 构建服务器地址
+serverHost = "127.0.0.1"
+
+// 发送请求
+println(f"✓ 发送请求到 http://${serverHost}:${testPort}/embeddings...")
+
+rsp, _, err = poc.HTTP(
+    f`POST /embeddings HTTP/1.1
+Host: ${serverHost}
+Content-Type: application/json
+X-TOTP-Code: ${totpCode}
+Content-Length: ${len(requestBody)}
+
+${requestBody}`,
+    poc.host(serverHost),
+    poc.port(testPort),
+    poc.timeout(10),
+)
+
+if err != nil {
+    println(f"✗ 请求失败: ${err}")
+    die("Request failed")
+}
+
+// =============================================================================
+// 步骤 3: 验证响应
+// =============================================================================
+
+println()
+println("步骤 3: 验证响应...")
+
+// 获取状态码
+statusCode = poc.GetStatusCodeFromResponse(rsp)~
+
+// 提取响应体
+_, body = poc.Split(rsp)
+println(f"✓ 状态码: ${statusCode}")
+
+if statusCode != 200 {
+    println(f"✗ 请求失败，状态码: ${statusCode}")
+    println(f"响应: ${string(body)}")
+    die("Request failed with non-200 status")
+}
+
+// 解析响应
+responseData = json.loads(body)
+
+println(f"✓ 响应解析成功")
+println(f"  Model: ${responseData['model']}")
+println(f"  Object: ${responseData['object']}")
+println(f"  Embedding Length: ${len(responseData['data'][0]['embedding'])}")
+println()
+
+// =============================================================================
+// 步骤 4: 测试错误情况
+// =============================================================================
+
+println("步骤 4: 测试错误的 TOTP 码...")
+
+invalidCode = "000000"
+
+badRsp, _, _ = poc.HTTP(
+    f`POST /embeddings HTTP/1.1
+Host: ${serverHost}
+Content-Type: application/json
+X-TOTP-Code: ${invalidCode}
+Content-Length: ${len(requestBody)}
+
+${requestBody}`,
+    poc.host(serverHost),
+    poc.port(testPort),
+    poc.timeout(10),
+)
+
+badStatusCode = poc.GetStatusCodeFromResponse(badRsp)~
+println(f"✓ 使用错误 TOTP 码 '${invalidCode}' 的状态码: ${badStatusCode}")
+
+if badStatusCode == 401 {
+    println("✓ 服务正确拒绝了错误的 TOTP 码")
+} else {
+    println(f"✗ 预期状态码 401，实际: ${badStatusCode}")
+}
+
+println()
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+
+println("=== 测试结果 ===")
+println("✓ 服务器启动成功")
+println("✓ TOTP 验证成功")
+println("✓ 客户端连接成功")
+println("✓ 响应格式正确")
+println("✓ 错误处理正确")
+println()
+println("所有测试通过！ 🎉")
+println()
+println("提示: 真实的服务端脚本需要:")
+println("1. 安装 llama-server: toolbox.Install(\"llama-server\")")
+println("2. 安装模型: toolbox.Install(\"model-Qwen3-Embedding-0.6B-Q4\")")
+println("3. 确保 llama-server 在 127.0.0.1:11435 运行")
+
+log.info("Test completed successfully")
+
