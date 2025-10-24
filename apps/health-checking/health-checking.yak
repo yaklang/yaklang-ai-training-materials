@@ -1,0 +1,440 @@
+// =============================================================================
+// YAK Services Health Checking - 服务健康检查监控系统
+// 功能: 启动 HTTP 服务器，定期检查多个服务的健康状态并展示
+// 用途: 服务监控、健康检查、状态展示、实时更新
+//
+// 核心技术栈:
+// - httpserver.Serve: 启动 HTTP 服务器
+// - poc.HTTP: 发起 HTTP/HTTPS 请求检查服务状态
+// - json.dumps/json.loads: JSON 数据处理
+// - time.Now: 时间戳记录
+// - sync.Mutex: 并发安全的数据访问
+//
+// 使用示例:
+// yak apps/health-checking/health-checking.yak --port 8080 --interval 60
+//
+// 应用场景: 服务监控、健康检查、状态可视化、实时监控
+// 关键词: health-check monitoring httpserver poc 服务监控 健康检查
+// 搜索标签: #health-check #monitoring #httpserver #service-status
+// =============================================================================
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，支持自定义端口和检查间隔
+// 技术: cli.String/Int 参数解析，cli.setDefault 默认值
+//
+// 参数说明:
+// - port: 监控服务监听端口，默认 8080
+// - interval: 健康检查间隔（秒），默认 60
+// - timeout: HTTP 请求超时时间（秒），默认 10
+//
+// 使用示例: 
+// yak health-checking.yak --port 8080 --interval 60 --timeout 10
+// =============================================================================
+
+// 服务端口配置
+port = cli.Int(
+    "port", 
+    cli.setDefault(8080), 
+    cli.setHelp("监控服务监听端口")
+)
+
+// 健康检查间隔
+interval = cli.Int(
+    "interval",
+    cli.setDefault(60),
+    cli.setHelp("健康检查间隔（秒）")
+)
+
+// HTTP 请求超时
+timeout = cli.Int(
+    "timeout",
+    cli.setDefault(10),
+    cli.setHelp("HTTP 请求超时时间（秒）")
+)
+
+// 验证参数
+cli.check()
+
+log.info("Starting YAK Services Health Checking System...")
+log.info("Configuration:")
+log.info("  Port: %d", port)
+log.info("  Check Interval: %d seconds", interval)
+log.info("  Request Timeout: %d seconds", timeout)
+
+// =============================================================================
+// 服务配置模块 - 定义需要监控的服务列表
+// 功能: 配置需要监控的服务，包括服务ID、名称和健康检查URL
+// 技术: Map 数据结构存储服务配置
+//
+// 服务配置格式:
+// {
+//   "service_id": "服务唯一标识",
+//   "service_name": "服务中文名称",
+//   "service_name_en": "服务英文名称",
+//   "health_url": "健康检查URL",
+//   "method": "HTTP方法（默认GET）"
+// }
+// =============================================================================
+
+serviceConfigs = [
+    {
+        "service_id": "yaklang_com",
+        "service_name": "Yaklang 官网",
+        "service_name_en": "Yaklang Official",
+        "health_url": "https://yaklang.com",
+        "expect_status": 200,
+        "expect_keywords": ["Docusaurus", "Yak Program Language"]
+    },
+    {
+        "service_id": "yaklang_io",
+        "service_name": "Yaklang 国际官网",
+        "service_name_en": "Yaklang International",
+        "health_url": "https://yaklang.io",
+        "expect_status": 200,
+        "expect_keywords": ["Docusaurus", "Yak Program Language"]
+    },
+    {
+        "service_id": "ssa_to",
+        "service_name": "IRify SSA 技术官网",
+        "service_name_en": "IRify SSA Official",
+        "health_url": "https://ssa.to",
+        "expect_status": 200,
+        "expect_keywords": ["Docusaurus", "SSA-IR", "编译器级"]
+    },
+    {
+        "service_id": "aibalance",
+        "service_name": "Yaklang AI 负载均衡",
+        "service_name_en": "Yaklang AI Balance",
+        "health_url": "https://aibalance.yaklang.com",
+        "expect_status": 200,
+        "expect_keywords": ["AI Balance", "Orbitron"]
+    },
+    {
+        "service_id": "codescan_ssa",
+        "service_name": "SSA 代码扫描",
+        "service_name_en": "SSA Code Scan",
+        "health_url": "https://codescan.ssa.to",
+        "expect_status": 404,
+        "expect_keywords": ["404", "not found"]
+    }
+]
+
+log.info("Configured %d services for monitoring", len(serviceConfigs))
+
+// =============================================================================
+// 健康状态数据存储模块 - 线程安全的状态管理
+// 功能: 存储和管理所有服务的健康状态数据
+// 技术: sync.NewMutex 创建互斥锁，保证并发安全
+//
+// 数据结构:
+// [
+//   {
+//     "service_id": "aibalance",
+//     "service_name": "AI均衡器",
+//     "service_name_en": "AI Balance",
+//     "status_code": 200,
+//     "response": "响应内容摘要",
+//     "updated_at": "2024-01-01T12:00:00Z"
+//   }
+// ]
+// =============================================================================
+
+healthData = []
+healthDataMutex = sync.NewMutex()
+
+log.info("Initialized health data storage with mutex lock")
+
+// =============================================================================
+// 健康检查执行模块 - 检查单个服务的健康状态
+// 功能: 向指定服务发送 HTTP 请求，获取健康状态
+// 技术: poc.HTTP 发起请求，poc.GetStatusCodeFromResponse 获取状态码
+//
+// 参数:
+// - config: 服务配置对象
+//
+// 返回:
+// - 服务健康状态对象
+// =============================================================================
+
+checkServiceHealth = func(config) {
+    log.info("Checking health for service: %s", config["service_id"])
+    
+    serviceId = config["service_id"]
+    serviceName = config["service_name"]
+    serviceNameEn = config["service_name_en"]
+    healthUrl = config["health_url"]
+    expectStatus = config["expect_status"] || 200
+    expectKeywords = config["expect_keywords"] || []
+    
+    // 构建健康状态对象
+    healthStatus = {
+        "service_id": serviceId,
+        "service_name": serviceName,
+        "service_name_en": serviceNameEn,
+        "status_code": 0,
+        "response": "",
+        "is_healthy": false,
+        "check_detail": "",
+        "updated_at": time.Now().Format("2006-01-02T15:04:05Z07:00")
+    }
+    
+    log.info("Sending GET request to %s", healthUrl)
+    
+    // 发起请求
+    try {
+        packet = f`GET ${healthUrl} HTTP/1.1
+Host: auto
+User-Agent: YAK-Health-Checker/1.0
+
+`
+        
+        rsp, req, err = poc.HTTP(packet, poc.timeout(timeout))
+        
+        if err != nil {
+            log.error("HTTP request failed for %s: %v", serviceId, err)
+            healthStatus["response"] = f"Request error: ${err}"
+            healthStatus["check_detail"] = f"Network error: ${err}"
+            return healthStatus
+        }
+        
+        // 获取状态码
+        statusCode = poc.GetStatusCodeFromResponse(rsp)
+        healthStatus["status_code"] = statusCode
+        
+        // 获取完整响应体用于关键字检查
+        _, body = poc.Split(rsp)
+        bodyStr = string(body)
+        fullBody = bodyStr
+        
+        // 存储简短响应
+        if len(bodyStr) > 200 {
+            bodyStr = bodyStr[:200] + "..."
+        }
+        healthStatus["response"] = bodyStr
+        
+        // 验证状态码
+        statusMatch = (statusCode == expectStatus)
+        
+        // 验证关键字
+        keywordMatch = true
+        matchedKeywords = []
+        if len(expectKeywords) > 0 {
+            for keyword in expectKeywords {
+                if str.Contains(fullBody, keyword) {
+                    matchedKeywords = append(matchedKeywords, keyword)
+                }
+            }
+            keywordMatch = (len(matchedKeywords) > 0)
+        }
+        
+        // 判断整体健康状态
+        healthStatus["is_healthy"] = (statusMatch && keywordMatch)
+        
+        // 构建检查详情
+        if healthStatus["is_healthy"] {
+            healthStatus["check_detail"] = f"Status: ${statusCode} (expected ${expectStatus}), Keywords matched: ${len(matchedKeywords)}/${len(expectKeywords)}"
+        } else {
+            if !statusMatch {
+                healthStatus["check_detail"] = f"Status mismatch: got ${statusCode}, expected ${expectStatus}"
+            } else {
+                healthStatus["check_detail"] = f"Keywords missing: matched ${len(matchedKeywords)}/${len(expectKeywords)}"
+            }
+        }
+        
+        log.info("Health check completed for %s: healthy=%v, status=%d", serviceId, healthStatus["is_healthy"], statusCode)
+        
+    } catch err {
+        log.error("Exception during health check for %s: %v", serviceId, err)
+        healthStatus["response"] = f"Exception: ${err}"
+        healthStatus["check_detail"] = f"Exception: ${err}"
+    }
+    
+    return healthStatus
+}
+
+// =============================================================================
+// 批量健康检查模块 - 检查所有配置的服务
+// 功能: 遍历所有服务配置，执行健康检查并更新状态
+// 技术: 并发执行检查，使用互斥锁更新共享数据
+// =============================================================================
+
+performHealthChecks = func() {
+    log.info("Starting batch health check for %d services", len(serviceConfigs))
+    currentTime = time.Now().Format("2006-01-02 15:04:05")
+    println(f"\n[${currentTime}] 开始健康检查...")
+    
+    newHealthData = []
+    
+    // 遍历所有服务配置
+    for config in serviceConfigs {
+        healthStatus = checkServiceHealth(config)
+        newHealthData = append(newHealthData, healthStatus)
+        
+        // 输出检查结果
+        statusIcon = "✓"
+        if !healthStatus["is_healthy"] {
+            statusIcon = "✗"
+        }
+        println(f"  ${statusIcon} ${healthStatus['service_name']} (${healthStatus['service_id']}): ${healthStatus['check_detail']}")
+    }
+    
+    // 使用互斥锁更新健康数据
+    healthDataMutex.Lock()
+    healthData = newHealthData
+    healthDataMutex.Unlock()
+    
+    log.info("Batch health check completed")
+    println("健康检查完成\n")
+}
+
+// =============================================================================
+// 定时健康检查模块 - 后台定时执行健康检查
+// 功能: 在后台启动定时任务，定期检查服务健康状态
+// 技术: go fn{} 启动协程，sleep 控制间隔
+// =============================================================================
+
+startHealthCheckScheduler = func() {
+    log.info("Starting health check scheduler (interval: %d seconds)", interval)
+    
+    // 启动时立即执行一次检查
+    performHealthChecks()
+    
+    // 后台定时执行
+    go fn {
+        for {
+            sleep(interval)
+            performHealthChecks()
+        }
+    }
+    
+    log.info("Health check scheduler started")
+}
+
+// =============================================================================
+// HTTP 服务器模块 - 启动 Web 服务提供健康状态展示
+// 功能: 启动 HTTP 服务器，提供 HTML 界面和 JSON API
+// 技术: httpserver.Serve 启动服务，httpserver.handler 设置处理函数
+//
+// API 端点:
+// - GET / - 返回 HTML 健康状态展示页面
+// - GET /health.json - 返回 JSON 格式的健康状态数据
+//
+// 响应格式:
+// [
+//   {
+//     "service_id": "aibalance",
+//     "service_name": "AI均衡器",
+//     "service_name_en": "AI Balance",
+//     "status_code": 200,
+//     "response": "...",
+//     "updated_at": "2024-01-01T12:00:00Z"
+//   }
+// ]
+// =============================================================================
+
+startHTTPServer = func() {
+    log.info("Starting HTTP server on 0.0.0.0:%d", port)
+    
+    // 读取 HTML 文件（尝试多个可能的路径）
+    possiblePaths = [
+        "apps/health-checking/index.html",
+        "index.html",
+        "./index.html"
+    ]
+    
+    htmlContent = []
+    htmlLoaded = false
+    
+    for htmlPath in possiblePaths {
+        content, readErr = file.ReadFile(htmlPath)
+        if readErr == nil {
+            htmlContent = content
+            htmlLoaded = true
+            log.info("HTML file loaded from: %s", htmlPath)
+            break
+        }
+    }
+    
+    if !htmlLoaded {
+        log.error("Failed to load HTML file from any path")
+        die("Failed to load HTML file")
+    }
+    
+    // 启动 HTTP 服务器
+    go fn {
+        err = httpserver.Serve("0.0.0.0", port, httpserver.handler((rsp, req) => {
+            log.info("Received request: %s %s from %s", req.Method, req.URL.Path, req.RemoteAddr)
+            
+            // 处理不同的路径
+            if req.URL.Path == "/" || req.URL.Path == "/index.html" {
+                // 返回 HTML 页面
+                log.info("Serving HTML page to %s", req.RemoteAddr)
+                rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+                rsp.WriteHeader(200)
+                rsp.Write(htmlContent)
+                
+            } else if req.URL.Path == "/health.json" {
+                // 返回 JSON 数据
+                log.info("Serving health JSON to %s", req.RemoteAddr)
+                
+                // 使用互斥锁读取健康数据
+                healthDataMutex.Lock()
+                currentData = healthData
+                healthDataMutex.Unlock()
+                
+                // 序列化为 JSON
+                jsonData = json.dumps(currentData)
+                
+                rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+                rsp.Header().Set("Access-Control-Allow-Origin", "*")
+                rsp.WriteHeader(200)
+                rsp.Write(jsonData)
+                
+            } else {
+                // 404 Not Found
+                log.warn("Path not found: %s", req.URL.Path)
+                rsp.WriteHeader(404)
+                rsp.Write(b`{"error": "Not Found"}`)
+            }
+        }))
+        
+        if err != nil {
+            log.error("Failed to start HTTP server: %v", err)
+            die(f"Failed to start HTTP server: ${err}")
+        }
+    }
+    
+    // 等待服务器启动
+    sleep(1)
+    
+    log.info("HTTP server started successfully")
+}
+
+// =============================================================================
+// 主程序入口
+// =============================================================================
+
+println("\n" + "=" * 60)
+println("YAK Services Health Checking System")
+println("=" * 60)
+
+// 启动定时健康检查
+startHealthCheckScheduler()
+
+// 启动 HTTP 服务器
+startHTTPServer()
+
+println(f"\n✓ 健康检查服务已启动")
+println(f"✓ 监控服务数量: ${len(serviceConfigs)}")
+println(f"✓ 检查间隔: ${interval} 秒")
+println(f"✓ Web 界面: http://0.0.0.0:${port}")
+println(f"✓ JSON API: http://0.0.0.0:${port}/health.json")
+println("\n服务正在运行中，按 Ctrl+C 停止")
+println("=" * 60 + "\n")
+
+// 保持脚本运行
+for {
+    sleep(1)
+}
+
