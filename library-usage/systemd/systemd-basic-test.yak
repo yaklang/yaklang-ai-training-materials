@@ -1,0 +1,52 @@
+/*
+Systemd 基础功能测试脚本
+用于验证 systemd 库的基本功能是否正常工作
+
+使用方法:
+yak systemd-basic-test.yak
+*/
+
+println("=== Systemd 基础功能测试 ===")
+
+// 测试1: 最简单的 systemd.Create 调用
+println("\n1. 测试基本的 systemd.Create 功能")
+
+try {
+    serviceName = "test-service"
+    execStart = "/usr/bin/echo 'Hello World'"
+    
+    fileName, serviceContent = systemd.Create(serviceName, systemd.service_exec_start(execStart))
+    
+    println("✓ systemd.Create 调用成功")
+    println(f"生成的文件名: ${fileName}")
+    println("生成的服务内容:")
+    println(string(serviceContent))
+    
+} catch err {
+    println(f"✗ systemd.Create 调用失败: ${err}")
+}
+
+// 测试2: 验证 systemd 库是否存在
+println("\n2. 验证 systemd 库可用性")
+
+try {
+    // 尝试调用 systemd 库的基本功能
+    result = systemd.service_exec_start("/bin/echo test")
+    println("✓ systemd.service_exec_start 可用")
+} catch err {
+    println(f"✗ systemd.service_exec_start 不可用: ${err}")
+}
+
+// 测试3: 检查当前系统环境
+println("\n3. 检查系统环境")
+println(f"操作系统: ${os.OS}")
+println(f"系统架构: ${os.ARCH}")
+println(f"Yak 可执行文件: ${os.Executable}")
+
+if str.ToLower(os.OS) == "linux" {
+    println("✓ 当前系统是 Linux，支持 systemd")
+} else {
+    println("⚠ 当前系统不是 Linux，systemd 功能受限")
+}
+
+println("\n=== 测试完成 ===")

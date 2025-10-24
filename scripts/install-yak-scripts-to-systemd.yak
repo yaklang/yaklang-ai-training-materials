@@ -1,0 +1,356 @@
+/*
+Yak 脚本 Systemd 服务安装工具
+
+功能:
+- 将 yak 脚本安装为 systemd 服务
+- 支持自定义服务名称、脚本路径和参数
+- 自动检测系统环境
+- 提供完整的服务管理功能
+
+使用方法:
+yak install-yak-scripts-to-systemd.yak --service-name <服务名> --script-path <脚本路径> [--script-args <参数>]
+
+示例:
+yak install-yak-scripts-to-systemd.yak --service-name "my-web-service" --script-path "/opt/scripts/web.yak" --script-args "--port 8080 --host 0.0.0.0"
+*/
+
+// 解析命令行参数
+serviceName = cli.String("service-name", cli.setRequired(true), cli.setHelp("服务名称（必填）"))
+scriptPath = cli.String("script-path", cli.setRequired(true), cli.setHelp("Yak 脚本路径（必填）"))
+scriptArgs = cli.String("script-args", cli.setDefault(""), cli.setHelp("脚本参数（可选）"))
+serviceUser = cli.String("user", cli.setDefault("root"), cli.setHelp("运行服务的用户"))
+serviceGroup = cli.String("group", cli.setDefault("root"), cli.setHelp("运行服务的用户组"))
+restartPolicy = cli.String("restart", cli.setDefault("always"), cli.setHelp("重启策略 (always/on-failure/no)"))
+serviceType = cli.String("type", cli.setDefault("simple"), cli.setHelp("服务类型 (simple/oneshot/forking)"))
+enableAutoStart = cli.Bool("enable", cli.setDefault(true), cli.setHelp("是否启用开机自启动"))
+startNow = cli.Bool("start", cli.setDefault(true), cli.setHelp("是否立即启动服务"))
+dryRun = cli.Bool("dry-run", cli.setDefault(false), cli.setHelp("仅显示配置，不实际安装"))
+
+cli.check()
+
+// 检查系统环境
+checkSystemEnvironment = func() {
+    osType = os.OS
+    log.Info(f"检测到操作系统: ${osType}")
+    
+    if str.ToLower(osType) != "linux" {
+        log.Error("错误: 此工具仅支持 Linux 系统")
+        log.Info("systemd 服务管理功能仅在 Linux 系统上可用")
+        return false
+    }
+    
+    // 检查是否有 systemctl 命令
+    try {
+        result = exec.System("which systemctl")
+        if result == "" {
+            log.Error("错误: 系统中未找到 systemctl 命令")
+            return false
+        }
+        log.Info("✓ systemctl 命令可用")
+    } catch err {
+        log.Error(f"错误: 无法检查 systemctl 命令: ${err}")
+        return false
+    }
+    
+    // 检查是否有 root 权限（通过尝试访问 /etc/systemd/system/ 目录）
+    systemdDir = "/etc/systemd/system/"
+    if !file.IsDir(systemdDir) {
+        log.Error(f"错误: 无法访问 systemd 目录: ${systemdDir}")
+        return false
+    }
+    
+    log.Info("✓ 系统环境检查通过")
+    return true
+}
+
+// 验证输入参数
+validateInputs = func() {
+    log.Info("验证输入参数...")
+    
+    // 检查服务名称
+    if serviceName == "" {
+        log.Error("错误: 服务名称不能为空")
+        return false
+    }
+    
+    if str.Contains(serviceName, " ") || str.Contains(serviceName, "/") {
+        log.Error("错误: 服务名称不能包含空格或斜杠")
+        return false
+    }
+    
+    log.Info(f"✓ 服务名称: ${serviceName}")
+    
+    // 检查脚本路径
+    if scriptPath == "" {
+        log.Error("错误: 脚本路径不能为空")
+        return false
+    }
+    
+    // 转换为绝对路径
+    absScriptPath = file.Abs(scriptPath)
+    if !file.IsExist(absScriptPath) {
+        log.Error(f"错误: 脚本文件不存在: ${absScriptPath}")
+        return false
+    }
+    
+    log.Info(f"✓ 脚本路径: ${absScriptPath}")
+    
+    // 检查 yak 二进制文件
+    yakBinary = os.Executable
+    if yakBinary == "" {
+        log.Error("错误: 无法获取 yak 可执行文件路径")
+        return false
+    }
+    
+    log.Info(f"✓ Yak 二进制文件: ${yakBinary}")
+    
+    // 更新全局变量
+    scriptPath = absScriptPath
+    
+    log.Info("✓ 输入参数验证通过")
+    return true
+}
+
+// 检查服务是否已存在
+checkExistingService = func() {
+    log.Info(f"检查服务是否已存在: ${serviceName}")
+    
+    try {
+        result = exec.System(f"systemctl list-unit-files | grep '^${serviceName}.service'")
+        if str.Contains(result, f"${serviceName}.service") {
+            log.Warn(f"警告: 服务 ${serviceName} 已存在")
+            
+            // 获取现有服务状态
+            statusResult = exec.System(f"systemctl status ${serviceName}")
+            log.Info(f"现有服务状态:\n${statusResult}")
+            
+            return true
+        }
+    } catch err {
+        // 服务不存在，这是正常情况
+    }
+    
+    log.Info("✓ 服务不存在，可以安装")
+    return false
+}
+
+// 创建 systemd 服务配置
+createServiceConfig = func() {
+    log.Info("创建 systemd 服务配置...")
+    
+    yakBinary = os.Executable
+    
+    // 构建完整的执行命令
+    execCommand = f"${yakBinary} ${scriptPath}"
+    if scriptArgs != "" {
+        execCommand = f"${execCommand} ${scriptArgs}"
+    }
+    
+    log.Info(f"执行命令: ${execCommand}")
+    log.Info(f"服务类型: ${serviceType}")
+    log.Info(f"运行用户: ${serviceUser}")
+    log.Info(f"运行用户组: ${serviceGroup}")
+    log.Info(f"重启策略: ${restartPolicy}")
+    
+    // 创建服务配置（使用所有可用的配置选项）
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start(execCommand),
+        systemd.service_type(serviceType),
+        systemd.service_user(serviceUser),
+        systemd.service_group(serviceGroup),
+        systemd.service_restart(restartPolicy),
+        systemd.service_restart_sec(5),
+        systemd.service_kill_mode("mixed"),
+        systemd.service_kill_signal("SIGTERM")
+    )
+    
+    log.Info(f"✓ 服务配置文件名: ${fileName}")
+    return fileName, serviceContent
+}
+
+// 安装服务
+installService = func(fileName, serviceContent) {
+    serviceFilePath = file.Join("/etc/systemd/system/", fileName)
+    log.Info(f"安装服务到: ${serviceFilePath}")
+    
+    if dryRun {
+        log.Info("--- DRY RUN 模式，服务配置内容 ---")
+        println(string(serviceContent))
+        log.Info("--- DRY RUN 模式，不会实际安装 ---")
+        return true
+    }
+    
+    try {
+        // 保存服务文件
+        file.Save(serviceFilePath, string(serviceContent))
+        log.Info("✓ 服务文件保存成功")
+        
+        // 重新加载 systemd 配置
+        log.Info("重新加载 systemd 配置...")
+        result = exec.System("systemctl daemon-reload")
+        log.Info("✓ systemd 配置重新加载完成")
+        
+        return true
+    } catch err {
+        log.Error(f"错误: 安装服务失败: ${err}")
+        return false
+    }
+}
+
+// 启动和启用服务
+manageService = func() {
+    if dryRun {
+        log.Info("--- DRY RUN 模式，服务管理命令 ---")
+        if startNow {
+            log.Info(f"systemctl start ${serviceName}")
+        }
+        if enableAutoStart {
+            log.Info(f"systemctl enable ${serviceName}")
+        }
+        log.Info(f"systemctl status ${serviceName}")
+        return true
+    }
+    
+    success = true
+    
+    // 启动服务
+    if startNow {
+        log.Info(f"启动服务: ${serviceName}")
+        try {
+            result = exec.System(f"systemctl start ${serviceName}")
+            log.Info("✓ 服务启动成功")
+        } catch err {
+            log.Error(f"错误: 启动服务失败: ${err}")
+            success = false
+        }
+    }
+    
+    // 启用自启动
+    if enableAutoStart {
+        log.Info(f"启用服务自启动: ${serviceName}")
+        try {
+            result = exec.System(f"systemctl enable ${serviceName}")
+            log.Info("✓ 服务自启动启用成功")
+        } catch err {
+            log.Error(f"错误: 启用服务自启动失败: ${err}")
+            success = false
+        }
+    }
+    
+    // 检查服务状态
+    log.Info("检查服务状态...")
+    try {
+        statusResult = exec.System(f"systemctl status ${serviceName}")
+        log.Info(f"服务状态:\n${statusResult}")
+        
+        // 检查是否运行正常
+        activeResult = exec.System(f"systemctl is-active ${serviceName}")
+        if str.Contains(activeResult, "active") {
+            log.Info("✓ 服务运行正常")
+        } else {
+            log.Warn(f"警告: 服务状态异常: ${activeResult}")
+        }
+        
+    } catch err {
+        log.Error(f"错误: 检查服务状态失败: ${err}")
+        success = false
+    }
+    
+    return success
+}
+
+// 显示管理命令
+showManagementCommands = func() {
+    log.Info("=== 服务管理命令 ===")
+    log.Info("查看服务状态:")
+    log.Info(f"  systemctl status ${serviceName}")
+    log.Info("")
+    log.Info("启动/停止/重启服务:")
+    log.Info(f"  systemctl start ${serviceName}")
+    log.Info(f"  systemctl stop ${serviceName}")
+    log.Info(f"  systemctl restart ${serviceName}")
+    log.Info("")
+    log.Info("启用/禁用自启动:")
+    log.Info(f"  systemctl enable ${serviceName}")
+    log.Info(f"  systemctl disable ${serviceName}")
+    log.Info("")
+    log.Info("查看服务日志:")
+    log.Info(f"  journalctl -u ${serviceName} -f")
+    log.Info(f"  journalctl -u ${serviceName} --since today")
+    log.Info("")
+    log.Info("卸载服务:")
+    log.Info(f"  systemctl stop ${serviceName}")
+    log.Info(f"  systemctl disable ${serviceName}")
+    log.Info(f"  rm /etc/systemd/system/${serviceName}.service")
+    log.Info(f"  systemctl daemon-reload")
+}
+
+// 显示配置摘要
+showConfigSummary = func() {
+    log.Info("=== 配置摘要 ===")
+    log.Info(f"服务名称: ${serviceName}")
+    log.Info(f"脚本路径: ${scriptPath}")
+    log.Info(f"脚本参数: ${scriptArgs}")
+    log.Info(f"服务类型: ${serviceType}")
+    log.Info(f"运行用户: ${serviceUser}")
+    log.Info(f"运行用户组: ${serviceGroup}")
+    log.Info(f"重启策略: ${restartPolicy}")
+    log.Info(f"启用自启动: ${enableAutoStart}")
+    log.Info(f"立即启动: ${startNow}")
+    log.Info(f"DRY RUN 模式: ${dryRun}")
+    log.Info("")
+}
+
+// 主函数
+main = func() {
+    log.Info("Yak 脚本 Systemd 服务安装工具")
+    log.Info("=====================================")
+    
+    // 显示配置摘要
+    showConfigSummary()
+    
+    // 检查系统环境
+    if !checkSystemEnvironment() {
+        log.Error("系统环境检查失败，退出")
+        return
+    }
+    
+    // 验证输入参数
+    if !validateInputs() {
+        log.Error("输入参数验证失败，退出")
+        return
+    }
+    
+    // 检查现有服务
+    serviceExists = checkExistingService()
+    if serviceExists && !dryRun {
+        log.Warn("服务已存在，将覆盖现有配置")
+    }
+    
+    // 创建服务配置
+    fileName, serviceContent = createServiceConfig()
+    
+    // 安装服务
+    if !installService(fileName, serviceContent) {
+        log.Error("服务安装失败，退出")
+        return
+    }
+    
+    // 管理服务
+    if !manageService() {
+        log.Warn("服务管理过程中出现问题，请检查日志")
+    }
+    
+    // 显示管理命令
+    showManagementCommands()
+    
+    if dryRun {
+        log.Info("DRY RUN 模式完成，未实际安装服务")
+    } else {
+        log.Info("✓ 服务安装完成")
+    }
+}
+
+// 执行主函数
+main()

@@ -1,0 +1,427 @@
+/*
+=============================================================================
+Yaklang Systemd 库实践教程
+功能: 演示 systemd 库的各种用法，包括服务创建、配置、管理
+用途: Linux 系统服务管理、自动化部署、服务监控
+
+核心技术栈:
+- systemd.Create: 创建 systemd 服务配置
+- systemd.service_*: 各种服务配置选项
+- exec.System: 执行系统命令管理服务
+- file.Save: 保存服务配置文件
+
+应用场景: 
+- 将 yak 脚本部署为系统服务
+- 实现开机自启动
+- 服务状态监控和管理
+- 批量服务部署
+
+关键词: systemd service daemon autostart linux deployment
+搜索标签: #systemd #service #daemon #linux #deployment
+=============================================================================
+
+使用方法:
+yak systemd-practice.yak
+
+注意事项:
+1. systemd 功能仅在 Linux 系统上可用
+2. 创建和管理系统服务需要 root 权限
+3. 在非 Linux 系统上仅演示配置生成，不执行实际命令
+4. 生产环境使用前请充分测试配置
+
+可用的 systemd 配置选项:
+- systemd.service_exec_start(command) - 设置启动命令（必需）
+- systemd.service_type(type) - 设置服务类型 (simple/oneshot/forking)
+- systemd.service_user(username) - 设置运行用户
+- systemd.service_group(groupname) - 设置运行用户组
+- systemd.service_restart(policy) - 设置重启策略 (always/on-failure/no)
+- systemd.service_restart_sec(seconds) - 设置重启间隔秒数
+- systemd.service_kill_mode(mode) - 设置终止模式 (mixed/control-group/process)
+- systemd.service_kill_signal(signal) - 设置终止信号 (SIGTERM/SIGKILL等)
+=============================================================================
+*/
+
+println("=== Yaklang Systemd 实践教程 ===\n")
+
+// =============================================================================
+// 工具函数: 检查是否为 Linux 系统
+// 功能: 检测当前操作系统类型，systemd 仅在 Linux 上可用
+// 返回: true=Linux系统, false=其他系统
+// =============================================================================
+checkLinuxSystem = func() {
+    osInfo = os.OS
+    if str.ToLower(osInfo) != "linux" {
+        log.Warn("当前系统不是 Linux，systemd 功能仅在 Linux 系统上可用")
+        return false
+    }
+    return true
+}
+
+// =============================================================================
+// 示例1: 创建基本的 systemd 服务
+// 功能: 演示最简单的服务配置，只包含必需的启动命令
+// 技术: systemd.Create() + systemd.service_exec_start()
+// 场景: 简单的后台脚本服务
+// =============================================================================
+createBasicService = func() {
+    log.Info("=== 示例1: 创建基本 systemd 服务 ===")
+    
+    // 服务基本信息
+    serviceName = "yak-demo-service"           // 服务名称，将生成 yak-demo-service.service 文件
+    scriptPath = "/opt/yak-scripts/demo.yak"   // yak 脚本路径
+    yakBinary = "/usr/local/bin/yak"           // yak 可执行文件路径
+    
+    // 创建最基本的服务配置
+    // systemd.Create() 第一个参数是服务名，后续参数是配置选项
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start(f"${yakBinary} ${scriptPath}")  // 设置启动命令
+    )
+    
+    log.Info(f"生成的服务文件名: ${fileName}")
+    log.Info("服务文件内容:")
+    println(string(serviceContent))
+    
+    // 在 Linux 系统上演示文件保存位置
+    if checkLinuxSystem() {
+        serviceFilePath = file.Join("/etc/systemd/system/", fileName)
+        log.Info(f"服务文件将保存到: ${serviceFilePath}")
+        
+        // 注意: 实际保存需要 root 权限
+        // file.Save(serviceFilePath, string(serviceContent))
+        log.Warn("注意: 保存服务文件需要 root 权限")
+    }
+}
+
+// =============================================================================
+// 示例2: 创建完整配置的服务
+// 功能: 演示使用所有可用配置选项的完整服务配置
+// 技术: 使用所有 systemd.service_* 配置选项
+// 场景: 生产环境的 Web 服务或 API 服务
+// =============================================================================
+createAdvancedService = func() {
+    log.Info("=== 示例2: 创建完整配置的服务 ===")
+    
+    serviceName = "yak-web-server"
+    scriptPath = "/opt/yak-scripts/web-server.yak"
+    yakBinary = "/usr/local/bin/yak"
+    commandParams = "--port 8080 --host 0.0.0.0"  // 脚本启动参数
+    
+    // 创建完整配置的服务（使用所有可用选项）
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start(f"${yakBinary} ${scriptPath} ${commandParams}"),
+        systemd.service_type("simple"),        // 服务类型: simple=前台运行
+        systemd.service_user("yak"),           // 运行用户: 建议使用专用用户
+        systemd.service_group("yak"),          // 运行用户组
+        systemd.service_restart("always"),     // 重启策略: always=总是重启
+        systemd.service_restart_sec(5),        // 重启间隔: 5秒后重启
+        systemd.service_kill_mode("mixed"),    // 终止模式: mixed=先SIGTERM再SIGKILL
+        systemd.service_kill_signal("SIGTERM") // 终止信号: 优雅关闭
+    )
+    
+    log.Info(f"生成的服务文件名: ${fileName}")
+    log.Info("完整服务文件内容:")
+    println(string(serviceContent))
+    
+    if checkLinuxSystem() {
+        serviceFilePath = file.Join("/etc/systemd/system/", fileName)
+        log.Info(f"服务文件路径: ${serviceFilePath}")
+    }
+}
+
+// =============================================================================
+// 示例3: 服务管理操作演示
+// 功能: 演示 systemctl 命令的各种用法
+// 技术: exec.System() 执行系统命令
+// 场景: 服务的启动、停止、重启、状态查询等日常管理操作
+// =============================================================================
+demonstrateServiceManagement = func() {
+    log.Info("=== 示例3: 服务管理操作演示 ===")
+    
+    serviceName = "yak-demo-service"
+    
+    if !checkLinuxSystem() {
+        log.Warn("以下命令仅在 Linux 系统上有效:")
+    }
+    
+    // 常用的 systemctl 管理命令
+    commands = [
+        f"systemctl daemon-reload",              // 重新加载 systemd 配置
+        f"systemctl status ${serviceName}",      // 查看服务详细状态
+        f"systemctl start ${serviceName}",       // 启动服务
+        f"systemctl stop ${serviceName}",        // 停止服务
+        f"systemctl restart ${serviceName}",     // 重启服务
+        f"systemctl enable ${serviceName}",      // 启用开机自启动
+        f"systemctl disable ${serviceName}",     // 禁用开机自启动
+        f"journalctl -u ${serviceName} -f"      // 实时查看服务日志
+    ]
+    
+    for cmd in commands {
+        log.Info(f"管理命令: ${cmd}")
+        
+        if checkLinuxSystem() {
+            // 在 Linux 系统上实际执行命令
+            try {
+                result = exec.System(cmd)
+                log.Info(f"执行结果: ${result}")
+            } catch err {
+                log.Error(f"执行失败: ${err}")
+            }
+        }
+    }
+}
+
+// =============================================================================
+// 示例4: 检查服务状态
+// 功能: 演示如何检查服务的运行状态和配置状态
+// 技术: systemctl is-active, is-enabled, status 命令
+// 场景: 服务监控、健康检查、故障排查
+// =============================================================================
+checkServiceStatus = func(serviceName) {
+    log.Info(f"=== 检查服务状态: ${serviceName} ===")
+    
+    if !checkLinuxSystem() {
+        log.Warn("服务状态检查仅在 Linux 系统上可用")
+        return
+    }
+    
+    try {
+        // 检查服务是否已安装
+        result = exec.System(f"systemctl list-unit-files | grep ${serviceName}")
+        if str.Contains(result, serviceName) {
+            log.Info(f"服务 ${serviceName} 已安装")
+            
+            // 获取详细状态信息
+            statusResult = exec.System(f"systemctl status ${serviceName}")
+            log.Info(f"服务状态:\n${statusResult}")
+            
+            // 检查是否启用自启动
+            enableResult = exec.System(f"systemctl is-enabled ${serviceName}")
+            log.Info(f"启用状态: ${enableResult}")
+            
+            // 检查是否正在运行
+            activeResult = exec.System(f"systemctl is-active ${serviceName}")
+            log.Info(f"运行状态: ${activeResult}")
+        } else {
+            log.Warn(f"服务 ${serviceName} 未安装")
+        }
+    } catch err {
+        log.Error(f"检查服务状态失败: ${err}")
+    }
+}
+
+// =============================================================================
+// 示例5: 创建用于测试的简单脚本服务
+// 功能: 动态创建测试脚本并为其生成 systemd 服务配置
+// 技术: file.Save() + systemd.Create() + os.Executable
+// 场景: 快速测试、原型开发、临时服务部署
+// =============================================================================
+createTestScript = func() {
+    log.Info("=== 示例5: 创建测试脚本服务 ===")
+    
+    // 创建一个简单的测试脚本内容
+    testScriptContent = `#!/usr/bin/env yak
+/*
+简单的测试服务脚本
+功能: 定期输出心跳信息，用于测试 systemd 服务
+*/
+
+log.Info("Yak 测试服务启动")
+
+for {
+    log.Info("服务正在运行...")
+    time.Sleep(10 * time.Second)  // 每10秒输出一次
+}
+`
+    
+    testScriptPath = "/tmp/yak-test-service.yak"
+    
+    try {
+        // 保存测试脚本到临时目录
+        file.Save(testScriptPath, testScriptContent)
+        log.Info(f"测试脚本已保存到: ${testScriptPath}")
+        
+        // 在 Linux 系统上设置执行权限
+        if checkLinuxSystem() {
+            exec.System(f"chmod +x ${testScriptPath}")
+        }
+        
+        // 为测试脚本创建 systemd 服务配置
+        serviceName = "yak-test-service"
+        yakBinary = os.Executable()  // 获取当前 yak 可执行文件路径
+        
+        fileName, serviceContent = systemd.Create(
+            serviceName,
+            systemd.service_exec_start(f"${yakBinary} ${testScriptPath}"),
+            systemd.service_type("simple"),
+            systemd.service_user("root"),
+            systemd.service_restart("always"),
+            systemd.service_restart_sec(5)
+        )
+        
+        log.Info("测试服务配置:")
+        println(string(serviceContent))
+        
+    } catch err {
+        log.Error(f"创建测试脚本失败: ${err}")
+    }
+}
+
+// =============================================================================
+// 示例6: 演示不同类型的服务配置
+// 功能: 展示不同应用场景下的服务配置最佳实践
+// 技术: 不同的 service_type, restart 策略组合
+// 场景: Web服务、后台任务、一次性任务等不同类型的服务
+// =============================================================================
+demonstrateServiceTypes = func() {
+    log.Info("=== 示例6: 不同类型的服务配置 ===")
+    
+    // Web 服务配置 - 长期运行的网络服务
+    log.Info("Web 服务配置:")
+    webFileName, webServiceContent = systemd.Create(
+        "yak-web-service",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/web.yak --port 8080"),
+        systemd.service_type("simple"),        // simple: 前台运行，适合大多数服务
+        systemd.service_user("www-data"),      // 使用 web 服务专用用户
+        systemd.service_group("www-data"),
+        systemd.service_restart("always")      // 总是重启，确保服务可用性
+    )
+    println(string(webServiceContent))
+    
+    println("\n" + "-"*50 + "\n")
+    
+    // 后台任务服务配置 - 定期执行的任务
+    log.Info("后台任务服务配置:")
+    taskFileName, taskServiceContent = systemd.Create(
+        "yak-background-task",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/task.yak"),
+        systemd.service_type("simple"),
+        systemd.service_user("yak"),
+        systemd.service_restart("on-failure"),  // 仅在失败时重启
+        systemd.service_restart_sec(10)         // 失败后等待10秒再重启
+    )
+    println(string(taskServiceContent))
+    
+    println("\n" + "-"*50 + "\n")
+    
+    // 一次性服务配置 - 启动时执行一次的任务
+    log.Info("一次性服务配置:")
+    oneshotFileName, oneshotServiceContent = systemd.Create(
+        "yak-oneshot-service",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/setup.yak"),
+        systemd.service_type("oneshot"),        // oneshot: 执行一次后退出
+        systemd.service_user("root"),           // 初始化任务通常需要 root 权限
+        systemd.service_restart("no")           // 不重启，执行完即结束
+    )
+    println(string(oneshotServiceContent))
+}
+
+// =============================================================================
+// 示例7: 服务部署完整流程
+// 功能: 演示从脚本创建到服务部署的完整流程
+// 技术: 完整的 systemd 服务生命周期管理
+// 场景: 生产环境服务部署的标准流程
+// =============================================================================
+demonstrateDeploymentFlow = func() {
+    log.Info("=== 示例7: 服务部署完整流程 ===")
+    
+    serviceName = "yak-production-service"
+    
+    log.Info("步骤1: 创建服务配置")
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start("/usr/local/bin/yak /opt/production/app.yak"),
+        systemd.service_type("simple"),
+        systemd.service_user("app"),
+        systemd.service_group("app"),
+        systemd.service_restart("always"),
+        systemd.service_restart_sec(5)
+    )
+    
+    log.Info("步骤2: 保存服务文件")
+    serviceFilePath = f"/etc/systemd/system/${fileName}"
+    log.Info(f"服务文件路径: ${serviceFilePath}")
+    // file.Save(serviceFilePath, string(serviceContent))  // 需要 root 权限
+    
+    log.Info("步骤3: 重新加载 systemd 配置")
+    reloadCmd = "systemctl daemon-reload"
+    log.Info(f"命令: ${reloadCmd}")
+    
+    log.Info("步骤4: 启动服务")
+    startCmd = f"systemctl start ${serviceName}"
+    log.Info(f"命令: ${startCmd}")
+    
+    log.Info("步骤5: 启用开机自启动")
+    enableCmd = f"systemctl enable ${serviceName}"
+    log.Info(f"命令: ${enableCmd}")
+    
+    log.Info("步骤6: 检查服务状态")
+    statusCmd = f"systemctl status ${serviceName}"
+    log.Info(f"命令: ${statusCmd}")
+    
+    log.Info("步骤7: 查看服务日志")
+    logCmd = f"journalctl -u ${serviceName} -f"
+    log.Info(f"命令: ${logCmd}")
+    
+    log.Info("\n完整的部署脚本示例:")
+    deployScript = f`#!/bin/bash
+# Yak 服务部署脚本
+
+# 创建服务用户
+useradd -r -s /bin/false app
+
+# 复制服务文件
+cp ${fileName} /etc/systemd/system/
+
+# 重新加载配置
+systemctl daemon-reload
+
+# 启动并启用服务
+systemctl start ${serviceName}
+systemctl enable ${serviceName}
+
+# 检查状态
+systemctl status ${serviceName}
+`
+    println(deployScript)
+}
+
+// =============================================================================
+// 主函数: 执行所有示例
+// 功能: 按顺序执行所有示例，展示完整的 systemd 使用教程
+// =============================================================================
+main = func() {
+    log.Info("Yaklang Systemd 实践教程开始")
+    
+    // 显示系统环境信息
+    log.Info(f"当前操作系统: ${os.OS}")
+    log.Info(f"Yak 可执行文件路径: ${os.Executable()}")
+    
+    // 执行各个示例
+    createBasicService()
+    println("\n" + "="*50 + "\n")
+    
+    createAdvancedService()
+    println("\n" + "="*50 + "\n")
+    
+    demonstrateServiceManagement()
+    println("\n" + "="*50 + "\n")
+    
+    checkServiceStatus("yak-demo-service")
+    println("\n" + "="*50 + "\n")
+    
+    createTestScript()
+    println("\n" + "="*50 + "\n")
+    
+    demonstrateServiceTypes()
+    println("\n" + "="*50 + "\n")
+    
+    demonstrateDeploymentFlow()
+    
+    log.Info("Yaklang Systemd 实践教程完成")
+    log.Info("更多高级用法请参考 systemd-advanced.yak")
+}
+
+// 执行主函数
+main()

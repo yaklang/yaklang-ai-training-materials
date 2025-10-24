@@ -1,0 +1,434 @@
+/*
+Yaklang Systemd 高级用法示例
+演示复杂的服务配置和管理场景
+
+功能特性:
+- 多种服务类型配置
+- 批量服务管理
+- 服务状态监控
+- 健康检查机制
+- 服务依赖管理演示
+
+使用方法:
+yak systemd-advanced.yak
+
+注意: 本脚本在非 Linux 系统上仅演示配置生成，不会实际执行系统命令
+*/
+
+println("=== Yaklang Systemd 高级用法演示 ===\n")
+
+// 检查系统环境
+checkEnvironment = func() {
+    osType = os.OS
+    if str.ToLower(osType) != "linux" {
+        log.Warn("当前系统不是 Linux，systemd 功能受限")
+        return false
+    }
+    
+    // 检查是否有 systemctl 命令
+    try {
+        exec.System("which systemctl")
+        return true
+    } catch err {
+        log.Error("系统中未找到 systemctl 命令")
+        return false
+    }
+}
+
+// 创建不同类型的服务配置
+createServiceTypes = func() {
+    log.Info("=== 创建不同类型的服务配置 ===")
+    
+    // Web 服务配置
+    log.Info("1. Web 服务配置:")
+    webFileName, webServiceContent = systemd.Create(
+        "yak-web-service",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/web.yak --port 8080"),
+        systemd.service_type("simple"),
+        systemd.service_user("www-data"),
+        systemd.service_group("www-data"),
+        systemd.service_restart("always"),
+        systemd.service_restart_sec(5)
+    )
+    println(string(webServiceContent))
+    
+    println("\n" + "-"*50 + "\n")
+    
+    // 后台任务服务配置
+    log.Info("2. 后台任务服务配置:")
+    taskFileName, taskServiceContent = systemd.Create(
+        "yak-background-task",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/task.yak"),
+        systemd.service_type("simple"),
+        systemd.service_user("yak"),
+        systemd.service_group("yak"),
+        systemd.service_restart("on-failure"),
+        systemd.service_restart_sec(10),
+        systemd.service_kill_mode("control-group")
+    )
+    println(string(taskServiceContent))
+    
+    println("\n" + "-"*50 + "\n")
+    
+    // 一次性服务配置
+    log.Info("3. 一次性服务配置:")
+    oneshotFileName, oneshotServiceContent = systemd.Create(
+        "yak-oneshot-service",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/setup.yak"),
+        systemd.service_type("oneshot"),
+        systemd.service_user("root"),
+        systemd.service_group("root"),
+        systemd.service_restart("no")
+    )
+    println(string(oneshotServiceContent))
+    
+    println("\n" + "-"*50 + "\n")
+    
+    // 高权限服务配置
+    log.Info("4. 高权限服务配置:")
+    privilegedFileName, privilegedServiceContent = systemd.Create(
+        "yak-privileged-service",
+        systemd.service_exec_start("/usr/local/bin/yak /opt/scripts/privileged.yak"),
+        systemd.service_type("simple"),
+        systemd.service_user("root"),
+        systemd.service_group("root"),
+        systemd.service_restart("always"),
+        systemd.service_restart_sec(3),
+        systemd.service_kill_mode("mixed"),
+        systemd.service_kill_signal("SIGKILL")
+    )
+    println(string(privilegedServiceContent))
+}
+
+// 创建多实例服务模板
+createTemplateService = func() {
+    log.Info("=== 创建多实例服务模板 ===")
+    
+    // 使用 @ 符号创建模板服务
+    serviceName = "yak-worker@"
+    scriptPath = "/opt/yak-scripts/worker.yak"
+    yakBinary = os.Executable
+    
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start(f"${yakBinary} ${scriptPath} --instance %i"),
+        systemd.service_type("simple"),
+        systemd.service_user("yak"),
+        systemd.service_group("yak"),
+        systemd.service_restart("always"),
+        systemd.service_restart_sec(5)
+    )
+    
+    log.Info("多实例服务模板配置:")
+    println(string(serviceContent))
+    
+    // 演示如何启动多个实例
+    log.Info("启动多个实例的命令:")
+    for i = 1; i <= 3; i++ {
+        log.Info(f"systemctl start yak-worker@${i}")
+        log.Info(f"systemctl enable yak-worker@${i}")
+    }
+    
+    return fileName, serviceContent
+}
+
+// 批量管理服务
+batchManageServices = func(serviceNames) {
+    log.Info("=== 批量管理服务 ===")
+    
+    if !checkEnvironment() {
+        log.Warn("批量管理功能仅在 Linux 系统上可用")
+        log.Info("以下为演示命令:")
+    }
+    
+    // 重新加载 systemd
+    log.Info("重新加载 systemd 配置...")
+    reloadCmd = "systemctl daemon-reload"
+    log.Info(f"命令: ${reloadCmd}")
+    
+    if checkEnvironment() {
+        try {
+            exec.System(reloadCmd)
+            log.Info("systemd 配置重新加载完成")
+        } catch err {
+            log.Error(f"重新加载 systemd 配置失败: ${err}")
+        }
+    }
+    
+    // 按顺序启动服务
+    log.Info("按顺序启动服务...")
+    for serviceName in serviceNames {
+        log.Info(f"启动服务: ${serviceName}")
+        
+        startCmd = f"systemctl start ${serviceName}"
+        enableCmd = f"systemctl enable ${serviceName}"
+        statusCmd = f"systemctl is-active ${serviceName}"
+        
+        log.Info(f"命令: ${startCmd}")
+        log.Info(f"命令: ${enableCmd}")
+        log.Info(f"命令: ${statusCmd}")
+        
+        if checkEnvironment() {
+            try {
+                // 启动服务
+                startResult = exec.System(startCmd)
+                log.Info(f"启动结果: ${startResult}")
+                
+                // 启用自启动
+                enableResult = exec.System(enableCmd)
+                log.Info(f"启用结果: ${enableResult}")
+                
+                // 检查状态
+                statusResult = exec.System(statusCmd)
+                log.Info(f"服务状态: ${statusResult}")
+                
+            } catch err {
+                log.Error(f"管理服务 ${serviceName} 失败: ${err}")
+            }
+            
+            // 等待服务启动
+            time.Sleep(2 * time.Second)
+        }
+    }
+}
+
+// 监控服务状态
+monitorServices = func(serviceNames) {
+    log.Info("=== 监控服务状态 ===")
+    
+    if !checkEnvironment() {
+        log.Warn("服务监控功能仅在 Linux 系统上可用")
+        log.Info("以下为演示命令:")
+    }
+    
+    for serviceName in serviceNames {
+        log.Info(f"检查服务: ${serviceName}")
+        
+        statusCmd = f"systemctl status ${serviceName} --no-pager -l"
+        activeCmd = f"systemctl is-active ${serviceName}"
+        enabledCmd = f"systemctl is-enabled ${serviceName}"
+        
+        log.Info(f"状态命令: ${statusCmd}")
+        log.Info(f"运行状态命令: ${activeCmd}")
+        log.Info(f"启用状态命令: ${enabledCmd}")
+        
+        if checkEnvironment() {
+            try {
+                // 获取服务状态
+                statusResult = exec.System(statusCmd)
+                
+                // 解析状态信息
+                if str.Contains(statusResult, "Active: active (running)") {
+                    log.Info(f"✓ 服务 ${serviceName} 正在运行")
+                } else if str.Contains(statusResult, "Active: inactive") {
+                    log.Warn(f"⚠ 服务 ${serviceName} 未运行")
+                } else if str.Contains(statusResult, "Active: failed") {
+                    log.Error(f"✗ 服务 ${serviceName} 运行失败")
+                    
+                    // 获取失败日志
+                    logCmd = f"journalctl -u ${serviceName} --no-pager -n 10"
+                    log.Info(f"日志命令: ${logCmd}")
+                    try {
+                        logResult = exec.System(logCmd)
+                        log.Error(f"失败日志:\n${logResult}")
+                    } catch err {
+                        log.Error(f"获取日志失败: ${err}")
+                    }
+                }
+                
+                // 获取资源使用情况
+                try {
+                    memoryCmd = f"systemctl show ${serviceName} --property=MemoryCurrent --value"
+                    memoryResult = exec.System(memoryCmd)
+                    if memoryResult != "" && memoryResult != "[not set]" {
+                        memoryMB = int(memoryResult) / 1024 / 1024
+                        log.Info(f"内存使用: ${memoryMB} MB")
+                    }
+                } catch err {
+                    // 忽略资源使用情况获取失败
+                }
+                
+            } catch err {
+                log.Error(f"检查服务 ${serviceName} 状态失败: ${err}")
+            }
+        }
+        
+        println("---")
+    }
+}
+
+// 创建服务健康检查脚本
+createHealthCheckService = func() {
+    log.Info("=== 创建服务健康检查 ===")
+    
+    // 健康检查脚本内容
+    healthCheckScript = `#!/usr/bin/env yak
+/*
+服务健康检查脚本
+功能: 定期检查指定服务的运行状态，异常时自动重启
+*/
+
+// 检查单个服务
+checkService = func(serviceName, healthUrl) {
+    log.Info(f"检查服务: ${serviceName}")
+    
+    try {
+        // 检查 HTTP 健康端点（如果提供）
+        if healthUrl != "" {
+            resp, err = http.Get(healthUrl, http.timeout(5))
+            if err != nil {
+                log.Error(f"健康检查失败: ${err}")
+                return false
+            }
+            
+            if resp.StatusCode == 200 {
+                log.Info(f"服务 ${serviceName} 健康检查通过")
+                return true
+            } else {
+                log.Warn(f"服务 ${serviceName} 健康检查返回状态码: ${resp.StatusCode}")
+                return false
+            }
+        }
+        
+        // 检查服务进程状态
+        result = exec.System(f"systemctl is-active ${serviceName}")
+        if str.Contains(result, "active") {
+            log.Info(f"服务 ${serviceName} 进程正常")
+            return true
+        } else {
+            log.Error(f"服务 ${serviceName} 进程异常: ${result}")
+            return false
+        }
+        
+    } catch err {
+        log.Error(f"健康检查异常: ${err}")
+        return false
+    }
+}
+
+// 主循环
+for {
+    services = [
+        {"name": "yak-web-service", "health_url": "http://localhost:8080/health"},
+        {"name": "yak-background-task", "health_url": ""},
+        {"name": "yak-privileged-service", "health_url": ""}
+    ]
+    
+    for service in services {
+        healthy = checkService(service["name"], service["health_url"])
+        if !healthy {
+            log.Error(f"服务 ${service['name']} 不健康，尝试重启")
+            try {
+                exec.System(f"systemctl restart ${service['name']}")
+                log.Info(f"服务 ${service['name']} 重启完成")
+            } catch err {
+                log.Error(f"重启服务 ${service['name']} 失败: ${err}")
+            }
+        }
+    }
+    
+    // 等待 30 秒后再次检查
+    time.Sleep(30 * time.Second)
+}
+`
+    
+    healthCheckPath = "/tmp/yak-health-check.yak"
+    file.Save(healthCheckPath, healthCheckScript)
+    log.Info(f"健康检查脚本已保存到: ${healthCheckPath}")
+    
+    // 创建健康检查服务
+    serviceName = "yak-health-check"
+    yakBinary = os.Executable
+    
+    fileName, serviceContent = systemd.Create(
+        serviceName,
+        systemd.service_exec_start(f"${yakBinary} ${healthCheckPath}"),
+        systemd.service_type("simple"),
+        systemd.service_user("root"),
+        systemd.service_group("root"),
+        systemd.service_restart("always"),
+        systemd.service_restart_sec(10)
+    )
+    
+    log.Info("健康检查服务配置:")
+    println(string(serviceContent))
+    
+    return fileName, serviceContent
+}
+
+// 演示服务依赖关系管理
+demonstrateServiceDependencies = func() {
+    log.Info("=== 服务依赖关系管理演示 ===")
+    
+    log.Info("在实际的 systemd 配置中，可以通过以下方式管理服务依赖:")
+    log.Info("1. After= 指令: 指定服务启动顺序")
+    log.Info("2. Requires= 指令: 指定强依赖关系")
+    log.Info("3. Wants= 指令: 指定弱依赖关系")
+    log.Info("4. WantedBy= 指令: 指定被哪些目标需要")
+    
+    log.Info("\n注意: 当前 yaklang systemd 库不直接支持这些指令")
+    log.Info("但可以通过手动编辑生成的 .service 文件来添加这些配置")
+    
+    // 演示如何在生成的配置基础上添加依赖关系
+    log.Info("\n示例: 为 Web 服务添加数据库依赖")
+    
+    baseService = `[Unit]
+Description=service[yak-web-service] is generated by yaklang
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+ExecStart=/usr/local/bin/yak /opt/scripts/web.yak --port 8080
+Restart=always
+RestartSec=5
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target`
+    
+    log.Info("修改后的服务配置:")
+    println(baseService)
+}
+
+// 主函数
+main = func() {
+    log.Info("Yaklang Systemd 高级用法演示开始")
+    
+    // 检查环境
+    isLinux = checkEnvironment()
+    log.Info(f"Linux 环境: ${isLinux}")
+    
+    // 创建不同类型的服务配置
+    createServiceTypes()
+    println("\n" + "="*60 + "\n")
+    
+    // 创建多实例服务模板
+    createTemplateService()
+    println("\n" + "="*60 + "\n")
+    
+    // 演示批量管理服务
+    serviceNames = ["yak-web-service", "yak-background-task", "yak-oneshot-service"]
+    batchManageServices(serviceNames)
+    println("\n" + "="*60 + "\n")
+    
+    // 监控服务状态
+    monitorServices(serviceNames)
+    println("\n" + "="*60 + "\n")
+    
+    // 创建健康检查服务
+    createHealthCheckService()
+    println("\n" + "="*60 + "\n")
+    
+    // 演示服务依赖关系管理
+    demonstrateServiceDependencies()
+    
+    log.Info("Yaklang Systemd 高级用法演示完成")
+    log.Info("请根据实际需求调整配置参数")
+}
+
+// 执行主函数
+main()
