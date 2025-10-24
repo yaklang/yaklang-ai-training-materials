@@ -96,7 +96,7 @@ validateInputs = func() {
     log.Info(f"✓ 脚本路径: ${absScriptPath}")
     
     // 检查 yak 二进制文件
-    yakBinary = os.Executable
+    yakBinary = os.Executable()
     if yakBinary == "" {
         log.Error("错误: 无法获取 yak 可执行文件路径")
         return false
