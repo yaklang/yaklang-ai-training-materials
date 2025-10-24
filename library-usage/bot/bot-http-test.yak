@@ -1,0 +1,255 @@
+/*
+Bot HTTP 直接测试脚本
+
+本脚本直接使用 HTTP 请求测试各种 bot 平台的通知功能，绕过可能存在问题的封装库。
+适用于调试和验证 bot webhook 的基本功能。
+
+功能特性：
+- 直接 HTTP 调用，无中间层封装
+- 支持飞书、钉钉、企业微信的标准消息格式
+- 提供详细的响应信息用于调试
+- 支持文本和富文本消息测试
+
+使用方法：
+1. 飞书测试:
+   yak bot-http-test.yak --webhook "https://open.feishu.cn/..." --platform feishu
+
+2. 钉钉测试:
+   yak bot-http-test.yak --webhook "https://oapi.dingtalk.com/..." --platform dingtalk
+
+3. 企业微信测试:
+   yak bot-http-test.yak --webhook "https://qyapi.weixin.qq.com/..." --platform workwx
+
+4. 从环境变量测试:
+   export YAKIT_FEISHU_WEBHOOK="https://..."
+   yak bot-http-test.yak --from-env --platform feishu
+
+支持的平台：
+- feishu: 飞书/Lark
+- dingtalk: 钉钉  
+- workwx: 企业微信
+
+消息类型：
+- text: 纯文本消息
+- markdown: Markdown 格式消息（钉钉、企业微信）
+- rich: 富文本消息（飞书）
+
+*/
+
+// ============================================
+// 参数解析
+// ============================================
+
+webhook = cli.String("webhook", cli.setDefault(""), cli.setHelp("Bot webhook URL"))
+platform = cli.String("platform", cli.setDefault("feishu"), cli.setHelp("Platform: feishu|dingtalk|workwx"))
+fromEnv = cli.Bool("from-env", cli.setDefault(false), cli.setHelp("Use environment variables"))
+messageType = cli.String("type", cli.setDefault("text"), cli.setHelp("Message type: text|markdown|rich"))
+
+cli.check()
+
+// ============================================
+// 辅助函数
+// ============================================
+
+// 从环境变量获取 webhook
+getWebhookFromEnv = func(platform) {
+    switch platform {
+        case "feishu":
+            return os.Getenv("YAKIT_FEISHU_WEBHOOK")
+        case "dingtalk":
+            return os.Getenv("YAKIT_DINGTALK_WEBHOOK")
+        case "workwx":
+            return os.Getenv("YAKIT_WORKWX_WEBHOOK")
+        default:
+            return ""
+    }
+}
+
+// 发送 HTTP 请求
+sendHttpMessage = func(webhook, body) {
+    log.Info(f"Sending to: ${webhook}")
+    log.Info(f"Request body: ${body}")
+    
+    rsp, err = http.Post(webhook, 
+        http.body(body), 
+        http.header("Content-Type", "application/json"))
+    
+    if err != nil {
+        log.Error(f"HTTP request failed: ${err}")
+        return false
+    }
+    
+    log.Info("Response:")
+    responseBody = string(rsp.Raw())
+    println(responseBody)
+    
+    // 检查响应状态
+    if str.Contains(responseBody, "200 OK") {
+        if str.Contains(responseBody, `"code":0`) || str.Contains(responseBody, `"StatusCode":0`) {
+            log.Info("✅ Message sent successfully")
+            return true
+        }
+    }
+    
+    log.Warn("⚠️ Response may indicate an error")
+    return false
+}
+
+// 生成飞书消息
+generateFeishuMessage = func(msgType) {
+    currentTime = time.Now().Format("2006-01-02 15:04:05")
+    
+    if msgType == "text" {
+        return sprintf(`{
+  "msg_type": "text",
+  "content": {
+    "text": "🎉 Yaklang Bot HTTP 测试\n\n✅ 平台: 飞书\n📝 消息类型: 文本\n⏰ 时间: %s\n\n这是通过 HTTP 直接发送的测试消息。"
+  }
+}`, currentTime)
+    } else if msgType == "rich" {
+        return sprintf(`{
+  "msg_type": "post",
+  "content": {
+    "post": {
+      "zh_cn": {
+        "title": "Yaklang Bot 测试报告",
+        "content": [
+          [
+            {
+              "tag": "text",
+              "text": "🎉 测试状态: "
+            },
+            {
+              "tag": "text", 
+              "text": "成功",
+              "style": ["bold"]
+            }
+          ],
+          [
+            {
+              "tag": "text",
+              "text": "📊 测试信息:\\n• 平台: 飞书\\n• 类型: 富文本\\n• 方法: HTTP 直接调用"
+            }
+          ],
+          [
+            {
+              "tag": "text",
+              "text": "⏰ 测试时间: %s"
+            }
+          ]
+        ]
+      }
+    }
+  }
+}`, currentTime)
+    }
+    return ""
+}
+
+// 生成钉钉消息
+generateDingtalkMessage = func(msgType) {
+    currentTime = time.Now().Format("2006-01-02 15:04:05")
+    
+    if msgType == "text" {
+        return sprintf(`{
+  "msgtype": "text",
+  "text": {
+    "content": "🎉 Yaklang Bot HTTP 测试\\n\\n✅ 平台: 钉钉\\n📝 消息类型: 文本\\n⏰ 时间: %s\\n\\n这是通过 HTTP 直接发送的测试消息。"
+  }
+}`, currentTime)
+    } else if msgType == "markdown" {
+        return sprintf(`{
+  "msgtype": "markdown",
+  "markdown": {
+    "title": "Yaklang Bot 测试",
+    "text": "# Yaklang Bot 测试报告\\n\\n## 测试信息\\n\\n- **平台**: 钉钉\\n- **类型**: Markdown\\n- **方法**: HTTP 直接调用\\n- **时间**: %s\\n\\n---\\n\\n✅ **测试成功！**"
+  }
+}`, currentTime)
+    }
+    return ""
+}
+
+// 生成企业微信消息
+generateWorkwxMessage = func(msgType) {
+    currentTime = time.Now().Format("2006-01-02 15:04:05")
+    
+    if msgType == "text" {
+        return sprintf(`{
+  "msgtype": "text",
+  "text": {
+    "content": "🎉 Yaklang Bot HTTP 测试\\n\\n✅ 平台: 企业微信\\n📝 消息类型: 文本\\n⏰ 时间: %s\\n\\n这是通过 HTTP 直接发送的测试消息。"
+  }
+}`, currentTime)
+    } else if msgType == "markdown" {
+        return sprintf(`{
+  "msgtype": "markdown",
+  "markdown": {
+    "content": "# Yaklang Bot 测试报告\\n\\n## 测试信息\\n\\n- **平台**: 企业微信\\n- **类型**: Markdown\\n- **方法**: HTTP 直接调用\\n- **时间**: %s\\n\\n---\\n\\n✅ **测试成功！**"
+  }
+}`, currentTime)
+    }
+    return ""
+}
+
+// ============================================
+// 主程序
+// ============================================
+
+main = func() {
+    log.Info("=== Bot HTTP Direct Test ===")
+    log.Info(f"Platform: ${platform}")
+    log.Info(f"Message Type: ${messageType}")
+    println("")
+    
+    // 获取 webhook URL
+    targetWebhook = webhook
+    if fromEnv {
+        targetWebhook = getWebhookFromEnv(platform)
+        if targetWebhook == "" {
+            log.Error(f"No webhook found in environment for platform: ${platform}")
+            log.Info("Please set one of:")
+            log.Info("  YAKIT_FEISHU_WEBHOOK")
+            log.Info("  YAKIT_DINGTALK_WEBHOOK") 
+            log.Info("  YAKIT_WORKWX_WEBHOOK")
+            die("No webhook configured")
+        }
+        log.Info(f"Using webhook from environment: ${targetWebhook}")
+    } else if targetWebhook == "" {
+        log.Error("Please provide --webhook or use --from-env")
+        die("No webhook specified")
+    }
+    
+    // 生成消息体
+    var messageBody
+    switch platform {
+        case "feishu":
+            messageBody = generateFeishuMessage(messageType)
+        case "dingtalk":
+            messageBody = generateDingtalkMessage(messageType)
+        case "workwx":
+            messageBody = generateWorkwxMessage(messageType)
+        default:
+            log.Error(f"Unsupported platform: ${platform}")
+            die("Invalid platform")
+    }
+    
+    if messageBody == "" {
+        log.Error(f"Unsupported message type '${messageType}' for platform '${platform}'")
+        die("Invalid message type")
+    }
+    
+    // 发送消息
+    log.Info(f"Sending ${messageType} message to ${platform}...")
+    success = sendHttpMessage(targetWebhook, messageBody)
+    
+    println("")
+    if success {
+        log.Info("🎉 Test completed successfully!")
+        log.Info("Please check your bot channel to verify the message was received.")
+    } else {
+        log.Warn("⚠️ Test completed with warnings. Please check the response above.")
+    }
+}
+
+// 执行主程序
+main()

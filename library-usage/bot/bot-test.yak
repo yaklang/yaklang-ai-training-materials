@@ -1,0 +1,123 @@
+/*
+Bot 通知功能测试脚本
+
+本脚本用于测试 Yaklang 的 bot 通知功能，支持钉钉、企业微信、飞书等平台。
+
+功能特性：
+- 支持多种 bot 平台（飞书、钉钉、企业微信）
+- 支持文本和 Markdown 消息格式
+- 支持环境变量和直接 webhook 配置
+- 提供完整的错误处理和状态反馈
+
+使用方法：
+1. 使用 webhook 测试:
+   yak bot-test.yak --webhook "https://open.feishu.cn/..."
+
+2. 使用环境变量（推荐）:
+   export YAKIT_FEISHU_WEBHOOK="https://open.feishu.cn/..."
+   yak bot-test.yak --from-env
+
+3. 指定测试模式:
+   yak bot-test.yak --from-env --mode text    # 只测试文本消息
+   yak bot-test.yak --from-env --mode markdown # 只测试 Markdown 消息
+   yak bot-test.yak --from-env --mode all     # 测试所有功能（默认）
+
+环境变量配置：
+- YAKIT_FEISHU_WEBHOOK: 飞书机器人 webhook URL
+- YAKIT_DINGTALK_WEBHOOK: 钉钉机器人 webhook URL  
+- YAKIT_DINGTALK_SECRET: 钉钉机器人密钥
+- YAKIT_WORKWX_WEBHOOK: 企业微信机器人 webhook URL
+
+注意事项：
+- 确保机器人已正确配置并添加到对应群组
+- 飞书机器人需要在群组中有发送消息权限
+- 钉钉机器人如果启用了加签验证，需要设置 SECRET
+- 测试消息会实际发送到配置的群组中
+
+*/
+
+// 参数解析
+webhook = cli.String("webhook", cli.setDefault(""), cli.setHelp("Bot webhook URL"))
+fromEnv = cli.Bool("from-env", cli.setDefault(false), cli.setHelp("Use environment variables"))
+testMode = cli.String("mode", cli.setDefault("all"), cli.setHelp("Test mode: text|markdown|all"))
+
+cli.check()
+
+log.Info("=== Bot Notification Test ===")
+println("")
+
+// 创建 bot 客户端
+var botClient
+
+if fromEnv {
+    log.Info("Creating bot client from environment variables...")
+    botClient = bot.FromEnv()
+    if botClient == nil || len(botClient.Configs()) == 0 {
+        log.Error("No bot configuration found in environment")
+        log.Info("Please set one of:")
+        log.Info("  YAKIT_FEISHU_WEBHOOK=https://...")
+        log.Info("  YAKIT_DINGTALK_WEBHOOK=https://...")
+        log.Info("  YAKIT_WORKWX_WEBHOOK=https://...")
+        die("No bot configured")
+    }
+    log.Info(f"✓ Found ${len(botClient.Configs())} bot configuration(s)")
+} else if webhook != "" {
+    log.Info(f"Creating bot client with webhook: ${webhook}")
+    botClient = bot.New(bot.webhook(webhook))
+    if len(botClient.Configs()) == 0 {
+        die("Failed to create bot client")
+    }
+    log.Info("✓ Bot client created")
+} else {
+    log.Error("Please provide --webhook or use --from-env")
+    die("No bot configuration")
+}
+
+println("")
+
+// 测试文本消息
+if testMode == "text" || testMode == "all" {
+    log.Info("Test 1: Sending text message...")
+    botClient.SendText("🎉 Yaklang Bot Test - Text Message\n\nThis is a test message from Yaklang bot module.")
+    log.Info("✓ Text message sent")
+    println("")
+    
+    sleep(2)
+}
+
+// 测试 Markdown 消息
+if testMode == "markdown" || testMode == "all" {
+    log.Info("Test 2: Sending markdown message...")
+    
+    currentTime = time.Now().Format("2006-01-02 15:04:05")
+    
+    markdown = sprintf(`# Yaklang Bot 测试
+
+## 功能验证
+
+- ✅ 文本消息发送
+- ✅ Markdown 格式支持  
+- ✅ 多行内容支持
+
+### 系统信息
+
+**时间**: %s
+
+**测试项目**:
+1. 基础文本通知
+2. Markdown 格式
+3. 表情符号支持
+
+---
+
+*Powered by Yaklang* 🚀
+`, currentTime)
+    
+    botClient.SendMarkdown(markdown)
+    log.Info("✓ Markdown message sent")
+    println("")
+}
+
+log.Info("=== All Tests Completed ===")
+log.Info("Please check your bot notification channel to verify the messages")
+

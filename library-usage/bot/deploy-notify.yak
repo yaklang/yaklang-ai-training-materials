@@ -1,0 +1,176 @@
+/*
+# 部署通知脚本
+
+用于 CI/CD 流程中发送部署状态通知到飞书/钉钉/企业微信。
+
+## 使用方法
+
+```bash
+# 成功部署通知
+yak deploy-notify.yak --service my-app --status success --version v1.0.0
+
+# 失败部署通知  
+yak deploy-notify.yak --service my-app --status failed --error "Port 8080 already in use"
+
+# 指定主机
+yak deploy-notify.yak --service my-app --status success --host production.example.com
+```
+
+## 环境变量
+
+需要设置以下环境变量之一：
+- YAKIT_FEISHU_WEBHOOK
+- YAKIT_DINGTALK_WEBHOOK  
+- YAKIT_WORKWX_WEBHOOK
+
+*/
+
+// ============================================
+// 参数解析
+// ============================================
+
+serviceName = cli.String("service", cli.setRequired(true), cli.setHelp("Service name"))
+status = cli.String("status", cli.setRequired(true), cli.setHelp("Deployment status: success/failed"))
+version = cli.String("version", cli.setDefault("unknown"), cli.setHelp("Service version"))
+host = cli.String("host", cli.setDefault("localhost"), cli.setHelp("Target host"))
+port = cli.Int("port", cli.setDefault(8080), cli.setHelp("Service port"))
+errorMsg = cli.String("error", cli.setDefault(""), cli.setHelp("Error message for failed deployments"))
+environment = cli.String("env", cli.setDefault("production"), cli.setHelp("Environment: dev/staging/production"))
+
+cli.check()
+
+// ============================================
+// 辅助函数
+// ============================================
+
+getCurrentTime = func() {
+    return time.Now().Format("2006-01-02 15:04:05")
+}
+
+getStatusIcon = func(status) {
+    if status == "success" {
+        return "✅"
+    } else {
+        return "❌"
+    }
+}
+
+getEnvironmentIcon = func(env) {
+    switch env {
+        case "production":
+            return "🚀"
+        case "staging":
+            return "🧪"
+        case "dev":
+            return "🔧"
+        default:
+            return "📦"
+    }
+}
+
+// ============================================
+// 主程序
+// ============================================
+
+main = func() {
+    log.Info("=== Deployment Notification ===")
+    
+    // 创建通知客户端
+    client = bot.FromEnv()
+    if client == nil || len(client.Configs()) == 0 {
+        log.Error("No bot configuration found")
+        log.Info("Please set one of the following environment variables:")
+        log.Info("  YAKIT_FEISHU_WEBHOOK=https://...")
+        log.Info("  YAKIT_DINGTALK_WEBHOOK=https://...")
+        log.Info("  YAKIT_WORKWX_WEBHOOK=https://...")
+        die("No bot configured")
+    }
+    
+    log.Info(f"Found ${len(client.Configs())} bot configuration(s)")
+    
+    // 生成通知消息
+    statusIcon = getStatusIcon(status)
+    envIcon = getEnvironmentIcon(environment)
+    currentTime = getCurrentTime()
+    
+    if status == "success" {
+        // 成功部署通知
+        markdown = sprintf(`%s 部署成功
+
+## %s 服务信息
+- **服务名**: %s
+- **版本**: %s
+- **环境**: %s %s
+- **主机**: %s
+- **端口**: %d
+- **时间**: %s
+
+### 🔗 快速链接
+- [健康检查](http://%s:%d/health)
+- [服务状态](http://%s:%d/status)
+- [API 文档](http://%s:%d/docs)
+
+### 📊 监控面板
+- [Grafana Dashboard](http://%s:3000)
+- [日志查看](http://%s:5601)
+
+---
+🎉 **部署完成，服务正常运行！**
+
+*部署时间: %s*
+`, statusIcon, envIcon, serviceName, version, environment, envIcon, host, port, currentTime, 
+   host, port, host, port, host, port, host, host, currentTime)
+        
+        client.SendMarkdown(markdown)
+        log.Info("✓ Success notification sent")
+        
+    } else {
+        // 失败部署通知
+        errorDetails = errorMsg
+        if errorDetails == "" {
+            errorDetails = "未知错误，请检查部署日志"
+        }
+        
+        markdown = sprintf(`%s 部署失败
+
+## %s 服务信息
+- **服务名**: %s
+- **版本**: %s
+- **环境**: %s %s
+- **主机**: %s
+- **时间**: %s
+
+### ❌ 错误信息
+%s
+
+### 🔧 处理建议
+1. **检查服务日志**: journalctl -u %s -f
+2. **验证配置文件**: 检查环境变量和依赖服务
+3. **端口检查**: netstat -tulpn | grep %d
+4. **资源检查**: df -h && free -h
+5. **回滚操作**: systemctl stop %s && systemctl start %s
+
+---
+⚠️ **请及时处理部署问题！**
+
+*失败时间: %s*
+`, statusIcon, envIcon, serviceName, version, environment, envIcon, host, currentTime,
+   errorDetails, serviceName, port, serviceName, serviceName, currentTime)
+        
+        client.SendMarkdown(markdown)
+        log.Error("✗ Failure notification sent")
+    }
+    
+    // 发送简单文本通知（备用）
+    simpleMessage = sprintf("%s [%s] %s 部署%s - %s (%s)", 
+        statusIcon, environment, serviceName, 
+        status == "success" ? "成功" : "失败", 
+        version, currentTime)
+    
+    client.SendText(simpleMessage)
+    
+    log.Info("=== Notification Complete ===")
+}
+
+// 执行主程序
+main()
