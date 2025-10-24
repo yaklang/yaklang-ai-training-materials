@@ -1,0 +1,278 @@
+/*
+# SSH 客户端基础测试
+
+本脚本演示如何使用 Yaklang 的 ssh 库进行基本操作。
+
+## 使用方法
+
+```bash
+yak ssh-basic-test.yak --host embedding.netutils.cc
+```
+
+使用密码连接：
+```bash
+yak ssh-basic-test.yak --host example.com --password yourpassword
+```
+
+指定私钥：
+```bash
+yak ssh-basic-test.yak --host example.com --private-key ~/.ssh/id_ed25519
+```
+
+## 功能测试
+
+1. 基础连接测试
+2. 执行简单命令
+3. 获取系统信息
+4. 执行脚本内容
+
+*/
+
+// ============================================
+// 参数解析
+// ============================================
+
+host = cli.String("host", cli.setRequired(true), cli.setHelp("SSH host address"))
+user = cli.String("user", cli.setDefault("root"), cli.setHelp("SSH username"))
+password = cli.String("password", cli.setDefault(""), cli.setHelp("SSH password"))
+privateKey = cli.String("private-key", cli.setDefault(""), cli.setHelp("Path to private key"))
+
+cli.check()
+
+// ============================================
+// 辅助函数
+// ============================================
+
+printSeparator = func(title) {
+    log.Info("═══════════════════════════════════════════════════════════════")
+    if title != "" {
+        log.Info(f"  ${title}")
+        log.Info("═══════════════════════════════════════════════════════════════")
+    }
+}
+
+printSuccess = func(msg) {
+    log.Info(f"✓ ${msg}")
+}
+
+printError = func(msg) {
+    log.Error(f"✗ ${msg}")
+}
+
+// ============================================
+// 主程序
+// ============================================
+
+main = func() {
+    printSeparator("SSH Client Basic Test")
+    
+    log.Info(f"Connecting to ${host} as user '${user}'...")
+    
+    // 显示安全警告
+    if user == "root" {
+        log.Warn("⚠️  WARNING: Connecting as root user. Please be careful!")
+    }
+    
+    // 建立连接
+    var client
+    var err
+    
+    if password != "" {
+        // 使用密码认证
+        log.Info("Using password authentication")
+        client, err = ssh.Connect(host, ssh.username(user), ssh.password(password))
+    } else if privateKey != "" {
+        // 使用指定私钥
+        log.Info(f"Using private key: ${privateKey}")
+        client, err = ssh.Connect(host, ssh.username(user), ssh.privateKey(privateKey))
+    } else {
+        // 尝试默认私钥
+        homeDir = os.GetHomeDir()
+        defaultKey = file.Join(homeDir, ".ssh", "id_rsa")
+        
+        if file.IsExisted(defaultKey) {
+            log.Info(f"Using default private key: ${defaultKey}")
+            client, err = ssh.Connect(host, ssh.username(user), ssh.privateKey(defaultKey))
+        } else {
+            die("No password or private key provided, and default key not found")
+        }
+    }
+    
+    if err != nil {
+        die(f"Failed to connect: ${err}")
+    }
+    defer client.Close()
+    
+    printSuccess("SSH connection established")
+    println("")
+    
+    // ============================================
+    // 测试 1: 执行简单命令
+    // ============================================
+    
+    printSeparator("Test 1: Execute Simple Commands")
+    
+    log.Info("Running: whoami")
+    result, err = client.Run("whoami")
+    if err != nil {
+        printError(f"Command failed: ${err}")
+    } else {
+        println(f"Current user: ${result}")
+    }
+    println("")
+    
+    log.Info("Running: hostname")
+    result, err = client.Run("hostname")
+    if err != nil {
+        printError(f"Command failed: ${err}")
+    } else {
+        println(f"Hostname: ${result}")
+    }
+    println("")
+    
+    log.Info("Running: pwd")
+    result, err = client.Run("pwd")
+    if err != nil {
+        printError(f"Command failed: ${err}")
+    } else {
+        println(f"Current directory: ${result}")
+    }
+    println("")
+    
+    log.Info("Running: date")
+    result, err = client.Run("date")
+    if err != nil {
+        printError(f"Command failed: ${err}")
+    } else {
+        println(f"Server time: ${result}")
+    }
+    println("")
+    
+    printSuccess("Simple commands test completed")
+    println("")
+    
+    // ============================================
+    // 测试 2: 系统信息收集
+    // ============================================
+    
+    printSeparator("Test 2: System Information")
+    
+    log.Info("Getting OS information...")
+    result, err = client.Run("uname -a")
+    if err == nil {
+        println(f"OS Info: ${result}")
+    }
+    println("")
+    
+    log.Info("Getting uptime...")
+    result, err = client.Run("uptime")
+    if err == nil {
+        println(f"Uptime: ${result}")
+    }
+    println("")
+    
+    log.Info("Getting disk usage...")
+    result, err = client.Run("df -h | head -5")
+    if err == nil {
+        println("Disk Usage:")
+        println(result)
+    }
+    println("")
+    
+    log.Info("Getting memory usage...")
+    result, err = client.Run("free -h")
+    if err == nil {
+        println("Memory Usage:")
+        println(result)
+    }
+    println("")
+    
+    printSuccess("System information collection completed")
+    println("")
+    
+    // ============================================
+    // 测试 3: 执行 Bash 脚本
+    // ============================================
+    
+    printSeparator("Test 3: Execute Bash Script")
+    
+    script = `#!/bin/bash
+echo "=== Script Execution Test ==="
+echo "Hostname: $(hostname)"
+echo "Date: $(date)"
+echo "User: $(whoami)"
+echo "Directory: $(pwd)"
+echo "CPU cores: $(nproc)"
+echo "=== Script Completed ==="
+`
+    
+    log.Info("Executing bash script...")
+    result, err = client.RunScript(script)
+    if err != nil {
+        printError(f"Script execution failed: ${err}")
+    } else {
+        println(result)
+    }
+    println("")
+    
+    printSuccess("Bash script execution completed")
+    println("")
+    
+    // ============================================
+    // 测试 4: 目录和文件操作
+    // ============================================
+    
+    printSeparator("Test 4: File Operations (Read-Only)")
+    
+    log.Info("Listing current directory...")
+    result, err = client.Run("ls -lah | head -10")
+    if err == nil {
+        println(result)
+    }
+    println("")
+    
+    log.Info("Checking /etc directory...")
+    result, err = client.Run("ls -lh /etc | head -5")
+    if err == nil {
+        println(result)
+    }
+    println("")
+    
+    printSuccess("File operations test completed")
+    println("")
+    
+    // ============================================
+    // 测试 5: 网络信息
+    // ============================================
+    
+    printSeparator("Test 5: Network Information")
+    
+    log.Info("Getting IP addresses...")
+    result, err = client.Run("hostname -I")
+    if err == nil {
+        println(f"IP Addresses: ${result}")
+    }
+    println("")
+    
+    log.Info("Checking network interfaces...")
+    result, err = client.Run("ip addr show | grep -E '^[0-9]+:' | head -5")
+    if err == nil {
+        println("Network Interfaces:")
+        println(result)
+    }
+    println("")
+    
+    printSuccess("Network information test completed")
+    println("")
+    
+    // ============================================
+    // 完成
+    // ============================================
+    
+    printSeparator("All Tests Completed Successfully")
+    log.Info("Connection closed")
+}
+
+// 执行主程序
+main()
+

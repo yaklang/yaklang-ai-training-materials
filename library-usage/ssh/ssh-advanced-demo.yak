@@ -1,0 +1,300 @@
+/*
+# SSH 高级功能演示
+
+本脚本演示 SSH 库的高级使用场景。
+
+## 使用方法
+
+```bash
+yak ssh-advanced-demo.yak --host embedding.netutils.cc --mode batch
+```
+
+## 模式说明
+
+- batch: 批量命令执行
+- monitor: 系统监控
+- deploy: 部署演示（只读操作，不实际部署）
+- security: 安全检查
+
+*/
+
+// ============================================
+// 参数配置
+// ============================================
+
+host = cli.String("host", cli.setRequired(true), cli.setHelp("SSH host address"))
+user = cli.String("user", cli.setDefault("root"), cli.setHelp("SSH username"))
+mode = cli.String("mode", cli.setDefault("batch"), cli.setHelp("Operation mode"))
+
+cli.check()
+
+// ============================================
+// 辅助函数
+// ============================================
+
+printSeparator = func(title) {
+    log.Info("═══════════════════════════════════════════════════════════════")
+    if title != "" {
+        log.Info(f"  ${title}")
+        log.Info("═══════════════════════════════════════════════════════════════")
+    }
+}
+
+// 建立连接
+connectToServer = func() {
+    homeDir = os.GetHomeDir()
+    defaultKey = file.Join(homeDir, ".ssh", "id_rsa")
+    
+    client, err = ssh.Connect(host, ssh.username(user), ssh.privateKey(defaultKey))
+    if err != nil {
+        die(f"Failed to connect: ${err}")
+    }
+    
+    log.Info(f"✓ Connected to ${host}")
+    return client
+}
+
+// ============================================
+// 场景 1: 批量命令执行
+// ============================================
+
+batchCommandExecution = func(client) {
+    printSeparator("Batch Command Execution")
+    
+    commands = [
+        ["hostname", "Get hostname"],
+        ["uptime", "Get uptime"],
+        ["free -h | grep Mem", "Get memory usage"],
+        ["df -h / | tail -1", "Get root disk usage"],
+        ["who", "Get logged in users"],
+        ["last -5", "Get recent logins"],
+    ]
+    
+    results = {}
+    
+    for _, cmdInfo = range commands {
+        cmd = cmdInfo[0]
+        desc = cmdInfo[1]
+        
+        log.Info(f"Executing: {desc}")
+        result, err = client.Run(cmd)
+        if err != nil {
+            log.Error(f"Failed: ${err}")
+            results[cmd] = f"ERROR: ${err}"
+        } else {
+            println(f"✓ {desc}: {result}")
+            results[cmd] = result
+        }
+        println("")
+    }
+    
+    return results
+}
+
+// ============================================
+// 场景 2: 系统监控
+// ============================================
+
+systemMonitoring = func(client) {
+    printSeparator("System Monitoring")
+    
+    monitorScript = `#!/bin/bash
+echo "=== System Monitoring Report ==="
+echo ""
+echo "Date: $(date)"
+echo "Hostname: $(hostname)"
+echo ""
+
+echo "=== Memory Usage ==="
+free -h | awk '/^Mem:/ {print "Total: "$2", Used: "$3", Free: "$4}'
+
+echo ""
+echo "=== Disk Usage ==="
+df -h / | awk 'NR==2 {print "Root: Total "$2", Used: "$3", Available: "$4", Use% "$5}'
+
+echo ""
+echo "=== Top 5 Processes by CPU ==="
+ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf "%s\\t%s%%\\t%s\\n", $11, $3, $2}'
+
+echo ""
+echo "=== Top 5 Processes by Memory ==="
+ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf "%s\\t%s%%\\t%s\\n", $11, $4, $2}'
+
+echo ""
+echo "=== Network Connections ==="
+ss -tuln | grep -c LISTEN | awk '{print "Listening ports: "$1}'
+
+echo ""
+echo "=== Load Average ==="
+uptime | awk -F"load average:" '{print "Load Average:"$2}'
+
+echo ""
+echo "=== Report Completed ==="
+`
+    
+    result, err = client.RunScript(monitorScript)
+    if err != nil {
+        log.Error(f"Monitoring failed: ${err}")
+        return
+    }
+    
+    println(result)
+}
+
+// ============================================
+// 场景 3: 部署检查（只读）
+// ============================================
+
+deploymentCheck = func(client) {
+    printSeparator("Deployment Pre-Check (Read-Only)")
+    
+    checkScript = `#!/bin/bash
+echo "=== Deployment Environment Check ==="
+echo ""
+
+# 检查 Git
+if command -v git &> /dev/null; then
+    echo "✓ Git: $(git --version)"
+else
+    echo "✗ Git: NOT INSTALLED"
+fi
+
+# 检查 Python
+if command -v python3 &> /dev/null; then
+    echo "✓ Python3: $(python3 --version)"
+else
+    echo "✗ Python3: NOT INSTALLED"
+fi
+
+# 检查 Node.js
+if command -v node &> /dev/null; then
+    echo "✓ Node.js: $(node --version)"
+else
+    echo "✗ Node.js: NOT INSTALLED"
+fi
+
+# 检查 Docker
+if command -v docker &> /dev/null; then
+    echo "✓ Docker: $(docker --version)"
+else
+    echo "✗ Docker: NOT INSTALLED"
+fi
+
+# 检查磁盘空间
+echo ""
+echo "=== Disk Space ==="
+df -h / | awk 'NR==2 {print "Available: "$4" / "$2" ("$5" used)"}'
+
+# 检查内存
+echo ""
+echo "=== Memory ==="
+free -h | awk '/^Mem:/ {print "Available: "$7" / "$2}'
+
+echo ""
+echo "=== Check Completed ==="
+`
+    
+    result, err = client.RunScript(checkScript)
+    if err != nil {
+        log.Error(f"Deployment check failed: ${err}")
+        return
+    }
+    
+    println(result)
+}
+
+// ============================================
+// 场景 4: 安全检查
+// ============================================
+
+securityCheck = func(client) {
+    printSeparator("Security Check (Read-Only)")
+    
+    securityScript = `#!/bin/bash
+echo "=== Security Audit ==="
+echo ""
+
+echo "=== SSH Configuration ==="
+if [ -f /etc/ssh/sshd_config ]; then
+    echo "PermitRootLogin: $(grep -E '^PermitRootLogin' /etc/ssh/sshd_config || echo 'default')"
+    echo "PasswordAuthentication: $(grep -E '^PasswordAuthentication' /etc/ssh/sshd_config || echo 'default')"
+fi
+
+echo ""
+echo "=== Firewall Status ==="
+if command -v ufw &> /dev/null; then
+    sudo ufw status 2>/dev/null || echo "UFW not active or no permission"
+elif command -v firewall-cmd &> /dev/null; then
+    sudo firewall-cmd --state 2>/dev/null || echo "Firewalld not active or no permission"
+else
+    echo "No firewall detected"
+fi
+
+echo ""
+echo "=== Recent Failed Login Attempts ==="
+lastb -5 2>/dev/null || echo "No permission or lastb not available"
+
+echo ""
+echo "=== Active SSH Sessions ==="
+who | grep -c pts | awk '{print "Active SSH sessions: "$1}'
+
+echo ""
+echo "=== Open Ports ==="
+ss -tuln | grep LISTEN | head -10
+
+echo ""
+echo "=== Security Check Completed ==="
+`
+    
+    result, err = client.RunScript(securityScript)
+    if err != nil {
+        log.Error(f"Security check failed: ${err}")
+        return
+    }
+    
+    println(result)
+}
+
+// ============================================
+// 主程序
+// ============================================
+
+main = func() {
+    printSeparator(f"SSH Advanced Demo - Mode: ${mode}")
+    
+    // 连接到服务器
+    client = connectToServer()
+    defer client.Close()
+    
+    println("")
+    
+    // 根据模式执行不同操作
+    switch mode {
+        case "batch":
+            batchCommandExecution(client)
+        case "monitor":
+            systemMonitoring(client)
+        case "deploy":
+            deploymentCheck(client)
+        case "security":
+            securityCheck(client)
+        case "all":
+            batchCommandExecution(client)
+            println("")
+            systemMonitoring(client)
+            println("")
+            deploymentCheck(client)
+            println("")
+            securityCheck(client)
+        default:
+            log.Warn(f"Unknown mode: ${mode}, running batch mode")
+            batchCommandExecution(client)
+    }
+    
+    println("")
+    printSeparator("Operations Completed")
+}
+
+// 执行主程序
+main()
+
