@@ -307,69 +307,38 @@ main = func() {
         return
     }
     
-    // 获取 webhook URL
-    var webhookUrl
+    // 创建通知客户端
+    var botClient
     if fromEnv {
-        webhookUrl = os.Getenv("YAKIT_FEISHU_WEBHOOK")
-        if webhookUrl == "" {
-            webhookUrl = os.Getenv("YAKIT_DINGTALK_WEBHOOK")
-        }
-        if webhookUrl == "" {
-            webhookUrl = os.Getenv("YAKIT_WORKWX_WEBHOOK")
-        }
-        if webhookUrl == "" {
-            log.Error("No webhook found in environment")
+        botClient = bot.FromEnv()
+        if botClient == nil || len(botClient.Configs()) == 0 {
+            log.Error("No bot configuration found in environment")
             log.Info("Please set one of:")
             log.Info("  YAKIT_FEISHU_WEBHOOK")
             log.Info("  YAKIT_DINGTALK_WEBHOOK")
             log.Info("  YAKIT_WORKWX_WEBHOOK")
-            die("No webhook configured")
+            die("No bot configured")
         }
-        log.Info("Using webhook from environment")
+        log.Info(f"Found ${len(botClient.Configs())} bot configuration(s)")
     } else if webhook != "" {
-        webhookUrl = webhook
+        botClient = bot.New(bot.webhook(webhook))
         log.Info("Using provided webhook")
     } else {
         log.Error("Please provide --webhook or use --from-env")
         die("No notification method configured")
     }
     
-    // 生成并发送告警消息（使用 HTTP 直接调用）
+    // 生成并发送告警消息
     message = generateAlertMessage(hostname, osType, currentTime, cpu, memory, disk, alertLevel)
     
     log.Info(f"Sending ${alertLevel} alert...")
-    
-    // 发送 Markdown 消息（飞书格式）
-    markdownBody = sprintf(`{
-  "msg_type": "text",
-  "content": {
-    "text": "%s"
-  }
-}`, str.ReplaceAll(message, "\n", "\\n"))
-    
-    rsp, err = http.Post(webhookUrl, http.body(markdownBody), http.header("Content-Type", "application/json"))
-    if err != nil {
-        log.Error(f"Failed to send alert: ${err}")
-    } else {
-        log.Info("Alert sent successfully")
-    }
+    botClient.SendText(message)
     
     // 发送简单文本通知作为备用
     simpleMessage = sprintf("%s [%s] %s - CPU:%d%% MEM:%d%% DISK:%d%% - %s", 
         alertLevel == "CRITICAL" ? "🚨" : "⚠️", 
         alertLevel, hostname, cpu, memory, disk, currentTime)
-    
-    simpleBody = sprintf(`{
-  "msg_type": "text", 
-  "content": {
-    "text": "%s"
-  }
-}`, simpleMessage)
-    
-    rsp2, err = http.Post(webhookUrl, http.body(simpleBody), http.header("Content-Type", "application/json"))
-    if err != nil {
-        log.Error(f"Failed to send simple alert: ${err}")
-    }
+    botClient.SendText(simpleMessage)
     
     log.Info("✓ Alert notification sent")
 }
