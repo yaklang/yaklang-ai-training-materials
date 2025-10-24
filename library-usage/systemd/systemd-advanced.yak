@@ -107,7 +107,7 @@ createTemplateService = func() {
     // 使用 @ 符号创建模板服务
     serviceName = "yak-worker@"
     scriptPath = "/opt/yak-scripts/worker.yak"
-    yakBinary = os.Executable()
+    yakBinary = os.Executable()~
     
     fileName, serviceContent = systemd.Create(
         serviceName,
@@ -338,7 +338,7 @@ for {
     
     // 创建健康检查服务
     serviceName = "yak-health-check"
-    yakBinary = os.Executable()
+    yakBinary = os.Executable()~
     
     fileName, serviceContent = systemd.Create(
         serviceName,

@@ -41,7 +41,8 @@ try {
 println("\n3. 检查系统环境")
 println(f"操作系统: ${os.OS}")
 println(f"系统架构: ${os.ARCH}")
-println(f"Yak 可执行文件: ${os.Executable()}")
+yakBinary = os.Executable()~
+println(f"Yak 可执行文件: ${yakBinary}")
 
 if str.ToLower(os.OS) == "linux" {
     println("✓ 当前系统是 Linux，支持 systemd")

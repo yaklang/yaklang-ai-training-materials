@@ -249,7 +249,7 @@ for {
         
         // 为测试脚本创建 systemd 服务配置
         serviceName = "yak-test-service"
-        yakBinary = os.Executable()  // 获取当前 yak 可执行文件路径
+        yakBinary = os.Executable()~  // 获取当前 yak 可执行文件路径
         
         fileName, serviceContent = systemd.Create(
             serviceName,
@@ -396,7 +396,8 @@ main = func() {
     
     // 显示系统环境信息
     log.Info(f"当前操作系统: ${os.OS}")
-    log.Info(f"Yak 可执行文件路径: ${os.Executable()}")
+    yakBinary = os.Executable()~
+    log.Info(f"Yak 可执行文件路径: ${yakBinary}")
     
     // 执行各个示例
     createBasicService()
