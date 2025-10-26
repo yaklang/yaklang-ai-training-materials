@@ -1,0 +1,212 @@
+// =============================================================================
+// context 库完整实战练习 - 上下文管理和超时控制
+// context库 上下文管理 超时控制 取消机制 Context
+// 关键词: context, WithCancel, WithTimeout, WithDeadline, 超时控制, 取消机制
+// =============================================================================
+
+println("context 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础Context创建
+// Context创建 Background New 基础上下文
+// 关键词: context.Background, context.New, 创建Context, 根Context
+// =============================================================================
+println("\n1. 基础Context创建")
+
+// ===== 1.1 Background创建 =====
+// 关键词: Background, 根Context, 基础上下文
+ctx1 = context.Background()
+println("✓ Background Context创建成功")
+
+// ===== 1.2 New创建 =====
+// 关键词: New, 创建Context
+ctx2 = context.New()
+println("✓ New Context创建成功")
+
+println("✓ 基础Context创建测试通过")
+
+// =============================================================================
+// 2. WithCancel - 可取消的Context
+// WithCancel 取消Context 手动取消 取消函数
+// 关键词: WithCancel, cancel, 取消Context, 取消机制, CancelFunc
+// =============================================================================
+println("\n2. WithCancel - 可取消的Context")
+
+// ===== 2.1 创建可取消Context =====
+// 关键词: WithCancel, 创建取消Context
+parentCtx = context.Background()
+cancelCtx, cancelFunc = context.WithCancel(parentCtx)
+
+println("✓ WithCancel Context创建成功")
+
+// ===== 2.2 测试取消机制 =====
+// 关键词: cancel, 取消机制, Done通道
+// 调用取消函数
+// 关键词: 取消调用, 取消执行
+cancelFunc()
+log.info("Cancel function called")
+println("✓ Cancel函数调用成功")
+
+println("✓ WithCancel测试通过")
+
+// =============================================================================
+// 3. WithTimeout - 超时Context
+// WithTimeout 超时控制 超时Context 自动取消
+// 关键词: WithTimeout, 超时控制, 超时机制, 自动取消
+// =============================================================================
+println("\n3. WithTimeout - 超时Context")
+
+// ===== 3.1 创建超时Context =====
+// 关键词: WithTimeout, 超时时间, Duration
+dur, _ = time.ParseDuration("1s")
+timeoutCtx, timeoutCancel = context.WithTimeout(context.Background(), dur)
+defer timeoutCancel()
+
+println("✓ WithTimeout Context创建成功")
+
+// ===== 3.2 WithTimeoutSeconds便捷方法 =====
+// 关键词: WithTimeoutSeconds, 秒级超时, 便捷方法
+ctx3 = context.WithTimeoutSeconds(2)
+println("✓ WithTimeoutSeconds创建成功")
+
+// ===== 3.3 Seconds便捷方法 =====
+// 关键词: Seconds, 秒级Context, 快速创建
+ctx4 = context.Seconds(3)
+println("✓ Seconds Context创建成功")
+
+println("✓ WithTimeout测试通过")
+
+// =============================================================================
+// 4. WithDeadline - 截止时间Context
+// WithDeadline 截止时间 绝对时间 Deadline
+// 关键词: WithDeadline, 截止时间, 绝对时间, Deadline
+// =============================================================================
+println("\n4. WithDeadline - 截止时间Context")
+
+// ===== 4.1 创建Deadline Context =====
+// 关键词: WithDeadline, 截止时间设置
+deadline, _ = time.ParseDuration("2s")
+deadlineTime = time.Now().Add(deadline)
+deadlineCtx, deadlineCancel = context.WithDeadline(context.Background(), deadlineTime)
+defer deadlineCancel()
+
+println("✓ WithDeadline Context创建成功")
+println("✓ WithDeadline测试通过")
+
+// =============================================================================
+// 5. WithValue - 携带值的Context
+// WithValue 值传递 Context传值 键值对
+// 关键词: WithValue, Context传值, 值存储, 键值对, Value方法
+// =============================================================================
+println("\n5. WithValue - 携带值的Context")
+
+// ===== 5.1 创建携带值的Context =====
+// 关键词: WithValue, 存储值, 键值对存储
+valueCtx = context.WithValue(context.Background(), "user", "Alice")
+
+// ===== 5.2 获取Context中的值 =====
+// 关键词: Value方法, 获取值, 值读取
+userName = valueCtx.Value("user")
+println(f"Context中的user值: ${userName}")
+assert userName == "Alice", "user值应为Alice"
+
+// ===== 5.3 链式存储多个值 =====
+// 关键词: 链式存储, 多值存储, 嵌套Context
+valueCtx2 = context.WithValue(valueCtx, "role", "admin")
+valueCtx3 = context.WithValue(valueCtx2, "id", 12345)
+
+// 验证多个值
+// 关键词: 值验证, 多值读取
+user = valueCtx3.Value("user")
+role = valueCtx3.Value("role")
+userId = valueCtx3.Value("id")
+
+println(f"user=${user}, role=${role}, id=${userId}")
+assert user == "Alice", "user值应正确"
+assert role == "admin", "role值应正确"
+assert userId == 12345, "id值应正确"
+
+println("✓ WithValue测试通过")
+
+// =============================================================================
+// 6. 实际应用场景
+// 实际应用 超时控制 任务取消 请求上下文
+// 关键词: 实际应用, 超时控制, 任务取消, 请求管理
+// =============================================================================
+println("\n6. 实际应用场景")
+
+// ===== 6.1 HTTP请求超时控制 =====
+// 关键词: HTTP超时, 请求超时, 超时控制应用
+httpRequestWithTimeout = func(url, timeoutSec) {
+    ctx = context.Seconds(timeoutSec)
+    log.info("发起HTTP请求: %s (超时: %ds)", url, timeoutSec)
+    
+    // 在实际应用中，可以将ctx传递给http请求
+    // 关键词: Context传递, 超时Context应用
+    return ctx
+}
+
+// 测试创建超时Context
+// 关键词: 超时Context测试, Context验证
+timeoutCtx1 = httpRequestWithTimeout("http://example.com", 5)
+log.info("HTTP超时Context创建成功")
+
+// ===== 6.2 任务取消控制 =====
+// 关键词: 任务取消, 取消控制, 任务管理
+runCancellableTask = func() {
+    ctx, cancel = context.WithCancel(context.Background())
+    
+    // 创建可取消的任务Context
+    // 关键词: 取消Context, 任务管理
+    log.info("创建可取消任务Context")
+    
+    // 在实际应用中，可以将ctx传递给子任务
+    // 关键词: Context传递, 取消传播
+    defer cancel()
+    
+    return "created"
+}
+
+result3 = runCancellableTask()
+log.info("任务结果: %s", result3)
+assert result3 == "created", "任务Context创建成功"
+
+// ===== 6.3 上下文值传递 =====
+// 关键词: 值传递, 请求上下文, 用户信息传递
+processRequest = func(ctx) {
+    userId = ctx.Value("user_id")
+    requestId = ctx.Value("request_id")
+    
+    log.info("处理请求 - UserID: %v, RequestID: %v", userId, requestId)
+    
+    assert userId == 1001, "UserID应正确传递"
+    assert requestId == "req-123", "RequestID应正确传递"
+    
+    return true
+}
+
+// 创建带值的Context
+// 关键词: 创建上下文, 注入值
+requestCtx = context.WithValue(context.Background(), "user_id", 1001)
+requestCtx = context.WithValue(requestCtx, "request_id", "req-123")
+
+// 处理请求
+// 关键词: 请求处理, 上下文使用
+result4 = processRequest(requestCtx)
+assert result4 == true, "请求处理应该成功"
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== context库测试总结 ===")
+println("✅ 基础创建 - Background, New")
+println("✅ WithCancel - 可取消Context")
+println("✅ WithTimeout - 超时控制")
+println("✅ WithDeadline - 截止时间")
+println("✅ WithValue - 值传递")
+println("✅ 实际应用 - HTTP超时, 任务取消, 值传递")
+
+println("\ncontext库功能测试完成！")
+

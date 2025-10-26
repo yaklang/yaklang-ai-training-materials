@@ -1,0 +1,425 @@
+/*
+Yaklang JWT (JSON Web Token) 库实践
+
+JWT库是用于JSON Web Token处理的工具，支持JWT令牌的生成、解析、验证和安全测试。
+在Web安全测试中，JWT是重要的身份认证机制，也是常见的攻击目标。
+
+关键词: JWT令牌, JSON Web Token, 身份认证, 令牌伪造, 算法攻击, 认证绕过
+关键词: HMAC签名, RSA签名, None算法攻击, 密钥破解, 令牌解析, 安全测试
+*/
+
+// 基础JWT生成测试
+// 关键词: jwt.JWTGenerate, JWT令牌生成
+func testBasicJWTGeneration() {
+    log.info("测试基础JWT生成功能")
+    
+    // 基础JWT生成
+    // 关键词: jwt.JWTGenerate, HS256算法, 基础令牌生成
+    payload = {"user": "testuser", "role": "admin", "exp": time.Now().Unix() + 3600}
+    secret = "mysecretkey"
+    
+    token, err = jwt.JWTGenerate(jwt.ALG_HS256, payload, secret)
+    
+    assert err == nil, f"JWT生成不应失败: ${err}"
+    assert token != "", "生成的JWT令牌不应为空"
+    
+    log.info(f"生成的JWT令牌: ${token}")
+    
+    // 验证JWT格式（应该有三个部分，用.分隔）
+    parts = str.Split(token, ".")
+    assert len(parts) == 3, "JWT应该有三个部分：header.payload.signature"
+    
+    log.info("基础JWT生成测试完成")
+}
+
+// 扩展JWT生成测试
+// 关键词: jwt.JWTGenerateEx, 自定义头部和载荷
+func testExtendedJWTGeneration() {
+    log.info("测试扩展JWT生成功能")
+    
+    // 自定义头部和载荷
+    customHeader = {"kid": "key1", "typ": "JWT"}
+    customPayload = {"sub": "1234567890", "name": "John Doe", "admin": true}
+    secret = "your-256-bit-secret"
+    
+    // 扩展JWT生成
+    // 关键词: jwt.JWTGenerateEx, 自定义头部, 自定义载荷
+    token, err = jwt.JWTGenerateEx(jwt.ALG_HS256, customHeader, customPayload, secret)
+    
+    assert err == nil, f"扩展JWT生成不应失败: ${err}"
+    assert token != "", "扩展生成的JWT令牌不应为空"
+    
+    log.info(f"扩展生成的JWT令牌: ${token}")
+    
+    // 验证令牌结构
+    parts = str.Split(token, ".")
+    assert len(parts) == 3, "扩展JWT应该有三个部分"
+    
+    log.info("扩展JWT生成测试完成")
+}
+
+// JWT解析测试
+// 关键词: jwt.Parse, JWT令牌解析
+func testJWTParsing() {
+    log.info("测试JWT解析功能")
+    
+    // 先生成一个JWT用于解析测试
+    payload = {"user": "parsetest", "role": "user", "exp": time.Now().Unix() + 3600}
+    secret = "parsekey123"
+    
+    token, err = jwt.JWTGenerate(jwt.ALG_HS256, payload, secret)
+    assert err == nil, "生成测试JWT不应失败"
+    
+    // 解析JWT令牌
+    // 关键词: jwt.Parse, 令牌解析, 签名验证
+    parsedToken, key, parseErr = jwt.Parse(token, secret)
+    
+    assert parseErr == nil, f"JWT解析不应失败: ${parseErr}"
+    assert parsedToken != nil, "解析的JWT对象不应为空"
+    assert key != nil, "解析使用的密钥不应为空"
+    
+    log.info("JWT解析成功")
+    
+    // 验证解析结果
+    if parsedToken != nil {
+        log.info("JWT解析结果验证通过")
+        
+        // 检查头部信息
+        if parsedToken.Header != nil {
+            log.info("JWT头部信息存在")
+        }
+        
+        // 检查载荷信息
+        if parsedToken.Claims != nil {
+            log.info("JWT载荷信息存在")
+        }
+    }
+    
+    log.info("JWT解析测试完成")
+}
+
+// 多密钥解析测试
+// 关键词: jwt.Parse, 多密钥尝试, 密钥破解
+func testMultiKeyParsing() {
+    log.info("测试多密钥解析功能")
+    
+    // 生成JWT
+    payload = {"user": "multikey", "data": "secret"}
+    correctSecret = "correct-secret-key"
+    
+    token, err = jwt.JWTGenerate(jwt.ALG_HS256, payload, correctSecret)
+    assert err == nil, "生成多密钥测试JWT不应失败"
+    
+    // 尝试多个密钥解析
+    // 关键词: 多密钥尝试, 暴力破解, 密钥猜测
+    possibleKeys = ["wrong-key1", "wrong-key2", correctSecret, "wrong-key3"]
+    
+    parsedToken, foundKey, parseErr = jwt.Parse(token, possibleKeys...)
+    
+    if parseErr == nil {
+        log.info("多密钥解析成功")
+        assert string(foundKey) == correctSecret, "应该找到正确的密钥"
+        log.info(f"找到正确密钥: ${string(foundKey)}")
+    } else {
+        log.info(f"多密钥解析失败: ${parseErr}")
+    }
+    
+    log.info("多密钥解析测试完成")
+}
+
+// None算法攻击测试
+// 关键词: jwt.RemoveAlg, None算法攻击, 算法绕过
+func testNoneAlgorithmAttack() {
+    log.info("测试None算法攻击")
+    
+    // 生成正常的JWT
+    payload = {"user": "victim", "role": "user"}
+    secret = "server-secret"
+    
+    originalToken, err = jwt.JWTGenerate(jwt.ALG_HS256, payload, secret)
+    assert err == nil, "生成原始JWT不应失败"
+    
+    log.info(f"原始JWT: ${originalToken}")
+    
+    // 移除算法字段进行None攻击
+    // 关键词: jwt.RemoveAlg, 算法移除, None攻击
+    noneToken, removeErr = jwt.RemoveAlg(originalToken)
+    
+    assert removeErr == nil, f"移除算法不应失败: ${removeErr}"
+    assert noneToken != "", "None攻击令牌不应为空"
+    assert noneToken != originalToken, "None攻击令牌应该与原始令牌不同"
+    
+    log.info(f"None攻击JWT: ${noneToken}")
+    
+    // 验证None攻击令牌结构
+    parts = str.Split(noneToken, ".")
+    assert len(parts) == 3, "None攻击JWT应该仍有三个部分"
+    
+    log.info("None算法攻击测试完成")
+}
+
+// JWT算法类型测试
+// 关键词: JWT算法, HS256, HS384, HS512, RS256
+func testJWTAlgorithms() {
+    log.info("测试JWT算法类型")
+    
+    payload = {"test": "algorithm", "exp": time.Now().Unix() + 3600}
+    secret = "algorithm-test-key"
+    
+    // 测试HS256算法
+    // 关键词: jwt.ALG_HS256, HMAC SHA256
+    hs256Token, err1 = jwt.JWTGenerate(jwt.ALG_HS256, payload, secret)
+    assert err1 == nil, "HS256算法生成不应失败"
+    assert hs256Token != "", "HS256令牌不应为空"
+    log.info("HS256算法测试通过")
+    
+    // 测试HS384算法
+    // 关键词: jwt.ALG_HS384, HMAC SHA384
+    hs384Token, err2 = jwt.JWTGenerate(jwt.ALG_HS384, payload, secret)
+    assert err2 == nil, "HS384算法生成不应失败"
+    assert hs384Token != "", "HS384令牌不应为空"
+    log.info("HS384算法测试通过")
+    
+    // 测试HS512算法
+    // 关键词: jwt.ALG_HS512, HMAC SHA512
+    hs512Token, err3 = jwt.JWTGenerate(jwt.ALG_HS512, payload, secret)
+    assert err3 == nil, "HS512算法生成不应失败"
+    assert hs512Token != "", "HS512令牌不应为空"
+    log.info("HS512算法测试通过")
+    
+    // 验证不同算法生成的令牌不同
+    assert hs256Token != hs384Token, "不同算法应该生成不同的令牌"
+    assert hs256Token != hs512Token, "不同算法应该生成不同的令牌"
+    assert hs384Token != hs512Token, "不同算法应该生成不同的令牌"
+    
+    log.info("JWT算法类型测试完成")
+}
+
+// JWT过期时间测试
+// 关键词: JWT过期, exp声明, 时间验证
+func testJWTExpiration() {
+    log.info("测试JWT过期时间")
+    
+    secret = "expiration-test-key"
+    
+    // 生成已过期的JWT
+    expiredPayload = {
+        "user": "expired-user",
+        "exp": time.Now().Unix() - 3600  // 1小时前过期
+    }
+    
+    expiredToken, err = jwt.JWTGenerate(jwt.ALG_HS256, expiredPayload, secret)
+    assert err == nil, "生成过期JWT不应失败"
+    
+    log.info(f"过期JWT: ${expiredToken}")
+    
+    // 尝试解析过期的JWT
+    // 关键词: 过期令牌解析, 时间验证
+    parsedExpired, key, expiredErr = jwt.Parse(expiredToken, secret)
+    
+    if expiredErr != nil {
+        log.info(f"过期JWT解析失败（预期）: ${expiredErr}")
+        assert str.Contains(string(expiredErr), "exp") || str.Contains(string(expiredErr), "expired"), "应该是过期相关的错误"
+    } else {
+        log.info("过期JWT解析意外成功，可能不验证过期时间")
+    }
+    
+    // 生成未来过期的JWT
+    validPayload = {
+        "user": "valid-user",
+        "exp": time.Now().Unix() + 3600  // 1小时后过期
+    }
+    
+    validToken, err2 = jwt.JWTGenerate(jwt.ALG_HS256, validPayload, secret)
+    assert err2 == nil, "生成有效JWT不应失败"
+    
+    // 解析有效的JWT
+    parsedValid, validKey, validErr = jwt.Parse(validToken, secret)
+    
+    if validErr == nil {
+        log.info("有效JWT解析成功")
+        assert parsedValid != nil, "有效JWT解析结果不应为空"
+    } else {
+        log.info(f"有效JWT解析失败: ${validErr}")
+    }
+    
+    log.info("JWT过期时间测试完成")
+}
+
+// JWT安全测试场景
+// 关键词: JWT安全测试, 认证绕过, 权限提升
+func testJWTSecurityScenarios() {
+    log.info("测试JWT安全测试场景")
+    
+    secret = "security-test-key"
+    
+    // 场景1: 权限提升攻击
+    // 关键词: 权限提升, 角色修改, 载荷篡改
+    userPayload = {"user": "normaluser", "role": "user", "admin": false}
+    userToken, err = jwt.JWTGenerate(jwt.ALG_HS256, userPayload, secret)
+    assert err == nil, "生成用户JWT不应失败"
+    
+    log.info(f"普通用户JWT: ${userToken}")
+    
+    // 尝试修改为管理员权限（需要知道密钥）
+    adminPayload = {"user": "normaluser", "role": "admin", "admin": true}
+    adminToken, err2 = jwt.JWTGenerate(jwt.ALG_HS256, adminPayload, secret)
+    assert err2 == nil, "生成管理员JWT不应失败"
+    
+    log.info(f"权限提升JWT: ${adminToken}")
+    
+    // 场景2: 密钥猜测攻击
+    // 关键词: 密钥猜测, 弱密钥, 字典攻击
+    weakSecret = "123456"
+    weakToken, err3 = jwt.JWTGenerate(jwt.ALG_HS256, userPayload, weakSecret)
+    assert err3 == nil, "生成弱密钥JWT不应失败"
+    
+    // 尝试常见弱密钥
+    commonSecrets = ["123456", "password", "secret", "admin", "test"]
+    
+    cracked = false
+    for commonSecret in commonSecrets {
+        parsed, foundKey, parseErr = jwt.Parse(weakToken, commonSecret)
+        if parseErr == nil {
+            log.info(f"成功破解弱密钥: ${commonSecret}")
+            cracked = true
+            break
+        }
+    }
+    
+    assert cracked, "应该能够破解弱密钥"
+    
+    log.info("JWT安全测试场景完成")
+}
+
+// JWT令牌结构分析测试
+// 关键词: JWT结构, Base64解码, 头部载荷分析
+func testJWTStructureAnalysis() {
+    log.info("测试JWT令牌结构分析")
+    
+    payload = {"user": "analyst", "data": "structure-test"}
+    secret = "analysis-key"
+    
+    token, err = jwt.JWTGenerate(jwt.ALG_HS256, payload, secret)
+    assert err == nil, "生成分析JWT不应失败"
+    
+    log.info(f"分析JWT: ${token}")
+    
+    // 分析JWT结构
+    parts = str.Split(token, ".")
+    assert len(parts) == 3, "JWT应该有三个部分"
+    
+    header = parts[0]
+    payload_part = parts[1]
+    signature = parts[2]
+    
+    log.info(f"JWT头部: ${header}")
+    log.info(f"JWT载荷: ${payload_part}")
+    log.info(f"JWT签名: ${signature}")
+    
+    // 验证各部分不为空
+    assert header != "", "JWT头部不应为空"
+    assert payload_part != "", "JWT载荷不应为空"
+    assert signature != "", "JWT签名不应为空"
+    
+    // 尝试Base64解码（注意：JWT使用Base64URL编码）
+    try {
+        headerDecoded = codec.DecodeBase64(header)
+        log.info(f"头部解码尝试: ${len(headerDecoded)} 字节")
+    } catch err {
+        log.info(f"头部解码失败: ${err}")
+    }
+    
+    try {
+        payloadDecoded = codec.DecodeBase64(payload_part)
+        log.info(f"载荷解码尝试: ${len(payloadDecoded)} 字节")
+    } catch err {
+        log.info(f"载荷解码失败: ${err}")
+    }
+    
+    log.info("JWT令牌结构分析完成")
+}
+
+// 执行所有JWT测试
+func main() {
+    log.info("开始Yaklang JWT库功能测试")
+    
+    // 基础功能测试
+    testBasicJWTGeneration()
+    testExtendedJWTGeneration()
+    testJWTParsing()
+    testMultiKeyParsing()
+    
+    // 安全测试功能
+    testNoneAlgorithmAttack()
+    testJWTAlgorithms()
+    testJWTExpiration()
+    testJWTSecurityScenarios()
+    testJWTStructureAnalysis()
+    
+    log.info("JWT库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert len(payload) > 0, "载荷数据应该有内容"
+    assert secret != "", "密钥不应为空"
+    assert len(possibleKeys) > 0, "可能的密钥列表应该有内容"
+    assert len(commonSecrets) > 0, "常见密钥列表应该有内容"
+    assert len(parts) == 3, "JWT部分应该有3个"
+    
+    log.info("所有JWT配置和功能测试通过")
+    log.info("JWT库提供了强大的JWT令牌处理和安全测试能力，是Web安全测试的重要工具")
+}
+
+/*
+JWT库核心功能总结:
+
+1. JWT生成:
+   - jwt.JWTGenerate() - 基础JWT生成
+   - jwt.JWTGenerateEx() - 扩展JWT生成（自定义头部和载荷）
+   - 支持多种HMAC算法（HS256、HS384、HS512）
+
+2. JWT解析:
+   - jwt.Parse() - JWT令牌解析和验证
+   - 支持单密钥和多密钥尝试
+   - 自动验证签名和时间声明
+
+3. 算法支持:
+   - jwt.ALG_HS256 - HMAC SHA256算法
+   - jwt.ALG_HS384 - HMAC SHA384算法
+   - jwt.ALG_HS512 - HMAC SHA512算法
+   - jwt.ALG_RS256 - RSA SHA256算法（如果支持）
+
+4. 安全测试功能:
+   - jwt.RemoveAlg() - 移除算法字段（None攻击）
+   - 多密钥暴力破解
+   - 弱密钥检测
+   - 权限提升测试
+
+5. JWT结构:
+   - Header - 头部信息（算法、类型等）
+   - Payload - 载荷信息（用户数据、声明等）
+   - Signature - 签名信息（验证完整性）
+
+6. 时间声明:
+   - exp - 过期时间
+   - iat - 签发时间
+   - nbf - 生效时间
+   - 自动时间验证
+
+7. 安全测试场景:
+   - 认证绕过测试
+   - 权限提升攻击
+   - 算法降级攻击
+   - 密钥猜测攻击
+   - None算法攻击
+
+8. Web安全应用:
+   - 身份认证测试
+   - 授权机制评估
+   - JWT安全配置检查
+   - 令牌伪造和篡改测试
+
+JWT库是Web安全测试中处理身份认证的重要工具，
+为安全研究人员提供了全面的JWT令牌处理和攻击测试能力。
+*/

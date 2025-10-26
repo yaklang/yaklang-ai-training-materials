@@ -1,0 +1,301 @@
+// =============================================================================
+// json 库完整实战练习 - JSON编码解码和处理
+// json库 JSON序列化 JSON反序列化 JSONPath JSON提取
+// 关键词: json, dumps, loads, Marshal, Find, JSONPath, JSON序列化, JSON反序列化
+// =============================================================================
+
+println("json 库功能测试开始...")
+
+// =============================================================================
+// 1. JSON序列化 - dumps/Marshal
+// JSON序列化 对象转JSON dumps Marshal JSON编码
+// 关键词: dumps, Marshal, JSON序列化, 对象转JSON, JSON编码
+// =============================================================================
+println("\n1. JSON序列化")
+
+// ===== 1.1 基础dumps操作 =====
+// 关键词: dumps, JSON序列化, map转JSON
+testMap = {"name": "test", "age": 20, "active": true}
+jsonStr = json.dumps(testMap)
+
+assert len(jsonStr) > 0, "JSON字符串不应为空"
+assert str.Contains(jsonStr, "test"), "应包含name字段"
+println(f"基础dumps: ${jsonStr}")
+
+// ===== 1.2 带缩进的序列化 =====
+// 关键词: dumps, withIndent, 格式化JSON, 美化JSON
+prettyJson = json.dumps(testMap, json.withIndent("    "))
+assert len(prettyJson) > 0, "带缩进的JSON不应为空"
+println(f"带缩进: ${prettyJson}")
+
+// ===== 1.3 数组序列化 =====
+// 关键词: dumps, 数组序列化, array转JSON
+testArray = [1, 2, 3, "test", true]
+arrayJson = json.dumps(testArray)
+assert str.Contains(arrayJson, "1"), "应包含数字1"
+assert str.Contains(arrayJson, "test"), "应包含字符串test"
+println(f"数组序列化: ${arrayJson}")
+
+// ===== 1.4 Marshal返回字节 =====
+// 关键词: Marshal, JSON字节序列化, bytes
+jsonBytes, err = json.Marshal(testMap)
+assert err == nil, "Marshal不应报错"
+assert len(jsonBytes) > 0, "JSON字节不应为空"
+println(f"Marshal字节长度: ${len(jsonBytes)}")
+
+println("✓ JSON序列化测试通过")
+
+// =============================================================================
+// 2. JSON反序列化 - loads
+// JSON反序列化 JSON转对象 loads JSON解码
+// 关键词: loads, JSON反序列化, JSON转对象, JSON解码, Unmarshal
+// =============================================================================
+println("\n2. JSON反序列化")
+
+// ===== 2.1 基础loads操作 =====
+// 关键词: loads, JSON反序列化, JSON字符串解析
+jsonInput = `{"name":"Alice","age":25,"active":true}`
+obj = json.loads(jsonInput)
+
+assert obj != nil, "loads结果不应为空"
+println(f"loads结果: ${desc(obj)}")
+
+// 验证字段访问
+// 关键词: 字段访问, map访问, omap
+assert obj["name"] == "Alice", "name字段应为Alice"
+assert obj["age"] == 25, "age字段应为25"
+assert obj["active"] == true, "active字段应为true"
+println(f"name: ${obj['name']}, age: ${obj['age']}, active: ${obj['active']}")
+
+// ===== 2.2 数组loads =====
+// 关键词: loads, 数组反序列化, JSON数组解析
+arrayInput = `[1,2,3,"test",true]`
+arr = json.loads(arrayInput)
+
+assert arr != nil, "数组loads结果不应为空"
+assert len(arr) == 5, "数组长度应为5"
+println(f"数组第一个元素: ${arr[0]}")
+println(f"数组第四个元素: ${arr[3]}")
+
+// ===== 2.3 嵌套对象loads =====
+// 关键词: loads, 嵌套JSON, 复杂JSON解析
+nestedInput = `{"user":{"name":"Bob","profile":{"email":"bob@test.com"}}}`
+nested = json.loads(nestedInput)
+
+assert nested != nil, "嵌套对象不应为空"
+assert nested["user"]["name"] == "Bob", "嵌套字段应可访问"
+println(f"嵌套访问: ${nested['user']['profile']['email']}")
+
+println("✓ JSON反序列化测试通过")
+
+// =============================================================================
+// 3. JSON对象操作 - New
+// JSON对象 json.New IsObject IsArray Value
+// 关键词: json.New, JSON对象, IsObject, IsArray, IsString, IsNumber
+// =============================================================================
+println("\n3. JSON对象操作")
+
+// ===== 3.1 创建JSON对象 =====
+// 关键词: json.New, 创建JSON对象
+jsonObj, err = json.New(`{"key":"value"}`)
+assert err == nil, "创建JSON对象不应报错"
+assert jsonObj != nil, "JSON对象不应为空"
+
+// ===== 3.2 类型判断 =====
+// 关键词: IsObject, IsArray, 类型判断, JSON类型
+assert jsonObj.IsObject() == true, "应该是Object类型"
+assert jsonObj.IsArray() == false, "不应该是Array类型"
+println("JSON对象类型判断正确")
+
+// 字符串类型
+// 关键词: IsString, 字符串JSON
+strObj, _ = json.New(`"hello"`)
+assert strObj.IsString() == true, "应该是String类型"
+println("字符串类型判断正确")
+
+// 数字类型
+// 关键词: IsNumber, 数字JSON
+numObj, _ = json.New(`123`)
+assert numObj.IsNumber() == true, "应该是Number类型"
+println("数字类型判断正确")
+
+// 数组类型
+// 关键词: IsArray, 数组JSON
+arrObj, _ = json.New(`[1,2,3]`)
+assert arrObj.IsArray() == true, "应该是Array类型"
+println("数组类型判断正确")
+
+println("✓ JSON对象操作测试通过")
+
+// =============================================================================
+// 4. JSONPath查询 - Find/FindPath
+// JSONPath JSON查询 Find FindPath JSON路径
+// 关键词: JSONPath, Find, FindPath, JSON查询, JSON路径, JSON搜索
+// =============================================================================
+println("\n4. JSONPath查询")
+
+// ===== 4.1 Find查找所有匹配 =====
+// 关键词: Find, JSONPath查询, 查找所有
+testJson = `{"a":"a1","b":{"a":"a2"},"c":{"a":"a3"}}`
+
+// 查找所有a字段
+// 关键词: $..a, 递归查询, 查找所有
+allA = json.Find(testJson, "$..a")
+println(f"Find所有a字段: ${json.dumps(allA)}")
+assert len(allA) == 3, "应该找到3个a字段"
+
+// ===== 4.2 FindPath查找第一个 =====
+// 关键词: FindPath, 查找第一个, 单个结果
+firstA = json.FindPath(testJson, "$..a")
+println(f"FindPath第一个a字段: ${firstA}")
+assert firstA == "a1", "第一个a字段应为a1"
+
+// ===== 4.3 复杂JSONPath查询 =====
+// 关键词: JSONPath表达式, 复杂查询
+complexJson = `{"store":{"book":[{"title":"Book1","price":10},{"title":"Book2","price":20}]}}`
+
+// 查找所有书名
+// 关键词: $..title, 书名查询
+titles = json.Find(complexJson, "$..title")
+println(f"所有书名: ${json.dumps(titles)}")
+assert len(titles) == 2, "应该有2本书"
+
+println("✓ JSONPath查询测试通过")
+
+// =============================================================================
+// 5. JSONPath替换 - ReplaceAll
+// JSONPath替换 ReplaceAll JSON修改 JSON更新
+// 关键词: ReplaceAll, JSONPath替换, JSON修改, JSON更新, 批量替换
+// =============================================================================
+println("\n5. JSONPath替换")
+
+// ===== 5.1 替换所有匹配值 =====
+// 关键词: ReplaceAll, 批量替换, JSONPath修改
+originalJson = `{"a":"old","b":{"a":"old"},"c":{"a":"old"}}`
+replaced = json.ReplaceAll(originalJson, "$..a", "new")
+
+replacedStr = json.dumps(replaced)
+println(f"替换后: ${replacedStr}")
+
+// 验证替换结果
+// 关键词: 替换验证, 值验证
+assert str.Contains(replacedStr, "new"), "应包含新值"
+assert !str.Contains(replacedStr, "old"), "不应包含旧值"
+
+println("✓ JSONPath替换测试通过")
+
+// =============================================================================
+// 6. JSON提取 - ExtractJSON
+// JSON提取 ExtractJSON 文本提取JSON JSON识别
+// 关键词: ExtractJSON, JSON提取, 文本提取JSON, JSON识别, 自动识别
+// =============================================================================
+println("\n6. JSON提取")
+
+// ===== 6.1 从文本中提取JSON =====
+// 关键词: ExtractJSON, 文本提取, 自动识别JSON
+mixedText = `Here is result: {"status":"success","data":{"id":1}} and another: {"code":200}`
+
+extracted = json.ExtractJSON(mixedText)
+println(f"提取到${len(extracted)}个JSON")
+
+assert len(extracted) == 2, "应该提取到2个JSON"
+println(f"第一个: ${extracted[0]}")
+println(f"第二个: ${extracted[1]}")
+
+// 验证提取的JSON可以loads
+// 关键词: JSON验证, loads验证
+firstExtracted = json.loads(extracted[0])
+assert firstExtracted["status"] == "success", "提取的JSON应可正常解析"
+
+println("✓ JSON提取测试通过")
+
+// =============================================================================
+// 7. 实际应用场景
+// 实际应用 JSON处理 API响应 配置文件 数据转换
+// 关键词: 实际应用, API响应, JSON配置, 数据转换, JSON处理
+// =============================================================================
+println("\n7. 实际应用场景")
+
+// ===== 7.1 API响应处理 =====
+// 关键词: API响应, JSON响应, 响应解析
+apiResponse = `{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "users": [
+      {"id": 1, "name": "User1"},
+      {"id": 2, "name": "User2"}
+    ]
+  }
+}`
+
+resp = json.loads(apiResponse)
+assert resp["code"] == 200, "响应码应为200"
+assert resp["message"] == "success", "消息应为success"
+assert len(resp["data"]["users"]) == 2, "应有2个用户"
+
+println(f"API响应处理成功: code=${resp['code']}, users=${len(resp['data']['users'])}")
+
+// ===== 7.2 配置文件读取 =====
+// 关键词: 配置文件, JSON配置, 配置解析
+configJson = `{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080
+  },
+  "database": {
+    "host": "localhost",
+    "port": 3306
+  }
+}`
+
+config = json.loads(configJson)
+serverHost = config["server"]["host"]
+serverPort = config["server"]["port"]
+
+assert serverHost == "0.0.0.0", "服务器地址应正确"
+assert serverPort == 8080, "服务器端口应正确"
+
+println(f"配置读取成功: ${serverHost}:${serverPort}")
+
+// ===== 7.3 数据转换和传输 =====
+// 关键词: 数据转换, JSON传输, 序列化反序列化
+userData = {
+    "username": "testuser",
+    "email": "test@example.com",
+    "roles": ["admin", "user"],
+    "metadata": {
+        "created": "2024-01-01",
+        "lastLogin": "2024-01-15"
+    }
+}
+
+// 序列化准备传输
+// 关键词: 序列化传输, JSON编码传输
+transmitted = json.dumps(userData)
+println(f"传输数据长度: ${len(transmitted)} 字节")
+
+// 接收端反序列化
+// 关键词: 接收反序列化, JSON解码
+received = json.loads(transmitted)
+assert received["username"] == "testuser", "传输后数据应一致"
+assert len(received["roles"]) == 2, "角色数量应正确"
+
+println("数据传输验证成功")
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== json库测试总结 ===")
+println("✅ JSON序列化 - dumps, Marshal, withIndent")
+println("✅ JSON反序列化 - loads, 嵌套对象解析")
+println("✅ JSON对象 - New, IsObject, IsArray")
+println("✅ JSONPath查询 - Find, FindPath")
+println("✅ JSONPath替换 - ReplaceAll")
+println("✅ JSON提取 - ExtractJSON从文本提取")
+println("✅ 实际应用 - API响应, 配置文件, 数据传输")
+
+println("\njson库功能测试完成！")
+

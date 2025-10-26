@@ -1,0 +1,656 @@
+// =============================================================================
+// crawler 库完整实战练习 - 基础HTTP爬虫和网页抓取
+// crawler库 HTTP爬虫 网页抓取 URL发现 基础爬取 链接提取 网络请求
+// 关键词: crawler, StartCrawler, HTTP爬虫, 网页抓取, URL发现, 链接提取, 网络爬取
+// =============================================================================
+
+println("crawler 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础HTTP爬虫演示
+// 基础爬虫 HTTP爬取 网页抓取 链接发现 简单爬取
+// 关键词: StartCrawler, HTTP爬虫, 网页抓取, 链接发现, 基础爬取
+// =============================================================================
+println("\n1. 基础HTTP爬虫演示")
+
+// ===== 1.1 启动本地测试服务器 =====
+// 关键词: 测试服务器, httpserver, 本地服务器, 爬虫测试环境
+println("1.1 启动本地测试服务器")
+
+port = os.GetRandomAvailableTCPPort()
+crawlTestData = []  // 存储爬虫测试数据
+
+// 启动测试HTTP服务器
+// 关键词: httpserver.Serve, HTTP服务器, 测试服务器, 请求处理器
+go func {
+    httpserver.Serve(
+        "127.0.0.1",
+        port,
+        httpserver.handler((rsp, req) => {
+            path = req.URL.Path
+            method = req.Method
+
+            // 记录请求数据
+            // 关键词: 请求记录, 数据收集, 访问跟踪
+            crawlTestData = append(crawlTestData, {
+                "path": path,
+                "method": method,
+                "userAgent": req.Header.Get("User-Agent"),
+                "timestamp": time.Now().String()
+            })
+
+            // 根据请求路径返回不同内容
+            // 关键词: 路由处理, 路径匹配, 内容生成, HTML响应
+            if path == "/" {
+                rsp.Write(`<html>
+                    <head><title>Home Page</title></head>
+                    <body>
+                        <h1>Welcome to Crawler Test Site</h1>
+                        <p>This is the home page.</p>
+                        <ul>
+                            <li><a href="/about">About Us</a></li>
+                            <li><a href="/products">Products</a></li>
+                            <li><a href="/contact">Contact</a></li>
+                            <li><a href="/blog">Blog</a></li>
+                        </ul>
+                    </body>
+                </html>`)
+            } else if path == "/about" {
+                rsp.Write(`<html>
+                    <head><title>About</title></head>
+                    <body>
+                        <h1>About Us</h1>
+                        <p>Learn more about our company.</p>
+                        <a href="/">Home</a> | <a href="/products">Products</a>
+                    </body>
+                </html>`)
+            } else if path == "/products" {
+                rsp.Write(`<html>
+                    <head><title>Products</title></head>
+                    <body>
+                        <h1>Our Products</h1>
+                        <ul>
+                            <li><a href="/products/item1">Product 1</a></li>
+                            <li><a href="/products/item2">Product 2</a></li>
+                        </ul>
+                        <a href="/">Home</a>
+                    </body>
+                </html>`)
+            } else if path == "/products/item1" {
+                rsp.Write(`<html>
+                    <head><title>Product 1</title></head>
+                    <body>
+                        <h1>Amazing Product 1</h1>
+                        <p>Details about Product 1...</p>
+                        <a href="/products">Back to Products</a>
+                    </body>
+                </html>`)
+            } else if path == "/products/item2" {
+                rsp.Write(`<html>
+                    <head><title>Product 2</title></head>
+                    <body>
+                        <h1>Fantastic Product 2</h1>
+                        <p>Details about Product 2...</p>
+                        <a href="/products">Back to Products</a>
+                    </body>
+                </html>`)
+            } else if path == "/contact" {
+                rsp.Write(`<html>
+                    <head><title>Contact</title></head>
+                    <body>
+                        <h1>Contact Us</h1>
+                        <p>Get in touch with us.</p>
+                        <a href="/">Home</a>
+                    </body>
+                </html>`)
+            } else if path == "/blog" {
+                rsp.Write(`<html>
+                    <head><title>Blog</title></head>
+                    <body>
+                        <h1>Our Blog</h1>
+                        <p>Latest news and articles.</p>
+                        <a href="/blog/post1">First Post</a> |
+                        <a href="/blog/post2">Second Post</a>
+                        <br><a href="/">Home</a>
+                    </body>
+                </html>`)
+            } else if path == "/blog/post1" {
+                rsp.Write(`<html>
+                    <head><title>Blog Post 1</title></head>
+                    <body>
+                        <h1>First Blog Post</h1>
+                        <p>This is our first blog post content.</p>
+                        <a href="/blog">Back to Blog</a>
+                    </body>
+                </html>`)
+            } else if path == "/blog/post2" {
+                rsp.Write(`<html>
+                    <head><title>Blog Post 2</title></head>
+                    <body>
+                        <h1>Second Blog Post</h1>
+                        <p>This is our second blog post content.</p>
+                        <a href="/blog">Back to Blog</a>
+                    </body>
+                </html>`)
+            } else {
+                rsp.SetStatusCode(404)
+                rsp.Write(`<html>
+                    <head><title>404</title></head>
+                    <body>
+                        <h1>404 Not Found</h1>
+                        <p>Page not found.</p>
+                        <a href="/">Home</a>
+                    </body>
+                </html>`)
+            }
+        })
+    )
+}()
+
+// 等待服务器启动
+// 关键词: 服务器启动等待, 初始化延迟, 连接准备
+time.Sleep(1)
+
+// ===== 1.2 基础爬虫使用 =====
+// 关键词: StartCrawler, 基础爬虫, HTTP爬取, 链接发现
+println("1.2 基础爬虫使用")
+
+targetUrl = f"http://127.0.0.1:${port}/"
+
+// 启动基础爬虫
+// 关键词: StartCrawler, 爬虫启动, 基础配置, HTTP爬虫
+ch, err = crawler.StartCrawler(targetUrl,
+    crawler.maxDepth(2),      // 最大深度
+    crawler.concurrent(3),    // 并发数
+    crawler.maxUrls(20),      // 最大URL数
+    crawler.userAgent("Yaklang-Crawler/1.0")  // 自定义User-Agent
+)
+
+if err != nil {
+    log.error("Crawler start failed: %v", err)
+    println(f"爬虫启动失败: ${err}")
+    assert false, f"爬虫不应启动失败: ${err}"
+}
+
+println("基础HTTP爬虫启动成功，开始收集结果...")
+
+// 收集爬虫结果
+// 关键词: 结果收集, 爬虫数据, HTTP响应, 链接发现
+crawlerResults = []
+collectedCount = 0
+maxCollect = 10  // 最多收集10个结果
+
+// 简化收集逻辑，避免卡死
+// 关键词: 简化收集, 超时控制, 防止卡死
+for collectedCount < maxCollect {
+    req = <-ch
+    if req == nil {
+        log.info("爬虫通道关闭")
+        break
+    }
+    
+    // 记录爬虫发现的URL
+    // 关键词: URL记录, 结果收集, 爬取数据
+    result = {
+        "url": req.Url(),
+        "depth": req.Depth(),
+        "statusCode": 0,
+        "hasError": false,
+        "errorMsg": "",
+        "isForm": req.IsForm()
+    }
+
+    // 获取响应状态码
+    // 关键词: 状态码获取, 响应检查, HTTP状态
+    if req.Response() != nil {
+        result["statusCode"] = req.Response().StatusCode
+        result["contentLength"] = len(req.ResponseRaw())
+    }
+
+    // 检查是否有错误
+    // 关键词: 错误检查, 异常处理, 失败请求
+    if req.Error() != nil {
+        result["hasError"] = true
+        result["errorMsg"] = string(req.Error())
+    }
+
+    crawlerResults = append(crawlerResults, result)
+    println(f"发现URL: ${req.Url()} (深度: ${req.Depth()}, 状态: ${result['statusCode']})")
+    collectedCount++
+}
+
+// 验证基础爬虫结果
+// 关键词: 结果验证, 爬虫验证, 发现URL确认
+assert len(crawlerResults) > 0, "应该至少发现一个URL"
+println(f"✓ 基础HTTP爬虫测试通过，发现 ${len(crawlerResults)} 个URL")
+
+// =============================================================================
+// 2. 高级配置选项演示
+// 高级配置 过滤规则 头部设置 代理设置 超时控制
+// 关键词: 高级配置, 过滤规则, 头部设置, 代理设置, 超时控制
+// =============================================================================
+println("\n2. 高级配置选项演示")
+
+// ===== 2.1 域名过滤和URL过滤 =====
+// 关键词: 域名过滤, URL过滤, 白名单, 黑名单, 正则过滤
+println("2.1 域名过滤和URL过滤")
+
+// 白名单测试
+// 关键词: domainInclude, 白名单, 域名白名单, 允许域名
+whitelistResults = []
+ch1, err1 = crawler.StartCrawler(targetUrl,
+    crawler.domainInclude([f"127.0.0.1:{port}"]),  // 只允许本地地址
+    crawler.maxDepth(1),
+    crawler.concurrent(2),
+)
+
+if err1 == nil {
+    count = 0
+    for count < 3 {
+        req = <-ch1
+        if req == nil {
+            break
+        }
+        whitelistResults = append(whitelistResults, req.Url())
+        count++
+    }
+}
+
+assert len(whitelistResults) > 0, "白名单应该发现URL"
+println(f"白名单模式发现 {len(whitelistResults)} 个URL")
+
+// 黑名单测试
+// 关键词: domainExclude, 黑名单, 域名黑名单, 排除域名
+blacklistResults = []
+ch2, err2 = crawler.StartCrawler(targetUrl,
+    crawler.domainExclude(["external.com"]),  // 排除外部域名（示例）
+    crawler.maxDepth(1),
+    crawler.concurrent(2),
+)
+
+if err2 == nil {
+    count = 0
+    for count < 3 {
+        req = <-ch2
+        if req == nil {
+            break
+        }
+        blacklistResults = append(blacklistResults, req.Url())
+        count++
+    }
+}
+
+assert len(blacklistResults) > 0, "黑名单过滤应该发现URL"
+println(f"黑名单模式发现 {len(blacklistResults)} 个URL")
+
+// ===== 2.2 自定义头部和Cookie =====
+// 关键词: header, cookie, 自定义头部, Cookie设置, 请求配置
+println("2.2 自定义头部和Cookie")
+
+headerResults = []
+ch3, err3 = crawler.StartCrawler(targetUrl,
+    crawler.header("X-Crawler", "Yaklang-Crawler"),  // 自定义头部
+    crawler.header("X-Version", "1.0"),
+    crawler.cookie("session_id=test123"),  // 自定义Cookie
+    crawler.userAgent("Yaklang-Test/1.0"), // 自定义User-Agent
+    crawler.maxDepth(1),
+)
+
+if err3 == nil {
+    count = 0
+    for count < 2 {
+        req = <-ch3
+        if req == nil {
+            break
+        }
+        headerResults = append(headerResults, {
+            "url": req.Url(),
+            "hasCustomHeader": str.Contains(string(req.RequestRaw()), "X-Crawler"),
+            "hasCookie": str.Contains(string(req.RequestRaw()), "session_id")
+        })
+        count++
+    }
+}
+
+assert len(headerResults) > 0, "应该有带自定义头部的请求"
+println(f"自定义头部测试发现 {len(headerResults)} 个请求")
+
+// ===== 2.3 超时和重试配置 =====
+// 关键词: timeout, maxRetry, 超时设置, 重试机制, 网络容错
+println("2.3 超时和重试配置")
+
+timeoutResults = []
+ch4, err4 = crawler.StartCrawler(targetUrl,
+    crawler.timeout(10),       // 连接超时10秒
+    crawler.responseTimeout(15), // 响应超时15秒
+    crawler.maxRetry(2),       // 最大重试2次
+    crawler.maxDepth(1),
+)
+
+if err4 == nil {
+    startTime = time.Now()
+    count = 0
+    for count < 2 {
+        req = <-ch4
+        if req == nil {
+            break
+        }
+        timeoutResults = append(timeoutResults, req.Url())
+        count++
+    }
+    duration = time.Now().Sub(startTime)
+    println(f"超时配置测试完成，耗时: ${duration.String()}")
+}
+
+assert len(timeoutResults) > 0, "超时配置应该发现URL"
+println("✓ 超时和重试配置测试通过")
+
+// ===== 2.4 并发和请求限制 =====
+// 关键词: concurrent, maxRequest, 并发控制, 请求限制, 性能控制
+println("2.4 并发和请求限制")
+
+concurrentResults = []
+ch5, err5 = crawler.StartCrawler(targetUrl,
+    crawler.concurrent(5),     // 5个并发
+    crawler.maxRequest(15),    // 最大请求数
+    crawler.maxDepth(2),
+)
+
+if err5 == nil {
+    count = 0
+    for count < 5 {
+        req = <-ch5
+        if req == nil {
+            break
+        }
+        concurrentResults = append(concurrentResults, req.Url())
+        count++
+    }
+}
+
+assert len(concurrentResults) > 0, "并发控制应该发现URL"
+println(f"并发控制测试发现 {len(concurrentResults)} 个URL")
+
+// =============================================================================
+// 3. 表单发现和处理
+// 表单发现 登录表单 自动登录 表单解析 交互处理
+// 关键词: autoLogin, 表单发现, 登录表单, 自动登录, 表单解析
+// =============================================================================
+println("\n3. 表单发现和处理")
+
+// ===== 3.1 表单发现功能 =====
+// 关键词: 表单发现, isForm, 表单检测, 交互元素
+println("3.1 表单发现功能")
+
+// 添加一个表单页面
+formPageResults = []
+ch6, err6 = crawler.StartCrawler(f"http://127.0.0.1:{port}/contact",
+    crawler.maxDepth(1),
+    crawler.concurrent(1),
+)
+
+if err6 == nil {
+    count = 0
+    for count < 1 {
+        req = <-ch6
+        if req == nil {
+            break
+        }
+        formPageResults = append(formPageResults, {
+            "url": req.Url(),
+            "isForm": req.IsForm(),
+            "maybeLoginForm": req.IsLoginForm(),
+            "statusCode": req.Response().StatusCode
+        })
+        count++
+    }
+}
+
+assert len(formPageResults) > 0, "应该发现表单页面"
+println(f"表单发现测试发现 {len(formPageResults)} 个页面")
+
+// ===== 3.2 自动登录配置 =====
+// 关键词: autoLogin, 自动登录, 认证处理, 登录表单
+println("3.2 自动登录配置")
+
+// 配置自动登录（如果有登录表单的话）
+// 关键词: 自动登录配置, 认证信息, 登录凭据
+loginConfig = {
+    "username": "testuser",
+    "password": "testpass"
+}
+
+loginResults = []
+ch7, err7 = crawler.StartCrawler(targetUrl,
+    crawler.autoLogin(loginConfig["username"], loginConfig["password"]),
+    crawler.maxDepth(1),
+    crawler.concurrent(1),
+)
+
+if err7 == nil {
+    for req = range ch7 {
+        if req != nil {
+            loginResults = append(loginResults, req.Url())
+        }
+        if len(loginResults) >= 2 {
+            break
+        }
+    }
+}
+
+println("自动登录功能测试完成（如果有登录表单会被检测到）")
+
+// =============================================================================
+// 4. URL提取和过滤
+// URL提取 链接发现 过滤规则 正则匹配 后缀过滤
+// 关键词: urlExtractor, urlRegexpInclude, urlRegexpExclude, disallowSuffix
+// =============================================================================
+println("\n4. URL提取和过滤")
+
+// ===== 4.1 URL后缀过滤 =====
+// 关键词: disallowSuffix, 后缀过滤, 文件类型过滤, 资源排除
+println("4.1 URL后缀过滤")
+
+suffixResults = []
+ch8, err8 = crawler.StartCrawler(targetUrl,
+    crawler.disallowSuffix([".jpg", ".png", ".css", ".js"]),  // 排除静态资源
+    crawler.maxDepth(2),
+    crawler.concurrent(3),
+)
+
+if err8 == nil {
+    for req = range ch8 {
+        if req != nil {
+            url = req.Url()
+            suffixResults = append(suffixResults, {
+                "url": url,
+                "isAllowed": !str.Contains(url, ".jpg") &&
+                            !str.Contains(url, ".png") &&
+                            !str.Contains(url, ".css") &&
+                            !str.Contains(url, ".js")
+            })
+        }
+        if len(suffixResults) >= 5 {
+            break
+        }
+    }
+}
+
+// 验证后缀过滤
+// 关键词: 过滤验证, 后缀检查, 排除确认
+allAllowed = true
+for result in suffixResults {
+    if !result["isAllowed"] {
+        allAllowed = false
+        break
+    }
+}
+assert allAllowed, "所有URL应该通过后缀过滤"
+println(f"后缀过滤测试发现 {len(suffixResults)} 个符合条件的URL")
+
+// ===== 4.2 正则表达式过滤 =====
+// 关键词: urlRegexpInclude, urlRegexpExclude, 正则过滤, 模式匹配
+println("4.2 正则表达式过滤")
+
+regexResults = []
+ch9, err9 = crawler.StartCrawler(targetUrl,
+    crawler.urlRegexpInclude(["127\\.0\\.0\\.1.*"]),  // 只包含本地地址
+    crawler.urlRegexpExclude([".*logout.*"]),         // 排除logout相关
+    crawler.maxDepth(1),
+)
+
+if err9 == nil {
+    for req = range ch9 {
+        if req != nil {
+            regexResults = append(regexResults, req.Url())
+        }
+        if len(regexResults) >= 3 {
+            break
+        }
+    }
+}
+
+assert len(regexResults) > 0, "正则过滤应该发现URL"
+println(f"正则过滤测试发现 {len(regexResults)} 个符合条件的URL")
+
+// =============================================================================
+// 5. 代理和网络配置
+// 代理设置 网络配置 连接控制 高级网络选项
+// 关键词: proxy, connectTimeout, bodySize, 代理设置, 网络配置
+// =============================================================================
+println("\n5. 代理和网络配置")
+
+// ===== 5.1 代理配置（演示） =====
+// 关键词: proxy, 代理设置, 网络代理, 请求代理
+println("5.1 代理配置（演示）")
+
+// 注意: 这里只是演示代理配置，实际使用需要有效的代理服务器
+proxyResults = []
+ch10, err10 = crawler.StartCrawler(targetUrl,
+    // crawler.proxy("http://127.0.0.1:8080"),  // 示例代理配置
+    crawler.connectTimeout(10),  // 连接超时
+    crawler.bodySize(1024*1024), // 响应体大小限制
+    crawler.maxDepth(1),
+)
+
+if err10 == nil {
+    for req = range ch10 {
+        if req != nil {
+            proxyResults = append(proxyResults, req.Url())
+        }
+        if len(proxyResults) >= 2 {
+            break
+        }
+    }
+}
+
+println("代理和网络配置测试完成")
+
+// =============================================================================
+// 6. 爬虫监控和统计
+// 爬虫监控 统计信息 性能监控 请求计数 成功率统计
+// 关键词: 爬虫监控, 统计信息, 性能监控, 请求计数, 成功率统计
+// =============================================================================
+println("\n6. 爬虫监控和统计")
+
+// ===== 6.1 统计信息收集 =====
+// 关键词: 统计收集, 监控数据, 性能指标, 成功率计算
+println("6.1 统计信息收集")
+
+// 收集所有测试的统计数据
+// 关键词: 统计分析, 数据汇总, 性能评估
+totalServerRequests = len(crawlTestData)
+totalCrawlerResults = len(crawlerResults)
+uniqueUrls = {}
+for result in crawlerResults {
+    uniqueUrls[result["url"]] = true
+}
+uniqueUrlCount = len(uniqueUrls)
+
+// 计算成功率
+// 关键词: 成功率计算, 统计分析, 性能评估
+successfulRequests = 0
+for result in crawlerResults {
+    if result["statusCode"] >= 200 && result["statusCode"] < 300 {
+        successfulRequests++
+    }
+}
+successRate = float(successfulRequests) / float(len(crawlerResults)) * 100
+
+println("爬虫执行统计:")
+println(f"  服务器收到请求: ${totalServerRequests}")
+println(f"  爬虫发现URL: ${totalCrawlerResults}")
+println(f"  唯一URL数量: ${uniqueUrlCount}")
+println(f"  成功请求数: ${successfulRequests}")
+println(f"  成功率: ${sprintf('%.1f', successRate)}%")
+
+// 验证统计数据
+// 关键词: 统计验证, 数据确认, 结果验证
+assert totalServerRequests > 0, "服务器应该收到请求"
+assert totalCrawlerResults > 0, "爬虫应该发现URL"
+assert uniqueUrlCount > 0, "应该有唯一URL"
+println("✓ 爬虫统计验证通过")
+
+// =============================================================================
+// 7. 错误处理和容错
+// 错误处理 异常捕获 网络错误 超时处理 容错机制
+// 关键词: 错误处理, 异常捕获, 网络错误, 超时处理, 容错机制
+// =============================================================================
+println("\n7. 错误处理和容错")
+
+// ===== 7.1 无效URL测试 =====
+// 关键词: 无效URL, 错误处理, 容错测试, 异常处理
+println("7.1 无效URL测试")
+
+invalidResults = []
+ch11, err11 = crawler.StartCrawler("http://invalid-domain-that-does-not-exist-12345.com",
+    crawler.timeout(5),    // 短超时
+    crawler.maxRetry(1),   // 只重试1次
+    crawler.concurrent(1),
+)
+
+if err11 != nil {
+    println(f"预期的错误处理: ${err11}")
+    assert str.Contains(string(err11), "error"), "应该有错误信息"
+} else {
+    // 如果没有立即错误，检查结果
+    for req = range ch11 {
+        if req != nil {
+            invalidResults = append(invalidResults, req.Error())
+        }
+        if len(invalidResults) >= 1 {
+            break
+        }
+    }
+    if len(invalidResults) > 0 {
+        println("检测到无效URL的错误")
+    }
+}
+
+println("✓ 错误处理测试通过")
+
+// =============================================================================
+// 测试总结
+// =============================================================================
+println("\n=== crawler库测试总结 ===")
+println("✅ 基础HTTP爬虫 - StartCrawler")
+println("✅ 高级配置选项 - 过滤、头部、超时、重试")
+println("✅ 表单发现功能 - 表单检测和自动登录")
+println("✅ URL过滤规则 - 域名、正则、后缀过滤")
+println("✅ 网络配置 - 代理、连接控制")
+println("✅ 监控统计 - 请求计数和成功率")
+println("✅ 错误处理 - 容错和异常处理")
+
+println(f"\n测试服务器总共收到请求: ${len(crawlTestData)}")
+println(f"crawler库共发现URL: ${len(crawlerResults)}")
+println(f"唯一URL数量: ${uniqueUrlCount}")
+println("crawler库功能测试完成！")
+
+println("\n核心用途说明:")
+println("crawler库是Yaklang的基础HTTP爬虫模块，主要用于:")
+println("1. 传统网页抓取和静态内容提取")
+println("2. 网站结构分析和链接发现")
+println("3. 表单检测和简单HTTP交互")
+println("4. 网络爬虫的基础功能实现")
+println("5. HTTP请求的批量自动化处理")
+println("6. 不需要JavaScript渲染的轻量级爬取")

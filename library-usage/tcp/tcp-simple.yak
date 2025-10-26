@@ -1,0 +1,276 @@
+// =============================================================================
+// tcp 库简化实战练习 - TCP连接和基础通信
+// tcp库 TCP连接 网络通信 客户端服务器 Socket编程
+// 关键词: tcp, TCP连接, 网络通信, 客户端, 服务器, Socket编程
+// =============================================================================
+
+println("tcp 库简化功能测试开始...")
+
+// =============================================================================
+// 1. TCP客户端连接测试
+// TCP客户端 连接测试 网络连接 客户端通信 连接建立
+// 关键词: tcp.Connect, TCP客户端, 连接测试, 网络连接, 客户端通信
+// =============================================================================
+println("\n1. TCP客户端连接测试")
+
+// ===== 1.1 连接超时测试 =====
+// 关键词: 连接测试, 错误处理, 连接失败, 超时测试
+println("1.1 连接超时测试")
+
+testHost = "127.0.0.1"
+testPort = 65432  // 使用一个不太可能被占用的端口
+
+conn, err = tcp.Connect(testHost, testPort, tcp.clientTimeout(1))  // 1秒超时
+assert err != nil, "连接到不存在的端口应该失败"
+println(f"✓ 连接超时测试通过: ${err}")
+
+// ===== 1.2 不同超时配置测试 =====
+// 关键词: 超时设置, 连接超时, 网络超时
+println("1.2 不同超时配置测试")
+
+shortTimeout = 0.5  // 0.5秒超时
+conn2, err2 = tcp.Connect(testHost, testPort, tcp.clientTimeout(shortTimeout))
+assert err2 != nil, "短超时连接应该失败"
+println(f"✓ 短超时测试通过")
+
+longTimeout = 2  // 2秒超时
+conn3, err3 = tcp.Connect(testHost, testPort, tcp.clientTimeout(longTimeout))
+assert err3 != nil, "长超时连接也应该失败（端口不存在）"
+println(f"✓ 长超时测试通过")
+
+println("✓ TCP客户端连接测试完成")
+
+// =============================================================================
+// 2. TCP服务器和基础通信
+// TCP服务器 服务器创建 监听端口 连接处理 基础通信
+// 关键词: tcp.Serve, TCP服务器, 监听端口, 连接处理, 基础通信
+// =============================================================================
+println("\n2. TCP服务器和基础通信")
+
+// ===== 2.1 启动TCP服务器 =====
+// 关键词: tcp.Serve, 服务器启动, 端口监听, 服务器创建
+println("2.1 启动TCP服务器")
+
+serverPort = os.GetRandomAvailableTCPPort()
+serverHost = "127.0.0.1"
+serverMessages = []  // 存储服务器接收到的消息
+
+// 启动TCP服务器
+// 关键词: tcp.Serve, serverCallback, 连接处理器, 消息处理
+go func() {
+    tcp.Serve(
+        serverHost, 
+        serverPort,
+        tcp.serverCallback(func(conn) {
+            // 处理客户端连接
+            // 关键词: 连接处理, 消息接收, 数据读取
+            for {
+                data, err = conn.RecvStringTimeout(5)  // 5秒超时
+                if err != nil {
+                    log.info(f"连接关闭或超时: ${err}")
+                    break
+                }
+                
+                // 记录接收到的消息
+                // 关键词: 消息记录, 数据存储, 通信日志
+                serverMessages = append(serverMessages, data)
+                println(f"服务器收到消息: ${data}")
+                
+                // 简单回复客户端
+                // 关键词: 消息回复, 数据发送, 响应处理
+                response = f"Echo: ${data}"
+                conn.Send(response)
+            }
+        })
+    )
+}()
+
+// 等待服务器启动
+// 关键词: 服务器启动等待, 初始化延迟
+time.Sleep(2)
+println(f"TCP服务器启动完成: ${serverHost}:${serverPort}")
+
+// ===== 2.2 客户端连接测试 =====
+// 关键词: 客户端连接, 服务器通信, TCP通信, 消息交换
+println("2.2 客户端连接测试")
+
+// 创建客户端连接
+// 关键词: tcp.Connect, 客户端创建, 连接建立
+clientConn, clientErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+assert clientErr == nil, f"客户端连接失败: ${clientErr}"
+println("✓ 客户端连接成功")
+
+// 发送测试消息
+// 关键词: 消息发送, 数据传输, 客户端发送
+testMessage = "Hello TCP Server!"
+sendErr = clientConn.Send(testMessage)
+assert sendErr == nil, f"消息发送失败: ${sendErr}"
+println(f"✓ 发送消息: ${testMessage}")
+
+// 接收服务器回复（带超时）
+// 关键词: 消息接收, 数据接收, 服务器响应, 超时控制
+response, recvErr = clientConn.RecvStringTimeout(3)  // 3秒超时
+if recvErr == nil {
+    assert str.Contains(response, testMessage), "响应应包含原始消息"
+    println(f"✓ 收到响应: ${response}")
+} else {
+    println(f"接收响应超时或失败: ${recvErr}")
+}
+
+// 发送更多测试消息（只发送，不等待响应）
+// 关键词: 多消息测试, 单向通信, 消息序列
+messages = ["Message 1", "Message 2", "测试中文消息"]
+for _, msg = range messages {
+    clientConn.Send(msg)
+    println(f"✓ 发送消息: ${msg}")
+    time.Sleep(0.2)  // 短暂延迟
+}
+
+// 关闭客户端连接
+// 关键词: 连接关闭, 资源释放, 连接清理
+clientConn.Close()
+println("✓ 客户端连接关闭")
+
+time.Sleep(1)  // 等待服务器处理
+println(f"✓ TCP基础通信测试完成，服务器收到 ${len(serverMessages)} 条消息")
+
+// =============================================================================
+// 3. 错误处理和连接管理
+// 错误处理 连接管理 异常处理 重连机制 连接状态
+// 关键词: 错误处理, 连接管理, 异常处理, 重连机制, 连接状态
+// =============================================================================
+println("\n3. 错误处理和连接管理")
+
+// ===== 3.1 连接错误处理 =====
+// 关键词: 连接错误, 错误处理, 异常捕获, 错误恢复
+println("3.1 连接错误处理")
+
+// 测试连接到无效地址
+// 关键词: 无效连接, 连接失败, 错误测试
+invalidConn, invalidErr = tcp.Connect("192.0.2.1", 12345, tcp.clientTimeout(1))
+assert invalidErr != nil, "连接到无效地址应该失败"
+println("✓ 无效地址连接错误处理正常")
+
+// 测试连接到公网地址的不存在端口
+// 关键词: 超时错误, 连接超时, 网络超时
+timeoutConn, timeoutErr = tcp.Connect("1.1.1.1", 12345, tcp.clientTimeout(1))
+assert timeoutErr != nil, "超时连接应该失败"
+println("✓ 连接超时错误处理正常")
+
+// ===== 3.2 连接重试机制 =====
+// 关键词: 重试机制, 连接恢复, 自动重连, 容错处理
+println("3.2 连接重试机制")
+
+// 实现简单的重试函数
+// 关键词: 重试函数, 连接重试, 重连逻辑
+retryConnect = func(host, port, maxRetries, timeout) {
+    for i = 0; i < maxRetries; i++ {
+        conn, err = tcp.Connect(host, port, tcp.clientTimeout(timeout))
+        if err == nil {
+            return conn, nil
+        }
+        println(f"连接重试 ${i+1}/${maxRetries}: ${err}")
+        time.Sleep(0.5)
+    }
+    return nil, error(f"连接失败，已重试${maxRetries}次")
+}
+
+// 测试重连到正常服务器
+// 关键词: 重连测试, 连接恢复, 重试验证
+retryConn, retryErr = retryConnect(serverHost, serverPort, 3, 2)
+assert retryErr == nil, f"重连失败: ${retryErr}"
+assert retryConn != nil, "重连应该成功"
+println("✓ 连接重试机制正常")
+
+// 测试重连后的通信
+// 关键词: 重连通信, 连接验证, 功能测试
+retryConn.Send("Retry test message")
+println("✓ 重连后发送消息成功")
+
+retryConn.Close()
+println("✓ 错误处理和连接管理测试完成")
+
+// =============================================================================
+// 4. 实际应用场景演示
+// 实际应用 综合应用 TCP应用 网络服务 通信协议
+// 关键词: 实际应用, 综合应用, TCP应用, 网络服务, 通信协议
+// =============================================================================
+println("\n4. 实际应用场景演示")
+
+// ===== 4.1 简单协议实现 =====
+// 关键词: 协议实现, 通信协议, 消息协议, 协议设计
+println("4.1 简单协议实现")
+
+// 创建协议测试连接
+// 关键词: 协议连接, 协议测试, 通信协议
+protocolConn, protocolErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+assert protocolErr == nil, f"协议测试连接失败: ${protocolErr}"
+
+// 实现简单的命令协议（只发送，不等待响应）
+// 关键词: 命令协议, 协议命令, 消息格式
+commands = [
+    "PING",
+    "HELLO:World",
+    "DATA:This is test data",
+    "BYE"
+]
+
+for _, cmd = range commands {
+    protocolConn.Send(cmd)
+    println(f"✓ 发送协议命令: ${cmd}")
+    time.Sleep(0.1)
+}
+
+protocolConn.Close()
+println("✓ 协议实现测试完成")
+
+// ===== 4.2 多客户端测试 =====
+// 关键词: 多客户端, 并发连接, 并发通信, 多连接处理
+println("4.2 多客户端测试")
+
+clientCount = 3
+successCount = 0
+
+// 创建多个并发客户端
+// 关键词: 并发创建, 多客户端, 并发连接
+for i = 0; i < clientCount; i++ {
+    go func(clientId) {
+        // 创建客户端连接
+        // 关键词: 客户端连接, 并发连接, 多线程连接
+        concurrentConn, concurrentErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+        if concurrentErr != nil {
+            log.error(f"客户端${clientId}连接失败: ${concurrentErr}")
+            return
+        }
+        
+        // 发送消息
+        // 关键词: 并发发送, 客户端消息, 多客户端通信
+        message = f"Message from client ${clientId}"
+        concurrentConn.Send(message)
+        println(f"✓ 客户端${clientId}发送消息: ${message}")
+        
+        successCount++
+        concurrentConn.Close()
+    }(i)
+}
+
+// 等待所有客户端完成
+// 关键词: 等待完成, 并发同步, 客户端同步
+time.Sleep(2)
+
+println(f"✓ 多客户端测试完成，${successCount} 个客户端成功通信")
+
+println("✓ 实际应用场景演示完成")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== TCP库简化测试总结 ===")
+println("✅ TCP客户端连接 - 连接建立、超时控制、错误处理")
+println("✅ TCP服务器创建 - 监听端口、连接处理、消息处理")
+println("✅ 基础通信 - 消息发送、连接管理")
+println("✅ 错误处理 - 连接错误、超时处理、重连机制")
+println("✅ 实际应用 - 协议实现、多客户端支持")
+
+println("\nTCP库简化测试完成！")
+println("TCP库提供了完整的网络编程能力，支持客户端和服务器开发。")

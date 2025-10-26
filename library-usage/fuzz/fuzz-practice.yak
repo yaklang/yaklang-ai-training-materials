@@ -1,0 +1,488 @@
+// =============================================================================
+// fuzz 库完整实战练习 - 模糊测试和变量生成
+// fuzz库 模糊测试 变量生成 HTTP请求模糊 数据变异
+// 关键词: fuzz, 模糊测试, 变量生成, HTTP请求模糊, 数据变异
+// =============================================================================
+
+println("fuzz 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础字符串模糊测试
+// 字符串模糊 基础模糊 变量生成 数据变异 模糊字符串
+// 关键词: fuzz.Strings, 字符串模糊, 基础模糊, 变量生成, 数据变异
+// =============================================================================
+println("\n1. 基础字符串模糊测试")
+
+// ===== 1.1 简单字符串模糊 =====
+// 关键词: fuzz.Strings, 简单模糊, 字符串变异, 基础变异
+println("1.1 简单字符串模糊")
+
+// 模糊测试基础字符串
+// 关键词: 基础字符串, 模糊变异, 字符串生成
+baseString = "test"
+fuzzResults = fuzz.Strings(baseString)
+if len(fuzzResults) > 0 {
+    println(f"✓ 基础字符串模糊成功，生成 ${len(fuzzResults)} 个变异")
+    
+    // 显示前几个结果
+    // 关键词: 结果展示, 变异样本, 模糊结果
+    maxShow = 5
+    for i, result = range fuzzResults {
+        if i >= maxShow {
+            break
+        }
+        println(f"  变异${i+1}: '${result}'")
+    }
+    
+    if len(fuzzResults) > maxShow {
+        println(f"  ... 还有 ${len(fuzzResults) - maxShow} 个变异")
+    }
+    
+    assert len(fuzzResults) > 0, "应该生成模糊结果"
+} else {
+    println("基础字符串模糊失败")
+}
+
+// ===== 1.2 数字模糊测试 =====
+// 关键词: 数字模糊, 数值变异, 整数模糊, 数字生成
+println("1.2 数字模糊测试")
+
+// 模糊测试数字
+// 关键词: 数字变异, 整数模糊, 数值生成
+baseNumber = 123
+numberFuzzResults = fuzz.Strings(baseNumber)
+if len(numberFuzzResults) > 0 {
+    println(f"✓ 数字模糊成功，生成 ${len(numberFuzzResults)} 个变异")
+    
+    // 显示数字变异结果
+    // 关键词: 数字变异展示, 数值样本
+    for i, result = range numberFuzzResults {
+        if i >= 3 {
+            break
+        }
+        println(f"  数字变异${i+1}: '${result}'")
+    }
+} else {
+    println("数字模糊失败")
+}
+
+println("✓ 基础字符串模糊测试完成")
+
+// =============================================================================
+// 2. 带参数的模糊测试
+// 参数模糊 高级模糊 自定义参数 模糊配置 参数化模糊
+// 关键词: fuzz.StringsWithParam, 参数模糊, 高级模糊, 自定义参数, 模糊配置
+// =============================================================================
+println("\n2. 带参数的模糊测试")
+
+// ===== 2.1 自定义参数模糊 =====
+// 关键词: fuzz.StringsWithParam, 自定义参数, 参数化模糊, 模糊配置
+println("2.1 自定义参数模糊")
+
+// 使用自定义参数进行模糊测试
+// 关键词: 自定义参数, 参数配置, 模糊参数
+baseTemplate = "user={{username}}&pass={{password}}"
+customParams = {
+    "username": ["admin", "test", "user", "root"],
+    "password": ["123456", "password", "admin", "test"]
+}
+
+paramFuzzResults = fuzz.StringsWithParam(baseTemplate, customParams)
+if len(paramFuzzResults) > 0 {
+    println(f"✓ 参数模糊成功，生成 ${len(paramFuzzResults)} 个变异")
+    
+    // 显示参数模糊结果
+    // 关键词: 参数模糊展示, 模板变异, 参数组合
+    maxShow = 8
+    for i, result = range paramFuzzResults {
+        if i >= maxShow {
+            break
+        }
+        println(f"  参数变异${i+1}: '${result}'")
+    }
+    
+    assert len(paramFuzzResults) > 0, "应该生成参数模糊结果"
+} else {
+    println("参数模糊失败")
+}
+
+// ===== 2.2 复杂模板模糊 =====
+// 关键词: 复杂模板, 模板模糊, 多参数模糊, 组合模糊
+println("2.2 复杂模板模糊")
+
+// 使用复杂模板进行模糊测试
+// 关键词: 复杂模板, 多参数, 模板组合
+complexTemplate = "GET /api/{{endpoint}}?id={{id}}&token={{token}} HTTP/1.1"
+complexParams = {
+    "endpoint": ["users", "admin", "config", "debug"],
+    "id": ["1", "999", "-1", "0", "admin"],
+    "token": ["abc123", "null", "", "{{script}}"]
+}
+
+complexFuzzResults = fuzz.StringsWithParam(complexTemplate, complexParams)
+if len(complexFuzzResults) > 0 {
+    println(f"✓ 复杂模板模糊成功，生成 ${len(complexFuzzResults)} 个变异")
+    
+    // 显示复杂模板结果
+    // 关键词: 复杂模糊展示, HTTP模糊, 请求模糊
+    for i, result = range complexFuzzResults {
+        if i >= 5 {
+            break
+        }
+        println(f"  复杂变异${i+1}: '${result}'")
+    }
+} else {
+    println("复杂模板模糊失败")
+}
+
+println("✓ 带参数的模糊测试完成")
+
+// =============================================================================
+// 3. HTTP请求模糊测试
+// HTTP模糊 请求模糊 网络模糊 HTTP变异 请求变异
+// 关键词: fuzz.HTTPRequest, HTTP模糊, 请求模糊, 网络模糊, HTTP变异
+// =============================================================================
+println("\n3. HTTP请求模糊测试")
+
+// ===== 3.1 基础HTTP请求模糊 =====
+// 关键词: fuzz.HTTPRequest, HTTP请求模糊, 基础HTTP模糊, 请求变异
+println("3.1 基础HTTP请求模糊")
+
+// 创建基础HTTP请求
+// 关键词: HTTP请求创建, 请求构造, HTTP模糊对象
+basicHTTPRequest = `GET /api/test HTTP/1.1
+Host: example.com
+User-Agent: TestAgent/1.0
+Content-Type: application/json
+
+{"test": "data"}`
+
+// 创建HTTP模糊请求对象
+// 关键词: HTTP模糊对象, 请求模糊对象, HTTP变异对象
+httpFuzzReq, httpErr = fuzz.HTTPRequest(basicHTTPRequest)
+if httpErr == nil {
+    println("✓ HTTP请求模糊对象创建成功")
+    
+    // 获取原始请求
+    // 关键词: 原始请求, 基础请求, HTTP原始数据
+    originalReq = httpFuzzReq.Show()
+    println("原始HTTP请求:")
+    println(originalReq)
+    
+    assert httpFuzzReq != nil, "HTTP模糊对象不应为空"
+} else {
+    println(f"HTTP请求模糊对象创建失败: ${httpErr}")
+}
+
+// ===== 3.2 URL到HTTP请求转换 =====
+// 关键词: fuzz.UrlToHTTPRequest, URL转换, HTTP请求生成, URL模糊
+println("3.2 URL到HTTP请求转换")
+
+// 从URL创建HTTP请求
+// 关键词: URL转HTTP, 请求生成, URL模糊转换
+testURL = "https://example.com/api/users?id=123&name=test"
+urlHTTPReq, urlErr = fuzz.UrlToHTTPRequest("GET", testURL)
+if urlErr == nil {
+    println("✓ URL到HTTP请求转换成功")
+    
+    // 显示转换后的请求
+    // 关键词: 转换结果, HTTP请求展示, URL转换结果
+    convertedReq = urlHTTPReq.Show()
+    println("转换后的HTTP请求:")
+    println(convertedReq)
+    
+    assert urlHTTPReq != nil, "URL转换的HTTP对象不应为空"
+} else {
+    println(f"URL到HTTP请求转换失败: ${urlErr}")
+}
+
+println("✓ HTTP请求模糊测试完成")
+
+// =============================================================================
+// 4. 模糊测试回调函数
+// 回调模糊 函数模糊 模糊回调 变异处理 结果处理
+// 关键词: fuzz.StringsFunc, 回调模糊, 函数模糊, 模糊回调, 变异处理
+// =============================================================================
+println("\n4. 模糊测试回调函数")
+
+// ===== 4.1 回调函数模糊测试 =====
+// 关键词: fuzz.StringsFunc, 回调函数, 模糊回调, 结果处理
+println("4.1 回调函数模糊测试")
+
+// 使用回调函数处理模糊结果
+// 关键词: 回调处理, 模糊结果处理, 变异回调
+callbackTemplate = "SELECT * FROM users WHERE id={{id}} AND name='{{name}}'"
+callbackParams = {
+    "id": ["1", "999", "-1", "' OR 1=1 --"],
+    "name": ["admin", "test", "' OR '1'='1"]
+}
+
+callbackResults = []
+callbackCount = 0
+
+// 定义回调函数处理模糊结果
+// 关键词: 回调函数定义, 结果处理函数, 模糊处理器
+processResult = func(result) {
+    callbackResults = append(callbackResults, result.Result)
+    callbackCount++
+    
+    // 显示处理的结果
+    // 关键词: 结果展示, 回调处理, 变异展示
+    if callbackCount <= 5 {
+        println(f"回调处理${callbackCount}: ${result.Result}")
+    }
+    
+    return true  // 继续处理
+}
+
+// 执行带回调的模糊测试
+// 关键词: 回调执行, 模糊执行, 回调模糊测试
+err = fuzz.StringsFunc(callbackTemplate, processResult, callbackParams)
+if err == nil {
+    println(f"✓ 回调模糊测试成功，处理了 ${callbackCount} 个变异")
+    assert callbackCount > 0, "应该处理了模糊结果"
+} else {
+    println(f"回调模糊测试失败: ${err}")
+}
+
+println("✓ 模糊测试回调函数完成")
+
+// =============================================================================
+// 5. Protobuf模糊测试
+// Protobuf模糊 二进制模糊 协议模糊 数据格式模糊 结构化模糊
+// 关键词: fuzz.ProtobufHex, Protobuf模糊, 二进制模糊, 协议模糊, 数据格式模糊
+// =============================================================================
+println("\n5. Protobuf模糊测试")
+
+// ===== 5.1 Protobuf十六进制模糊 =====
+// 关键词: fuzz.ProtobufHex, Protobuf十六进制, 二进制模糊, 协议解析
+println("5.1 Protobuf十六进制模糊")
+
+// 使用十六进制数据进行Protobuf模糊
+// 关键词: 十六进制Protobuf, 二进制协议, 协议模糊
+protobufHexData = "08961a120474657374"  // 示例Protobuf十六进制数据
+protobufRecords = fuzz.ProtobufHex(protobufHexData)
+
+if protobufRecords != nil {
+    println("✓ Protobuf十六进制解析成功")
+    
+    // 获取Protobuf记录信息
+    // 关键词: Protobuf记录, 协议记录, 结构化数据
+    recordsJSON = protobufRecords.ToJSON()
+    if recordsJSON != "" {
+        println("Protobuf记录JSON:")
+        println(recordsJSON)
+    }
+    
+    // 获取Protobuf字节表示
+    // 关键词: Protobuf字节, 协议字节, 二进制数据
+    protobufBytes = protobufRecords.ToBytes()
+    if len(protobufBytes) > 0 {
+        println(f"✓ Protobuf转换为字节成功: ${len(protobufBytes)} 字节")
+    }
+    
+    // 获取Protobuf十六进制表示
+    // 关键词: Protobuf十六进制, 协议十六进制, 十六进制编码
+    protobufHex = protobufRecords.ToHex()
+    if protobufHex != "" {
+        println(f"✓ Protobuf十六进制: ${protobufHex}")
+    }
+} else {
+    println("Protobuf十六进制解析失败")
+}
+
+// ===== 5.2 Protobuf字节模糊 =====
+// 关键词: fuzz.ProtobufBytes, Protobuf字节, 二进制数据, 字节模糊
+println("5.2 Protobuf字节模糊")
+
+// 使用字节数据进行Protobuf模糊
+// 关键词: 字节Protobuf, 二进制字节, 字节协议
+protobufBytes = []byte{0x08, 0x96, 0x1a, 0x12, 0x04, 0x74, 0x65, 0x73, 0x74}
+protobufBytesRecords = fuzz.ProtobufBytes(protobufBytes)
+
+if protobufBytesRecords != nil {
+    println("✓ Protobuf字节解析成功")
+    
+    // 获取字节Protobuf的YAML表示
+    // 关键词: Protobuf YAML, 协议YAML, YAML格式
+    protobufYAML = protobufBytesRecords.ToYAML()
+    if protobufYAML != "" {
+        println("✓ Protobuf字节YAML表示:")
+        println(protobufYAML)
+    }
+} else {
+    println("Protobuf字节解析失败")
+}
+
+println("✓ Protobuf模糊测试完成")
+
+// =============================================================================
+// 6. 实际应用场景演示
+// 实际应用 综合应用 模糊应用 安全测试 漏洞发现
+// 关键词: 实际应用, 综合应用, 模糊应用, 安全测试, 漏洞发现
+// =============================================================================
+println("\n6. 实际应用场景演示")
+
+// ===== 6.1 SQL注入模糊测试 =====
+// 关键词: SQL注入模糊, 数据库模糊, 注入测试, 安全模糊
+println("6.1 SQL注入模糊测试")
+
+// SQL注入模糊测试模板
+// 关键词: SQL注入模板, 数据库查询模糊, 注入载荷
+sqlTemplate = "SELECT * FROM users WHERE username='{{username}}' AND password='{{password}}'"
+sqlInjectionPayloads = {
+    "username": [
+        "admin",
+        "admin' --",
+        "admin' OR '1'='1' --",
+        "admin'; DROP TABLE users; --",
+        "' UNION SELECT 1,2,3 --"
+    ],
+    "password": [
+        "password",
+        "' OR '1'='1",
+        "' OR 1=1 --",
+        "'; WAITFOR DELAY '00:00:05' --"
+    ]
+}
+
+sqlFuzzResults = fuzz.StringsWithParam(sqlTemplate, sqlInjectionPayloads)
+if len(sqlFuzzResults) > 0 {
+    println(f"✓ SQL注入模糊测试生成 ${len(sqlFuzzResults)} 个载荷")
+    
+    // 显示SQL注入载荷
+    // 关键词: SQL注入载荷展示, 注入样本, 数据库攻击
+    dangerousCount = 0
+    for i, payload = range sqlFuzzResults {
+        if i >= 8 {
+            break
+        }
+        
+        // 检查是否包含危险关键词
+        // 关键词: 危险载荷检测, SQL注入检测, 攻击载荷
+        if str.Contains(payload, "OR") || str.Contains(payload, "UNION") || str.Contains(payload, "DROP") {
+            dangerousCount++
+            println(f"  [危险] SQL载荷${i+1}: ${payload}")
+        } else {
+            println(f"  [正常] SQL载荷${i+1}: ${payload}")
+        }
+    }
+    
+    println(f"检测到 ${dangerousCount} 个潜在危险载荷")
+} else {
+    println("SQL注入模糊测试失败")
+}
+
+// ===== 6.2 XSS模糊测试 =====
+// 关键词: XSS模糊, 跨站脚本模糊, 前端模糊, 脚本注入
+println("6.2 XSS模糊测试")
+
+// XSS模糊测试模板
+// 关键词: XSS模板, 跨站脚本模板, 前端注入模板
+xssTemplate = "<input type='text' value='{{userInput}}' />"
+xssPayloads = {
+    "userInput": [
+        "normal input",
+        "<script>alert('XSS')</script>",
+        "' onmouseover='alert(1)'",
+        "\"><script>alert(document.cookie)</script>",
+        "javascript:alert('XSS')",
+        "<img src=x onerror=alert('XSS')>",
+        "<svg onload=alert('XSS')>"
+    ]
+}
+
+xssFuzzResults = fuzz.StringsWithParam(xssTemplate, xssPayloads)
+if len(xssFuzzResults) > 0 {
+    println(f"✓ XSS模糊测试生成 ${len(xssFuzzResults)} 个载荷")
+    
+    // 显示XSS载荷
+    // 关键词: XSS载荷展示, 跨站脚本样本, 前端攻击
+    scriptCount = 0
+    for i, payload = range xssFuzzResults {
+        if i >= 7 {
+            break
+        }
+        
+        // 检查是否包含脚本标签
+        // 关键词: 脚本检测, XSS检测, 前端攻击检测
+        if str.Contains(payload, "<script>") || str.Contains(payload, "javascript:") || str.Contains(payload, "onerror=") {
+            scriptCount++
+            println(f"  [脚本] XSS载荷${i+1}: ${payload}")
+        } else {
+            println(f"  [安全] XSS载荷${i+1}: ${payload}")
+        }
+    }
+    
+    println(f"检测到 ${scriptCount} 个脚本载荷")
+} else {
+    println("XSS模糊测试失败")
+}
+
+// ===== 6.3 API模糊测试 =====
+// 关键词: API模糊, 接口模糊, REST模糊, API安全测试
+println("6.3 API模糊测试")
+
+// API模糊测试
+// 关键词: API模糊测试, REST接口模糊, API安全
+apiTemplate = `POST /api/{{endpoint}} HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "id": {{id}},
+    "action": "{{action}}",
+    "data": "{{data}}"
+}`
+
+apiPayloads = {
+    "endpoint": ["users", "admin", "../config", "../../etc/passwd"],
+    "token": ["valid_token", "invalid_token", "", "{{script}}", "' OR 1=1"],
+    "id": ["1", "999999", "-1", "0", "null", "undefined"],
+    "action": ["read", "write", "delete", "admin", "../../../etc/passwd"],
+    "data": ["normal data", "<script>alert('xss')</script>", "' OR 1=1", "{{template}}"]
+}
+
+apiFuzzResults = fuzz.StringsWithParam(apiTemplate, apiPayloads)
+if len(apiFuzzResults) > 0 {
+    println(f"✓ API模糊测试生成 ${len(apiFuzzResults)} 个请求")
+    
+    // 分析API模糊结果
+    // 关键词: API分析, 接口分析, 模糊结果分析
+    suspiciousCount = 0
+    for i, request = range apiFuzzResults {
+        if i >= 10 {
+            break
+        }
+        
+        // 检查可疑模式
+        // 关键词: 可疑模式检测, API安全检测, 接口安全
+        if str.Contains(request, "../") || str.Contains(request, "admin") || str.Contains(request, "script") {
+            suspiciousCount++
+            println(f"  [可疑] API请求${i+1}: 包含潜在攻击载荷")
+        } else {
+            println(f"  [正常] API请求${i+1}: 正常业务请求")
+        }
+    }
+    
+    println(f"检测到 ${suspiciousCount} 个可疑API请求")
+} else {
+    println("API模糊测试失败")
+}
+
+println("✓ 实际应用场景演示完成")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== fuzz库测试总结 ===")
+println("✅ 基础字符串模糊 - 字符串变异、数字模糊、基础变异")
+println("✅ 带参数模糊 - 自定义参数、模板模糊、参数化变异")
+println("✅ HTTP请求模糊 - HTTP变异、请求模糊、URL转换")
+println("✅ 回调函数模糊 - 结果处理、回调变异、函数模糊")
+println("✅ Protobuf模糊 - 二进制模糊、协议变异、结构化模糊")
+println("✅ 实际应用场景 - SQL注入、XSS攻击、API安全测试")
+
+println("\nfuzz库测试完成！")
+println("fuzz库提供了强大的模糊测试能力，支持多种数据格式和协议的变异生成，是安全测试的重要工具。")

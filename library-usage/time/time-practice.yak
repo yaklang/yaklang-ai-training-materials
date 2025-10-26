@@ -1,0 +1,305 @@
+// =============================================================================
+// time 库完整实战练习 - 时间处理和日期操作
+// time库 时间处理 日期格式化 时间计算 定时器 时间戳
+// 关键词: time, Now, Sleep, Parse, Format, Unix, 时间处理, 日期操作, 时间戳
+// =============================================================================
+
+println("time 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础时间操作
+// 时间获取 当前时间 时间戳 时间格式化
+// 关键词: Now, Unix, Format, 当前时间, 时间戳, 格式化
+// =============================================================================
+println("\n1. 基础时间操作")
+
+// ===== 1.1 获取当前时间 =====
+// 关键词: time.Now, 当前时间, 时间对象
+now = time.Now()
+assert now != nil, "当前时间不应为空"
+println(f"当前时间: ${now}")
+
+// 获取Unix时间戳（秒）
+// 关键词: Unix, 时间戳, 秒级时间戳
+timestamp = now.Unix()
+assert timestamp > 0, "时间戳应该大于0"
+println(f"Unix时间戳（秒）: ${timestamp}")
+
+// 获取Unix时间戳（纳秒）
+// 关键词: UnixNano, 纳秒时间戳, 高精度时间
+timestampNano = now.UnixNano()
+assert timestampNano > timestamp, "纳秒时间戳应该更大"
+println(f"Unix时间戳（纳秒）: ${timestampNano}")
+
+println("✓ 基础时间操作测试通过")
+
+// =============================================================================
+// 2. 时间格式化
+// 时间格式化 日期格式化 时间字符串 格式化输出
+// 关键词: Format, String, 时间格式化, 日期格式化, 时间字符串
+// =============================================================================
+println("\n2. 时间格式化")
+
+// ===== 2.1 标准格式化 =====
+// 关键词: Format, 标准格式, 时间格式, 日期格式
+timeStr = now.String()
+assert len(timeStr) > 0, "时间字符串不应为空"
+println(f"标准格式: ${timeStr}")
+
+// 自定义格式化
+// 关键词: Format, 自定义格式, 格式化模板
+formatted = now.Format("2006-01-02 15:04:05")
+assert len(formatted) > 0, "格式化时间不应为空"
+assert str.Contains(formatted, "-"), "应该包含日期分隔符"
+println(f"自定义格式: ${formatted}")
+
+// 日期格式
+// 关键词: 日期格式, YYYY-MM-DD, 日期字符串
+dateOnly = now.Format("2006-01-02")
+assert len(dateOnly) == 10, "日期格式应该是10个字符"
+println(f"仅日期: ${dateOnly}")
+
+// 时间格式
+// 关键词: 时间格式, HH:MM:SS, 时间字符串
+timeOnly = now.Format("15:04:05")
+assert len(timeOnly) == 8, "时间格式应该是8个字符"
+println(f"仅时间: ${timeOnly}")
+
+println("✓ 时间格式化测试通过")
+
+// =============================================================================
+// 3. 时间解析
+// 时间解析 字符串转时间 Parse ParseInLocation 时间解析
+// 关键词: Parse, ParseInLocation, 时间解析, 字符串转时间
+// =============================================================================
+println("\n3. 时间解析")
+
+// ===== 3.1 解析标准格式 =====
+// 关键词: Parse, 时间解析, 标准格式解析
+timeStr1 = "2024-01-15 10:30:00"
+parsed, err = time.Parse("2006-01-02 15:04:05", timeStr1)
+
+if err != nil {
+    log.error("时间解析失败: %v", err)
+    println(f"时间解析失败: ${err}")
+} else {
+    assert parsed != nil, "解析的时间不应为空"
+    println(f"解析时间: ${parsed}")
+    
+    // 验证解析结果
+    // 关键词: 解析验证, 时间验证
+    parsedStr = parsed.Format("2006-01-02 15:04:05")
+    assert parsedStr == timeStr1, "解析后的时间应该与原始时间一致"
+}
+
+println("✓ 时间解析测试通过")
+
+// =============================================================================
+// 4. 时间计算
+// 时间计算 时间加减 时间差 Duration 时间间隔
+// 关键词: Add, Sub, Duration, 时间计算, 时间加减, 时间差
+// =============================================================================
+println("\n4. 时间计算")
+
+// ===== 4.1 时间加减 =====
+// 关键词: Add, 时间加法, 时间增加, ParseDuration
+oneHourDuration, err = time.ParseDuration("1h")
+if err != nil {
+    log.error("解析Duration失败: %v", err)
+    die(err)
+}
+future = now.Add(oneHourDuration)
+assert future.After(now), "未来时间应该在当前时间之后"
+println(f"1小时后: ${future.Format('15:04:05')}")
+
+// 减去时间
+// 关键词: Add, 时间减法, 时间减少
+past = now.Add(-oneHourDuration)
+assert past.Before(now), "过去时间应该在当前时间之前"
+println(f"1小时前: ${past.Format('15:04:05')}")
+
+// ===== 4.2 时间差计算 =====
+// 关键词: Sub, 时间差, 时间间隔, Duration
+duration = future.Sub(now)
+assert duration.Seconds() > 0, "时间差应该大于0"
+println(f"时间差（秒）: ${duration.Seconds()}")
+println(f"时间差（分钟）: ${duration.Minutes()}")
+
+// 验证时间差
+// 关键词: 时间差验证, Duration验证
+assert duration.Minutes() >= 59 && duration.Minutes() <= 61, "时间差应该接近60分钟"
+
+println("✓ 时间计算测试通过")
+
+// =============================================================================
+// 5. 时间比较
+// 时间比较 Before After Equal 时间判断
+// 关键词: Before, After, Equal, 时间比较, 时间判断
+// =============================================================================
+println("\n5. 时间比较")
+
+// ===== 5.1 时间比较操作 =====
+// 关键词: Before, 之前判断, 时间早于
+isBefore = past.Before(now)
+assert isBefore == true, "过去时间应该在当前时间之前"
+println(f"past.Before(now): ${isBefore}")
+
+// After判断
+// 关键词: After, 之后判断, 时间晚于
+isAfter = future.After(now)
+assert isAfter == true, "未来时间应该在当前时间之后"
+println(f"future.After(now): ${isAfter}")
+
+// Equal判断
+// 关键词: Equal, 相等判断, 时间相等
+same1 = now
+same2 = now
+isEqual = same1.Equal(same2)
+assert isEqual == true, "相同时间应该相等"
+println(f"same1.Equal(same2): ${isEqual}")
+
+println("✓ 时间比较测试通过")
+
+// =============================================================================
+// 6. 时间延迟和定时器
+// Sleep 延迟 定时器 等待 暂停
+// 关键词: Sleep, 延迟, 等待, 暂停, 定时器
+// =============================================================================
+println("\n6. 时间延迟")
+
+// ===== 6.1 Sleep延迟 =====
+// 关键词: Sleep, 延迟执行, 等待, 暂停
+startTime = time.Now()
+time.Sleep(0.1)  // 延迟100毫秒
+endTime = time.Now()
+
+elapsed = endTime.Sub(startTime)
+assert elapsed.Seconds() >= 0.1, "延迟时间应该至少0.1秒"
+println(f"延迟时间: ${elapsed.Seconds()} 秒")
+
+println("✓ 时间延迟测试通过")
+
+// =============================================================================
+// 7. 时间组件提取
+// 时间组件 年月日 时分秒 时间字段提取
+// 关键词: Year, Month, Day, Hour, Minute, Second, 时间组件, 字段提取
+// =============================================================================
+println("\n7. 时间组件提取")
+
+// ===== 7.1 提取时间组件 =====
+// 关键词: Year, 年份, 年份提取
+year = now.Year()
+assert year >= 2024, "年份应该是2024或更晚"
+println(f"年份: ${year}")
+
+// 月份
+// 关键词: Month, 月份, 月份提取
+month = now.Month()
+assert month >= 1 && month <= 12, "月份应该在1-12之间"
+println(f"月份: ${month}")
+
+// 日期
+// 关键词: Day, 日期, 日期提取
+day = now.Day()
+assert day >= 1 && day <= 31, "日期应该在1-31之间"
+println(f"日期: ${day}")
+
+// 小时
+// 关键词: Hour, 小时, 小时提取
+hour = now.Hour()
+assert hour >= 0 && hour <= 23, "小时应该在0-23之间"
+println(f"小时: ${hour}")
+
+// 分钟
+// 关键词: Minute, 分钟, 分钟提取
+minute = now.Minute()
+assert minute >= 0 && minute <= 59, "分钟应该在0-59之间"
+println(f"分钟: ${minute}")
+
+// 秒
+// 关键词: Second, 秒, 秒提取
+second = now.Second()
+assert second >= 0 && second <= 59, "秒应该在0-59之间"
+println(f"秒: ${second}")
+
+println("✓ 时间组件提取测试通过")
+
+// =============================================================================
+// 8. Duration操作
+// Duration 时间段 时间间隔 时长 持续时间
+// 关键词: Duration, 时间段, 时长, 持续时间, 时间间隔
+// =============================================================================
+println("\n8. Duration操作")
+
+// ===== 8.1 Duration创建和转换 =====
+// 关键词: Duration创建, 时长创建, ParseDuration
+oneSecond, _ = time.ParseDuration("1s")
+oneMinute, _ = time.ParseDuration("1m")
+oneHour, _ = time.ParseDuration("1h")
+
+// Duration转换
+// 关键词: Duration转换, 时长转换, 单位转换
+assert oneMinute.Seconds() == 60, "1分钟应该是60秒"
+assert oneHour.Minutes() == 60, "1小时应该是60分钟"
+assert oneHour.Seconds() == 3600, "1小时应该是3600秒"
+
+println(f"1秒 = ${oneSecond.Seconds()} 秒")
+println(f"1分钟 = ${oneMinute.Seconds()} 秒")
+println(f"1小时 = ${oneHour.Seconds()} 秒")
+
+println("✓ Duration操作测试通过")
+
+// =============================================================================
+// 9. 实际应用场景
+// 实际应用 超时控制 性能测量 时间记录
+// 关键词: 实际应用, 超时控制, 性能测量, 时间记录
+// =============================================================================
+println("\n9. 实际应用场景")
+
+// ===== 9.1 性能测量 =====
+// 关键词: 性能测量, 执行时间, 时间统计
+measureStart = time.Now()
+
+// 模拟一些操作
+// 关键词: 模拟操作, 测试任务
+sum = 0
+for i = 0; i < 1000; i++ {
+    sum += i
+}
+
+measureEnd = time.Now()
+measureDuration = measureEnd.Sub(measureStart)
+
+println(f"操作耗时: ${measureDuration.Seconds()} 秒")
+println(f"操作耗时: ${measureDuration.Milliseconds()} 毫秒")
+assert measureDuration.Seconds() < 1, "简单操作应该在1秒内完成"
+
+// ===== 9.2 超时检查 =====
+// 关键词: 超时检查, 时间限制, 超时判断, ParseDuration
+fiveSecondDuration, _ = time.ParseDuration("5s")
+deadline = time.Now().Add(fiveSecondDuration)
+
+// 检查是否超时
+// 关键词: 超时判断, After判断, 时间比较
+isTimeout = time.Now().After(deadline)
+assert isTimeout == false, "当前不应该超时"
+println(f"是否超时: ${isTimeout}")
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== time库测试总结 ===")
+println("✅ 基础时间操作 - Now, Unix, Format")
+println("✅ 时间格式化 - Format自定义格式")
+println("✅ 时间解析 - Parse字符串转时间")
+println("✅ 时间计算 - Add, Sub时间加减")
+println("✅ 时间比较 - Before, After, Equal")
+println("✅ 时间延迟 - Sleep等待")
+println("✅ 时间组件 - Year, Month, Day等提取")
+println("✅ Duration - 时间段操作")
+println("✅ 实际应用 - 性能测量, 超时控制")
+
+println("\ntime库功能测试完成！")
+

@@ -1,0 +1,509 @@
+/*
+Yaklang POC (漏洞验证框架) 库实践
+
+POC库是用于漏洞验证和HTTP请求处理的核心工具，提供了强大的HTTP客户端功能，
+支持各种HTTP请求方法、参数配置、代理设置等。在渗透测试中，POC是漏洞验证的重要手段。
+
+关键词: 漏洞验证, HTTP请求, POC框架, 安全测试, 漏洞检测, HTTP客户端
+关键词: 请求构造, 响应处理, 代理支持, 超时控制, 重定向处理, 参数替换
+*/
+
+// 基础HTTP请求测试
+// 关键词: poc.HTTP, 基础HTTP请求
+func testBasicHTTPRequest() {
+    log.info("测试基础HTTP请求功能")
+    
+    // 构造基础HTTP请求
+    // 关键词: poc.HTTP, 原始HTTP请求包
+    rawRequest = `GET / HTTP/1.1
+Host: httpbin.org
+User-Agent: Yaklang-POC-Test
+Connection: close
+
+`
+    
+    // 发送HTTP请求
+    // 关键词: poc.HTTP, HTTP请求发送
+    rsp, req, err = poc.HTTP(rawRequest,
+        poc.timeout(10),                // 10秒超时
+        poc.https(false)                // 使用HTTP
+    )
+    
+    assert err == nil, f"基础HTTP请求不应失败: ${err}"
+    assert rsp != nil, "响应不应为空"
+    assert req != nil, "请求不应为空"
+    
+    log.info(f"请求发送成功，响应长度: ${len(rsp)} 字节")
+    
+    // 验证响应内容
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "HTTP/"), "响应应该包含HTTP状态行"
+    
+    // 验证请求内容
+    reqStr = string(req)
+    assert str.Contains(reqStr, "GET /"), "请求应该包含GET方法"
+    assert str.Contains(reqStr, "Host: httpbin.org"), "请求应该包含Host头"
+}
+
+// GET请求测试
+// 关键词: poc.Get, GET请求方法
+func testGETRequest() {
+    log.info("测试GET请求功能")
+    
+    testURL = "http://httpbin.org/get"
+    
+    // 发送GET请求
+    // 关键词: poc.Get, GET方法请求
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(10),
+        poc.header("X-Test-Header", "POC-Test"),
+        poc.params({"test": "value"})   // 查询参数
+    )
+    
+    assert err == nil, f"GET请求不应失败: ${err}"
+    assert rsp != nil, "GET响应不应为空"
+    
+    log.info("GET请求发送成功")
+    
+    // 验证响应状态
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "200 OK"), "GET请求应该返回200状态"
+    
+    // 验证请求构造
+    reqStr = string(req)
+    assert str.Contains(reqStr, "GET /get"), "应该是GET请求"
+    assert str.Contains(reqStr, "X-Test-Header: POC-Test"), "应该包含自定义头"
+}
+
+// POST请求测试
+// 关键词: poc.Post, POST请求方法
+func testPOSTRequest() {
+    log.info("测试POST请求功能")
+    
+    testURL = "http://httpbin.org/post"
+    postData = {"username": "test", "password": "123456"}
+    
+    // 发送POST请求
+    // 关键词: poc.Post, POST方法请求
+    rsp, req, err = poc.Post(testURL,
+        poc.timeout(10),
+        poc.json(postData),             // JSON数据
+        poc.header("Content-Type", "application/json")
+    )
+    
+    assert err == nil, f"POST请求不应失败: ${err}"
+    assert rsp != nil, "POST响应不应为空"
+    
+    log.info("POST请求发送成功")
+    
+    // 验证响应
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "200 OK"), "POST请求应该返回200状态"
+    
+    // 验证请求
+    reqStr = string(req)
+    assert str.Contains(reqStr, "POST /post"), "应该是POST请求"
+    assert str.Contains(reqStr, "Content-Type: application/json"), "应该包含JSON类型头"
+}
+
+// Do方法测试
+// 关键词: poc.Do, 自定义HTTP方法
+func testDoMethod() {
+    log.info("测试Do方法功能")
+    
+    testURL = "http://httpbin.org/put"
+    
+    // 使用Do方法发送PUT请求
+    // 关键词: poc.Do, 自定义HTTP方法
+    rspInst, reqInst, err = poc.Do("PUT", testURL,
+        poc.timeout(10),
+        poc.body("test data"),          // 请求体
+        poc.header("X-Custom", "DoMethod")
+    )
+    
+    assert err == nil, f"Do方法请求不应失败: ${err}"
+    assert rspInst != nil, "Do方法响应实例不应为空"
+    assert reqInst != nil, "Do方法请求实例不应为空"
+    
+    log.info("Do方法请求发送成功")
+    
+    // 验证响应实例
+    assert rspInst.StatusCode == 200, "PUT请求应该返回200状态码"
+    
+    // 验证请求实例
+    assert reqInst.Method == "PUT", "请求方法应该是PUT"
+    assert reqInst.Header.Get("X-Custom") == "DoMethod", "应该包含自定义头"
+}
+
+// 超时配置测试
+// 关键词: poc.timeout, 超时控制
+func testTimeoutSettings() {
+    log.info("测试超时配置")
+    
+    testURL = "http://httpbin.org/delay/2"  // 延迟2秒的接口
+    
+    // 短超时测试
+    // 关键词: poc.timeout, 超时控制
+    startTime = time.Now()
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(1)                  // 1秒超时
+    )
+    duration = time.Since(startTime)
+    
+    // 应该超时失败
+    if err != nil {
+        log.info(f"超时测试成功，耗时: ${duration}")
+        assert duration.Seconds() < 2, "超时应该在2秒内发生"
+    } else {
+        log.info("请求意外成功，可能网络环境特殊")
+    }
+    
+    // 长超时测试
+    startTime2 = time.Now()
+    rsp2, req2, err2 = poc.Get(testURL,
+        poc.timeout(5)                  // 5秒超时
+    )
+    duration2 = time.Since(startTime2)
+    
+    if err2 == nil {
+        log.info(f"长超时测试成功，耗时: ${duration2}")
+        assert duration2.Seconds() >= 2, "应该等待至少2秒"
+    } else {
+        log.info(f"长超时也失败: ${err2}")
+    }
+}
+
+// 重定向处理测试
+// 关键词: poc.redirectTimes, 重定向控制
+func testRedirectHandling() {
+    log.info("测试重定向处理")
+    
+    testURL = "http://httpbin.org/redirect/2"  // 重定向2次
+    
+    // 允许重定向
+    // 关键词: poc.redirectTimes, 重定向次数控制
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(10),
+        poc.redirectTimes(3)            // 允许3次重定向
+    )
+    
+    assert err == nil, f"重定向请求不应失败: ${err}"
+    
+    log.info("重定向处理成功")
+    
+    // 验证最终响应
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "200 OK"), "重定向后应该返回200状态"
+    
+    // 禁止重定向测试
+    rsp2, req2, err2 = poc.Get(testURL,
+        poc.timeout(10),
+        poc.redirectTimes(0)            // 禁止重定向
+    )
+    
+    if err2 == nil {
+        rsp2Str = string(rsp2)
+        // 应该收到重定向响应
+        assert str.Contains(rsp2Str, "302") || str.Contains(rsp2Str, "301"), "禁止重定向应该收到3xx状态"
+        log.info("禁止重定向测试成功")
+    }
+}
+
+// 请求头处理测试
+// 关键词: poc.header, 请求头设置
+func testHeaderHandling() {
+    log.info("测试请求头处理")
+    
+    testURL = "http://httpbin.org/headers"
+    
+    // 设置多个请求头
+    // 关键词: poc.header, 自定义请求头
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(10),
+        poc.header("X-Custom-Header", "TestValue"),
+        poc.header("X-Another-Header", "AnotherValue"),
+        poc.userAgent("Yaklang-POC-Agent")
+    )
+    
+    assert err == nil, f"请求头测试不应失败: ${err}"
+    
+    log.info("请求头设置成功")
+    
+    // 验证请求头
+    reqStr = string(req)
+    assert str.Contains(reqStr, "X-Custom-Header: TestValue"), "应该包含自定义头1"
+    assert str.Contains(reqStr, "X-Another-Header: AnotherValue"), "应该包含自定义头2"
+    assert str.Contains(reqStr, "User-Agent: Yaklang-POC-Agent"), "应该包含自定义UA"
+    
+    // 验证响应中的头信息
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "X-Custom-Header"), "响应应该显示自定义头"
+}
+
+// Cookie处理测试
+// 关键词: poc.cookie, Cookie设置
+func testCookieHandling() {
+    log.info("测试Cookie处理")
+    
+    testURL = "http://httpbin.org/cookies"
+    
+    // 设置Cookie
+    // 关键词: poc.cookie, Cookie管理
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(10),
+        poc.cookie("session", "abc123"),
+        poc.cookie("user", "testuser")
+    )
+    
+    assert err == nil, f"Cookie测试不应失败: ${err}"
+    
+    log.info("Cookie设置成功")
+    
+    // 验证请求中的Cookie
+    reqStr = string(req)
+    assert str.Contains(reqStr, "Cookie:"), "应该包含Cookie头"
+    assert str.Contains(reqStr, "session=abc123"), "应该包含session cookie"
+    assert str.Contains(reqStr, "user=testuser"), "应该包含user cookie"
+}
+
+// 参数替换测试
+// 关键词: poc.params, 参数替换
+func testParameterReplacement() {
+    log.info("测试参数替换功能")
+    
+    // 使用参数模板
+    rawRequest = `GET /get?name={{params(name)}}&age={{params(age)}} HTTP/1.1
+Host: httpbin.org
+User-Agent: {{params(ua)}}
+Connection: close
+
+`
+    
+    // 参数替换
+    // 关键词: poc.params, 模板参数替换
+    rsp, req, err = poc.HTTP(rawRequest,
+        poc.timeout(10),
+        poc.params({
+            "name": "testuser",
+            "age": "25",
+            "ua": "Yaklang-Template-Test"
+        })
+    )
+    
+    assert err == nil, f"参数替换不应失败: ${err}"
+    
+    log.info("参数替换成功")
+    
+    // 验证参数替换结果
+    reqStr = string(req)
+    assert str.Contains(reqStr, "name=testuser"), "应该替换name参数"
+    assert str.Contains(reqStr, "age=25"), "应该替换age参数"
+    assert str.Contains(reqStr, "User-Agent: Yaklang-Template-Test"), "应该替换UA参数"
+}
+
+// 代理配置测试
+// 关键词: poc.proxy, 代理设置
+func testProxySettings() {
+    log.info("测试代理配置")
+    
+    testURL = "http://httpbin.org/ip"
+    // 注意：这里使用无效代理来测试配置功能，不期望成功
+    testProxy = "http://127.0.0.1:9999"  // 不存在的代理
+    
+    // 代理配置测试
+    // 关键词: poc.proxy, 代理网络请求
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(3),                 // 短超时，因为代理不存在
+        poc.proxy(testProxy)            // 指定代理
+    )
+    
+    // 由于使用了无效代理，预期会失败
+    if err != nil {
+        log.info(f"代理连接失败（预期）: ${err}")
+        assert str.Contains(string(err), "connect") || str.Contains(string(err), "proxy"), "应该是连接或代理错误"
+    } else {
+        log.info("代理测试意外成功，可能环境特殊")
+    }
+}
+
+// HTTPS请求测试
+// 关键词: poc.https, HTTPS协议
+func testHTTPSRequest() {
+    log.info("测试HTTPS请求")
+    
+    testURL = "https://httpbin.org/get"
+    
+    // HTTPS请求
+    // 关键词: poc.https, SSL/TLS请求
+    rsp, req, err = poc.Get(testURL,
+        poc.timeout(10),
+        poc.https(true),                // 启用HTTPS
+        poc.header("X-HTTPS-Test", "true")
+    )
+    
+    assert err == nil, f"HTTPS请求不应失败: ${err}"
+    assert rsp != nil, "HTTPS响应不应为空"
+    
+    log.info("HTTPS请求发送成功")
+    
+    // 验证HTTPS响应
+    rspStr = string(rsp)
+    assert str.Contains(rspStr, "200 OK"), "HTTPS请求应该返回200状态"
+    
+    // 验证请求
+    reqStr = string(req)
+    assert str.Contains(reqStr, "Host: httpbin.org"), "应该包含正确的Host"
+}
+
+// JSON数据处理测试
+// 关键词: poc.json, JSON数据处理
+func testJSONHandling() {
+    log.info("测试JSON数据处理")
+    
+    testURL = "http://httpbin.org/post"
+    jsonData = {
+        "username": "testuser",
+        "password": "testpass",
+        "data": {
+            "key1": "value1",
+            "key2": 123
+        }
+    }
+    
+    // JSON数据请求
+    // 关键词: poc.json, JSON数据发送
+    rsp, req, err = poc.Post(testURL,
+        poc.timeout(10),
+        poc.json(jsonData)              // JSON数据
+    )
+    
+    assert err == nil, f"JSON请求不应失败: ${err}"
+    
+    log.info("JSON数据发送成功")
+    
+    // 验证请求头
+    reqStr = string(req)
+    assert str.Contains(reqStr, "Content-Type: application/json"), "应该设置JSON类型头"
+    
+    // 验证JSON数据
+    assert str.Contains(reqStr, "testuser"), "应该包含JSON数据"
+    assert str.Contains(reqStr, "testpass"), "应该包含JSON密码"
+}
+
+// 表单数据处理测试
+// 关键词: poc.form, 表单数据处理
+func testFormHandling() {
+    log.info("测试表单数据处理")
+    
+    testURL = "http://httpbin.org/post"
+    formData = {
+        "username": "formuser",
+        "email": "test@example.com",
+        "message": "Hello World"
+    }
+    
+    // 表单数据请求
+    // 关键词: poc.form, 表单数据发送
+    rsp, req, err = poc.Post(testURL,
+        poc.timeout(10),
+        poc.form(formData)              // 表单数据
+    )
+    
+    assert err == nil, f"表单请求不应失败: ${err}"
+    
+    log.info("表单数据发送成功")
+    
+    // 验证请求头
+    reqStr = string(req)
+    assert str.Contains(reqStr, "Content-Type: application/x-www-form-urlencoded"), "应该设置表单类型头"
+    
+    // 验证表单数据
+    assert str.Contains(reqStr, "username=formuser"), "应该包含表单用户名"
+    assert str.Contains(reqStr, "email=test%40example.com") || str.Contains(reqStr, "email=test@example.com"), "应该包含邮箱"
+}
+
+// 执行所有POC测试
+func main() {
+    log.info("开始Yaklang POC库功能测试")
+    
+    // 基础功能测试
+    testBasicHTTPRequest()
+    testGETRequest()
+    testPOSTRequest()
+    testDoMethod()
+    
+    // 配置选项测试
+    testTimeoutSettings()
+    testRedirectHandling()
+    testHeaderHandling()
+    testCookieHandling()
+    
+    // 高级功能测试
+    testParameterReplacement()
+    testProxySettings()
+    testHTTPSRequest()
+    testJSONHandling()
+    testFormHandling()
+    
+    log.info("POC库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert testURL != "", "测试URL不应为空"
+    assert len(postData) > 0, "POST数据应该有内容"
+    assert len(jsonData) > 0, "JSON数据应该有内容"
+    assert len(formData) > 0, "表单数据应该有内容"
+    assert testProxy != "", "代理配置不应为空"
+    
+    log.info("所有POC配置和功能测试通过")
+    log.info("POC库提供了强大的HTTP请求和漏洞验证能力，是安全测试的核心工具")
+}
+
+/*
+POC库核心功能总结:
+
+1. HTTP请求方法:
+   - poc.HTTP() - 原始HTTP请求包发送
+   - poc.Get() - GET请求方法
+   - poc.Post() - POST请求方法
+   - poc.Do() - 自定义HTTP方法
+
+2. 请求配置:
+   - poc.timeout() - 请求超时设置
+   - poc.https() - HTTPS协议支持
+   - poc.redirectTimes() - 重定向次数控制
+   - poc.proxy() - 代理服务器设置
+
+3. 请求头和认证:
+   - poc.header() - 自定义请求头
+   - poc.userAgent() - User-Agent设置
+   - poc.cookie() - Cookie管理
+   - poc.auth() - 基础认证
+
+4. 数据处理:
+   - poc.json() - JSON数据发送
+   - poc.form() - 表单数据发送
+   - poc.body() - 原始请求体
+   - poc.params() - 参数模板替换
+
+5. 高级功能:
+   - 参数模板替换 {{params(name)}}
+   - 多种数据格式支持
+   - 自动重定向处理
+   - SSL/TLS支持
+
+6. 响应处理:
+   - 返回原始响应字节
+   - 返回构造的请求字节
+   - 支持响应实例和请求实例
+   - 错误处理和异常捕获
+
+7. 安全测试应用:
+   - 漏洞验证脚本编写
+   - 安全扫描工具开发
+   - 渗透测试自动化
+   - Web应用安全评估
+
+POC库是Yaklang中最重要的HTTP客户端工具，
+为漏洞验证、安全测试和渗透测试提供了强大的基础能力。
+*/

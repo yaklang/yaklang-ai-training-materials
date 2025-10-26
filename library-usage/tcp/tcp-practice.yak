@@ -1,0 +1,415 @@
+// =============================================================================
+// tcp 库完整实战练习 - TCP连接、通信和网络编程
+// tcp库 TCP连接 网络通信 客户端服务器 Socket编程
+// 关键词: tcp, TCP连接, 网络通信, 客户端, 服务器, Socket编程
+// =============================================================================
+
+println("tcp 库功能测试开始...")
+
+// =============================================================================
+// 1. TCP客户端连接测试
+// TCP客户端 连接测试 网络连接 客户端通信 连接建立
+// 关键词: tcp.Connect, TCP客户端, 连接测试, 网络连接, 客户端通信
+// =============================================================================
+println("\n1. TCP客户端连接测试")
+
+// ===== 1.1 连接到已知服务 =====
+// 关键词: tcp.Connect, 客户端连接, 网络连接, 连接建立
+println("1.1 连接到已知服务测试")
+
+// 测试连接到本地不存在的端口（预期失败）
+// 关键词: 连接测试, 错误处理, 连接失败, 超时测试
+testHost = "127.0.0.1"
+testPort = 65432  // 使用一个不太可能被占用的端口
+
+conn, err = tcp.Connect(testHost, testPort, tcp.clientTimeout(1))  // 1秒超时
+assert err != nil, "连接到不存在的端口应该失败"
+println(f"✓ 连接超时测试通过: ${err}")
+
+// ===== 1.2 TCP连接配置选项 =====
+// 关键词: TCP配置, 连接选项, 客户端配置, 网络参数
+println("1.2 TCP连接配置选项")
+
+// 测试不同的超时设置
+// 关键词: 超时设置, 连接超时, 网络超时
+shortTimeout = 0.5  // 0.5秒超时
+conn2, err2 = tcp.Connect(testHost, testPort, tcp.clientTimeout(shortTimeout))
+assert err2 != nil, "短超时连接应该失败"
+println(f"✓ 短超时测试通过: ${err2}")
+
+// 测试较长超时
+// 关键词: 长超时, 超时配置, 连接时限
+longTimeout = 3  // 3秒超时
+conn3, err3 = tcp.Connect(testHost, testPort, tcp.clientTimeout(longTimeout))
+assert err3 != nil, "长超时连接也应该失败（端口不存在）"
+println(f"✓ 长超时测试通过: ${err3}")
+
+println("✓ TCP客户端连接测试完成")
+
+// =============================================================================
+// 2. TCP服务器创建和基础通信
+// TCP服务器 服务器创建 监听端口 连接处理 基础通信
+// 关键词: tcp.Serve, TCP服务器, 监听端口, 连接处理, 基础通信
+// =============================================================================
+println("\n2. TCP服务器创建和基础通信")
+
+// ===== 2.1 启动TCP服务器 =====
+// 关键词: tcp.Serve, 服务器启动, 端口监听, 服务器创建
+println("2.1 启动TCP服务器")
+
+serverPort = os.GetRandomAvailableTCPPort()
+serverHost = "127.0.0.1"
+serverAddr = f"${serverHost}:${serverPort}"
+serverMessages = []  // 存储服务器接收到的消息
+
+// 启动TCP服务器（使用回调函数处理连接）
+// 关键词: tcp.Serve, serverCallback, 连接处理器, 消息处理
+go func() {
+    tcp.Serve(
+        serverHost, 
+        serverPort,
+        tcp.serverCallback(func(conn) {
+            // 处理客户端连接
+            // 关键词: 连接处理, 消息接收, 数据读取
+            for {
+                data, err = conn.RecvString()
+                if err != nil {
+                    log.info(f"连接关闭: ${err}")
+                    break
+                }
+                
+                // 记录接收到的消息
+                // 关键词: 消息记录, 数据存储, 通信日志
+                serverMessages = append(serverMessages, {
+                    "message": data,
+                    "time": time.Now().String()
+                })
+                
+                println(f"服务器收到消息: ${data}")
+                
+                // 回复客户端
+                // 关键词: 消息回复, 数据发送, 响应处理
+                response = f"Echo: ${data}"
+                conn.Send(response)
+            }
+        })
+    )
+}()
+
+// 等待服务器启动
+// 关键词: 服务器启动等待, 初始化延迟
+time.Sleep(2)
+println(f"TCP服务器启动完成: ${serverAddr}")
+
+// ===== 2.2 客户端连接到服务器 =====
+// 关键词: 客户端连接, 服务器通信, TCP通信, 消息交换
+println("2.2 客户端连接到服务器")
+
+// 创建客户端连接
+// 关键词: tcp.Connect, 客户端创建, 连接建立
+clientConn, clientErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))  // 5秒超时
+assert clientErr == nil, f"客户端连接失败: ${clientErr}"
+println("✓ 客户端连接成功")
+
+// 发送测试消息
+// 关键词: 消息发送, 数据传输, 客户端发送
+testMessage = "Hello TCP Server!"
+sendErr = clientConn.Send(testMessage)
+assert sendErr == nil, f"消息发送失败: ${sendErr}"
+println(f"✓ 发送消息: ${testMessage}")
+
+// 接收服务器回复
+// 关键词: 消息接收, 数据接收, 服务器响应
+response, recvErr = clientConn.RecvString()
+assert recvErr == nil, f"接收响应失败: ${recvErr}"
+assert str.Contains(response, testMessage), "响应应包含原始消息"
+println(f"✓ 收到响应: ${response}")
+
+// 发送更多测试消息
+// 关键词: 多消息测试, 连续通信, 消息序列
+messages = ["Message 1", "Message 2", "测试中文消息"]
+for _, msg = range messages {
+    clientConn.Send(msg)
+    resp, respErr = clientConn.RecvString()
+    if respErr == nil {
+        println(f"消息: ${msg} -> 响应: ${resp}")
+    }
+    time.Sleep(0.1)
+}
+
+// 关闭客户端连接
+// 关键词: 连接关闭, 资源释放, 连接清理
+clientConn.Close()
+println("✓ 客户端连接关闭")
+
+time.Sleep(1)  // 等待服务器处理
+assert len(serverMessages) > 0, "服务器应该收到消息"
+println(f"✓ TCP基础通信测试完成，服务器收到 ${len(serverMessages)} 条消息")
+
+// =============================================================================
+// 3. 多客户端并发连接测试
+// 多客户端 并发连接 并发通信 多连接处理 并发测试
+// 关键词: 多客户端, 并发连接, 并发通信, 多连接处理, 并发测试
+// =============================================================================
+println("\n3. 多客户端并发连接测试")
+
+// ===== 3.1 并发客户端测试 =====
+// 关键词: 并发客户端, 多线程连接, 并发通信, 客户端池
+println("3.1 并发客户端测试")
+
+clientCount = 3
+clientResults = []
+
+// 创建多个并发客户端
+// 关键词: 并发创建, 多客户端, 并发连接
+for i = 0; i < clientCount; i++ {
+    go func(clientId) {
+        // 创建客户端连接
+        // 关键词: 客户端连接, 并发连接, 多线程连接
+        concurrentConn, concurrentErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+        if concurrentErr != nil {
+            log.error(f"客户端${clientId}连接失败: ${concurrentErr}")
+            return
+        }
+        
+        // 发送消息
+        // 关键词: 并发发送, 客户端消息, 多客户端通信
+        message = f"Message from client ${clientId}"
+        concurrentConn.Send(message)
+        
+        // 接收响应
+        // 关键词: 响应接收, 客户端接收, 并发接收
+        resp, respErr = concurrentConn.RecvString()
+        if respErr == nil {
+            clientResults = append(clientResults, {
+                "clientId": clientId,
+                "sent": message,
+                "received": resp
+            })
+        }
+        
+        concurrentConn.Close()
+    }(i)
+}
+
+// 等待所有客户端完成
+// 关键词: 等待完成, 并发同步, 客户端同步
+time.Sleep(3)
+
+assert len(clientResults) > 0, "应该有客户端成功通信"
+println(f"✓ 并发客户端测试完成，${len(clientResults)} 个客户端成功通信")
+
+// =============================================================================
+// 4. TCP数据传输测试
+// 数据传输 二进制数据 文本数据 大数据传输 数据编码
+// 关键词: 数据传输, 二进制数据, 文本数据, 大数据传输, 数据编码
+// =============================================================================
+println("\n4. TCP数据传输测试")
+
+// ===== 4.1 不同类型数据传输 =====
+// 关键词: 数据类型, 文本数据, 二进制数据, 数据编码
+println("4.1 不同类型数据传输")
+
+// 创建数据传输测试连接
+// 关键词: 数据连接, 传输测试, 数据通信
+dataConn, dataErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+assert dataErr == nil, f"数据传输连接失败: ${dataErr}"
+
+// 测试文本数据
+// 关键词: 文本传输, 字符串数据, 文本通信
+textData = "This is a text message with special chars: !@#$%^&*()"
+dataConn.Send(textData)
+textResp, textRespErr = dataConn.RecvString()
+assert textRespErr == nil, f"文本数据响应失败: ${textRespErr}"
+println(f"✓ 文本数据传输: ${len(textData)} 字符")
+
+// 测试包含换行的数据
+// 关键词: 多行数据, 换行符, 复杂文本
+multilineData = "Line 1\nLine 2\nLine 3"
+dataConn.Send(multilineData)
+multiResp, multiRespErr = dataConn.RecvString()
+assert multiRespErr == nil, f"多行数据响应失败: ${multiRespErr}"
+println("✓ 多行数据传输成功")
+
+// 测试较大数据
+// 关键词: 大数据传输, 数据块, 批量传输
+largeData = str.Repeat("Large data chunk ", 50)  // 约850字节
+dataConn.Send(largeData)
+largeResp, largeRespErr = dataConn.RecvString()
+assert largeRespErr == nil, f"大数据响应失败: ${largeRespErr}"
+println(f"✓ 大数据传输: ${len(largeData)} 字节")
+
+dataConn.Close()
+println("✓ TCP数据传输测试完成")
+
+// =============================================================================
+// 5. 错误处理和连接管理
+// 错误处理 连接管理 异常处理 重连机制 连接状态
+// 关键词: 错误处理, 连接管理, 异常处理, 重连机制, 连接状态
+// =============================================================================
+println("\n5. 错误处理和连接管理")
+
+// ===== 5.1 连接错误处理 =====
+// 关键词: 连接错误, 错误处理, 异常捕获, 错误恢复
+println("5.1 连接错误处理")
+
+// 测试连接到无效地址
+// 关键词: 无效连接, 连接失败, 错误测试
+invalidAddr = "192.0.2.1:12345"  // RFC5737测试地址
+invalidHost, invalidPort, _ = str.ParseStringToHostPort(invalidAddr)
+invalidConn, invalidErr = tcp.Connect(invalidHost, invalidPort, tcp.clientTimeout(1))
+assert invalidErr != nil, "连接到无效地址应该失败"
+println(f"✓ 无效地址连接错误: {str.Contains(string(invalidErr), 'timeout') || str.Contains(string(invalidErr), 'refused')}")
+
+// 测试超时错误
+// 关键词: 超时错误, 连接超时, 网络超时
+timeoutConn, timeoutErr = tcp.Connect("1.1.1.1", 12345, tcp.clientTimeout(1))  // 1秒超时
+assert timeoutErr != nil, "超时连接应该失败"
+println(f"✓ 连接超时错误处理正常")
+
+// ===== 5.2 连接重试机制 =====
+// 关键词: 重试机制, 连接恢复, 自动重连, 容错处理
+println("5.2 连接重试机制")
+
+// 实现简单的重试函数
+// 关键词: 重试函数, 连接重试, 重连逻辑
+retryConnect = func(addr, maxRetries, timeout) {
+    for i = 0; i < maxRetries; i++ {
+        host, port, parseErr = str.ParseStringToHostPort(addr)
+        if parseErr != nil {
+            continue
+        }
+        conn, err = tcp.Connect(host, port, tcp.clientTimeout(timeout))
+        if err == nil {
+            return conn, nil
+        }
+        println(f"连接重试 ${i+1}/${maxRetries}: ${err}")
+        time.Sleep(0.5)
+    }
+    return nil, error(f"连接失败，已重试${maxRetries}次")
+}
+
+// 测试重连到正常服务器
+// 关键词: 重连测试, 连接恢复, 重试验证
+retryConn, retryErr = retryConnect(serverAddr, 3, 2)
+assert retryErr == nil, f"重连失败: ${retryErr}"
+assert retryConn != nil, "重连应该成功"
+println("✓ 连接重试机制正常")
+
+// 测试重连后的通信
+// 关键词: 重连通信, 连接验证, 功能测试
+retryConn.Send("Retry test message")
+retryResp, retryRespErr = retryConn.RecvString()
+assert retryRespErr == nil, "重连后通信应该正常"
+println("✓ 重连后通信正常")
+
+retryConn.Close()
+
+println("✓ 错误处理和连接管理测试完成")
+
+// =============================================================================
+// 6. 实际应用场景演示
+// 实际应用 综合应用 TCP应用 网络服务 通信协议
+// 关键词: 实际应用, 综合应用, TCP应用, 网络服务, 通信协议
+// =============================================================================
+println("\n6. 实际应用场景演示")
+
+// ===== 6.1 简单协议实现 =====
+// 关键词: 协议实现, 通信协议, 消息协议, 协议设计
+println("6.1 简单协议实现")
+
+// 创建协议测试连接
+// 关键词: 协议连接, 协议测试, 通信协议
+protocolConn, protocolErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(5))
+assert protocolErr == nil, f"协议测试连接失败: ${protocolErr}"
+
+// 实现简单的命令协议
+// 关键词: 命令协议, 协议命令, 消息格式
+commands = [
+    "PING",
+    "HELLO:World",
+    "DATA:This is test data",
+    "BYE"
+]
+
+protocolResults = []
+for _, cmd = range commands {
+    protocolConn.Send(cmd)
+    resp, respErr = protocolConn.RecvString()
+    if respErr == nil {
+        protocolResults = append(protocolResults, {
+            "command": cmd,
+            "response": resp
+        })
+        println(f"协议命令: ${cmd} -> 响应: ${resp}")
+    }
+    time.Sleep(0.1)
+}
+
+protocolConn.Close()
+
+assert len(protocolResults) > 0, "应该有协议交互结果"
+println(f"✓ 协议实现测试完成，执行了 ${len(protocolResults)} 个命令")
+
+// ===== 6.2 性能基准测试 =====
+// 关键词: 性能测试, 基准测试, 吞吐量测试, 网络性能
+println("6.2 性能基准测试")
+
+// 创建性能测试连接
+// 关键词: 性能连接, 基准连接, 测试连接
+perfConn, perfErr = tcp.Connect(serverHost, serverPort, tcp.clientTimeout(10))
+assert perfErr == nil, f"性能测试连接失败: ${perfErr}"
+
+// 性能测试参数
+// 关键词: 性能参数, 测试参数, 基准参数
+messageCount = 20
+messageSize = 512
+testData = str.Repeat("X", messageSize)
+
+// 执行性能测试
+// 关键词: 性能执行, 基准执行, 测试执行
+startTime = time.Now()
+
+successCount = 0
+for i = 0; i < messageCount; i++ {
+    perfConn.Send(f"PERF:${i}:${testData}")
+    response, respErr = perfConn.RecvString()
+    if respErr == nil {
+        successCount++
+    } else {
+        log.error(f"性能测试消息${i}失败: ${respErr}")
+    }
+}
+
+endTime = time.Now()
+duration = endTime.Sub(startTime).Seconds()
+
+perfConn.Close()
+
+// 计算性能指标
+// 关键词: 性能计算, 指标计算, 性能分析
+totalBytes = successCount * messageSize * 2  // 发送+接收
+throughput = totalBytes / duration
+
+println("✓ 性能测试完成:")
+println(f"  - 成功消息: ${successCount}/${messageCount}")
+println(f"  - 消息大小: ${messageSize} 字节")
+println(f"  - 总时间: ${duration} 秒")
+println(f"  - 吞吐量: ${throughput} 字节/秒")
+
+assert successCount > 0, "应该有成功的性能测试消息"
+println("✓ 实际应用场景演示完成")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== TCP库测试总结 ===")
+println("✅ TCP客户端连接 - 连接建立、超时控制、错误处理")
+println("✅ TCP服务器创建 - 监听端口、连接处理、消息处理")
+println("✅ 多客户端支持 - 并发连接、多线程通信")
+println("✅ 数据传输 - 文本数据、多行数据、大数据传输")
+println("✅ 错误处理 - 连接错误、超时处理、重连机制")
+println("✅ 实际应用 - 协议实现、性能测试")
+
+println("\nTCP库测试完成！")
+println("TCP库提供了完整的网络编程能力，支持客户端和服务器开发。")

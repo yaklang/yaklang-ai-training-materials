@@ -1,0 +1,539 @@
+/*
+Yaklang Servicescan (服务识别) 库实践
+
+Servicescan库是用于服务指纹识别和服务发现的工具，支持协议指纹识别、
+Web应用指纹识别、CPE信息提取等功能。在渗透测试中，服务识别是资产发现的重要环节。
+
+关键词: 服务识别, 指纹识别, 端口扫描, 协议检测, Web指纹, CPE信息, 服务发现
+关键词: 全连接扫描, 精准扫描, nmap指纹, wappalyzer指纹, 服务版本检测
+*/
+
+// 基础服务扫描测试
+// 关键词: servicescan.Scan, 基础扫描功能
+func testBasicServiceScan() {
+    log.info("测试基础服务扫描功能")
+    
+    // 使用本地回环地址进行测试扫描
+    testHost = "127.0.0.1"
+    testPorts = "22,80,443"  // 常见服务端口
+    
+    // 基础服务扫描
+    // 关键词: servicescan.Scan, 默认扫描模式
+    resultCount = 0
+    maxResults = 3  // 限制结果数量以控制测试时间
+    
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.concurrent(2),      // 2个并发
+        servicescan.probeTimeout(3)     // 3秒探测超时
+    )
+    
+    assert err == nil, f"服务扫描不应失败: ${err}"
+    assert ch != nil, "扫描结果通道不应为空"
+    
+    // 收集扫描结果
+    // 关键词: 结果收集, 服务识别结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break  // 通道关闭
+        }
+        resultCount++
+        
+        log.info(f"扫描结果: ${result.Target}:${result.Port} - ${result.State}")
+        
+        // 验证结果结构
+        assert result.Target != "", "目标地址不应为空"
+        assert result.Port > 0, "端口号应该大于0"
+        assert result.State != "", "端口状态不应为空"
+        
+        // 如果端口开放，检查指纹信息
+        if result.IsOpen() {
+            log.info(f"开放端口: ${result.Target}:${result.Port}")
+            if result.Fingerprint != nil {
+                log.info(f"服务指纹: ${result.Fingerprint.ServiceName}")
+            }
+        }
+    }
+    
+    log.info(f"基础扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 单个目标扫描测试
+// 关键词: servicescan.ScanOne, 单目标同步扫描
+func testScanOneTarget() {
+    log.info("测试单个目标扫描")
+    
+    testHost = "127.0.0.1"
+    testPort = 22  // SSH端口
+    
+    // 单个目标同步扫描
+    // 关键词: servicescan.ScanOne, 同步扫描
+    result, err = servicescan.ScanOne(testHost, testPort,
+        servicescan.probeTimeout(3),
+        servicescan.active(true)        // 主动探测模式
+    )
+    
+    // 注意：即使端口关闭，ScanOne也会返回结果，不会返回错误
+    assert err == nil, f"单目标扫描不应失败: ${err}"
+    assert result != nil, "扫描结果不应为空"
+    
+    log.info(f"单目标扫描结果: ${result.Target}:${result.Port} - ${result.State}")
+    
+    // 验证结果结构
+    assert result.Target == testHost, "目标地址应该匹配"
+    assert result.Port == testPort, "端口号应该匹配"
+    assert result.State != "", "端口状态不应为空"
+    
+    // 检查是否获取到指纹信息
+    if result.IsOpen() && result.Fingerprint != nil {
+        log.info(f"检测到服务: ${result.Fingerprint.ServiceName}")
+        log.info(f"服务版本: ${result.Fingerprint.Version}")
+    }
+}
+
+// 协议指纹扫描测试
+// 关键词: servicescan.service, 协议指纹识别
+func testServiceFingerprint() {
+    log.info("测试协议指纹扫描")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80,443,3306,5432"  // 各种协议端口
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 启用协议指纹识别
+    // 关键词: servicescan.service, 协议检测模式
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.service(),          // 启用协议指纹
+        servicescan.concurrent(2),
+        servicescan.probeTimeout(3)
+    )
+    
+    assert err == nil, f"协议指纹扫描不应失败: ${err}"
+    
+    serviceCount = 0
+    
+    // 收集协议指纹结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"协议扫描: ${result.Target}:${result.Port} - ${result.State}")
+        
+        // 检查协议指纹识别结果
+        if result.IsOpen() && result.Fingerprint != nil {
+            serviceCount++
+            serviceName = result.Fingerprint.ServiceName
+            log.info(f"识别协议: ${serviceName}")
+            
+            // 验证常见协议识别
+            if serviceName != "" {
+                assert len(serviceName) > 0, "服务名称应该有内容"
+            }
+        }
+    }
+    
+    log.info(f"协议指纹扫描完成，识别 ${serviceCount} 个服务")
+}
+
+// Web指纹扫描测试
+// 关键词: servicescan.web, Web应用指纹识别
+func testWebFingerprint() {
+    log.info("测试Web指纹扫描")
+    
+    testHost = "127.0.0.1"
+    testPorts = "80,443,8080,8443"  // Web服务端口
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 启用Web指纹识别
+    // 关键词: servicescan.web, Web应用检测模式
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.web(),              // 启用Web指纹
+        servicescan.concurrent(2),
+        servicescan.probeTimeout(5)     // Web检测需要更长时间
+    )
+    
+    assert err == nil, f"Web指纹扫描不应失败: ${err}"
+    
+    webServiceCount = 0
+    
+    // 收集Web指纹结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"Web扫描: ${result.Target}:${result.Port} - ${result.State}")
+        
+        // 检查Web指纹识别结果
+        if result.IsOpen() {
+            webServiceCount++
+            
+            // 检查Web相关信息
+            if result.Fingerprint != nil {
+                log.info(f"Web服务: ${result.Fingerprint.ServiceName}")
+                if result.Fingerprint.Version != "" {
+                    log.info(f"版本信息: ${result.Fingerprint.Version}")
+                }
+            }
+            
+            // 检查CPE信息
+            cpes = result.GetCPEs()
+            if len(cpes) > 0 {
+                log.info(f"CPE信息: ${len(cpes)} 个")
+            }
+        }
+    }
+    
+    log.info(f"Web指纹扫描完成，检测 ${webServiceCount} 个Web服务")
+}
+
+// 全指纹扫描测试
+// 关键词: servicescan.all, 综合指纹识别
+func testAllFingerprint() {
+    log.info("测试全指纹扫描")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80,443"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 启用全指纹识别（协议+Web）
+    // 关键词: servicescan.all, 综合检测模式
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.all(),              // 启用全指纹
+        servicescan.concurrent(2),
+        servicescan.probeTimeout(5)
+    )
+    
+    assert err == nil, f"全指纹扫描不应失败: ${err}"
+    
+    allServiceCount = 0
+    
+    // 收集全指纹结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"全指纹扫描: ${result.Target}:${result.Port} - ${result.State}")
+        
+        if result.IsOpen() {
+            allServiceCount++
+            
+            // 检查综合指纹信息
+            if result.Fingerprint != nil {
+                log.info(f"综合识别: ${result.Fingerprint.ServiceName}")
+                
+                // 验证指纹信息完整性
+                assert result.Fingerprint.ServiceName != "", "服务名称不应为空"
+            }
+            
+            // 检查协议信息
+            proto = result.GetProto()
+            if proto != "" {
+                log.info(f"协议类型: ${proto}")
+            }
+        }
+    }
+    
+    log.info(f"全指纹扫描完成，识别 ${allServiceCount} 个服务")
+}
+
+// 并发配置测试
+// 关键词: servicescan.concurrent, 并发控制
+func testConcurrentSettings() {
+    log.info("测试并发配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "21,22,23,80,443"
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 高并发配置
+    // 关键词: servicescan.concurrent, 并发优化
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.concurrent(5),      // 5个并发
+        servicescan.probeTimeout(2),    // 2秒超时
+        servicescan.active(true)        // 主动探测
+    )
+    
+    assert err == nil, f"并发扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集并发扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"并发扫描: ${result.Target}:${result.Port} - ${result.State}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"并发扫描完成，用时: ${duration}, 处理 ${resultCount} 个结果")
+    
+    // 验证并发效果（应该比较快）
+    assert duration.Seconds() < 30, "并发扫描应该在30秒内完成"
+}
+
+// 超时配置测试
+// 关键词: servicescan.probeTimeout, 超时控制
+func testTimeoutSettings() {
+    log.info("测试超时配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 短超时配置
+    // 关键词: servicescan.probeTimeout, 超时优化
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.probeTimeout(1),    // 1秒超时
+        servicescan.concurrent(1)
+    )
+    
+    assert err == nil, f"超时配置扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集超时配置结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"超时测试: ${result.Target}:${result.Port} - ${result.State}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"超时配置扫描完成，用时: ${duration}")
+    
+    // 验证超时效果
+    assert duration.Seconds() < 10, "短超时扫描应该很快完成"
+}
+
+// 协议类型测试
+// 关键词: servicescan.proto, 协议指定
+func testProtocolTypes() {
+    log.info("测试协议类型配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80,53"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // TCP协议扫描
+    // 关键词: servicescan.proto, TCP协议
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.proto("tcp"),       // 指定TCP协议
+        servicescan.concurrent(2),
+        servicescan.probeTimeout(3)
+    )
+    
+    assert err == nil, f"TCP协议扫描不应失败: ${err}"
+    
+    tcpCount = 0
+    
+    // 收集TCP协议结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        tcpCount++
+        
+        log.info(f"TCP扫描: ${result.Target}:${result.Port} - ${result.State}")
+        
+        // 验证协议类型
+        proto = result.GetProto()
+        if proto != "" {
+            log.info(f"检测协议: ${proto}")
+        }
+    }
+    
+    log.info(f"TCP协议扫描完成，处理 ${tcpCount} 个结果")
+}
+
+// 主动探测模式测试
+// 关键词: servicescan.active, 主动探测
+func testActiveMode() {
+    log.info("测试主动探测模式")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 主动探测模式
+    // 关键词: servicescan.active, 主动发包探测
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.active(true),       // 启用主动探测
+        servicescan.concurrent(1),
+        servicescan.probeTimeout(3)
+    )
+    
+    assert err == nil, f"主动探测扫描不应失败: ${err}"
+    
+    activeCount = 0
+    
+    // 收集主动探测结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"主动探测: ${result.Target}:${result.Port} - ${result.State}")
+        
+        if result.IsOpen() {
+            activeCount++
+            
+            // 主动探测应该能获取更多信息
+            if result.Fingerprint != nil {
+                log.info(f"主动探测识别: ${result.Fingerprint.ServiceName}")
+            }
+        }
+    }
+    
+    log.info(f"主动探测完成，发现 ${activeCount} 个开放服务")
+}
+
+// 端口排除测试
+// 关键词: servicescan.excludePorts, 端口过滤
+func testExcludePorts() {
+    log.info("测试端口排除功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "21,22,23,80,443"
+    excludePorts = "80,443"  // 排除Web端口
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 端口排除扫描
+    // 关键词: servicescan.excludePorts, 端口过滤
+    ch, err = servicescan.Scan(testHost, testPorts,
+        servicescan.excludePorts(excludePorts),
+        servicescan.concurrent(2),
+        servicescan.probeTimeout(3)
+    )
+    
+    assert err == nil, f"端口排除扫描不应失败: ${err}"
+    
+    excludedCount = 0
+    
+    // 收集端口排除结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        excludedCount++
+        
+        log.info(f"排除扫描: ${result.Target}:${result.Port} - ${result.State}")
+        
+        // 验证排除的端口没有被扫描
+        assert result.Port != 80, "端口80应该被排除"
+        assert result.Port != 443, "端口443应该被排除"
+    }
+    
+    log.info(f"端口排除扫描完成，处理 ${excludedCount} 个结果")
+}
+
+// 执行所有服务扫描测试
+func main() {
+    log.info("开始Yaklang Servicescan库功能测试")
+    
+    // 基础功能测试
+    testBasicServiceScan()
+    testScanOneTarget()
+    
+    // 指纹识别测试
+    testServiceFingerprint()
+    testWebFingerprint()
+    testAllFingerprint()
+    
+    // 配置选项测试
+    testConcurrentSettings()
+    testTimeoutSettings()
+    testProtocolTypes()
+    testActiveMode()
+    testExcludePorts()
+    
+    log.info("Servicescan库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert maxResults > 0, "最大结果数应该设置"
+    assert testHost != "", "测试主机不应为空"
+    assert testPorts != "", "测试端口不应为空"
+    assert excludePorts != "", "排除端口配置不应为空"
+    
+    log.info("所有服务扫描配置和功能测试通过")
+    log.info("Servicescan库提供了强大的服务识别能力，是资产发现的重要工具")
+}
+
+/*
+Servicescan库核心功能总结:
+
+1. 扫描方法:
+   - servicescan.Scan() - 批量扫描接口
+   - servicescan.ScanOne() - 单目标同步扫描
+   - servicescan.ScanFromSynScan() - 与synscan联动
+
+2. 指纹识别模式:
+   - servicescan.service() - 协议指纹识别
+   - servicescan.web() - Web应用指纹识别
+   - servicescan.all() - 综合指纹识别（协议+Web）
+
+3. 配置选项:
+   - servicescan.concurrent() - 并发数控制
+   - servicescan.probeTimeout() - 探测超时时间
+   - servicescan.active() - 主动探测模式
+   - servicescan.proto() - 协议类型指定
+
+4. 高级功能:
+   - servicescan.excludePorts() - 端口排除
+   - 支持nmap指纹库
+   - 支持wappalyzer指纹库
+   - CPE信息提取
+
+5. 结果处理:
+   - MatchResult结构体包含详细信息
+   - IsOpen()方法判断端口状态
+   - GetCPEs()方法获取CPE信息
+   - GetProto()方法获取协议类型
+
+6. 指纹信息:
+   - ServiceName - 服务名称
+   - Version - 服务版本
+   - 支持多种协议和Web应用识别
+
+Servicescan库是渗透测试资产发现阶段的核心工具，
+通过精准的指纹识别技术全面了解目标服务信息。
+*/

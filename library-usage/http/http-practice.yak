@@ -1,0 +1,344 @@
+// =============================================================================
+// http 库完整实战练习 - HTTP客户端请求和响应处理
+// http库 HTTP请求 HTTP响应 GET POST HTTP头 Cookie
+// 关键词: http, Get, Post, Request, header, cookie, body, HTTP请求, HTTP客户端
+// =============================================================================
+
+println("http 库功能测试开始...")
+
+// =============================================================================
+// 准备测试服务器
+// 本地HTTP服务 httpserver 测试环境 本地服务器
+// 关键词: httpserver, 本地服务器, 测试服务器, HTTP服务
+// =============================================================================
+
+testPort = os.GetRandomAvailableTCPPort()
+testHost = "127.0.0.1"
+testUrl = f"http://${testHost}:${testPort}"
+
+log.info("Starting test HTTP server on %s", testUrl)
+
+// 创建上下文用于管理服务器
+// 关键词: context, 上下文, 服务器管理
+ctx, cancel = context.WithCancel(context.Background())
+
+// 启动测试服务器
+// 关键词: 启动服务器, HTTP服务器, 后台服务
+go fn {
+    err = httpserver.Serve(testHost, testPort, 
+        httpserver.context(ctx),
+        httpserver.handler((rspWriter, req) => {
+            path = req.URL.Path
+            
+            // 路由处理
+            // 关键词: 路由, path routing, URL路径
+            if path == "/" {
+                // 根路径处理
+                // 关键词: 根路径, 默认处理, HTML响应
+                rspWriter.Header().Set("Content-Type", "text/html")
+                rspWriter.Write([]byte("<html><body>Hello World</body></html>"))
+            } else if path == "/api/json" {
+                // JSON API处理
+                // 关键词: JSON API, JSON响应, API接口
+                rspWriter.Header().Set("Content-Type", "application/json")
+                rspWriter.Write([]byte(`{"status":"success","code":200,"data":{"message":"ok"}}`))
+            } else if path == "/api/echo" {
+                // Echo POST数据
+                // 关键词: Echo, POST处理, 请求回显
+                body, _ = io.ReadAll(req.Body)
+                rspWriter.Header().Set("Content-Type", "text/plain")
+                rspWriter.Write(body)
+            } else if path == "/api/headers" {
+                // 返回请求头信息
+                // 关键词: 请求头, Header检查, 头信息返回
+                userAgent = req.Header.Get("User-Agent")
+                customHeader = req.Header.Get("X-Custom-Header")
+                
+                response = json.dumps({
+                    "user_agent": userAgent,
+                    "custom_header": customHeader
+                })
+                
+                rspWriter.Header().Set("Content-Type", "application/json")
+                rspWriter.Write([]byte(response))
+            } else if path == "/api/cookie" {
+                // Cookie处理
+                // 关键词: Cookie, Cookie处理, 会话Cookie
+                cookieValue = ""
+                cookie, err = req.Cookie("testcookie")
+                if err == nil {
+                    cookieValue = cookie.Value
+                }
+                
+                response = json.dumps({"cookie": cookieValue})
+                rspWriter.Header().Set("Content-Type", "application/json")
+                rspWriter.Write([]byte(response))
+            } else {
+                // 404处理
+                // 关键词: 404, Not Found, 错误处理
+                rspWriter.WriteHeader(404)
+                rspWriter.Write([]byte("Not Found"))
+            }
+        })
+    )
+    if err != nil && err.Error() != "context canceled" {
+        log.error("HTTP server error: %v", err)
+    }
+}
+
+// 等待服务器启动
+// 关键词: 等待启动, 服务器就绪
+time.Sleep(1)
+log.info("Test server ready")
+
+// =============================================================================
+// 1. 基础GET请求
+// GET请求 http.Get HTTP获取 简单请求
+// 关键词: http.Get, GET请求, HTTP获取, 简单请求
+// =============================================================================
+println("\n1. 基础GET请求")
+
+// ===== 1.1 简单GET请求 =====
+// 关键词: 简单GET, 基础请求, URL请求
+rsp, err = http.Get(testUrl)
+
+assert err == nil, f"GET请求不应失败: ${err}"
+assert rsp != nil, "响应不应为空"
+
+// 读取响应体
+// 关键词: 响应体, body读取, 内容获取
+body, err = io.ReadAll(rsp.Body)
+assert err == nil, "读取body不应失败"
+assert len(body) > 0, "响应body不应为空"
+
+bodyStr = string(body)
+println(f"GET响应长度: ${len(bodyStr)}")
+assert str.Contains(bodyStr, "Hello World"), "响应应包含Hello World"
+
+println("✓ 基础GET请求测试通过")
+
+// =============================================================================
+// 2. GET请求JSON API
+// JSON API GET请求JSON JSON解析
+// 关键词: JSON API, GET JSON, API请求, JSON响应
+// =============================================================================
+println("\n2. GET请求JSON API")
+
+// ===== 2.1 请求JSON接口 =====
+// 关键词: JSON接口, API接口, JSON响应解析
+jsonUrl = f"${testUrl}/api/json"
+rsp2, err = http.Get(jsonUrl)
+
+assert err == nil, "JSON API请求不应失败"
+
+// 解析JSON响应
+// 关键词: JSON解析, 响应解析, json.loads
+jsonBody, _ = io.ReadAll(rsp2.Body)
+jsonData = json.loads(string(jsonBody))
+
+assert jsonData["status"] == "success", "status应为success"
+assert jsonData["code"] == 200, "code应为200"
+println(f"JSON响应: status=${jsonData['status']}, code=${jsonData['code']}")
+
+println("✓ GET请求JSON API测试通过")
+
+// =============================================================================
+// 3. POST请求
+// POST请求 http.Post 数据提交 POST数据
+// 关键词: http.Post, POST请求, 数据提交, body提交
+// =============================================================================
+println("\n3. POST请求")
+
+// ===== 3.1 POST文本数据 =====
+// 关键词: POST文本, 文本提交, plain text POST
+echoUrl = f"${testUrl}/api/echo"
+postData = "Hello from POST"
+
+rsp3, err = http.Post(echoUrl, http.body(postData))
+assert err == nil, "POST请求不应失败"
+
+echoBody, _ = io.ReadAll(rsp3.Body)
+echoStr = string(echoBody)
+
+println(f"POST Echo响应: ${echoStr}")
+assert echoStr == postData, "Echo应返回相同数据"
+
+// ===== 3.2 POST JSON数据 =====
+// 关键词: POST JSON, JSON提交, json body
+jsonPostData = {"name": "test", "value": 123}
+rsp4, err = http.Post(echoUrl, http.json(jsonPostData))
+assert err == nil, "POST JSON不应失败"
+
+jsonEchoBody, _ = io.ReadAll(rsp4.Body)
+jsonEchoStr = string(jsonEchoBody)
+println(f"POST JSON Echo长度: ${len(jsonEchoStr)}")
+
+println("✓ POST请求测试通过")
+
+// =============================================================================
+// 4. 自定义请求头
+// 自定义Header HTTP头 User-Agent 请求头设置
+// 关键词: http.header, 自定义Header, User-Agent, 请求头
+// =============================================================================
+println("\n4. 自定义请求头")
+
+// ===== 4.1 设置User-Agent =====
+// 关键词: User-Agent, UA设置, 浏览器标识
+headerUrl = f"${testUrl}/api/headers"
+rsp5, err = http.Get(
+    headerUrl,
+    http.ua("CustomUA/1.0"),
+)
+assert err == nil, "设置UA请求不应失败"
+
+uaBody, _ = io.ReadAll(rsp5.Body)
+uaData = json.loads(string(uaBody))
+
+println(f"User-Agent: ${uaData['user_agent']}")
+assert str.Contains(uaData["user_agent"], "CustomUA"), "UA应包含CustomUA"
+
+// ===== 4.2 设置自定义Header =====
+// 关键词: 自定义Header, HTTP头, X-Custom-Header
+rsp6, err = http.Get(
+    headerUrl,
+    http.header("X-Custom-Header", "CustomValue"),
+)
+assert err == nil, "自定义Header请求不应失败"
+
+customHeaderBody, _ = io.ReadAll(rsp6.Body)
+customHeaderData = json.loads(string(customHeaderBody))
+
+println(f"Custom Header: ${customHeaderData['custom_header']}")
+assert customHeaderData["custom_header"] == "CustomValue", "自定义Header应正确"
+
+println("✓ 自定义请求头测试通过")
+
+// =============================================================================
+// 5. Cookie处理
+// Cookie HTTP Cookie Cookie设置 会话管理
+// 关键词: http.cookie, Cookie, 会话Cookie, Cookie管理
+// =============================================================================
+println("\n5. Cookie处理")
+
+// ===== 5.1 发送Cookie =====
+// 关键词: 发送Cookie, Cookie设置, http.cookie
+cookieUrl = f"${testUrl}/api/cookie"
+rsp7, err = http.Get(
+    cookieUrl,
+    http.cookie("testcookie=testvalue123"),
+)
+assert err == nil, "Cookie请求不应失败"
+
+cookieBody, _ = io.ReadAll(rsp7.Body)
+cookieData = json.loads(string(cookieBody))
+
+println(f"Server received cookie: ${cookieData['cookie']}")
+assert cookieData["cookie"] == "testvalue123", "Cookie值应正确"
+
+println("✓ Cookie处理测试通过")
+
+// =============================================================================
+// 6. http.Request高级用法
+// http.Request 高级请求 请求构建 复杂请求
+// 关键词: http.Request, 高级请求, 请求构建, 多选项请求
+// =============================================================================
+println("\n6. http.Request高级用法")
+
+// ===== 6.1 组合多个选项 =====
+// 关键词: 组合选项, 多选项, 复杂请求配置
+rsp8, err = http.Request(
+    "GET",
+    headerUrl,
+    http.ua("AdvancedUA/2.0"),
+    http.header("X-Custom-Header", "AdvancedValue"),
+)
+assert err == nil, "高级请求不应失败"
+
+advBody, _ = io.ReadAll(rsp8.Body)
+advData = json.loads(string(advBody))
+
+println(f"Advanced request UA: ${advData['user_agent']}")
+println(f"Advanced request Custom Header: ${advData['custom_header']}")
+
+assert str.Contains(advData["user_agent"], "AdvancedUA"), "UA应正确"
+assert advData["custom_header"] == "AdvancedValue", "自定义Header应正确"
+
+println("✓ http.Request高级用法测试通过")
+
+// =============================================================================
+// 7. 实际应用场景
+// 实际应用 API调用 数据采集 HTTP客户端应用
+// 关键词: 实际应用, API调用, 数据采集, HTTP客户端
+// =============================================================================
+println("\n7. 实际应用场景")
+
+// ===== 7.1 API调用示例 =====
+// 关键词: API调用, REST API, API请求
+callApi = func(endpoint) {
+    url = f"${testUrl}${endpoint}"
+    log.info("Calling API: %s", url)
+    
+    rsp, err = http.Get(url)
+    if err != nil {
+        log.error("API call failed: %v", err)
+        return nil
+    }
+    
+    body, _ = io.ReadAll(rsp.Body)
+    log.info("API response received: %d bytes", len(body))
+    
+    return json.loads(string(body))
+}
+
+// 测试API调用
+// 关键词: 测试API, API验证
+result = callApi("/api/json")
+assert result != nil, "API调用应有结果"
+assert result["status"] == "success", "API应返回成功"
+
+log.info("API call successful")
+
+// ===== 7.2 数据提交示例 =====
+// 关键词: 数据提交, 表单提交, POST提交
+submitData = func(endpoint, data) {
+    url = f"${testUrl}${endpoint}"
+    log.info("Submitting data to: %s", url)
+    
+    rsp, err = http.Post(url, http.json(data))
+    if err != nil {
+        log.error("Data submission failed: %v", err)
+        return nil
+    }
+    
+    body, _ = io.ReadAll(rsp.Body)
+    log.info("Submission response: %d bytes", len(body))
+    
+    return string(body)
+}
+
+// 测试数据提交
+// 关键词: 测试提交, 提交验证
+submitResult = submitData("/api/echo", {"action": "test", "id": 100})
+assert submitResult != nil, "提交应有响应"
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 清理资源
+// =============================================================================
+cancel()
+time.Sleep(0.5)
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== http库测试总结 ===")
+println("✅ 基础GET请求 - http.Get简单请求")
+println("✅ JSON API - GET请求并解析JSON")
+println("✅ POST请求 - 文本和JSON数据提交")
+println("✅ 自定义请求头 - User-Agent和自定义Header")
+println("✅ Cookie处理 - Cookie设置和发送")
+println("✅ 高级请求 - http.Request组合多选项")
+println("✅ 实际应用 - API调用和数据提交")
+
+println("\nhttp库功能测试完成！")

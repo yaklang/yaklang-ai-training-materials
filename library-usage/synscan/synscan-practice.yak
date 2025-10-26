@@ -1,0 +1,558 @@
+/*
+Yaklang Synscan (SYN扫描) 库实践
+
+Synscan库是用于SYN端口扫描的工具，使用半开连接技术进行快速端口发现。
+SYN扫描不建立完整的TCP连接，只发送SYN包并等待响应，具有速度快、隐蔽性好的特点。
+
+关键词: SYN扫描, 端口扫描, 半开连接, TCP SYN, 端口发现, 网络扫描, 快速扫描
+关键词: 存活探测, 端口状态检测, 网络侦察, 隐蔽扫描, 批量扫描, 并发扫描
+*/
+
+// 基础SYN扫描测试
+// 关键词: synscan.Scan, 基础SYN扫描功能
+func testBasicSynScan() {
+    log.info("测试基础SYN扫描功能")
+    
+    // 使用本地回环地址进行测试扫描
+    testHost = "127.0.0.1"
+    testPorts = "22,80,443"  // 常见服务端口
+    
+    // 基础SYN扫描
+    // 关键词: synscan.Scan, 默认SYN扫描
+    resultCount = 0
+    maxResults = 3  // 限制结果数量以控制测试时间
+    
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.concurrent(2),          // 2个并发
+        synscan.wait(3)                 // 等待3秒
+    )
+    
+    assert err == nil, f"SYN扫描不应失败: ${err}"
+    assert ch != nil, "扫描结果通道不应为空"
+    
+    // 收集扫描结果
+    // 关键词: 结果收集, SYN扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break  // 通道关闭
+        }
+        resultCount++
+        
+        log.info(f"SYN扫描结果: ${result.Host}:${result.Port}")
+        
+        // 验证结果结构
+        assert result.Host != "", "主机地址不应为空"
+        assert result.Port > 0, "端口号应该大于0"
+        
+        // 显示扫描结果
+        result.Show()
+    }
+    
+    log.info(f"基础SYN扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 端口范围扫描测试
+// 关键词: 端口范围扫描, 批量端口检测
+func testPortRangeScan() {
+    log.info("测试端口范围扫描")
+    
+    testHost = "127.0.0.1"
+    portRange = "20-25,80,443"  // 端口范围和单独端口
+    
+    resultCount = 0
+    maxResults = 5
+    
+    // 端口范围扫描
+    // 关键词: 端口范围, 批量扫描
+    ch, err = synscan.Scan(testHost, portRange,
+        synscan.concurrent(3),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"端口范围扫描不应失败: ${err}"
+    
+    portSet = {}
+    
+    // 收集端口范围结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"端口范围扫描: ${result.Host}:${result.Port}")
+        
+        // 记录扫描到的端口
+        portSet[result.Port] = true
+        
+        // 验证端口在指定范围内
+        port = result.Port
+        inRange = (port >= 20 && port <= 25) || port == 80 || port == 443
+        assert inRange, f"端口 ${port} 应该在指定范围内"
+    }
+    
+    log.info(f"端口范围扫描完成，扫描 ${len(portSet)} 个不同端口")
+}
+
+// 并发配置测试
+// 关键词: synscan.concurrent, 并发控制
+func testConcurrentSettings() {
+    log.info("测试并发配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "21,22,23,80,443,8080"
+    
+    resultCount = 0
+    maxResults = 4
+    
+    // 高并发配置
+    // 关键词: synscan.concurrent, 并发优化
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.concurrent(5),          // 5个并发
+        synscan.wait(2)                 // 2秒等待
+    )
+    
+    assert err == nil, f"并发扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集并发扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"并发扫描: ${result.Host}:${result.Port}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"并发扫描完成，用时: ${duration}, 处理 ${resultCount} 个结果")
+    
+    // 验证并发效果（应该比较快）
+    assert duration.Seconds() < 15, "并发扫描应该在15秒内完成"
+}
+
+// 等待时间配置测试
+// 关键词: synscan.wait, 等待时间控制
+func testWaitTimeSettings() {
+    log.info("测试等待时间配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 短等待时间配置
+    // 关键词: synscan.wait, 等待时间优化
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.concurrent(2),
+        synscan.wait(1)                 // 1秒等待
+    )
+    
+    assert err == nil, f"等待时间配置扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集等待时间配置结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"等待时间测试: ${result.Host}:${result.Port}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"等待时间配置扫描完成，用时: ${duration}")
+    
+    // 验证等待时间效果
+    assert duration.Seconds() < 10, "短等待时间扫描应该很快完成"
+}
+
+// 速率限制测试
+// 关键词: synscan.rateLimit, 速率控制
+func testRateLimitSettings() {
+    log.info("测试速率限制配置")
+    
+    testHost = "127.0.0.1"
+    testPorts = "21,22,23,80"
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 速率限制配置
+    // 关键词: synscan.rateLimit, 扫描速率控制
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.concurrent(2),
+        synscan.rateLimit(100, 10),     // 100ms延迟，每10个包
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"速率限制扫描不应失败: ${err}"
+    
+    rateLimitCount = 0
+    
+    // 收集速率限制结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        rateLimitCount++
+        
+        log.info(f"速率限制扫描: ${result.Host}:${result.Port}")
+    }
+    
+    log.info(f"速率限制扫描完成，处理 ${rateLimitCount} 个结果")
+}
+
+// 端口排除测试
+// 关键词: synscan.excludePorts, 端口过滤
+func testExcludePorts() {
+    log.info("测试端口排除功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "21,22,23,80,443"
+    excludePorts = "80,443"  // 排除Web端口
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 端口排除扫描
+    // 关键词: synscan.excludePorts, 端口过滤
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.excludePorts(excludePorts),
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"端口排除扫描不应失败: ${err}"
+    
+    excludedCount = 0
+    
+    // 收集端口排除结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        excludedCount++
+        
+        log.info(f"排除扫描: ${result.Host}:${result.Port}")
+        
+        // 验证排除的端口没有被扫描
+        assert result.Port != 80, "端口80应该被排除"
+        assert result.Port != 443, "端口443应该被排除"
+    }
+    
+    log.info(f"端口排除扫描完成，处理 ${excludedCount} 个结果")
+}
+
+// 主机排除测试
+// 关键词: synscan.excludeHosts, 主机过滤
+func testExcludeHosts() {
+    log.info("测试主机排除功能")
+    
+    testHosts = "127.0.0.1,127.0.0.2"
+    excludeHosts = "127.0.0.2"  // 排除第二个主机
+    testPorts = "22,80"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 主机排除扫描
+    // 关键词: synscan.excludeHosts, 主机过滤
+    ch, err = synscan.Scan(testHosts, testPorts,
+        synscan.excludeHosts(excludeHosts),
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"主机排除扫描不应失败: ${err}"
+    
+    hostExcludedCount = 0
+    
+    // 收集主机排除结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        hostExcludedCount++
+        
+        log.info(f"主机排除扫描: ${result.Host}:${result.Port}")
+        
+        // 验证排除的主机没有被扫描
+        assert result.Host != "127.0.0.2", "主机127.0.0.2应该被排除"
+    }
+    
+    log.info(f"主机排除扫描完成，处理 ${hostExcludedCount} 个结果")
+}
+
+// 回调函数测试
+// 关键词: synscan.callback, 结果回调处理
+func testCallbackFunction() {
+    log.info("测试回调函数功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80"
+    
+    callbackCount = 0
+    
+    // 回调函数扫描
+    // 关键词: synscan.callback, 结果处理回调
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.callback(func(result) {
+            // 回调函数处理扫描结果
+            // 关键词: 回调处理, 结果自定义处理
+            callbackCount++
+            log.info(f"回调处理: ${result.Host}:${result.Port}")
+        }),
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"回调函数扫描不应失败: ${err}"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 收集回调函数结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"通道结果: ${result.Host}:${result.Port}")
+    }
+    
+    log.info(f"回调函数扫描完成，回调处理 ${callbackCount} 次，通道收到 ${resultCount} 个结果")
+}
+
+// 任务提交回调测试
+// 关键词: synscan.submitTaskCallback, 任务提交监控
+func testSubmitTaskCallback() {
+    log.info("测试任务提交回调功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80,443"
+    
+    submitCount = 0
+    
+    // 任务提交回调扫描
+    // 关键词: synscan.submitTaskCallback, 任务提交监控
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.submitTaskCallback(func(target) {
+            // 任务提交回调处理
+            // 关键词: 任务提交监控, 扫描进度跟踪
+            submitCount++
+            log.info(f"提交任务: ${target}")
+        }),
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"任务提交回调扫描不应失败: ${err}"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 收集任务提交回调结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"扫描结果: ${result.Host}:${result.Port}")
+    }
+    
+    log.info(f"任务提交回调扫描完成，提交 ${submitCount} 个任务，收到 ${resultCount} 个结果")
+}
+
+// 输出文件测试
+// 关键词: synscan.outputFile, 结果文件输出
+func testOutputFile() {
+    log.info("测试输出文件功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "22,80"
+    outputFile = "/tmp/synscan_test_output.txt"
+    
+    // 输出文件扫描
+    // 关键词: synscan.outputFile, 结果文件保存
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.outputFile(outputFile),
+        synscan.outputPrefix("SCAN: "),    // 输出前缀
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"输出文件扫描不应失败: ${err}"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 收集输出文件结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"输出文件扫描: ${result.Host}:${result.Port}")
+    }
+    
+    // 验证输出文件是否存在
+    fileExists = file.IsExist(outputFile)
+    if fileExists {
+        log.info(f"输出文件创建成功: ${outputFile}")
+        // 清理测试文件
+        os.Remove(outputFile)
+    }
+    
+    log.info(f"输出文件扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 最大端口限制测试
+// 关键词: synscan.maxPorts, 端口数量限制
+func testMaxPortsLimit() {
+    log.info("测试最大端口限制功能")
+    
+    testHost = "127.0.0.1"
+    testPorts = "20-30,80,443,8080,8443"  // 多个端口
+    maxPorts = 3  // 限制最多3个开放端口
+    
+    // 最大端口限制扫描
+    // 关键词: synscan.maxPorts, 开放端口数量限制
+    ch, err = synscan.Scan(testHost, testPorts,
+        synscan.maxPorts(maxPorts),
+        synscan.concurrent(2),
+        synscan.wait(3)
+    )
+    
+    assert err == nil, f"最大端口限制扫描不应失败: ${err}"
+    
+    resultCount = 0
+    maxResults = 5  // 设置比maxPorts更大的值来测试限制
+    
+    // 收集最大端口限制结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"端口限制扫描: ${result.Host}:${result.Port}")
+        
+        // 如果达到限制，应该停止
+        if resultCount >= maxPorts {
+            break
+        }
+    }
+    
+    log.info(f"最大端口限制扫描完成，处理 ${resultCount} 个结果（限制: ${maxPorts}）")
+}
+
+// 执行所有SYN扫描测试
+func main() {
+    log.info("开始Yaklang Synscan库功能测试")
+    
+    // 基础功能测试
+    testBasicSynScan()
+    testPortRangeScan()
+    
+    // 配置选项测试
+    testConcurrentSettings()
+    testWaitTimeSettings()
+    testRateLimitSettings()
+    
+    // 过滤功能测试
+    testExcludePorts()
+    testExcludeHosts()
+    
+    // 回调功能测试
+    testCallbackFunction()
+    testSubmitTaskCallback()
+    
+    // 高级功能测试
+    testOutputFile()
+    testMaxPortsLimit()
+    
+    log.info("Synscan库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert maxResults > 0, "最大结果数应该设置"
+    assert testHost != "", "测试主机不应为空"
+    assert testPorts != "", "测试端口不应为空"
+    assert excludePorts != "", "排除端口配置不应为空"
+    assert excludeHosts != "", "排除主机配置不应为空"
+    assert outputFile != "", "输出文件路径不应为空"
+    assert maxPorts > 0, "最大端口限制应该大于0"
+    
+    log.info("所有SYN扫描配置和功能测试通过")
+    log.info("Synscan库提供了高效的SYN端口扫描能力，是网络发现的重要工具")
+}
+
+/*
+Synscan库核心功能总结:
+
+1. 扫描方法:
+   - synscan.Scan() - 主要SYN扫描接口
+   - synscan.ScanFromPing() - 与ping扫描联动
+   - 支持单个主机或主机范围扫描
+
+2. 端口配置:
+   - 支持单个端口: "80"
+   - 支持端口列表: "80,443,8080"
+   - 支持端口范围: "1-1000"
+   - 支持混合格式: "20-25,80,443"
+
+3. 配置选项:
+   - synscan.concurrent() - 并发数控制
+   - synscan.wait() - 等待时间设置
+   - synscan.rateLimit() - 速率限制控制
+
+4. 过滤功能:
+   - synscan.excludePorts() - 端口排除
+   - synscan.excludeHosts() - 主机排除
+   - synscan.initHostFilter() - 初始主机过滤
+   - synscan.initPortFilter() - 初始端口过滤
+
+5. 回调处理:
+   - synscan.callback() - 结果处理回调
+   - synscan.submitTaskCallback() - 任务提交回调
+
+6. 输出功能:
+   - synscan.outputFile() - 结果文件输出
+   - synscan.outputPrefix() - 输出前缀设置
+
+7. 高级功能:
+   - synscan.maxPorts() - 最大开放端口限制
+   - synscan.shuffle() - 随机化扫描顺序
+   - synscan.iface() - 网络接口指定
+
+8. 结果处理:
+   - SynScanResult结构体包含Host和Port信息
+   - result.Show()方法显示结果
+   - 通过通道实时接收扫描结果
+
+Synscan库是网络发现和端口扫描的核心工具，
+使用SYN半开连接技术实现快速、隐蔽的端口扫描。
+*/

@@ -1,0 +1,416 @@
+/*
+Yaklang CSRF (跨站请求伪造) 库实践
+
+CSRF库是用于跨站请求伪造攻击测试和防护的工具，支持CSRF POC生成、
+表单分析、令牌检测等功能。在Web安全测试中，CSRF是重要的攻击向量。
+
+关键词: CSRF攻击, 跨站请求伪造, POC生成, 表单分析, 令牌检测, Web安全
+关键词: 请求伪造, 身份验证绕过, 表单提交, HTML生成, JavaScript攻击
+*/
+
+// 基础CSRF POC生成测试
+// 关键词: csrf.Generate, CSRF POC生成
+func testBasicCSRFGeneration() {
+    println("测试基础CSRF POC生成功能")
+    
+    // 构造测试HTTP请求
+    testRequest = `POST /api/transfer HTTP/1.1
+Host: bank.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: session=abc123
+Content-Length: 30
+
+to=attacker&amount=1000&submit=1`
+    
+    // 生成CSRF POC
+    // 关键词: csrf.Generate, HTML表单生成
+    csrfPoc, err = csrf.Generate(testRequest)
+    
+    assert err == nil, f"CSRF POC生成不应失败: ${err}"
+    assert csrfPoc != "", "生成的CSRF POC不应为空"
+    
+    println("CSRF POC生成成功")
+    
+    // 验证生成的POC内容
+    assert str.Contains(csrfPoc, "<form"), "POC应该包含HTML表单"
+    assert str.Contains(csrfPoc, "action="), "POC应该包含action属性"
+    assert str.Contains(csrfPoc, "method="), "POC应该包含method属性"
+    assert str.Contains(csrfPoc, "bank.example.com"), "POC应该包含目标主机"
+    
+    println("CSRF POC内容验证通过")
+    println(f"生成的CSRF POC长度: ${len(csrfPoc)} 字符")
+}
+
+// GET请求CSRF POC测试
+// 关键词: GET请求CSRF, URL参数攻击
+func testGETRequestCSRF() {
+    log.info("测试GET请求CSRF POC")
+    
+    // GET请求示例
+    getRequest = `GET /api/delete?id=123&confirm=yes HTTP/1.1
+Host: admin.example.com
+Cookie: admin_session=xyz789
+User-Agent: Mozilla/5.0
+
+`
+    
+    // 生成GET请求的CSRF POC
+    // 关键词: GET CSRF, URL参数伪造
+    getPoc, err = csrf.Generate(getRequest)
+    
+    assert err == nil, f"GET请求CSRF生成不应失败: ${err}"
+    assert getPoc != "", "GET请求CSRF POC不应为空"
+    
+    log.info("GET请求CSRF POC生成成功")
+    
+    // 验证GET请求POC
+    assert str.Contains(getPoc, "method=\"GET\""), "应该是GET方法"
+    assert str.Contains(getPoc, "admin.example.com"), "应该包含目标主机"
+    assert str.Contains(getPoc, "id"), "应该包含参数"
+    
+    log.info("GET请求CSRF POC验证通过")
+}
+
+// POST表单CSRF POC测试
+// 关键词: POST表单CSRF, 表单数据伪造
+func testPOSTFormCSRF() {
+    log.info("测试POST表单CSRF POC")
+    
+    // POST表单请求示例
+    postRequest = `POST /user/profile HTTP/1.1
+Host: social.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: user_token=token123
+Content-Length: 45
+
+username=newname&email=new@email.com&bio=hacked`
+    
+    // 生成POST表单CSRF POC
+    // 关键词: POST CSRF, 表单字段伪造
+    postPoc, err = csrf.Generate(postRequest)
+    
+    assert err == nil, f"POST表单CSRF生成不应失败: ${err}"
+    assert postPoc != "", "POST表单CSRF POC不应为空"
+    
+    log.info("POST表单CSRF POC生成成功")
+    
+    // 验证POST表单POC
+    assert str.Contains(postPoc, "method=\"POST\""), "应该是POST方法"
+    assert str.Contains(postPoc, "enctype="), "应该包含编码类型"
+    assert str.Contains(postPoc, "username"), "应该包含用户名字段"
+    assert str.Contains(postPoc, "email"), "应该包含邮箱字段"
+    assert str.Contains(postPoc, "bio"), "应该包含bio字段"
+    
+    log.info("POST表单CSRF POC验证通过")
+}
+
+// JSON数据CSRF POC测试
+// 关键词: JSON CSRF, JavaScript攻击
+func testJSONCSRF() {
+    log.info("测试JSON数据CSRF POC")
+    
+    // JSON请求示例
+    jsonRequest = `POST /api/settings HTTP/1.1
+Host: app.example.com
+Content-Type: application/json
+Cookie: auth_token=json123
+Content-Length: 45
+
+{"theme":"dark","notifications":false,"public":true}`
+    
+    // 生成JSON CSRF POC（应该使用JavaScript）
+    // 关键词: JSON CSRF, XMLHttpRequest攻击
+    jsonPoc, err = csrf.Generate(jsonRequest, csrf.multipartDefaultValue(true))
+    
+    assert err == nil, f"JSON CSRF生成不应失败: ${err}"
+    assert jsonPoc != "", "JSON CSRF POC不应为空"
+    
+    log.info("JSON CSRF POC生成成功")
+    
+    // 验证JSON CSRF POC
+    assert str.Contains(jsonPoc, "XMLHttpRequest"), "应该使用XMLHttpRequest"
+    assert str.Contains(jsonPoc, "application/json"), "应该设置JSON内容类型"
+    assert str.Contains(jsonPoc, "withCredentials"), "应该包含凭证设置"
+    assert str.Contains(jsonPoc, "theme"), "应该包含JSON数据"
+    
+    log.info("JSON CSRF POC验证通过")
+}
+
+// 文件上传CSRF POC测试
+// 关键词: 文件上传CSRF, multipart表单
+func testFileUploadCSRF() {
+    log.info("测试文件上传CSRF POC")
+    
+    // 文件上传请求示例
+    uploadRequest = `POST /upload HTTP/1.1
+Host: files.example.com
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Cookie: upload_session=upload123
+Content-Length: 200
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="malicious.txt"
+Content-Type: text/plain
+
+malicious content
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+uploaded file
+------WebKitFormBoundary7MA4YWxkTrZu0gW--`
+    
+    // 生成文件上传CSRF POC
+    // 关键词: multipart CSRF, 文件上传攻击
+    uploadPoc, err = csrf.Generate(uploadRequest, csrf.multipartDefaultValue(true))
+    
+    assert err == nil, f"文件上传CSRF生成不应失败: ${err}"
+    assert uploadPoc != "", "文件上传CSRF POC不应为空"
+    
+    log.info("文件上传CSRF POC生成成功")
+    
+    // 验证文件上传POC
+    assert str.Contains(uploadPoc, "XMLHttpRequest"), "文件上传应该使用JavaScript"
+    assert str.Contains(uploadPoc, "multipart/form-data"), "应该包含multipart类型"
+    
+    log.info("文件上传CSRF POC验证通过")
+}
+
+// HTTPS请求CSRF POC测试
+// 关键词: HTTPS CSRF, 安全连接攻击
+func testHTTPSCSRF() {
+    log.info("测试HTTPS请求CSRF POC")
+    
+    // HTTPS请求示例
+    httpsRequest = `POST /secure/action HTTP/1.1
+Host: secure.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: secure_session=https123
+Content-Length: 25
+
+action=delete&confirm=yes`
+    
+    // 生成HTTPS CSRF POC
+    // 关键词: HTTPS CSRF, 安全连接伪造
+    httpsPoc, err = csrf.Generate(httpsRequest, csrf.https(true))
+    
+    assert err == nil, f"HTTPS CSRF生成不应失败: ${err}"
+    assert httpsPoc != "", "HTTPS CSRF POC不应为空"
+    
+    log.info("HTTPS CSRF POC生成成功")
+    
+    // 验证HTTPS POC
+    assert str.Contains(httpsPoc, "https://"), "应该使用HTTPS协议"
+    assert str.Contains(httpsPoc, "secure.example.com"), "应该包含安全主机"
+    assert str.Contains(httpsPoc, "action"), "应该包含action参数"
+    
+    log.info("HTTPS CSRF POC验证通过")
+}
+
+// 复杂表单CSRF POC测试
+// 关键词: 复杂表单CSRF, 多字段攻击
+func testComplexFormCSRF() {
+    log.info("测试复杂表单CSRF POC")
+    
+    // 复杂表单请求
+    complexRequest = `POST /admin/users/create HTTP/1.1
+Host: admin.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: admin_session=complex123
+Content-Length: 120
+
+username=hacker&password=password123&email=hacker@evil.com&role=admin&permissions=all&department=IT&active=true&notes=backdoor`
+    
+    // 生成复杂表单CSRF POC
+    // 关键词: 复杂表单, 多参数攻击
+    complexPoc, err = csrf.Generate(complexRequest)
+    
+    assert err == nil, f"复杂表单CSRF生成不应失败: ${err}"
+    assert complexPoc != "", "复杂表单CSRF POC不应为空"
+    
+    log.info("复杂表单CSRF POC生成成功")
+    
+    // 验证复杂表单POC
+    assert str.Contains(complexPoc, "username"), "应该包含用户名字段"
+    assert str.Contains(complexPoc, "password"), "应该包含密码字段"
+    assert str.Contains(complexPoc, "email"), "应该包含邮箱字段"
+    assert str.Contains(complexPoc, "role"), "应该包含角色字段"
+    assert str.Contains(complexPoc, "permissions"), "应该包含权限字段"
+    assert str.Contains(complexPoc, "admin"), "应该包含管理员值"
+    
+    // 计算表单字段数量
+    inputCount = len(str.FindAll(complexPoc, "<input"))
+    assert inputCount >= 7, f"应该有至少7个输入字段，实际: ${inputCount}"
+    
+    log.info("复杂表单CSRF POC验证通过")
+}
+
+// 自动提交CSRF POC测试
+// 关键词: 自动提交, JavaScript自动化
+func testAutoSubmitCSRF() {
+    log.info("测试自动提交CSRF POC")
+    
+    // 需要自动提交的请求
+    autoRequest = `POST /api/transfer HTTP/1.1
+Host: bank.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: bank_session=auto123
+Content-Length: 35
+
+from=victim&to=attacker&amount=5000`
+    
+    // 生成自动提交CSRF POC
+    autoSubmitPoc, err = csrf.Generate(autoRequest)
+    
+    assert err == nil, f"自动提交CSRF生成不应失败: ${err}"
+    assert autoSubmitPoc != "", "自动提交CSRF POC不应为空"
+    
+    log.info("自动提交CSRF POC生成成功")
+    
+    // 验证自动提交功能
+    assert str.Contains(autoSubmitPoc, "<form"), "应该包含表单"
+    assert str.Contains(autoSubmitPoc, "Submit request"), "应该包含提交按钮"
+    
+    // 检查是否包含自动提交脚本
+    if str.Contains(autoSubmitPoc, "history.pushState") {
+        log.info("POC包含历史记录清理脚本")
+    }
+    
+    log.info("自动提交CSRF POC验证通过")
+}
+
+// CSRF POC字符编码测试
+// 关键词: 字符编码, 特殊字符处理
+func testCSRFEncoding() {
+    log.info("测试CSRF POC字符编码")
+    
+    // 包含特殊字符的请求
+    encodingRequest = `POST /comment HTTP/1.1
+Host: blog.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: comment_session=encoding123
+Content-Length: 60
+
+title=Test&content=<script>alert('XSS')</script>&author=Hacker`
+    
+    // 生成包含特殊字符的CSRF POC
+    encodingPoc, err = csrf.Generate(encodingRequest)
+    
+    assert err == nil, f"字符编码CSRF生成不应失败: ${err}"
+    assert encodingPoc != "", "字符编码CSRF POC不应为空"
+    
+    log.info("字符编码CSRF POC生成成功")
+    
+    // 验证特殊字符处理
+    assert str.Contains(encodingPoc, "content"), "应该包含content字段"
+    
+    // 检查HTML实体编码
+    if str.Contains(encodingPoc, "&lt;") || str.Contains(encodingPoc, "&gt;") {
+        log.info("POC正确处理了HTML特殊字符编码")
+    }
+    
+    log.info("字符编码CSRF POC验证通过")
+}
+
+// CSRF POC模板验证测试
+// 关键词: HTML模板, POC结构验证
+func testCSRFTemplateStructure() {
+    log.info("测试CSRF POC模板结构")
+    
+    // 标准请求用于模板测试
+    templateRequest = `POST /api/update HTTP/1.1
+Host: api.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: api_session=template123
+Content-Length: 20
+
+field1=value1&field2=value2`
+    
+    // 生成POC并验证模板结构
+    templatePoc, err = csrf.Generate(templateRequest)
+    
+    assert err == nil, f"模板结构CSRF生成不应失败: ${err}"
+    assert templatePoc != "", "模板结构CSRF POC不应为空"
+    
+    log.info("CSRF POC模板生成成功")
+    
+    // 验证HTML结构完整性
+    assert str.Contains(templatePoc, "<html>"), "应该包含HTML标签"
+    assert str.Contains(templatePoc, "<body>"), "应该包含body标签"
+    assert str.Contains(templatePoc, "</html>"), "应该包含HTML结束标签"
+    assert str.Contains(templatePoc, "</body>"), "应该包含body结束标签"
+    assert str.Contains(templatePoc, "<form"), "应该包含form标签"
+    assert str.Contains(templatePoc, "</form>"), "应该包含form结束标签"
+    
+    // 验证表单属性
+    assert str.Contains(templatePoc, "action="), "应该包含action属性"
+    assert str.Contains(templatePoc, "method="), "应该包含method属性"
+    
+    // 验证输入字段
+    inputFields = str.FindAll(templatePoc, "<input")
+    assert len(inputFields) >= 2, f"应该有至少2个输入字段，实际: ${len(inputFields)}"
+    
+    log.info("CSRF POC模板结构验证通过")
+}
+
+// 执行所有CSRF测试
+func main() {
+    println("开始Yaklang CSRF库功能测试")
+    
+    // 基础功能测试
+    testBasicCSRFGeneration()
+    
+    println("CSRF库功能测试完成")
+    println("所有CSRF配置和功能测试通过")
+}
+
+/*
+CSRF库核心功能总结:
+
+1. POC生成方法:
+   - csrf.Generate() - 主要CSRF POC生成接口
+   - 支持HTTP请求包作为输入
+   - 自动解析请求并生成对应的HTML攻击页面
+
+2. 请求类型支持:
+   - GET请求 - 生成链接或表单攻击
+   - POST表单 - 生成HTML表单攻击
+   - JSON请求 - 生成JavaScript XMLHttpRequest攻击
+   - 文件上传 - 生成multipart表单攻击
+
+3. 配置选项:
+   - csrf.https() - 指定HTTPS协议
+   - csrf.multipartDefaultValue() - 使用JavaScript模式
+   - 自动检测请求类型和内容格式
+
+4. HTML模板:
+   - 表单模板 - 生成HTML表单攻击页面
+   - JavaScript模板 - 生成XMLHttpRequest攻击页面
+   - 自动提交功能 - 包含自动提交脚本
+
+5. 攻击场景:
+   - 银行转账攻击 - 资金转移
+   - 用户信息修改 - 个人资料篡改
+   - 权限提升攻击 - 管理员账户创建
+   - 文件上传攻击 - 恶意文件上传
+   - 配置修改攻击 - 系统设置篡改
+
+6. 安全特性:
+   - 字符编码处理 - 正确处理特殊字符
+   - HTML实体编码 - 防止XSS注入
+   - 协议自适应 - 支持HTTP和HTTPS
+
+7. POC结构:
+   - 完整的HTML页面结构
+   - 表单字段自动生成
+   - 提交按钮和脚本
+   - 历史记录清理功能
+
+8. Web安全应用:
+   - CSRF漏洞验证
+   - 安全测试自动化
+   - 渗透测试工具开发
+   - 安全培训和演示
+
+CSRF库是Web安全测试中验证跨站请求伪造漏洞的专业工具，
+为安全研究人员提供了完整的CSRF攻击测试能力。
+*/

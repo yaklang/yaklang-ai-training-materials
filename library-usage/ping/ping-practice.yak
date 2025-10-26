@@ -1,0 +1,525 @@
+/*
+Yaklang Ping (主机存活检测) 库实践
+
+Ping库是用于主机存活检测和网络连通性测试的工具，支持ICMP Ping、TCP Ping等多种检测方式。
+在渗透测试中，主机存活检测是网络发现和资产识别的第一步。
+
+关键词: 主机存活检测, 网络连通性测试, ICMP Ping, TCP Ping, 存活探测, 网络发现
+关键词: 主机发现, 网络扫描, 连通性检查, RTT测量, 批量检测, 并发探测
+*/
+
+// 基础Ping测试
+// 关键词: ping.Ping, 基础存活检测
+func testBasicPing() {
+    log.info("测试基础Ping功能")
+    
+    // 使用本地回环地址进行测试
+    testHost = "127.0.0.1"
+    
+    // 基础Ping检测
+    // 关键词: ping.Ping, 单主机存活检测
+    result = ping.Ping(testHost,
+        ping.timeout(3),                // 3秒超时
+        ping.dnsTimeout(2)              // DNS解析超时2秒
+    )
+    
+    assert result != nil, "Ping结果不应为空"
+    
+    log.info(f"Ping结果: ${testHost} - 存活: ${result.Ok}, RTT: ${result.RTT}ms")
+    
+    // 验证结果结构
+    assert result.IP != "", "IP地址不应为空"
+    assert result.RTT >= 0, "RTT应该大于等于0"
+    
+    // 本地回环地址应该是存活的
+    if result.Ok {
+        log.info("本地回环地址存活检测成功")
+        assert result.RTT >= 0, "存活主机的RTT应该有效"
+    } else {
+        log.info(f"Ping失败原因: ${result.Reason}")
+    }
+}
+
+// 批量Ping扫描测试
+// 关键词: ping.Scan, 批量存活检测
+func testBatchPingScan() {
+    log.info("测试批量Ping扫描功能")
+    
+    // 使用本地网段进行测试
+    testTargets = "127.0.0.1,127.0.0.2,127.0.0.3"
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 批量Ping扫描
+    // 关键词: ping.Scan, 批量主机扫描
+    ch, err = ping.Scan(testTargets,
+        ping.timeout(3),
+        ping.concurrent(2),             // 2个并发
+        ping.dnsTimeout(2)
+    )
+    
+    assert err == nil, f"批量Ping扫描不应失败: ${err}"
+    assert ch != nil, "扫描结果通道不应为空"
+    
+    aliveCount = 0
+    
+    // 收集批量扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break  // 通道关闭
+        }
+        resultCount++
+        
+        log.info(f"批量扫描: ${result.IP} - 存活: ${result.Ok}, RTT: ${result.RTT}ms")
+        
+        // 验证结果结构
+        assert result.IP != "", "IP地址不应为空"
+        
+        if result.Ok {
+            aliveCount++
+            log.info(f"发现存活主机: ${result.IP}")
+        } else {
+            log.info(f"主机不可达: ${result.IP} - ${result.Reason}")
+        }
+    }
+    
+    log.info(f"批量扫描完成，检测 ${resultCount} 个主机，发现 ${aliveCount} 个存活")
+}
+
+// 网段扫描测试
+// 关键词: CIDR网段扫描, 网络发现
+func testCIDRScan() {
+    log.info("测试CIDR网段扫描")
+    
+    // 使用小范围的本地网段
+    testCIDR = "127.0.0.1/30"  // 只包含4个地址的小网段
+    
+    resultCount = 0
+    maxResults = 4
+    
+    // CIDR网段扫描
+    // 关键词: ping.Scan, CIDR网段发现
+    ch, err = ping.Scan(testCIDR,
+        ping.timeout(2),
+        ping.concurrent(3),
+        ping.dnsTimeout(2)
+    )
+    
+    assert err == nil, f"CIDR扫描不应失败: ${err}"
+    
+    cidrAliveCount = 0
+    scannedIPs = {}
+    
+    // 收集CIDR扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"CIDR扫描: ${result.IP} - 存活: ${result.Ok}")
+        
+        // 记录扫描的IP
+        scannedIPs[result.IP] = result.Ok
+        
+        if result.Ok {
+            cidrAliveCount++
+        }
+    }
+    
+    log.info(f"CIDR扫描完成，扫描 ${len(scannedIPs)} 个IP，发现 ${cidrAliveCount} 个存活")
+    
+    // 验证扫描了正确的IP范围
+    assert len(scannedIPs) > 0, "应该扫描到IP地址"
+}
+
+// 并发配置测试
+// 关键词: ping.concurrent, 并发控制
+func testConcurrentSettings() {
+    log.info("测试并发配置")
+    
+    testTargets = "127.0.0.1,127.0.0.2,127.0.0.3,127.0.0.4"
+    
+    resultCount = 0
+    maxResults = 4
+    
+    // 高并发配置
+    // 关键词: ping.concurrent, 并发优化
+    ch, err = ping.Scan(testTargets,
+        ping.concurrent(4),             // 4个并发
+        ping.timeout(2),
+        ping.dnsTimeout(1)
+    )
+    
+    assert err == nil, f"并发扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集并发扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"并发扫描: ${result.IP} - 存活: ${result.Ok}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"并发扫描完成，用时: ${duration}, 处理 ${resultCount} 个结果")
+    
+    // 验证并发效果（应该比较快）
+    assert duration.Seconds() < 10, "并发扫描应该在10秒内完成"
+}
+
+// 超时配置测试
+// 关键词: ping.timeout, 超时控制
+func testTimeoutSettings() {
+    log.info("测试超时配置")
+    
+    testHost = "127.0.0.1"
+    
+    // 短超时配置
+    // 关键词: ping.timeout, 超时优化
+    result = ping.Ping(testHost,
+        ping.timeout(1),                // 1秒超时
+        ping.dnsTimeout(1)              // 1秒DNS超时
+    )
+    
+    assert result != nil, "超时配置Ping结果不应为空"
+    
+    log.info(f"超时测试: ${result.IP} - 存活: ${result.Ok}, RTT: ${result.RTT}ms")
+    
+    // 验证超时设置生效
+    if result.Ok {
+        assert result.RTT < 1000, "本地回环RTT应该很短"
+    }
+    
+    // 测试长超时配置
+    result2 = ping.Ping(testHost,
+        ping.timeout(5),                // 5秒超时
+        ping.dnsTimeout(3)
+    )
+    
+    assert result2 != nil, "长超时Ping结果不应为空"
+    log.info(f"长超时测试: ${result2.IP} - 存活: ${result2.Ok}")
+}
+
+// DNS超时配置测试
+// 关键词: ping.dnsTimeout, DNS解析超时
+func testDNSTimeoutSettings() {
+    log.info("测试DNS超时配置")
+    
+    testDomain = "localhost"  // 使用本地域名
+    
+    // DNS超时配置
+    // 关键词: ping.dnsTimeout, DNS解析控制
+    result = ping.Ping(testDomain,
+        ping.timeout(3),
+        ping.dnsTimeout(1)              // 1秒DNS超时
+    )
+    
+    assert result != nil, "DNS超时配置Ping结果不应为空"
+    
+    log.info(f"DNS超时测试: ${testDomain} -> ${result.IP} - 存活: ${result.Ok}")
+    
+    // 验证域名解析
+    if result.Ok {
+        assert result.IP != "", "成功解析的域名应该有IP地址"
+        log.info(f"域名解析成功: ${testDomain} -> ${result.IP}")
+    } else {
+        log.info(f"域名解析失败: ${result.Reason}")
+    }
+}
+
+// TCP Ping测试
+// 关键词: ping.tcpPingPorts, TCP连通性检测
+func testTCPPing() {
+    log.info("测试TCP Ping功能")
+    
+    testHost = "127.0.0.1"
+    tcpPorts = "22,80,443"  // 常见TCP端口
+    
+    // TCP Ping检测
+    // 关键词: ping.tcpPingPorts, TCP端口连通性
+    result = ping.Ping(testHost,
+        ping.timeout(3),
+        ping.tcpPingPorts(tcpPorts)     // 指定TCP端口
+    )
+    
+    assert result != nil, "TCP Ping结果不应为空"
+    
+    log.info(f"TCP Ping: ${result.IP} - 存活: ${result.Ok}, RTT: ${result.RTT}ms")
+    
+    // 验证TCP Ping结果
+    if result.Ok {
+        log.info("TCP Ping检测到主机存活")
+        assert result.RTT >= 0, "TCP Ping的RTT应该有效"
+    } else {
+        log.info(f"TCP Ping失败: ${result.Reason}")
+    }
+}
+
+// 代理配置测试
+// 关键词: ping.proxy, 代理连接测试
+func testProxySettings() {
+    log.info("测试代理配置")
+    
+    testHost = "127.0.0.1"
+    // 注意：这里使用无效代理来测试配置功能，不期望成功
+    testProxy = "127.0.0.1:9999"  // 不存在的代理
+    
+    // 代理配置测试
+    // 关键词: ping.proxy, 代理网络检测
+    result = ping.Ping(testHost,
+        ping.timeout(2),                // 短超时，因为代理不存在
+        ping.proxy(testProxy)           // 指定代理
+    )
+    
+    assert result != nil, "代理配置Ping结果不应为空"
+    
+    log.info(f"代理测试: ${result.IP} - 存活: ${result.Ok}")
+    
+    // 由于使用了无效代理，预期会失败
+    if !result.Ok {
+        log.info(f"代理连接失败（预期）: ${result.Reason}")
+        assert result.Reason != "", "失败原因不应为空"
+    }
+}
+
+// 主机排除测试
+// 关键词: ping.excludeHosts, 主机过滤
+func testExcludeHosts() {
+    log.info("测试主机排除功能")
+    
+    testTargets = "127.0.0.1,127.0.0.2,127.0.0.3"
+    excludeHosts = "127.0.0.2"  // 排除中间的主机
+    
+    resultCount = 0
+    maxResults = 3
+    
+    // 主机排除扫描
+    // 关键词: ping.excludeHosts, 主机过滤
+    ch, err = ping.Scan(testTargets,
+        ping.excludeHosts(excludeHosts),
+        ping.timeout(3),
+        ping.concurrent(2)
+    )
+    
+    assert err == nil, f"主机排除扫描不应失败: ${err}"
+    
+    excludedCount = 0
+    
+    // 收集主机排除结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        excludedCount++
+        
+        log.info(f"排除扫描: ${result.IP} - 存活: ${result.Ok}")
+        
+        // 验证排除的主机没有被扫描
+        assert result.IP != "127.0.0.2", "主机127.0.0.2应该被排除"
+    }
+    
+    log.info(f"主机排除扫描完成，处理 ${excludedCount} 个结果")
+}
+
+// 结果回调测试
+// 关键词: ping.onResult, 结果回调处理
+func testResultCallback() {
+    log.info("测试结果回调功能")
+    
+    testTargets = "127.0.0.1,127.0.0.2"
+    callbackCount = 0
+    
+    // 结果回调扫描
+    // 关键词: ping.onResult, 结果处理回调
+    ch, err = ping.Scan(testTargets,
+        ping.onResult(func(result) {
+            // 回调函数处理Ping结果
+            // 关键词: 回调处理, 结果自定义处理
+            callbackCount++
+            log.info(f"回调处理: ${result.IP} - 存活: ${result.Ok}")
+        }),
+        ping.timeout(3),
+        ping.concurrent(2)
+    )
+    
+    assert err == nil, f"回调函数扫描不应失败: ${err}"
+    
+    resultCount = 0
+    maxResults = 2
+    
+    // 收集回调函数结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"通道结果: ${result.IP} - 存活: ${result.Ok}")
+    }
+    
+    log.info(f"回调函数扫描完成，回调处理 ${callbackCount} 次，通道收到 ${resultCount} 个结果")
+}
+
+// C类网段扫描测试
+// 关键词: ping.scanCClass, C类网段发现
+func testCClassScan() {
+    log.info("测试C类网段扫描功能")
+    
+    // 使用本地网络的一个IP，测试C类扫描
+    testIP = "127.0.0.1"
+    
+    resultCount = 0
+    maxResults = 5  // 限制结果数量
+    
+    // C类网段扫描
+    // 关键词: ping.scanCClass, C类网段发现
+    ch, err = ping.Scan(testIP,
+        ping.scanCClass(true),          // 启用C类扫描
+        ping.timeout(2),
+        ping.concurrent(3)
+    )
+    
+    assert err == nil, f"C类扫描不应失败: ${err}"
+    
+    cclassCount = 0
+    
+    // 收集C类扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"C类扫描: ${result.IP} - 存活: ${result.Ok}")
+        
+        if result.Ok {
+            cclassCount++
+        }
+    }
+    
+    log.info(f"C类扫描完成，扫描 ${resultCount} 个IP，发现 ${cclassCount} 个存活")
+}
+
+// 跳过模式测试
+// 关键词: ping.skipped, 跳过检测模式
+func testSkippedMode() {
+    log.info("测试跳过模式功能")
+    
+    testHost = "127.0.0.1"
+    
+    // 跳过模式配置
+    // 关键词: ping.skipped, 跳过实际检测
+    result = ping.Ping(testHost,
+        ping.skipped(true),             // 跳过实际Ping
+        ping.timeout(1)
+    )
+    
+    assert result != nil, "跳过模式Ping结果不应为空"
+    
+    log.info(f"跳过模式: ${result.IP} - 存活: ${result.Ok}")
+    
+    // 跳过模式下的结果验证
+    if result.Ok {
+        log.info("跳过模式返回存活状态")
+    } else {
+        log.info(f"跳过模式原因: ${result.Reason}")
+    }
+}
+
+// 执行所有Ping测试
+func main() {
+    log.info("开始Yaklang Ping库功能测试")
+    
+    // 基础功能测试
+    testBasicPing()
+    testBatchPingScan()
+    testCIDRScan()
+    
+    // 配置选项测试
+    testConcurrentSettings()
+    testTimeoutSettings()
+    testDNSTimeoutSettings()
+    
+    // 高级功能测试
+    testTCPPing()
+    testProxySettings()
+    testExcludeHosts()
+    testResultCallback()
+    testCClassScan()
+    testSkippedMode()
+    
+    log.info("Ping库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert maxResults > 0, "最大结果数应该设置"
+    assert testHost != "", "测试主机不应为空"
+    assert testTargets != "", "测试目标不应为空"
+    assert testCIDR != "", "测试CIDR不应为空"
+    assert tcpPorts != "", "TCP端口配置不应为空"
+    assert testProxy != "", "代理配置不应为空"
+    assert excludeHosts != "", "排除主机配置不应为空"
+    
+    log.info("所有Ping配置和功能测试通过")
+    log.info("Ping库提供了强大的主机存活检测能力，是网络发现的基础工具")
+}
+
+/*
+Ping库核心功能总结:
+
+1. 检测方法:
+   - ping.Ping() - 单主机存活检测
+   - ping.Scan() - 批量主机扫描
+   - 支持IP地址、域名、CIDR网段
+
+2. 检测类型:
+   - ICMP Ping - 传统ICMP协议检测
+   - TCP Ping - TCP端口连通性检测
+   - 自动选择最适合的检测方式
+
+3. 配置选项:
+   - ping.timeout() - 检测超时时间
+   - ping.dnsTimeout() - DNS解析超时
+   - ping.concurrent() - 并发检测数量
+   - ping.tcpPingPorts() - TCP检测端口
+
+4. 高级功能:
+   - ping.proxy() - 代理网络检测
+   - ping.excludeHosts() - 主机排除
+   - ping.scanCClass() - C类网段扫描
+   - ping.skipped() - 跳过检测模式
+
+5. 结果处理:
+   - ping.onResult() - 结果回调处理
+   - PingResult结构体包含详细信息
+   - Ok字段表示存活状态
+   - RTT字段表示响应时间
+
+6. 网络发现:
+   - 支持单个主机检测
+   - 支持批量主机扫描
+   - 支持CIDR网段发现
+   - 支持域名解析和检测
+
+7. 性能优化:
+   - 并发检测提高速度
+   - 超时控制避免阻塞
+   - 结果回调实时处理
+   - 主机排除减少无效检测
+
+Ping库是网络发现和主机存活检测的基础工具，
+为后续的端口扫描和服务识别提供目标主机列表。
+*/

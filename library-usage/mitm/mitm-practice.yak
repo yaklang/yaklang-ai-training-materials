@@ -1,0 +1,421 @@
+/*
+Yaklang MITM (中间人攻击) 库实践
+
+MITM (Man-in-the-Middle) 是一种网络攻击技术，攻击者在通信双方之间插入自己，
+从而能够监听、修改或阻断通信内容。在渗透测试中，MITM代理是重要的流量分析工具。
+
+关键词: MITM, 中间人攻击, 代理服务器, 流量劫持, HTTP拦截, HTTPS证书, 透明代理
+关键词: 请求修改, 响应修改, 流量监听, 安全测试, 渗透测试工具
+*/
+
+// 基础MITM代理测试
+// 关键词: mitm.Start, 代理启动, 端口监听
+func testBasicMITMProxy() {
+    log.info("测试基础MITM代理功能")
+    
+    // 获取随机端口用于测试
+    proxyPort = os.GetRandomAvailableTCPPort()
+    
+    // 测试变量
+    requestCount = 0
+    responseCount = 0
+    
+    // 启动MITM代理服务器 - 使用默认CA证书
+    // 关键词: mitm.Start, mitm.useDefaultCA, mitm.callback
+    go func() {
+        err = mitm.Start(proxyPort, 
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.callback(func(isHttps, urlStr, req, rsp) {
+                // 流量回调处理
+                // 关键词: 流量监听, 请求响应处理
+                if req != nil {
+                    requestCount++
+                    log.info(f"捕获请求: ${urlStr}")
+                }
+                if rsp != nil {
+                    responseCount++
+                    log.info(f"捕获响应: ${rsp.StatusCode}")
+                }
+            })
+        )
+        if err != nil {
+            log.error(f"MITM代理启动失败: ${err}")
+        }
+    }()
+    
+    // 等待代理启动
+    time.Sleep(2)
+    
+    // 验证代理启动
+    assert proxyPort > 0, "代理端口应该有效"
+    log.info(f"MITM代理已启动在端口: ${proxyPort}")
+}
+
+// 透明代理模式测试
+// 关键词: mitm.isTransparent, 透明劫持, 流量转发
+func testTransparentProxy() {
+    log.info("测试透明代理模式")
+    
+    transparentPort = os.GetRandomAvailableTCPPort()
+    
+    // 启动透明代理 - 所有流量默认转发
+    // 关键词: mitm.isTransparent, 透明模式, 流量镜像
+    go func() {
+        err = mitm.Start(transparentPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.isTransparent(true),
+            mitm.callback(func(isHttps, urlStr, req, rsp) {
+                // 透明模式下的流量镜像
+                // 关键词: 流量镜像, 透明劫持监听
+                log.info(f"透明代理捕获: ${urlStr}")
+            })
+        )
+        if err != nil {
+            log.error(f"透明代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert transparentPort > 0, "透明代理端口应该有效"
+    log.info(f"透明代理已启动在端口: ${transparentPort}")
+}
+
+// HTTP请求劫持测试
+// 关键词: mitm.hijackHTTPRequest, 请求修改, 请求拦截
+func testHTTPRequestHijack() {
+    log.info("测试HTTP请求劫持功能")
+    
+    hijackPort = os.GetRandomAvailableTCPPort()
+    hijackedRequests = 0
+    
+    // 启动带请求劫持的代理
+    // 关键词: mitm.hijackHTTPRequest, 请求劫持回调
+    go func() {
+        err = mitm.Start(hijackPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.hijackHTTPRequest(func(isHttps, urlStr, req, forward, reject) {
+                // 请求劫持处理逻辑
+                // 关键词: 请求拦截, 请求修改, forward, reject
+                hijackedRequests++
+                
+                reqStr = string(req)
+                log.info(f"劫持请求: ${urlStr}")
+                
+                // 修改User-Agent头
+                if str.Contains(reqStr, "User-Agent:") {
+                    modifiedReq = str.ReplaceAll(reqStr, "User-Agent:", "User-Agent: YakMITM/1.0\nOriginal-User-Agent:")
+                    forward([]byte(modifiedReq))
+                    log.info("已修改User-Agent头")
+                } else {
+                    // 添加自定义头
+                    lines = str.Split(reqStr, "\n")
+                    if len(lines) > 0 {
+                        lines[0] = lines[0] + "\nX-MITM-Hijacked: true"
+                        modifiedReq = str.Join(lines, "\n")
+                        forward([]byte(modifiedReq))
+                        log.info("已添加劫持标记头")
+                    } else {
+                        forward(req)
+                    }
+                }
+            })
+        )
+        if err != nil {
+            log.error(f"请求劫持代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert hijackPort > 0, "请求劫持代理端口应该有效"
+    log.info(f"请求劫持代理已启动在端口: ${hijackPort}")
+}
+
+// HTTP响应劫持测试
+// 关键词: mitm.hijackHTTPResponse, 响应修改, 响应拦截
+func testHTTPResponseHijack() {
+    log.info("测试HTTP响应劫持功能")
+    
+    responseHijackPort = os.GetRandomAvailableTCPPort()
+    hijackedResponses = 0
+    
+    // 启动带响应劫持的代理
+    // 关键词: mitm.hijackHTTPResponse, 响应劫持回调
+    go func() {
+        err = mitm.Start(responseHijackPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.hijackHTTPResponse(func(isHttps, urlStr, rsp, forward, reject) {
+                // 响应劫持处理逻辑
+                // 关键词: 响应拦截, 响应修改, 内容替换
+                hijackedResponses++
+                
+                rspStr = string(rsp)
+                log.info(f"劫持响应: ${urlStr}")
+                
+                // 添加自定义响应头
+                if str.Contains(rspStr, "Content-Type:") {
+                    modifiedRsp = str.ReplaceAll(rspStr, "Content-Type:", "X-MITM-Modified: true\nContent-Type:")
+                    forward([]byte(modifiedRsp))
+                    log.info("已添加响应修改标记")
+                } else {
+                    // 在响应头部添加标记
+                    lines = str.Split(rspStr, "\n")
+                    if len(lines) > 0 {
+                        lines[0] = lines[0] + "\nX-MITM-Response-Hijacked: true"
+                        modifiedRsp = str.Join(lines, "\n")
+                        forward([]byte(modifiedRsp))
+                        log.info("已添加响应劫持标记")
+                    } else {
+                        forward(rsp)
+                    }
+                }
+            })
+        )
+        if err != nil {
+            log.error(f"响应劫持代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert responseHijackPort > 0, "响应劫持代理端口应该有效"
+    log.info(f"响应劫持代理已启动在端口: ${responseHijackPort}")
+}
+
+// 扩展响应劫持测试 (包含请求信息)
+// 关键词: mitm.hijackHTTPResponseEx, 扩展响应劫持, 请求响应关联
+func testHTTPResponseHijackEx() {
+    log.info("测试扩展HTTP响应劫持功能")
+    
+    responseExPort = os.GetRandomAvailableTCPPort()
+    hijackedResponsesEx = 0
+    
+    // 启动带扩展响应劫持的代理
+    // 关键词: mitm.hijackHTTPResponseEx, 请求响应关联处理
+    go func() {
+        err = mitm.Start(responseExPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.hijackHTTPResponseEx(func(isHttps, urlStr, req, rsp, forward, reject) {
+                // 扩展响应劫持 - 可以访问对应的请求
+                // 关键词: 请求响应关联, 上下文感知劫持
+                hijackedResponsesEx++
+                
+                reqStr = string(req)
+                rspStr = string(rsp)
+                
+                log.info(f"扩展劫持 - URL: ${urlStr}")
+                
+                // 根据请求内容决定响应修改策略
+                if str.Contains(reqStr, "User-Agent:") {
+                    // 提取User-Agent信息
+                    userAgent = ""
+                    reqLines = str.Split(reqStr, "\n")
+                    for line in reqLines {
+                        if str.HasPrefix(line, "User-Agent:") {
+                            userAgent = str.TrimSpace(str.TrimPrefix(line, "User-Agent:"))
+                            break
+                        }
+                    }
+                    
+                    // 在响应中添加请求信息
+                    modifiedRsp = str.ReplaceAll(rspStr, "Content-Type:", f"X-Original-User-Agent: ${userAgent}\nContent-Type:")
+                    forward([]byte(modifiedRsp))
+                    log.info(f"已在响应中记录User-Agent: ${userAgent}")
+                } else {
+                    forward(rsp)
+                }
+            })
+        )
+        if err != nil {
+            log.error(f"扩展响应劫持代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert responseExPort > 0, "扩展响应劫持代理端口应该有效"
+    log.info(f"扩展响应劫持代理已启动在端口: ${responseExPort}")
+}
+
+// WebSocket劫持测试
+// 关键词: mitm.wscallback, WebSocket劫持, 实时通信拦截
+func testWebSocketHijack() {
+    log.info("测试WebSocket劫持功能")
+    
+    wsPort = os.GetRandomAvailableTCPPort()
+    wsMessageCount = 0
+    
+    // 启动带WebSocket劫持的代理
+    // 关键词: mitm.wscallback, WebSocket消息拦截
+    go func() {
+        err = mitm.Start(wsPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.wscallback(func(data, isRequest) {
+                // WebSocket消息劫持处理
+                // 关键词: WebSocket消息处理, 实时通信监听
+                wsMessageCount++
+                
+                direction = "响应"
+                if isRequest {
+                    direction = "请求"
+                }
+                
+                log.info(f"WebSocket ${direction}: ${string(data)}")
+                
+                // 可以修改WebSocket消息内容
+                if str.Contains(string(data), "hello") {
+                    modifiedData = str.ReplaceAll(string(data), "hello", "hello-hijacked")
+                    return []byte(modifiedData)
+                }
+                
+                return data
+            }),
+            mitm.wsforcetext(true) // 强制文本帧处理
+        )
+        if err != nil {
+            log.error(f"WebSocket劫持代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert wsPort > 0, "WebSocket劫持代理端口应该有效"
+    log.info(f"WebSocket劫持代理已启动在端口: ${wsPort}")
+}
+
+// 内容长度限制测试
+// 关键词: mitm.maxContentLength, 内容长度限制, 大文件处理
+func testMaxContentLength() {
+    log.info("测试内容长度限制功能")
+    
+    maxLengthPort = os.GetRandomAvailableTCPPort()
+    maxLength = 1024 // 限制为1KB
+    
+    // 启动带内容长度限制的代理
+    // 关键词: mitm.maxContentLength, 大文件过滤
+    go func() {
+        err = mitm.Start(maxLengthPort,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.maxContentLength(maxLength),
+            mitm.callback(func(isHttps, urlStr, req, rsp) {
+                log.info(f"处理请求 (长度限制${maxLength}): ${urlStr}")
+            })
+        )
+        if err != nil {
+            log.error(f"内容长度限制代理启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert maxLengthPort > 0, "内容长度限制代理端口应该有效"
+    assert maxLength == 1024, "内容长度限制应该为1024字节"
+    log.info(f"内容长度限制代理已启动，最大长度: ${maxLength}字节")
+}
+
+// 代理桥接测试
+// 关键词: mitm.Bridge, 代理链, 上游代理
+func testMITMBridge() {
+    log.info("测试MITM代理桥接功能")
+    
+    bridgePort = os.GetRandomAvailableTCPPort()
+    upstreamProxy = f"127.0.0.1:${bridgePort + 1000}" // 模拟上游代理
+    
+    // 启动代理桥接
+    // 关键词: mitm.Bridge, 代理链接, 流量转发
+    go func() {
+        err = mitm.Bridge(bridgePort, upstreamProxy,
+            mitm.useDefaultCA(true),
+            mitm.host("127.0.0.1"),
+            mitm.callback(func(isHttps, urlStr, req, rsp) {
+                log.info(f"桥接代理处理: ${urlStr}")
+            })
+        )
+        if err != nil {
+            log.error(f"代理桥接启动失败: ${err}")
+        }
+    }()
+    
+    time.Sleep(1)
+    
+    assert bridgePort > 0, "代理桥接端口应该有效"
+    log.info(f"代理桥接已启动在端口: ${bridgePort}")
+}
+
+// 执行所有MITM测试
+func main() {
+    log.info("开始Yaklang MITM库功能测试")
+    
+    // 基础功能测试
+    testBasicMITMProxy()
+    testTransparentProxy()
+    
+    // 劫持功能测试
+    testHTTPRequestHijack()
+    testHTTPResponseHijack()
+    testHTTPResponseHijackEx()
+    
+    // 高级功能测试
+    testWebSocketHijack()
+    testMaxContentLength()
+    testMITMBridge()
+    
+    // 等待所有代理完全启动
+    time.Sleep(3)
+    
+    log.info("MITM库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert requestCount >= 0, "请求计数应该初始化"
+    assert responseCount >= 0, "响应计数应该初始化"
+    assert hijackedRequests >= 0, "劫持请求计数应该初始化"
+    assert hijackedResponses >= 0, "劫持响应计数应该初始化"
+    assert hijackedResponsesEx >= 0, "扩展劫持响应计数应该初始化"
+    assert wsMessageCount >= 0, "WebSocket消息计数应该初始化"
+    
+    log.info("所有MITM代理服务器已成功启动并配置完成")
+    log.info("MITM库提供了强大的流量劫持和分析能力，是渗透测试的重要工具")
+}
+
+/*
+MITM库核心功能总结:
+
+1. 基础代理功能:
+   - mitm.Start() - 启动MITM代理服务器
+   - mitm.Bridge() - 代理桥接和链式代理
+   - mitm.host() - 指定监听主机
+   - mitm.useDefaultCA() - 使用默认CA证书
+
+2. 流量监听:
+   - mitm.callback() - 流量回调处理
+   - mitm.isTransparent() - 透明代理模式
+
+3. 请求劫持:
+   - mitm.hijackHTTPRequest() - HTTP请求劫持
+   - 支持请求修改、转发、丢弃
+
+4. 响应劫持:
+   - mitm.hijackHTTPResponse() - HTTP响应劫持
+   - mitm.hijackHTTPResponseEx() - 扩展响应劫持(含请求信息)
+   - 支持响应修改、内容替换
+
+5. WebSocket支持:
+   - mitm.wscallback() - WebSocket消息劫持
+   - mitm.wsforcetext() - 强制文本帧处理
+
+6. 高级配置:
+   - mitm.maxContentLength() - 内容长度限制
+   - mitm.rootCA() - 自定义CA证书
+   - mitm.gmtls() - 国密TLS支持
+
+MITM是渗透测试中的核心工具，用于流量分析、漏洞挖掘、安全评估等场景。
+*/

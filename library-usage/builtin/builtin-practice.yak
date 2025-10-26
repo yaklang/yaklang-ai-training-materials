@@ -1,0 +1,438 @@
+// =============================================================================
+// builtin 内置函数完整实战练习 - Yaklang基础能力和核心函数
+// builtin内置函数 基础能力 核心函数 全局函数 语言基础
+// 关键词: builtin, 内置函数, 基础能力, 全局函数, 语言基础, 核心功能
+// =============================================================================
+
+println("builtin 内置函数测试开始...")
+
+// =============================================================================
+// 1. 基础数据结构操作
+// 数据结构 append len cap make slice map 基础操作
+// 关键词: append, len, cap, make, slice, map, 数据结构, 基础操作
+// =============================================================================
+println("\n1. 基础数据结构操作")
+
+// ===== 1.1 数组和切片操作 =====
+// 关键词: append, len, cap, slice, 数组操作, 切片操作
+arr = [1, 2, 3]
+assert len(arr) == 3, "数组长度应为3"
+println(f"原始数组长度: ${len(arr)}")
+
+// append操作
+// 关键词: append, 数组追加, 元素添加
+newArr = append(arr, 4, 5)
+assert len(newArr) == 5, "追加后长度应为5"
+assert newArr[3] == 4, "第4个元素应为4"
+println(f"追加后数组: ${newArr}")
+
+// slice操作
+// 关键词: slice, 切片操作, 子数组
+subArr = sub(newArr, 1, 3)  // 从索引1到3（不包含3）
+assert len(subArr) == 2, "切片长度应为2"
+assert subArr[0] == 2, "切片第一个元素应为2"
+println(f"切片结果: ${subArr}")
+
+// ===== 1.2 映射操作 =====
+// 关键词: map, 映射操作, 键值对, 字典操作
+m = {"name": "test", "age": 20}
+assert len(m) == 2, "映射长度应为2"
+println(f"映射长度: ${len(m)}")
+
+// get操作
+// 关键词: get, 映射获取, 键值获取
+name = get(m, "name")
+assert name == "test", "name应为test"
+println(f"获取name: ${name}")
+
+// set操作
+// 关键词: set, 映射设置, 键值设置
+set(m, "city", "Beijing")
+assert len(m) == 3, "设置后长度应为3"
+assert get(m, "city") == "Beijing", "city应为Beijing"
+println(f"设置后映射: ${m}")
+
+// delete操作
+// 关键词: delete, 映射删除, 键删除
+delete(m, "age")
+assert len(m) == 2, "删除后长度应为2"
+println(f"删除后映射: ${m}")
+
+println("✓ 基础数据结构操作测试通过")
+
+// =============================================================================
+// 2. 断言和调试函数
+// 断言 调试 assert desc typeof dump 调试工具
+// 关键词: assert, desc, typeof, dump, 断言, 调试, 类型检查
+// =============================================================================
+println("\n2. 断言和调试函数")
+
+// ===== 2.1 断言函数 =====
+// 关键词: assert, assertTrue, assertEmpty, 断言验证
+testValue = 42
+assert testValue == 42, "值应为42"
+assert testValue > 0, "值应大于0"
+println("✓ 断言函数正常")
+
+// 空值断言
+// 关键词: assertEmpty, isEmpty, 空值检查
+emptyValue = nil
+assertEmpty(emptyValue)
+assert isEmpty(emptyValue) == true, "nil应为空"
+println("✓ 空值断言正常")
+
+// ===== 2.2 类型检查 =====
+// 关键词: typeof, type, 类型检查, 类型判断
+intType = typeof(42)
+strType = typeof("hello")
+mapType = typeof({"key": "value"})
+
+println(f"整数类型: ${intType}")
+println(f"字符串类型: ${strType}")
+println(f"映射类型: ${mapType}")
+
+// ===== 2.3 调试输出 =====
+// 关键词: dump, sdump, desc, 调试输出, 结构输出
+testStruct = {"name": "test", "data": [1, 2, 3]}
+println("结构dump输出:")
+dump(testStruct)
+
+println("✓ 断言和调试函数测试通过")
+
+// =============================================================================
+// 3. 字符串和格式化函数
+// 字符串 格式化 printf sprintf print 输出函数
+// 关键词: printf, sprintf, print, println, 字符串格式化, 输出函数
+// =============================================================================
+println("\n3. 字符串和格式化函数")
+
+// ===== 3.1 格式化输出 =====
+// 关键词: printf, sprintf, 格式化输出, 字符串格式化
+name = "Alice"
+age = 25
+score = 95.5
+
+// sprintf格式化
+// 关键词: sprintf, 字符串格式化, 格式化字符串
+formatted = sprintf("姓名: %s, 年龄: %d, 分数: %.1f", name, age, score)
+assert len(formatted) > 0, "格式化字符串不应为空"
+println(f"格式化结果: ${formatted}")
+
+// printf直接输出
+// 关键词: printf, 直接输出, 格式化打印
+printf("用户信息 - 姓名: %s, 年龄: %d\n", name, age)
+
+// ===== 3.2 基础输出函数 =====
+// 关键词: print, println, sprint, sprintln, 基础输出
+print("这是print输出 ")
+println("这是println输出")
+
+// sprint系列
+// 关键词: sprint, sprintln, 字符串输出, 输出到字符串
+str1 = sprint("Hello", " ", "World")
+str2 = sprintln("Hello", "World")
+assert len(str1) > 0, "sprint结果不应为空"
+assert len(str2) > 0, "sprintln结果不应为空"
+println(f"sprint结果: '${str1}'")
+println(f"sprintln结果: '${str2}'")
+
+println("✓ 字符串和格式化函数测试通过")
+
+// =============================================================================
+// 4. 数学和比较操作
+// 数学操作 比较操作 max min 算术运算 逻辑运算
+// 关键词: max, min, 数学操作, 比较操作, 算术运算
+// =============================================================================
+println("\n4. 数学和比较操作")
+
+// ===== 4.1 最值函数 =====
+// 关键词: max, min, 最大值, 最小值, 数值比较
+numbers = [10, 5, 8, 15, 3]
+maxVal = max(numbers...)
+minVal = min(numbers...)
+
+assert maxVal == 15, "最大值应为15"
+assert minVal == 3, "最小值应为3"
+println(f"数组 ${numbers} 的最大值: ${maxVal}, 最小值: ${minVal}")
+
+// 多参数max/min
+// 关键词: 多参数, 参数展开, 可变参数
+maxVal2 = max(1, 5, 3, 9, 2)
+minVal2 = min(1, 5, 3, 9, 2)
+assert maxVal2 == 9, "多参数最大值应为9"
+assert minVal2 == 1, "多参数最小值应为1"
+println(f"多参数最大值: ${maxVal2}, 最小值: ${minVal2}")
+
+println("✓ 数学和比较操作测试通过")
+
+// =============================================================================
+// 5. 错误处理和控制流
+// 错误处理 panic die fail error 异常处理
+// 关键词: error, die, fail, panic, 错误处理, 异常处理
+// =============================================================================
+println("\n5. 错误处理和控制流")
+
+// ===== 5.1 错误创建 =====
+// 关键词: error, 错误创建, 错误对象
+err1 = error("这是一个测试错误")
+assert err1 != nil, "错误对象不应为空"
+println(f"创建的错误: ${err1}")
+
+// ===== 5.2 错误处理 =====
+// 关键词: die, 错误处理, 异常检查
+// die函数会在错误不为空时panic，这里测试nil情况
+die(nil)  // 不应该panic
+println("✓ die(nil)正常通过")
+
+// ===== 5.3 try-catch错误处理 =====
+// 关键词: try-catch, 异常捕获, 错误捕获
+errorCaught = false
+try {
+    // 故意创建一个错误来测试
+    testErr = error("测试异常")
+    if testErr != nil {
+        panic("测试panic")
+    }
+} catch err {
+    errorCaught = true
+    println(f"捕获到异常: ${err}")
+}
+
+assert errorCaught == true, "应该捕获到异常"
+println("✓ 异常捕获正常")
+
+println("✓ 错误处理和控制流测试通过")
+
+// =============================================================================
+// 6. 类型转换和解析
+// 类型转换 解析函数 parseInt parseFloat parseBool 数据转换
+// 关键词: parseInt, parseFloat, parseBool, parseString, 类型转换, 数据解析
+// =============================================================================
+println("\n6. 类型转换和解析")
+
+// ===== 6.1 字符串转数字 =====
+// 关键词: parseInt, parseFloat, atoi, 字符串转数字
+intStr = "123"
+floatStr = "45.67"
+
+intVal = parseInt(intStr)
+floatVal = parseFloat(floatStr)
+
+assert intVal == 123, "parseInt应返回123"
+assert floatVal == 45.67, "parseFloat应返回45.67"
+
+println(f"parseInt('${intStr}') = ${intVal}")
+println(f"parseFloat('${floatStr}') = ${floatVal}")
+
+// atoi测试（可能返回不同类型）
+// 关键词: atoi, 字符串转整数, 类型转换
+atoiVal = atoi(intStr)
+println(f"atoi('${intStr}') = ${atoiVal} (类型: ${typeof(atoiVal)})")
+
+// ===== 6.2 布尔值解析 =====
+// 关键词: parseBool, parseBoolean, 布尔值解析
+boolStr1 = "true"
+boolStr2 = "false"
+
+boolVal1 = parseBool(boolStr1)
+boolVal2 = parseBoolean(boolStr2)
+
+assert boolVal1 == true, "parseBool('true')应返回true"
+assert boolVal2 == false, "parseBoolean('false')应返回false"
+
+println(f"parseBool('${boolStr1}') = ${boolVal1}")
+println(f"parseBoolean('${boolStr2}') = ${boolVal2}")
+
+// ===== 6.3 字符串解析 =====
+// 关键词: parseString, parseStr, 字符串解析
+numVal = 456
+strVal = parseString(numVal)
+assert typeof(strVal).String() == "string", "parseString应返回字符串类型"
+println(f"parseString(${numVal}) = '${strVal}'")
+
+println("✓ 类型转换和解析测试通过")
+
+// =============================================================================
+// 7. 时间和延迟函数
+// 时间函数 延迟函数 sleep wait tick1s 时间处理
+// 关键词: sleep, wait, tick1s, 时间函数, 延迟函数, 定时器
+// =============================================================================
+println("\n7. 时间和延迟函数")
+
+// ===== 7.1 延迟函数 =====
+// 关键词: sleep, wait, 延迟执行, 等待
+println("测试sleep函数...")
+sleep(0.1)  // 延迟0.1秒
+println("✓ sleep(0.1)执行完成")
+
+// wait函数（sleep的别名）
+// 关键词: wait, 等待函数, sleep别名
+println("测试wait函数...")
+wait(0.05)  // 等待0.05秒
+println("✓ wait(0.05)执行完成")
+
+println("✓ 时间和延迟函数测试通过")
+
+// =============================================================================
+// 8. 随机数和UUID
+// 随机数 UUID randn randstr uuid 随机生成
+// 关键词: randn, randstr, uuid, 随机数, 随机字符串, UUID生成
+// =============================================================================
+println("\n8. 随机数和UUID")
+
+// ===== 8.1 随机数生成 =====
+// 关键词: randn, 随机数生成, 随机整数
+randomNum = randn(0, 100)  // 生成0-99的随机数
+assert randomNum >= 0 && randomNum < 100, "随机数应在0-99范围内"
+println(f"随机数(0-99): ${randomNum}")
+
+// ===== 8.2 随机字符串 =====
+// 关键词: randstr, 随机字符串, 字符串生成
+randomStr = randstr(10)  // 生成长度为10的随机字符串
+assert len(randomStr) == 10, "随机字符串长度应为10"
+println(f"随机字符串(长度10): ${randomStr}")
+
+// ===== 8.3 UUID生成 =====
+// 关键词: uuid, UUID生成, 唯一标识符
+uuidStr = uuid()
+assert len(uuidStr) > 0, "UUID不应为空"
+println(f"生成的UUID: ${uuidStr}")
+
+// 验证UUID格式（应该包含连字符）
+// 关键词: UUID格式, 格式验证
+assert str.Contains(uuidStr, "-"), "UUID应包含连字符"
+
+println("✓ 随机数和UUID测试通过")
+
+// =============================================================================
+// 9. 字符和编码函数
+// 字符编码 chr ord ASCII 字符转换
+// 关键词: chr, ord, 字符编码, ASCII, 字符转换
+// =============================================================================
+println("\n9. 字符和编码函数")
+
+// ===== 9.1 字符转换 =====
+// 关键词: chr, ord, 字符转ASCII, ASCII转字符
+asciiA = ord("A")
+charFromAscii = chr(65)
+
+assert asciiA == 65, "字符A的ASCII码应为65"
+assert charFromAscii == "A", "ASCII码65应对应字符A"
+
+println(f"ord('A') = ${asciiA}")
+println(f"chr(65) = '${charFromAscii}'")
+
+// 中文字符测试
+// 关键词: 中文字符, Unicode, 字符编码
+chineseChar = "中"
+chineseCode = ord(chineseChar)
+println(f"ord('${chineseChar}') = ${chineseCode}")
+
+println("✓ 字符和编码函数测试通过")
+
+// =============================================================================
+// 10. 实际应用场景
+// 实际应用 综合应用 数据处理 工具函数
+// 关键词: 实际应用, 综合应用, 数据处理, 工具函数, 实用示例
+// =============================================================================
+println("\n10. 实际应用场景")
+
+// ===== 10.1 数据验证和处理 =====
+// 关键词: 数据验证, 数据处理, 输入验证
+validateAndProcess = func(data) {
+    // 类型检查
+    // 关键词: 类型检查, 数据类型验证
+    dataType = typeof(data)
+    println(f"输入数据类型: ${dataType}")
+    
+    // 数据验证
+    // 关键词: 数据验证, 输入验证
+    if isEmpty(data) {
+        return error("数据不能为空")
+    }
+    
+    // 根据类型处理
+    // 关键词: 类型处理, 条件处理
+    if dataType.String() == "string" {
+        return sprintf("处理字符串: %s (长度: %d)", data, len(data))
+    } else if dataType.String() == "int" {
+        return sprintf("处理整数: %d (是否为正数: %v)", data, data > 0)
+    } else {
+        return sprintf("处理其他类型: %v", data)
+    }
+}
+
+// 测试数据处理
+// 关键词: 测试数据, 功能测试
+result1 = validateAndProcess("Hello World")
+result2 = validateAndProcess(42)
+result3 = validateAndProcess([1, 2, 3])
+
+println(f"字符串处理结果: ${result1}")
+println(f"整数处理结果: ${result2}")
+println(f"数组处理结果: ${result3}")
+
+// ===== 10.2 配置数据管理 =====
+// 关键词: 配置管理, 数据管理, 配置处理
+config = {
+    "server": {
+        "host": "localhost",
+        "port": "8080"
+    },
+    "database": {
+        "type": "mysql",
+        "host": "db.example.com"
+    }
+}
+
+// 配置获取函数
+// 关键词: 配置获取, 嵌套访问, 安全访问
+getConfig = func(config, path) {
+    keys = str.Split(path, ".")
+    current = config
+    
+    for key in keys {
+        if typeof(current).String() != "*orderedmap.OrderedMap" && typeof(current).Kind().String() != "map" {
+            return nil
+        }
+        current = get(current, key)
+        if current == nil {
+            return nil
+        }
+    }
+    
+    return current
+}
+
+// 测试配置获取
+// 关键词: 配置测试, 路径访问
+serverHost = getConfig(config, "server.host")
+dbType = getConfig(config, "database.type")
+invalidPath = getConfig(config, "invalid.path")
+
+println(f"服务器主机: ${serverHost}")
+println(f"数据库类型: ${dbType}")
+println(f"无效路径结果: ${invalidPath}")
+
+assert serverHost == "localhost", "服务器主机应为localhost"
+assert dbType == "mysql", "数据库类型应为mysql"
+assert invalidPath == nil, "无效路径应返回nil"
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== builtin内置函数测试总结 ===")
+println("✅ 数据结构操作 - append, len, cap, slice, map")
+println("✅ 断言调试 - assert, desc, typeof, dump")
+println("✅ 字符串格式化 - printf, sprintf, print系列")
+println("✅ 数学比较 - max, min, 数值操作")
+println("✅ 错误处理 - error, die, try-catch")
+println("✅ 类型转换 - parseInt, parseFloat, parseBool")
+println("✅ 时间延迟 - sleep, wait, 时间函数")
+println("✅ 随机生成 - randn, randstr, uuid")
+println("✅ 字符编码 - chr, ord, ASCII转换")
+println("✅ 实际应用 - 数据验证, 配置管理")
+
+println("\nbuiltin内置函数测试完成！")

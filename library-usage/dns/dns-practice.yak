@@ -1,0 +1,480 @@
+// =============================================================================
+// dns 库完整实战练习 - DNS查询、解析和域名系统
+// dns库 DNS查询 域名解析 DNS记录 网络解析
+// 关键词: dns, DNS查询, 域名解析, DNS记录, 网络解析
+// =============================================================================
+
+println("dns 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础DNS查询功能
+// DNS查询 域名解析 A记录查询 IP解析 基础查询
+// 关键词: dns.QueryIP, DNS查询, 域名解析, A记录查询, IP解析
+// =============================================================================
+println("\n1. 基础DNS查询功能")
+
+// ===== 1.1 单个IP查询 =====
+// 关键词: dns.QueryIP, 单IP查询, 域名解析, A记录
+println("1.1 单个IP查询")
+
+// 查询知名域名的IP地址
+// 关键词: 域名查询, IP解析, DNS解析
+testDomain = "www.baidu.com"
+ip = dns.QueryIP(testDomain)
+if ip != "" {
+    println(f"✓ ${testDomain} 解析到IP: ${ip}")
+    assert len(ip) > 0, "IP地址不应为空"
+} else {
+    println(f"${testDomain} 解析失败")
+}
+
+// 查询另一个域名
+// 关键词: 多域名查询, DNS测试, 解析验证
+testDomain2 = "www.google.com"
+ip2 = dns.QueryIP(testDomain2)
+if ip2 != "" {
+    println(f"✓ ${testDomain2} 解析到IP: ${ip2}")
+} else {
+    println(f"${testDomain2} 解析失败（可能网络问题）")
+}
+
+// ===== 1.2 所有IP查询 =====
+// 关键词: dns.QueryIPAll, 多IP查询, 全部A记录, IP列表
+println("1.2 所有IP查询")
+
+// 查询域名的所有IP地址
+// 关键词: 全部IP, 多A记录, IP列表查询
+allIPs = dns.QueryIPAll(testDomain)
+if len(allIPs) > 0 {
+    println(f"✓ ${testDomain} 的所有IP地址:")
+    for _, ipAddr = range allIPs {
+        println(f"  - ${ipAddr}")
+    }
+    assert len(allIPs) > 0, "应该至少有一个IP地址"
+} else {
+    println(f"${testDomain} 未找到IP地址")
+}
+
+println("✓ 基础DNS查询功能测试完成")
+
+// =============================================================================
+// 2. DNS记录类型查询
+// DNS记录 NS记录 TXT记录 AXFR记录 记录类型
+// 关键词: DNS记录, NS记录, TXT记录, AXFR记录, 记录类型
+// =============================================================================
+println("\n2. DNS记录类型查询")
+
+// ===== 2.1 NS记录查询 =====
+// 关键词: dns.QueryNS, NS记录, 名称服务器, 权威服务器
+println("2.1 NS记录查询")
+
+// 查询域名的NS记录
+// 关键词: NS查询, 名称服务器查询, 权威DNS
+nsDomain = "baidu.com"  // 使用根域名查询NS记录
+nsRecords = dns.QueryNS(nsDomain)
+if len(nsRecords) > 0 {
+    println(f"✓ ${nsDomain} 的NS记录:")
+    for _, ns = range nsRecords {
+        println(f"  - ${ns}")
+    }
+    assert len(nsRecords) > 0, "应该至少有一个NS记录"
+} else {
+    println(f"${nsDomain} 未找到NS记录")
+}
+
+// ===== 2.2 TXT记录查询 =====
+// 关键词: dns.QueryTXT, TXT记录, 文本记录, SPF记录
+println("2.2 TXT记录查询")
+
+// 查询域名的TXT记录
+// 关键词: TXT查询, 文本记录查询, SPF验证
+txtDomain = "google.com"  // Google通常有TXT记录
+txtRecords = dns.QueryTXT(txtDomain)
+if len(txtRecords) > 0 {
+    println(f"✓ ${txtDomain} 的TXT记录:")
+    for _, txt = range txtRecords {
+        println(f"  - ${txt}")
+    }
+    assert len(txtRecords) > 0, "应该至少有一个TXT记录"
+} else {
+    println(f"${txtDomain} 未找到TXT记录")
+}
+
+// ===== 2.3 AXFR记录查询 =====
+// 关键词: dns.QueryAXFR, AXFR记录, 区域传输, DNS转储
+println("2.3 AXFR记录查询")
+
+// 尝试AXFR查询（通常会失败，因为大多数服务器不允许区域传输）
+// 关键词: AXFR查询, 区域传输, DNS安全
+axfrDomain = "example.com"
+axfrRecords = dns.QueryAxfr(axfrDomain)
+if len(axfrRecords) > 0 {
+    println(f"✓ ${axfrDomain} 的AXFR记录:")
+    for _, axfr = range axfrRecords {
+        println(f"  - ${axfr}")
+    }
+} else {
+    println(f"${axfrDomain} AXFR查询失败（正常情况，大多数服务器禁用区域传输）")
+}
+
+println("✓ DNS记录类型查询测试完成")
+
+// =============================================================================
+// 3. DNS查询配置和选项
+// DNS配置 查询选项 超时设置 DNS服务器 查询优化
+// 关键词: DNS配置, 查询选项, 超时设置, DNS服务器, 查询优化
+// =============================================================================
+println("\n3. DNS查询配置和选项")
+
+// ===== 3.1 超时配置测试 =====
+// 关键词: dns.timeout, 超时配置, 查询超时, 网络超时
+println("3.1 超时配置测试")
+
+// 使用短超时查询
+// 关键词: 短超时, 超时测试, 网络延迟
+shortTimeoutIP = dns.QueryIP(testDomain, dns.timeout(1))  // 1秒超时
+if shortTimeoutIP != "" {
+    println(f"✓ 短超时查询成功: ${shortTimeoutIP}")
+} else {
+    println("短超时查询失败（可能超时）")
+}
+
+// 使用长超时查询
+// 关键词: 长超时, 超时配置, 网络稳定性
+longTimeoutIP = dns.QueryIP(testDomain, dns.timeout(10))  // 10秒超时
+if longTimeoutIP != "" {
+    println(f"✓ 长超时查询成功: ${longTimeoutIP}")
+} else {
+    println("长超时查询失败")
+}
+
+// ===== 3.2 自定义DNS服务器 =====
+// 关键词: dns.dnsServers, 自定义DNS, DNS服务器, 公共DNS
+println("3.2 自定义DNS服务器")
+
+// 使用Google DNS服务器
+// 关键词: Google DNS, 8.8.8.8, 公共DNS服务器
+googleDNS_IP = dns.QueryIP(testDomain, dns.dnsServers("8.8.8.8"))
+if googleDNS_IP != "" {
+    println(f"✓ 使用Google DNS查询成功: ${googleDNS_IP}")
+} else {
+    println("Google DNS查询失败")
+}
+
+// 使用Cloudflare DNS服务器
+// 关键词: Cloudflare DNS, 1.1.1.1, 公共DNS服务器
+cloudflareDNS_IP = dns.QueryIP(testDomain, dns.dnsServers("1.1.1.1"))
+if cloudflareDNS_IP != "" {
+    println(f"✓ 使用Cloudflare DNS查询成功: ${cloudflareDNS_IP}")
+} else {
+    println("Cloudflare DNS查询失败")
+}
+
+// 使用多个DNS服务器
+// 关键词: 多DNS服务器, DNS冗余, 服务器列表
+multiDNS_IP = dns.QueryIP(testDomain, dns.dnsServers("8.8.8.8", "1.1.1.1", "223.5.5.5"))
+if multiDNS_IP != "" {
+    println(f"✓ 使用多DNS服务器查询成功: ${multiDNS_IP}")
+} else {
+    println("多DNS服务器查询失败")
+}
+
+println("✓ DNS查询配置和选项测试完成")
+
+// =============================================================================
+// 4. 批量DNS查询测试
+// 批量查询 多域名查询 DNS性能 查询效率 并发查询
+// 关键词: 批量查询, 多域名查询, DNS性能, 查询效率, 并发查询
+// =============================================================================
+println("\n4. 批量DNS查询测试")
+
+// ===== 4.1 多域名批量查询 =====
+// 关键词: 多域名, 批量解析, DNS批处理, 域名列表
+println("4.1 多域名批量查询")
+
+// 定义测试域名列表
+// 关键词: 域名列表, 测试域名, 批量测试
+testDomains = [
+    "www.baidu.com",
+    "www.taobao.com", 
+    "www.qq.com",
+    "www.sina.com.cn",
+    "www.163.com"
+]
+
+batchResults = []
+successCount = 0
+
+// 批量查询域名
+// 关键词: 批量处理, 循环查询, 结果收集
+for _, domain = range testDomains {
+    ip = dns.QueryIP(domain, dns.timeout(3))  // 3秒超时
+    result = {
+        "domain": domain,
+        "ip": ip,
+        "success": ip != ""
+    }
+    
+    batchResults = append(batchResults, result)
+    
+    if ip != "" {
+        successCount++
+        println(f"✓ ${domain} -> ${ip}")
+    } else {
+        println(f"✗ ${domain} -> 解析失败")
+    }
+    
+    time.Sleep(0.1)  // 短暂延迟避免过于频繁的查询
+}
+
+assert len(batchResults) == len(testDomains), "结果数量应与域名数量一致"
+println(f"✓ 批量查询完成，成功率: ${successCount}/${len(testDomains)}")
+
+// ===== 4.2 并发DNS查询测试 =====
+// 关键词: 并发查询, 多线程DNS, 并行解析, 查询性能
+println("4.2 并发DNS查询测试")
+
+concurrentResults = []
+concurrentCount = 0
+
+// 并发查询多个域名
+// 关键词: 并发处理, 多线程, 异步查询
+for _, domain = range testDomains {
+    go func(d) {
+        ip = dns.QueryIP(d, dns.timeout(5))
+        if ip != "" {
+            concurrentResults = append(concurrentResults, {
+                "domain": d,
+                "ip": ip
+            })
+            concurrentCount++
+            println(f"并发查询成功: ${d} -> ${ip}")
+        }
+    }(domain)
+}
+
+// 等待并发查询完成
+// 关键词: 等待完成, 并发同步, 查询汇总
+time.Sleep(3)
+
+println(f"✓ 并发查询完成，成功数量: ${concurrentCount}")
+
+println("✓ 批量DNS查询测试完成")
+
+// =============================================================================
+// 5. DNS查询错误处理和边界测试
+// 错误处理 边界测试 无效域名 DNS异常 查询失败
+// 关键词: 错误处理, 边界测试, 无效域名, DNS异常, 查询失败
+// =============================================================================
+println("\n5. DNS查询错误处理和边界测试")
+
+// ===== 5.1 无效域名测试 =====
+// 关键词: 无效域名, 错误处理, 查询失败, 异常测试
+println("5.1 无效域名测试")
+
+// 测试不存在的域名
+// 关键词: 不存在域名, NXDOMAIN, DNS错误
+invalidDomain = "this-domain-should-not-exist-12345.com"
+invalidIP = dns.QueryIP(invalidDomain, dns.timeout(3))
+if invalidIP == "" {
+    println(f"✓ 无效域名查询正确返回空: ${invalidDomain}")
+} else {
+    println(f"意外：无效域名返回了IP: ${invalidIP}")
+}
+
+// 测试格式错误的域名
+// 关键词: 格式错误, 域名格式, 输入验证
+malformedDomain = "invalid..domain..com"
+malformedIP = dns.QueryIP(malformedDomain, dns.timeout(3))
+if malformedIP == "" {
+    println(f"✓ 格式错误域名查询正确返回空: ${malformedDomain}")
+} else {
+    println(f"意外：格式错误域名返回了IP: ${malformedIP}")
+}
+
+// ===== 5.2 网络超时测试 =====
+// 关键词: 网络超时, 超时处理, 查询超时, 网络异常
+println("5.2 网络超时测试")
+
+// 使用极短超时测试
+// 关键词: 极短超时, 超时测试, 网络延迟
+veryShortTimeoutIP = dns.QueryIP(testDomain, dns.timeout(0.1))  // 0.1秒超时
+if veryShortTimeoutIP == "" {
+    println("✓ 极短超时查询正确超时")
+} else {
+    println(f"极短超时查询意外成功: ${veryShortTimeoutIP}")
+}
+
+// ===== 5.3 特殊字符域名测试 =====
+// 关键词: 特殊字符, 域名边界, 输入测试, 字符处理
+println("5.3 特殊字符域名测试")
+
+// 测试包含特殊字符的域名
+// 关键词: 特殊字符, 域名验证, 字符过滤
+specialDomains = [
+    "",  // 空字符串
+    "localhost",  // 本地域名
+    "127.0.0.1"   // IP地址作为域名
+]
+
+for _, specialDomain = range specialDomains {
+    if specialDomain == "" {
+        continue  // 跳过空字符串
+    }
+    
+    specialIP = dns.QueryIP(specialDomain, dns.timeout(2))
+    if specialIP != "" {
+        println(f"特殊域名查询: ${specialDomain} -> ${specialIP}")
+    } else {
+        println(f"特殊域名查询失败: ${specialDomain}")
+    }
+}
+
+println("✓ DNS查询错误处理和边界测试完成")
+
+// =============================================================================
+// 6. 实际应用场景演示
+// 实际应用 综合应用 DNS应用 网络诊断 域名验证
+// 关键词: 实际应用, 综合应用, DNS应用, 网络诊断, 域名验证
+// =============================================================================
+println("\n6. 实际应用场景演示")
+
+// ===== 6.1 域名健康检查 =====
+// 关键词: 域名健康检查, DNS监控, 可用性检测, 网络诊断
+println("6.1 域名健康检查")
+
+// 实现域名健康检查函数
+// 关键词: 健康检查, 域名监控, 可用性验证
+checkDomainHealth = func(domain) {
+    result = {
+        "domain": domain,
+        "ip": "",
+        "allIPs": [],
+        "nsRecords": [],
+        "txtRecords": [],
+        "healthy": false,
+        "checkTime": time.Now().String()
+    }
+    
+    // 检查A记录
+    // 关键词: A记录检查, IP解析验证
+    ip = dns.QueryIP(domain, dns.timeout(5))
+    if ip != "" {
+        result["ip"] = ip
+        result["healthy"] = true
+        
+        // 获取所有IP
+        // 关键词: 全IP检查, 多A记录验证
+        allIPs = dns.QueryIPAll(domain, dns.timeout(5))
+        result["allIPs"] = allIPs
+    }
+    
+    // 检查NS记录
+    // 关键词: NS记录检查, 权威服务器验证
+    nsRecords = dns.QueryNS(domain, dns.timeout(5))
+    result["nsRecords"] = nsRecords
+    
+    // 检查TXT记录
+    // 关键词: TXT记录检查, 文本记录验证
+    txtRecords = dns.QueryTXT(domain, dns.timeout(5))
+    result["txtRecords"] = txtRecords
+    
+    return result
+}
+
+// 执行域名健康检查
+// 关键词: 健康检查执行, 域名诊断, 网络验证
+healthCheckDomains = ["www.baidu.com", "www.google.com"]
+healthResults = []
+
+for _, domain = range healthCheckDomains {
+    healthResult = checkDomainHealth(domain)
+    healthResults = append(healthResults, healthResult)
+    
+    if healthResult["healthy"] {
+        println(f"✓ ${domain} 健康检查通过")
+        println(f"  主IP: ${healthResult['ip']}")
+        println(f"  所有IP数量: ${len(healthResult['allIPs'])}")
+        println(f"  NS记录数量: ${len(healthResult['nsRecords'])}")
+        println(f"  TXT记录数量: ${len(healthResult['txtRecords'])}")
+    } else {
+        println(f"✗ ${domain} 健康检查失败")
+    }
+}
+
+assert len(healthResults) > 0, "应该有健康检查结果"
+println("✓ 域名健康检查完成")
+
+// ===== 6.2 DNS性能基准测试 =====
+// 关键词: DNS性能, 基准测试, 查询延迟, 性能分析
+println("6.2 DNS性能基准测试")
+
+// DNS性能测试函数
+// 关键词: 性能测试, 查询延迟, 响应时间
+performDNSBenchmark = func(domain, dnsServer) {
+    queryCount = 10
+    successCount = 0
+    totalTime = 0.0
+    
+    for i = 0; i < queryCount; i++ {
+        startTime = time.Now()
+        
+        ip = dns.QueryIP(domain, dns.dnsServers(dnsServer), dns.timeout(5))
+        
+        endTime = time.Now()
+        queryTime = endTime.Sub(startTime).Seconds()
+        totalTime += queryTime
+        
+        if ip != "" {
+            successCount++
+        }
+        
+        time.Sleep(0.1)  // 避免过于频繁的查询
+    }
+    
+    avgTime = totalTime / queryCount
+    successRate = float64(successCount) / float64(queryCount) * 100
+    
+    return {
+        "domain": domain,
+        "dnsServer": dnsServer,
+        "queryCount": queryCount,
+        "successCount": successCount,
+        "successRate": successRate,
+        "avgTime": avgTime,
+        "totalTime": totalTime
+    }
+}
+
+// 测试不同DNS服务器的性能
+// 关键词: DNS服务器性能, 服务器对比, 性能对比
+dnsServers = ["8.8.8.8", "1.1.1.1", "223.5.5.5"]
+benchmarkDomain = "www.baidu.com"
+
+println(f"DNS性能基准测试 - 域名: ${benchmarkDomain}")
+for _, server = range dnsServers {
+    benchmark = performDNSBenchmark(benchmarkDomain, server)
+    
+    println(f"DNS服务器: ${server}")
+    println(f"  成功率: ${benchmark['successRate']}%")
+    println(f"  平均延迟: ${benchmark['avgTime']} 秒")
+    println(f"  总查询时间: ${benchmark['totalTime']} 秒")
+}
+
+println("✓ DNS性能基准测试完成")
+
+println("✓ 实际应用场景演示完成")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== DNS库测试总结 ===")
+println("✅ 基础DNS查询 - IP查询、域名解析、A记录查询")
+println("✅ DNS记录类型 - NS记录、TXT记录、AXFR记录查询")
+println("✅ 查询配置 - 超时设置、自定义DNS服务器")
+println("✅ 批量查询 - 多域名查询、并发查询、性能优化")
+println("✅ 错误处理 - 无效域名、网络超时、边界测试")
+println("✅ 实际应用 - 域名健康检查、DNS性能基准测试")
+
+println("\nDNS库测试完成！")
+println("DNS库提供了完整的域名解析能力，支持多种DNS记录类型查询和高级配置选项。")

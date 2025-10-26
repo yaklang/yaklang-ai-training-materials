@@ -1,0 +1,409 @@
+// =============================================================================
+// udp 库完整实战练习 - UDP通信和无连接网络编程
+// udp库 UDP通信 无连接协议 数据报通信 网络编程
+// 关键词: udp, UDP通信, 无连接协议, 数据报通信, 网络编程
+// =============================================================================
+
+println("udp 库功能测试开始...")
+
+// =============================================================================
+// 1. UDP客户端连接测试
+// UDP客户端 连接测试 无连接通信 数据报发送 客户端通信
+// 关键词: udp.Connect, UDP客户端, 连接测试, 无连接通信, 数据报发送
+// =============================================================================
+println("\n1. UDP客户端连接测试")
+
+// ===== 1.1 UDP连接创建测试 =====
+// 关键词: udp.Connect, 客户端创建, UDP连接, 数据报连接
+println("1.1 UDP连接创建测试")
+
+// 测试连接到不存在的UDP服务（UDP是无连接的，连接会成功但发送可能失败）
+// 关键词: UDP连接, 无连接特性, 连接测试
+testHost = "127.0.0.1"
+testPort = 65432  // 使用一个不太可能被占用的端口
+
+conn, err = udp.Connect(testHost, testPort, udp.clientTimeout(1))
+// UDP连接通常会成功，因为它是无连接的
+if err == nil {
+    println("✓ UDP连接创建成功（无连接协议特性）")
+    conn.Close()
+} else {
+    println(f"UDP连接失败: ${err}")
+}
+
+// ===== 1.2 UDP连接配置选项 =====
+// 关键词: UDP配置, 连接选项, 客户端配置, 超时设置
+println("1.2 UDP连接配置选项")
+
+// 测试不同的超时设置
+// 关键词: 超时设置, UDP超时, 客户端超时
+shortTimeout = 0.5  // 0.5秒超时
+conn2, err2 = udp.Connect(testHost, testPort, udp.clientTimeout(shortTimeout))
+if err2 == nil {
+    println("✓ 短超时UDP连接成功")
+    conn2.Close()
+} else {
+    println(f"短超时UDP连接失败: ${err2}")
+}
+
+longTimeout = 5  // 5秒超时
+conn3, err3 = udp.Connect(testHost, testPort, udp.clientTimeout(longTimeout))
+if err3 == nil {
+    println("✓ 长超时UDP连接成功")
+    conn3.Close()
+} else {
+    println(f"长超时UDP连接失败: ${err3}")
+}
+
+println("✓ UDP客户端连接测试完成")
+
+// =============================================================================
+// 2. UDP服务器创建和基础通信
+// UDP服务器 服务器创建 监听端口 数据报处理 基础通信
+// 关键词: udp.Serve, UDP服务器, 监听端口, 数据报处理, 基础通信
+// =============================================================================
+println("\n2. UDP服务器创建和基础通信")
+
+// ===== 2.1 启动UDP服务器 =====
+// 关键词: udp.Serve, 服务器启动, 端口监听, 服务器创建
+println("2.1 启动UDP服务器")
+
+serverPort = os.GetRandomAvailableTCPPort()  // UDP也可以使用TCP端口号
+serverHost = "127.0.0.1"
+serverMessages = []  // 存储服务器接收到的消息
+
+// 启动UDP服务器
+// 关键词: udp.Serve, serverCallback, 数据报处理器, 消息处理
+go func() {
+    udp.Serve(
+        serverHost, 
+        serverPort,
+        udp.serverCallback(func(conn, data) {
+            // 处理客户端数据报
+            // 关键词: 数据报处理, 消息接收, 数据读取
+            message = string(data)
+            
+            // 记录接收到的消息
+            // 关键词: 消息记录, 数据存储, 通信日志
+            remoteAddr = "unknown"
+            if conn.RemoteAddr() != nil {
+                remoteAddr = conn.RemoteAddr().String()
+            }
+            serverMessages = append(serverMessages, {
+                "message": message,
+                "time": time.Now().String(),
+                "from": remoteAddr
+            })
+            
+            println(f"UDP服务器收到消息: ${message}")
+            
+            // 回复客户端
+            // 关键词: 消息回复, 数据发送, 响应处理
+            response = f"UDP Echo: ${message}"
+            conn.Send(response)
+        }),
+        udp.serverContext(context.Seconds(30))  // 30秒超时
+    )
+}()
+
+// 等待服务器启动
+// 关键词: 服务器启动等待, 初始化延迟
+time.Sleep(2)
+println(f"UDP服务器启动完成: ${serverHost}:${serverPort}")
+
+// ===== 2.2 UDP客户端通信测试 =====
+// 关键词: 客户端通信, 服务器通信, UDP通信, 数据报交换
+println("2.2 UDP客户端通信测试")
+
+// 创建UDP客户端连接
+// 关键词: udp.Connect, 客户端创建, 连接建立
+clientConn, clientErr = udp.Connect(serverHost, serverPort, udp.clientTimeout(5))
+assert clientErr == nil, f"UDP客户端连接失败: ${clientErr}"
+println("✓ UDP客户端连接成功")
+
+// 发送测试消息
+// 关键词: 消息发送, 数据传输, 客户端发送
+testMessage = "Hello UDP Server!"
+sendErr = clientConn.Send(testMessage)
+assert sendErr == nil, f"UDP消息发送失败: ${sendErr}"
+println(f"✓ 发送UDP消息: ${testMessage}")
+
+// 接收服务器回复（带超时）
+// 关键词: 消息接收, 数据接收, 服务器响应, 超时控制
+response, recvErr = clientConn.RecvStringTimeout(3)  // 3秒超时
+if recvErr == nil {
+    assert str.Contains(response, testMessage), "UDP响应应包含原始消息"
+    println(f"✓ 收到UDP响应: ${response}")
+} else {
+    println(f"UDP接收响应超时或失败: ${recvErr}")
+}
+
+// 发送更多测试消息
+// 关键词: 多消息测试, UDP通信, 数据报序列
+messages = ["UDP Message 1", "UDP Message 2", "UDP测试中文消息"]
+for _, msg = range messages {
+    clientConn.Send(msg)
+    println(f"✓ 发送UDP消息: ${msg}")
+    
+    // 尝试接收响应
+    // 关键词: 响应接收, UDP响应, 数据报接收
+    resp, respErr = clientConn.RecvStringTimeout(1)  // 1秒超时
+    if respErr == nil {
+        println(f"  收到响应: ${resp}")
+    }
+    time.Sleep(0.2)  // 短暂延迟
+}
+
+// 关闭客户端连接
+// 关键词: 连接关闭, 资源释放, 连接清理
+clientConn.Close()
+println("✓ UDP客户端连接关闭")
+
+time.Sleep(1)  // 等待服务器处理
+println(f"✓ UDP基础通信测试完成，服务器收到 ${len(serverMessages)} 条消息")
+
+// =============================================================================
+// 3. UDP数据传输特性测试
+// 数据传输 UDP特性 数据报特性 无连接特性 传输测试
+// 关键词: 数据传输, UDP特性, 数据报特性, 无连接特性, 传输测试
+// =============================================================================
+println("\n3. UDP数据传输特性测试")
+
+// ===== 3.1 不同类型数据传输 =====
+// 关键词: 数据类型, 文本数据, 二进制数据, 数据编码
+println("3.1 不同类型数据传输")
+
+// 创建数据传输测试连接
+// 关键词: 数据连接, 传输测试, 数据通信
+dataConn, dataErr = udp.Connect(serverHost, serverPort, udp.clientTimeout(5))
+assert dataErr == nil, f"UDP数据传输连接失败: ${dataErr}"
+
+// 测试文本数据
+// 关键词: 文本传输, 字符串数据, 文本通信
+textData = "This is a UDP text message with special chars: !@#$%^&*()"
+dataConn.Send(textData)
+println(f"✓ 发送UDP文本数据: ${len(textData)} 字符")
+
+// 测试二进制数据
+// 关键词: 二进制传输, 字节数据, 原始数据
+binaryData = []byte{0x01, 0x02, 0x03, 0x04, 0x05}
+dataConn.Send(binaryData)
+println(f"✓ 发送UDP二进制数据: ${len(binaryData)} 字节")
+
+// 测试较大数据（注意UDP数据报大小限制）
+// 关键词: 大数据传输, 数据报限制, UDP限制
+largeData = str.Repeat("UDP data chunk ", 30)  // 约450字节，在UDP限制内
+dataConn.Send(largeData)
+println(f"✓ 发送UDP大数据: ${len(largeData)} 字节")
+
+dataConn.Close()
+println("✓ UDP数据传输特性测试完成")
+
+// =============================================================================
+// 4. UDP多客户端和并发测试
+// 多客户端 并发通信 UDP并发 多连接处理 并发测试
+// 关键词: 多客户端, 并发通信, UDP并发, 多连接处理, 并发测试
+// =============================================================================
+println("\n4. UDP多客户端和并发测试")
+
+// ===== 4.1 并发UDP客户端测试 =====
+// 关键词: 并发客户端, 多线程连接, 并发通信, 客户端池
+println("4.1 并发UDP客户端测试")
+
+clientCount = 3
+successCount = 0
+
+// 创建多个并发UDP客户端
+// 关键词: 并发创建, 多客户端, 并发连接
+for i = 0; i < clientCount; i++ {
+    go func(clientId) {
+        // 创建UDP客户端连接
+        // 关键词: 客户端连接, 并发连接, 多线程连接
+        concurrentConn, concurrentErr = udp.Connect(serverHost, serverPort, udp.clientTimeout(5))
+        if concurrentErr != nil {
+            log.error(f"UDP客户端${clientId}连接失败: ${concurrentErr}")
+            return
+        }
+        
+        // 发送消息
+        // 关键词: 并发发送, 客户端消息, 多客户端通信
+        message = f"UDP message from client ${clientId}"
+        concurrentConn.Send(message)
+        println(f"✓ UDP客户端${clientId}发送消息: ${message}")
+        
+        // 尝试接收响应
+        // 关键词: 响应接收, 客户端接收, 并发接收
+        resp, respErr = concurrentConn.RecvStringTimeout(2)
+        if respErr == nil {
+            println(f"  客户端${clientId}收到响应: ${resp}")
+        }
+        
+        successCount++
+        concurrentConn.Close()
+    }(i)
+}
+
+// 等待所有客户端完成
+// 关键词: 等待完成, 并发同步, 客户端同步
+time.Sleep(3)
+
+println(f"✓ 并发UDP客户端测试完成，${successCount} 个客户端成功通信")
+
+// =============================================================================
+// 5. UDP地址和端口测试
+// 地址测试 端口测试 SendTo功能 地址解析 多目标通信
+// 关键词: 地址测试, 端口测试, SendTo功能, 地址解析, 多目标通信
+// =============================================================================
+println("\n5. UDP地址和端口测试")
+
+// ===== 5.1 SendTo功能测试 =====
+// 关键词: SendTo, 目标地址, 多目标发送, 地址指定
+println("5.1 SendTo功能测试")
+
+// 创建UDP连接用于SendTo测试
+// 关键词: SendTo连接, 地址发送, 目标指定
+sendToPort = os.GetRandomAvailableTCPPort()
+sendToConn, sendToErr = udp.Connect("127.0.0.1", sendToPort, udp.clientTimeout(5))
+assert sendToErr == nil, f"SendTo连接创建失败: ${sendToErr}"
+
+// 使用SendTo发送到指定地址
+// 关键词: SendTo发送, 目标地址, 地址指定发送
+targetAddr = f"${serverHost}:${serverPort}"
+sendToMessage = "Message sent via SendTo"
+sendToErr2 = sendToConn.SendTo(sendToMessage, targetAddr)
+if sendToErr2 == nil {
+    println(f"✓ SendTo发送成功: ${sendToMessage}")
+} else {
+    println(f"SendTo发送失败: ${sendToErr2}")
+}
+
+sendToConn.Close()
+
+// ===== 5.2 地址解析测试 =====
+// 关键词: 地址解析, 主机名解析, DNS解析, 网络地址
+println("5.2 地址解析测试")
+
+// 测试localhost解析
+// 关键词: localhost解析, 本地地址, 地址测试
+localhostConn, localhostErr = udp.Connect("localhost", serverPort, udp.clientTimeout(3))
+if localhostErr == nil {
+    println("✓ localhost地址解析成功")
+    
+    // 发送测试消息
+    // 关键词: localhost通信, 地址解析通信
+    localhostConn.Send("Message to localhost")
+    localhostConn.Close()
+} else {
+    println(f"localhost地址解析失败: ${localhostErr}")
+}
+
+println("✓ UDP地址和端口测试完成")
+
+// =============================================================================
+// 6. 实际应用场景演示
+// 实际应用 综合应用 UDP应用 网络服务 通信协议
+// 关键词: 实际应用, 综合应用, UDP应用, 网络服务, 通信协议
+// =============================================================================
+println("\n6. 实际应用场景演示")
+
+// ===== 6.1 简单UDP协议实现 =====
+// 关键词: UDP协议, 通信协议, 消息协议, 协议设计
+println("6.1 简单UDP协议实现")
+
+// 创建协议测试连接
+// 关键词: 协议连接, 协议测试, 通信协议
+protocolConn, protocolErr = udp.Connect(serverHost, serverPort, udp.clientTimeout(5))
+assert protocolErr == nil, f"UDP协议测试连接失败: ${protocolErr}"
+
+// 实现简单的UDP命令协议
+// 关键词: 命令协议, 协议命令, 消息格式
+commands = [
+    "PING",
+    "HELLO:World",
+    "DATA:This is UDP test data",
+    "STATUS:OK",
+    "BYE"
+]
+
+protocolResults = []
+for _, cmd = range commands {
+    protocolConn.Send(cmd)
+    println(f"✓ 发送UDP协议命令: ${cmd}")
+    
+    // 尝试接收响应
+    // 关键词: 协议响应, 命令响应, UDP响应
+    resp, respErr = protocolConn.RecvStringTimeout(1)
+    if respErr == nil {
+        protocolResults = append(protocolResults, {
+            "command": cmd,
+            "response": resp
+        })
+        println(f"  收到响应: ${resp}")
+    }
+    time.Sleep(0.1)
+}
+
+protocolConn.Close()
+println(f"✓ UDP协议实现测试完成，执行了 ${len(commands)} 个命令")
+
+// ===== 6.2 UDP性能测试 =====
+// 关键词: 性能测试, UDP性能, 吞吐量测试, 网络性能
+println("6.2 UDP性能测试")
+
+// 创建性能测试连接
+// 关键词: 性能连接, 基准连接, 测试连接
+perfConn, perfErr = udp.Connect(serverHost, serverPort, udp.clientTimeout(10))
+assert perfErr == nil, f"UDP性能测试连接失败: ${perfErr}"
+
+// 性能测试参数
+// 关键词: 性能参数, 测试参数, 基准参数
+messageCount = 50
+messageSize = 256  // UDP适合的消息大小
+testData = str.Repeat("U", messageSize)
+
+// 执行UDP性能测试
+// 关键词: 性能执行, 基准执行, 测试执行
+startTime = time.Now()
+
+successCount = 0
+for i = 0; i < messageCount; i++ {
+    perfConn.Send(f"PERF:${i}:${testData}")
+    successCount++
+    
+    // UDP不保证可靠性，不等待每个响应
+    if i % 10 == 0 {
+        println(f"已发送 ${i+1}/${messageCount} 个UDP消息")
+    }
+}
+
+endTime = time.Now()
+duration = endTime.Sub(startTime).Seconds()
+
+perfConn.Close()
+
+// 计算性能指标
+// 关键词: 性能计算, 指标计算, 性能分析
+totalBytes = successCount * messageSize
+throughput = totalBytes / duration
+
+println("✓ UDP性能测试完成:")
+println(f"  - 发送消息: ${successCount}/${messageCount}")
+println(f"  - 消息大小: ${messageSize} 字节")
+println(f"  - 总时间: ${duration} 秒")
+println(f"  - 吞吐量: ${throughput} 字节/秒")
+
+println("✓ 实际应用场景演示完成")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== UDP库测试总结 ===")
+println("✅ UDP客户端连接 - 连接建立、超时控制、无连接特性")
+println("✅ UDP服务器创建 - 监听端口、数据报处理、消息处理")
+println("✅ 数据传输特性 - 文本数据、二进制数据、数据报限制")
+println("✅ 多客户端支持 - 并发连接、多线程通信")
+println("✅ 地址和端口 - SendTo功能、地址解析、多目标通信")
+println("✅ 实际应用 - 协议实现、性能测试")
+
+println("\nUDP库测试完成！")
+println("UDP库提供了完整的无连接网络编程能力，适合快速、轻量级的网络通信。")

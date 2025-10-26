@@ -1,0 +1,259 @@
+// =============================================================================
+// yaml 库完整实战练习 - YAML序列化和反序列化
+// yaml库 YAML序列化 YAML反序列化 YAML解析 配置文件
+// 关键词: yaml, Marshal, Unmarshal, YAML序列化, YAML反序列化, 配置文件
+// =============================================================================
+
+println("yaml 库功能测试开始...")
+
+// =============================================================================
+// 1. YAML序列化 - Marshal
+// YAML序列化 对象转YAML Marshal YAML编码
+// 关键词: yaml.Marshal, YAML序列化, 对象转YAML, YAML编码
+// =============================================================================
+println("\n1. YAML序列化")
+
+// ===== 1.1 基础Marshal操作 =====
+// 关键词: Marshal, YAML序列化, map转YAML
+testMap = {"name": "test", "age": 20, "active": true}
+yamlBytes, err = yaml.Marshal(testMap)
+
+assert err == nil, "YAML序列化不应失败"
+assert len(yamlBytes) > 0, "YAML字节不应为空"
+
+yamlStr = string(yamlBytes)
+println(f"YAML序列化结果:\n${yamlStr}")
+assert str.Contains(yamlStr, "test"), "应包含name字段"
+
+// ===== 1.2 复杂对象序列化 =====
+// 关键词: 复杂对象, 嵌套对象, YAML序列化
+complexData = {
+    "server": {
+        "host": "localhost",
+        "port": 8080
+    },
+    "database": {
+        "type": "mysql",
+        "host": "db.example.com",
+        "port": 3306
+    },
+    "features": ["feature1", "feature2", "feature3"]
+}
+
+complexYaml, err = yaml.Marshal(complexData)
+assert err == nil, "复杂对象序列化不应失败"
+
+complexYamlStr = string(complexYaml)
+println(f"复杂YAML长度: ${len(complexYamlStr)}")
+assert str.Contains(complexYamlStr, "server"), "应包含server配置"
+assert str.Contains(complexYamlStr, "database"), "应包含database配置"
+
+// ===== 1.3 数组序列化 =====
+// 关键词: 数组序列化, array转YAML, 列表序列化
+testArray = [
+    {"id": 1, "name": "item1"},
+    {"id": 2, "name": "item2"},
+    {"id": 3, "name": "item3"}
+]
+
+arrayYaml, err = yaml.Marshal(testArray)
+assert err == nil, "数组序列化不应失败"
+
+arrayYamlStr = string(arrayYaml)
+println(f"数组YAML长度: ${len(arrayYamlStr)}")
+assert str.Contains(arrayYamlStr, "item1"), "应包含item1"
+
+println("✓ YAML序列化测试通过")
+
+// =============================================================================
+// 2. YAML反序列化 - Unmarshal
+// YAML反序列化 YAML转对象 Unmarshal YAML解码
+// 关键词: yaml.Unmarshal, YAML反序列化, YAML转对象, YAML解码
+// =============================================================================
+println("\n2. YAML反序列化")
+
+// ===== 2.1 基础Unmarshal操作 =====
+// 关键词: Unmarshal, YAML反序列化, YAML解析
+yamlInput = `
+name: Alice
+age: 25
+active: true
+`
+
+obj, err = yaml.Unmarshal([]byte(yamlInput))
+assert err == nil, "YAML反序列化不应失败"
+assert obj != nil, "反序列化结果不应为空"
+
+println(f"name: ${obj['name']}, age: ${obj['age']}, active: ${obj['active']}")
+assert obj["name"] == "Alice", "name应为Alice"
+assert obj["age"] == 25, "age应为25"
+assert obj["active"] == true, "active应为true"
+
+// ===== 2.2 嵌套对象反序列化 =====
+// 关键词: 嵌套对象, 复杂YAML, YAML解析
+nestedYaml = `
+server:
+  host: localhost
+  port: 8080
+database:
+  type: mysql
+  host: db.example.com
+  port: 3306
+`
+
+nested, err = yaml.Unmarshal([]byte(nestedYaml))
+assert err == nil, "嵌套YAML反序列化不应失败"
+assert nested != nil, "嵌套对象不应为空"
+
+println(f"Server host: ${nested['server']['host']}")
+println(f"Database type: ${nested['database']['type']}")
+
+assert nested["server"]["host"] == "localhost", "server host应正确"
+assert nested["server"]["port"] == 8080, "server port应正确"
+assert nested["database"]["type"] == "mysql", "database type应正确"
+
+// ===== 2.3 数组反序列化 =====
+// 关键词: 数组反序列化, YAML数组, 列表解析
+arrayYamlInput = `
+- id: 1
+  name: item1
+- id: 2
+  name: item2
+- id: 3
+  name: item3
+`
+
+arr, err = yaml.Unmarshal([]byte(arrayYamlInput))
+assert err == nil, "数组YAML反序列化不应失败"
+assert arr != nil, "数组不应为空"
+assert len(arr) == 3, "数组长度应为3"
+
+println(f"数组第一项: ${arr[0]['name']}")
+assert arr[0]["id"] == 1, "第一项id应为1"
+assert arr[0]["name"] == "item1", "第一项name应为item1"
+
+println("✓ YAML反序列化测试通过")
+
+// =============================================================================
+// 3. YAML序列化和反序列化往返
+// 往返测试 序列化反序列化 数据一致性
+// 关键词: 往返测试, 序列化反序列化, Marshal Unmarshal, 数据一致性
+// =============================================================================
+println("\n3. YAML序列化和反序列化往返")
+
+// ===== 3.1 往返测试 =====
+// 关键词: 往返测试, 数据验证, 一致性检查
+originalData = {
+    "name": "TestUser",
+    "email": "test@example.com",
+    "age": 30,
+    "roles": ["admin", "user"],
+    "settings": {
+        "theme": "dark",
+        "language": "zh-CN"
+    }
+}
+
+// 序列化
+// 关键词: 序列化, 对象转YAML
+serialized, err = yaml.Marshal(originalData)
+assert err == nil, "序列化不应失败"
+println(f"序列化YAML长度: ${len(serialized)}")
+
+// 反序列化
+// 关键词: 反序列化, YAML转对象
+deserialized, err = yaml.Unmarshal(serialized)
+assert err == nil, "反序列化不应失败"
+
+// 验证数据一致性
+// 关键词: 数据验证, 一致性检查
+assert deserialized["name"] == originalData["name"], "name应一致"
+assert deserialized["email"] == originalData["email"], "email应一致"
+assert deserialized["age"] == originalData["age"], "age应一致"
+assert len(deserialized["roles"]) == 2, "roles数量应一致"
+assert deserialized["settings"]["theme"] == "dark", "theme应一致"
+
+println("✓ 往返测试数据一致")
+
+println("✓ YAML往返测试通过")
+
+// =============================================================================
+// 4. 实际应用场景
+// 实际应用 配置文件 数据存储 YAML处理
+// 关键词: 实际应用, 配置文件, YAML配置, 配置管理
+// =============================================================================
+println("\n4. 实际应用场景")
+
+// ===== 4.1 配置文件读取 =====
+// 关键词: 配置文件, 配置读取, YAML配置
+configYaml = `
+application:
+  name: MyApp
+  version: 1.0.0
+  debug: true
+  
+server:
+  host: 0.0.0.0
+  port: 8080
+  timeout: 30
+  
+database:
+  driver: mysql
+  host: localhost
+  port: 3306
+  username: root
+  database: myapp
+  
+logging:
+  level: info
+  file: /var/log/myapp.log
+`
+
+config, err = yaml.Unmarshal([]byte(configYaml))
+assert err == nil, "配置文件解析不应失败"
+
+appName = config["application"]["name"]
+serverPort = config["server"]["port"]
+dbDriver = config["database"]["driver"]
+logLevel = config["logging"]["level"]
+
+println(f"应用名称: ${appName}")
+println(f"服务器端口: ${serverPort}")
+println(f"数据库驱动: ${dbDriver}")
+println(f"日志级别: ${logLevel}")
+
+assert appName == "MyApp", "应用名称应正确"
+assert serverPort == 8080, "服务器端口应正确"
+
+// ===== 4.2 配置生成 =====
+// 关键词: 配置生成, YAML生成, 配置导出
+newConfig = {
+    "service": {
+        "name": "api-service",
+        "port": 9000,
+        "endpoints": ["/api/v1", "/api/v2"]
+    },
+    "cache": {
+        "enabled": true,
+        "ttl": 3600
+    }
+}
+
+configOutput, err = yaml.Marshal(newConfig)
+assert err == nil, "配置生成不应失败"
+
+println(f"生成的配置:\n${string(configOutput)}")
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== yaml库测试总结 ===")
+println("✅ YAML序列化 - yaml.Marshal对象转YAML")
+println("✅ YAML反序列化 - yaml.Unmarshal YAML转对象")
+println("✅ 往返测试 - 序列化反序列化数据一致性")
+println("✅ 实际应用 - 配置文件读取和生成")
+
+println("\nyaml库功能测试完成！")
+

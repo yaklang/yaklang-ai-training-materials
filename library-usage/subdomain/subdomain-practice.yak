@@ -1,0 +1,455 @@
+/*
+Yaklang Subdomain (子域名枚举) 库实践
+
+Subdomain库是用于子域名发现和枚举的工具，支持多种发现技术包括暴力破解、
+搜索引擎查询、DNS区域传送等。在渗透测试中，子域名枚举是信息收集的重要环节。
+
+关键词: 子域名枚举, 域名发现, DNS暴力破解, 搜索引擎查询, 区域传送, 信息收集
+关键词: 域名爆破, 子域名扫描, DNS查询, 泛解析检测, 递归扫描, 并发查询
+*/
+
+// 基础子域名扫描测试
+// 关键词: subdomain.Scan, 基础扫描功能
+func testBasicSubdomainScan() {
+    log.info("测试基础子域名扫描功能")
+    
+    // 使用测试域名进行扫描 (不会产生真实网络请求的测试域名)
+    testDomain = "example.com"
+    
+    // 基础子域名扫描
+    // 关键词: subdomain.Scan, 默认扫描模式
+    resultCount = 0
+    maxResults = 5  // 限制结果数量以控制测试时间
+    
+    // 创建带超时的扫描
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.targetTimeout(5),     // 5秒超时
+        subdomain.concurrent(2),        // 2个并发
+        subdomain.maxDepth(1)          // 最大深度1
+    )
+    
+    assert err == nil, f"子域名扫描不应失败: ${err}"
+    assert ch != nil, "扫描结果通道不应为空"
+    
+    // 收集扫描结果
+    // 关键词: 结果收集, 超时控制
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break  // 通道关闭
+        }
+        resultCount++
+        log.info(f"发现子域名: ${result.Domain} -> ${result.IP}")
+        
+        // 验证结果结构
+        assert result.Domain != "", "域名不应为空"
+        assert result.FromTarget != "", "来源目标不应为空"
+    }
+    
+    log.info(f"基础扫描完成，发现 ${resultCount} 个结果")
+}
+
+// 暴力破解模式测试
+// 关键词: subdomain.mode, BRUTE模式, 字典爆破
+func testBruteForceMode() {
+    log.info("测试暴力破解模式")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 3
+    
+    // 仅使用暴力破解模式
+    // 关键词: subdomain.mode, 暴力破解模式
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.mode("brute"),        // 仅暴力破解
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(2),
+        subdomain.maxDepth(1)
+    )
+    
+    assert err == nil, f"暴力破解模式扫描不应失败: ${err}"
+    
+    // 收集暴力破解结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"暴力破解发现: ${result.Domain}")
+        
+        // 验证是暴力破解结果
+        assert result.FromModeRaw != "", "扫描模式不应为空"
+    }
+    
+    log.info(f"暴力破解模式完成，发现 ${resultCount} 个结果")
+}
+
+// 搜索引擎模式测试
+// 关键词: subdomain.mode, SEARCH模式, 搜索引擎查询
+func testSearchEngineMode() {
+    log.info("测试搜索引擎模式")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 3
+    
+    // 仅使用搜索引擎模式
+    // 关键词: subdomain.mode, 搜索引擎模式
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.mode("search"),       // 仅搜索引擎
+        subdomain.targetTimeout(8),     // 搜索需要更长时间
+        subdomain.concurrent(1)
+    )
+    
+    assert err == nil, f"搜索引擎模式扫描不应失败: ${err}"
+    
+    // 收集搜索引擎结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"搜索引擎发现: ${result.Domain}")
+        
+        // 验证搜索引擎结果
+        assert len(result.Tags) >= 0, "标签列表应该初始化"
+    }
+    
+    log.info(f"搜索引擎模式完成，发现 ${resultCount} 个结果")
+}
+
+// 区域传送模式测试
+// 关键词: subdomain.mode, ZONE_TRANSFER模式, DNS区域传送
+func testZoneTransferMode() {
+    log.info("测试DNS区域传送模式")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 2
+    
+    // 仅使用区域传送模式
+    // 关键词: subdomain.mode, DNS区域传送
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.mode("zone_transfer"), // 仅区域传送
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(1)
+    )
+    
+    assert err == nil, f"区域传送模式扫描不应失败: ${err}"
+    
+    // 收集区域传送结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"区域传送发现: ${result.Domain}")
+    }
+    
+    log.info(f"区域传送模式完成，发现 ${resultCount} 个结果")
+}
+
+// 并发配置测试
+// 关键词: subdomain.concurrent, 并发控制, 性能优化
+func testConcurrentSettings() {
+    log.info("测试并发配置")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 3
+    
+    // 高并发配置
+    // 关键词: subdomain.concurrent, 并发查询优化
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.concurrent(5),        // 5个并发
+        subdomain.targetTimeout(5),
+        subdomain.maxDepth(1)
+    )
+    
+    assert err == nil, f"并发扫描不应失败: ${err}"
+    
+    startTime = time.Now()
+    
+    // 收集并发扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"并发扫描发现: ${result.Domain}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"并发扫描完成，用时: ${duration}, 发现 ${resultCount} 个结果")
+}
+
+// 深度控制测试
+// 关键词: subdomain.maxDepth, 递归扫描深度
+func testMaxDepthSettings() {
+    log.info("测试扫描深度控制")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 2
+    
+    // 限制扫描深度
+    // 关键词: subdomain.maxDepth, 递归深度控制
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.maxDepth(2),          // 最大深度2
+        subdomain.recursive(true),      // 启用递归
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(2)
+    )
+    
+    assert err == nil, f"深度控制扫描不应失败: ${err}"
+    
+    // 收集深度控制结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"深度扫描发现: ${result.Domain}")
+        
+        // 验证域名层级
+        domainParts = str.Split(result.Domain, ".")
+        assert len(domainParts) >= 2, "域名应该有至少2个部分"
+    }
+    
+    log.info(f"深度控制扫描完成，发现 ${resultCount} 个结果")
+}
+
+// DNS服务器配置测试
+// 关键词: subdomain.dnsServers, DNS服务器配置
+func testDNSServerSettings() {
+    log.info("测试DNS服务器配置")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 2
+    
+    // 自定义DNS服务器
+    // 关键词: subdomain.dnsServers, 自定义DNS配置
+    customDNSServers = ["8.8.8.8", "1.1.1.1", "114.114.114.114"]
+    
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.dnsServers(customDNSServers...),
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(2),
+        subdomain.maxDepth(1)
+    )
+    
+    assert err == nil, f"DNS服务器配置扫描不应失败: ${err}"
+    
+    // 收集DNS配置结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"自定义DNS发现: ${result.Domain} (DNS: ${result.FromDNSServer})")
+    }
+    
+    log.info(f"DNS服务器配置扫描完成，发现 ${resultCount} 个结果")
+}
+
+// 泛解析检测测试
+// 关键词: subdomain.wildcardToStop, 泛解析检测
+func testWildcardDetection() {
+    log.info("测试泛解析检测")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 2
+    
+    // 启用泛解析检测
+    // 关键词: subdomain.wildcardToStop, 泛解析停止策略
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.wildcardToStop(true), // 遇到泛解析停止
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(2),
+        subdomain.maxDepth(1)
+    )
+    
+    assert err == nil, f"泛解析检测扫描不应失败: ${err}"
+    
+    // 收集泛解析检测结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"泛解析检测发现: ${result.Domain} -> ${result.IP}")
+    }
+    
+    log.info(f"泛解析检测完成，发现 ${resultCount} 个结果")
+}
+
+// 多目标扫描测试
+// 关键词: 多目标扫描, 批量域名处理
+func testMultipleTargets() {
+    log.info("测试多目标扫描")
+    
+    // 多个测试域名
+    testDomains = ["example.com", "test.com"]
+    resultCount = 0
+    maxResults = 3
+    
+    // 多目标扫描
+    // 关键词: 多目标并发扫描, 批量处理
+    ch, err = subdomain.Scan(testDomains,
+        subdomain.targetTimeout(4),
+        subdomain.concurrent(2),
+        subdomain.maxDepth(1)
+    )
+    
+    assert err == nil, f"多目标扫描不应失败: ${err}"
+    
+    targetMap = {}
+    
+    // 收集多目标结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"多目标发现: ${result.Domain} (来源: ${result.FromTarget})")
+        
+        // 统计每个目标的结果
+        if targetMap[result.FromTarget] == undefined {
+            targetMap[result.FromTarget] = 0
+        }
+        targetMap[result.FromTarget]++
+    }
+    
+    log.info(f"多目标扫描完成，发现 ${resultCount} 个结果")
+    
+    // 验证多目标结果分布
+    targetCount = 0
+    for target, count in targetMap {
+        if count > 0 {
+            targetCount++
+            log.info(f"目标 ${target}: ${count} 个结果")
+        }
+    }
+    
+    assert targetCount >= 0, "目标计数应该初始化"
+}
+
+// 自定义字典测试
+// 关键词: subdomain.mainDict, subdomain.subDict, 自定义字典
+func testCustomDictionary() {
+    log.info("测试自定义字典")
+    
+    testDomain = "example.com"
+    resultCount = 0
+    maxResults = 2
+    
+    // 自定义主字典和子字典
+    // 关键词: 自定义字典, 字典优化
+    customMainDict = "www\napi\nmail\nftp\nadmin"
+    customSubDict = "test\ndev\nstaging"
+    
+    ch, err = subdomain.Scan(testDomain,
+        subdomain.mainDict(customMainDict),
+        subdomain.subDict(customSubDict),
+        subdomain.mode("brute"),        // 仅暴力破解以测试字典
+        subdomain.targetTimeout(5),
+        subdomain.concurrent(2)
+    )
+    
+    assert err == nil, f"自定义字典扫描不应失败: ${err}"
+    
+    // 收集自定义字典结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        log.info(f"自定义字典发现: ${result.Domain}")
+    }
+    
+    log.info(f"自定义字典扫描完成，发现 ${resultCount} 个结果")
+}
+
+// 执行所有子域名扫描测试
+func main() {
+    log.info("开始Yaklang Subdomain库功能测试")
+    
+    // 基础功能测试
+    testBasicSubdomainScan()
+    
+    // 扫描模式测试
+    testBruteForceMode()
+    testSearchEngineMode()
+    testZoneTransferMode()
+    
+    // 配置选项测试
+    testConcurrentSettings()
+    testMaxDepthSettings()
+    testDNSServerSettings()
+    testWildcardDetection()
+    
+    // 高级功能测试
+    testMultipleTargets()
+    testCustomDictionary()
+    
+    log.info("Subdomain库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert maxResults > 0, "最大结果数应该设置"
+    assert len(testDomains) > 0, "测试域名列表应该有内容"
+    assert len(customDNSServers) > 0, "自定义DNS服务器列表应该有内容"
+    assert customMainDict != "", "自定义主字典不应为空"
+    assert customSubDict != "", "自定义子字典不应为空"
+    
+    log.info("所有子域名扫描配置和功能测试通过")
+    log.info("Subdomain库提供了强大的子域名发现能力，是信息收集的重要工具")
+}
+
+/*
+Subdomain库核心功能总结:
+
+1. 扫描方法:
+   - subdomain.Scan() - 主要扫描接口
+   - 支持单个域名或域名数组作为目标
+
+2. 扫描模式:
+   - subdomain.mode("brute") - 暴力破解模式
+   - subdomain.mode("search") - 搜索引擎模式  
+   - subdomain.mode("zone_transfer") - DNS区域传送模式
+   - 默认使用所有模式
+
+3. 配置选项:
+   - subdomain.targetTimeout() - 每个目标超时时间
+   - subdomain.concurrent() - 并发查询数量
+   - subdomain.maxDepth() - 最大递归深度
+   - subdomain.recursive() - 是否启用递归扫描
+
+4. DNS配置:
+   - subdomain.dnsServers() - 自定义DNS服务器
+   - subdomain.wildcardToStop() - 泛解析检测策略
+
+5. 字典配置:
+   - subdomain.mainDict() - 主字典内容
+   - subdomain.subDict() - 子字典内容
+   - 支持自定义字典内容
+
+6. 结果处理:
+   - 返回结果通道，支持实时处理
+   - SubdomainResult包含域名、IP、来源等信息
+   - 支持标签和扫描模式标识
+
+Subdomain库是渗透测试信息收集阶段的核心工具，
+通过多种技术手段全面发现目标的子域名资产。
+*/

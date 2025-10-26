@@ -1,0 +1,246 @@
+// =============================================================================
+// log 库完整实战练习 - 日志输出和级别控制
+// log库 日志输出 日志级别 日志格式化 调试日志
+// 关键词: log, info, debug, warn, error, setLevel, 日志输出, 日志级别
+// =============================================================================
+
+println("log 库功能测试开始...")
+
+// =============================================================================
+// 1. 基础日志输出
+// 日志输出 info debug warn error 日志级别
+// 关键词: log.info, log.debug, log.warn, log.error, 日志输出, 日志级别
+// =============================================================================
+println("\n1. 基础日志输出")
+
+// ===== 1.1 info级别日志 =====
+// 关键词: log.info, info日志, 信息日志, 普通日志
+log.info("This is an info message")
+log.info("User %s logged in at %s", "Alice", "10:00")
+println("✓ info日志输出完成")
+
+// ===== 1.2 debug级别日志 =====
+// 关键词: log.debug, debug日志, 调试日志, 开发日志
+log.debug("This is a debug message")
+log.debug("Variable value: %d", 42)
+println("✓ debug日志输出完成")
+
+// ===== 1.3 warn级别日志 =====
+// 关键词: log.warn, warn日志, 警告日志, 提醒日志
+log.warn("This is a warning message")
+log.warn("Disk usage is at %d%%", 85)
+println("✓ warn日志输出完成")
+
+// ===== 1.4 error级别日志 =====
+// 关键词: log.error, error日志, 错误日志, 异常日志
+log.error("This is an error message")
+log.error("Failed to connect to %s", "database")
+println("✓ error日志输出完成")
+
+println("✓ 基础日志输出测试通过")
+
+// =============================================================================
+// 2. 日志级别控制
+// 日志级别控制 setLevel 日志过滤 级别设置
+// 关键词: log.setLevel, 日志级别, 级别控制, 日志过滤, disable, fatal, error, warning, info, debug
+// =============================================================================
+println("\n2. 日志级别控制")
+
+// ===== 2.1 设置为info级别 =====
+// 关键词: setLevel, info级别, 日志级别设置
+log.setLevel("info")
+println("日志级别设置为info")
+log.debug("This debug should not appear")
+log.info("This info should appear")
+
+// ===== 2.2 设置为error级别 =====
+// 关键词: setLevel, error级别, 只输出错误
+log.setLevel("error")
+println("日志级别设置为error")
+log.warn("This warning should not appear")
+log.error("This error should appear")
+
+// ===== 2.3 设置为debug级别 =====
+// 关键词: setLevel, debug级别, 输出所有日志
+log.setLevel("debug")
+println("日志级别设置为debug（输出所有级别）")
+
+println("✓ 日志级别控制测试通过")
+
+// =============================================================================
+// 3. 格式化日志输出
+// 格式化日志 日志格式化 占位符 日志模板
+// 关键词: 格式化日志, %s, %d, %v, 日志模板, 占位符
+// =============================================================================
+println("\n3. 格式化日志输出")
+
+// ===== 3.1 字符串格式化 =====
+// 关键词: 字符串格式化, %s占位符
+username = "Bob"
+action = "login"
+log.info("User %s performed %s action", username, action)
+
+// ===== 3.2 数字格式化 =====
+// 关键词: 数字格式化, %d占位符, 整数格式化
+count = 100
+percentage = 75
+log.info("Processed %d items (%d%% complete)", count, percentage)
+
+// ===== 3.3 混合格式化 =====
+// 关键词: 混合格式化, 多类型格式化, %v通用占位符
+status = true
+result = {"code": 200, "message": "success"}
+log.info("Status: %v, Result: %v", status, result)
+
+println("✓ 格式化日志输出测试通过")
+
+// =============================================================================
+// 4. 实际应用场景
+// 实际应用 调试输出 错误追踪 运行日志
+// 关键词: 实际应用, 调试输出, 错误追踪, 运行日志, 程序监控
+// =============================================================================
+println("\n4. 实际应用场景")
+
+// ===== 4.1 函数调试日志 =====
+// 关键词: 函数调试, 函数日志, 参数日志, 返回值日志
+processData = func(data) {
+    log.debug("processData called with: %v", data)
+    
+    // 模拟处理
+    if data == nil {
+        log.error("processData received nil data")
+        return nil
+    }
+    
+    result = len(data)
+    log.debug("processData result: %d", result)
+    return result
+}
+
+// 测试函数日志
+// 关键词: 函数测试, 日志验证
+testData = "test string"
+processData(testData)
+processData(nil)
+
+// ===== 4.2 错误处理日志 =====
+// 关键词: 错误处理, 错误日志, 异常日志, 错误追踪
+performOperation = func(x, y) {
+    log.info("Performing operation: %d / %d", x, y)
+    
+    if y == 0 {
+        log.error("Division by zero error: %d / %d", x, y)
+        return nil
+    }
+    
+    result = x / y
+    log.info("Operation result: %d", result)
+    return result
+}
+
+// 测试错误处理
+// 关键词: 错误测试, 异常测试
+performOperation(10, 2)
+performOperation(10, 0)
+
+// ===== 4.3 程序流程日志 =====
+// 关键词: 程序流程, 流程日志, 执行日志, 状态日志
+log.info("Starting data processing pipeline")
+
+// 步骤1
+// 关键词: 数据加载, 加载日志
+log.info("Step 1: Loading data")
+dataLoaded = true
+if dataLoaded {
+    log.info("Data loaded successfully")
+} else {
+    log.error("Failed to load data")
+}
+
+// 步骤2
+// 关键词: 数据处理, 处理日志
+log.info("Step 2: Processing data")
+processingSuccess = true
+if processingSuccess {
+    log.info("Data processed successfully")
+} else {
+    log.warn("Data processing had warnings")
+}
+
+// 步骤3
+// 关键词: 数据保存, 保存日志
+log.info("Step 3: Saving results")
+saveSuccess = true
+if saveSuccess {
+    log.info("Results saved successfully")
+} else {
+    log.error("Failed to save results")
+}
+
+log.info("Pipeline completed")
+
+// ===== 4.4 性能监控日志 =====
+// 关键词: 性能监控, 性能日志, 耗时日志, 时间统计
+operationName = "Database Query"
+startTime = time.Now()
+
+log.info("Starting %s", operationName)
+
+// 模拟耗时操作
+// 关键词: 模拟操作, 耗时统计
+time.Sleep(0.1)
+
+endTime = time.Now()
+duration = endTime.Sub(startTime)
+
+log.info("%s completed in %v seconds", operationName, duration.Seconds())
+
+if duration.Seconds() > 1 {
+    log.warn("%s took longer than expected: %v seconds", operationName, duration.Seconds())
+} else {
+    log.debug("%s performance acceptable: %v seconds", operationName, duration.Seconds())
+}
+
+println("✓ 实际应用场景测试通过")
+
+// =============================================================================
+// 5. 日志级别应用示例
+// 日志级别应用 不同场景日志 日志实践
+// 关键词: 日志级别应用, 日志实践, 日志场景, 日志选择
+// =============================================================================
+println("\n5. 日志级别应用示例")
+
+// ===== 5.1 debug - 开发调试 =====
+// 关键词: debug应用, 开发调试, 变量调试, 流程调试
+log.debug("Function entered with parameters: x=%d, y=%d", 10, 20)
+log.debug("Intermediate calculation result: %d", 30)
+
+// ===== 5.2 info - 正常信息 =====
+// 关键词: info应用, 正常信息, 状态信息, 操作记录
+log.info("Service started on port 8080")
+log.info("User authentication successful")
+
+// ===== 5.3 warn - 警告信息 =====
+// 关键词: warn应用, 警告信息, 异常提示, 注意事项
+log.warn("Connection pool is 80%% full")
+log.warn("Deprecated function called")
+
+// ===== 5.4 error - 错误信息 =====
+// 关键词: error应用, 错误信息, 异常错误, 失败记录
+log.error("Failed to connect to database")
+log.error("File not found: /path/to/file")
+
+println("✓ 日志级别应用示例通过")
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== log库测试总结 ===")
+println("✅ 基础日志输出 - info, debug, warn, error")
+println("✅ 日志级别控制 - setLevel动态控制")
+println("✅ 格式化输出 - 支持%s, %d, %v等占位符")
+println("✅ 实际应用 - 函数调试, 错误处理, 流程日志, 性能监控")
+println("✅ 日志级别应用 - 不同场景使用不同级别")
+
+println("\nlog库功能测试完成！")
+

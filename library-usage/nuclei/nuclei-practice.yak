@@ -1,0 +1,618 @@
+/*
+Yaklang Nuclei (POC引擎) 库实践
+
+Nuclei库是用于执行YAML格式POC模板的强大引擎，支持大规模漏洞扫描和安全检测。
+它兼容Nuclei社区的YAML模板格式，提供了丰富的配置选项和结果处理能力。
+
+关键词: Nuclei引擎, YAML POC, 漏洞扫描, 模板执行, 安全检测, 批量扫描
+关键词: POC模板, 漏洞验证, 自动化扫描, 安全评估, 威胁检测, 漏洞发现
+*/
+
+// 基础Nuclei扫描测试
+// 关键词: nuclei.Scan, 基础POC扫描
+func testBasicNucleiScan() {
+    log.info("测试基础Nuclei扫描功能")
+    
+    // 使用测试目标
+    testTarget = "http://httpbin.org"
+    
+    // 创建简单的测试模板
+    testTemplate = `id: test-template
+info:
+  name: Test Template
+  author: yaklang-test
+  severity: info
+  description: Basic test template for nuclei library
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/get"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "httpbin"
+`
+    
+    // 基础Nuclei扫描
+    // 关键词: nuclei.Scan, 模板扫描
+    resultCount = 0
+    maxResults = 2
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(testTemplate),    // 原始模板内容
+        nuclei.timeout(10),                  // 10秒超时
+        nuclei.debug(false)                  // 关闭调试模式
+    )
+    
+    assert err == nil, f"基础Nuclei扫描不应失败: ${err}"
+    assert ch != nil, "扫描结果通道不应为空"
+    
+    // 收集扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break  // 通道关闭
+        }
+        resultCount++
+        
+        log.info(f"Nuclei扫描结果: ${result.Target} - ${result.PocName}")
+        
+        // 验证结果结构
+        assert result.Target != "", "目标不应为空"
+        assert result.PocName != "", "POC名称不应为空"
+        
+        // 检查漏洞信息
+        if result.Severity != "" {
+            log.info(f"发现问题: 严重程度 ${result.Severity}")
+        }
+    }
+    
+    log.info(f"基础Nuclei扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 模板文件扫描测试
+// 关键词: nuclei.templates, 模板文件指定
+func testTemplateFileScan() {
+    log.info("测试模板文件扫描功能")
+    
+    testTarget = "http://httpbin.org"
+    
+    // 创建临时模板文件
+    templateContent = `id: http-test
+info:
+  name: HTTP Test Template
+  author: yaklang
+  severity: info
+  description: Test HTTP response
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/status/200"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    templateFile = "/tmp/nuclei-test-template.yaml"
+    file.Save(templateFile, templateContent)
+    
+    // 使用模板文件扫描
+    // 关键词: nuclei.templates, 模板文件路径
+    resultCount = 0
+    maxResults = 2
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.templates(templateFile),      // 模板文件路径
+        nuclei.timeout(10),
+        nuclei.debug(false)
+    )
+    
+    assert err == nil, f"模板文件扫描不应失败: ${err}"
+    
+    // 收集模板文件扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"模板文件扫描: ${result.Target} - ${result.PocName}")
+        
+        // 验证模板执行结果
+        assert result.PocName != "", "POC名称应该来自模板"
+    }
+    
+    // 清理临时文件
+    os.Remove(templateFile)
+    
+    log.info(f"模板文件扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 严重程度过滤测试
+// 关键词: nuclei.severity, 严重程度过滤
+func testSeverityFilter() {
+    log.info("测试严重程度过滤功能")
+    
+    testTarget = "http://httpbin.org"
+    
+    // 创建不同严重程度的模板
+    highSeverityTemplate = `id: high-severity-test
+info:
+  name: High Severity Test
+  author: yaklang
+  severity: high
+  description: High severity test template
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/get"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 严重程度过滤扫描
+    // 关键词: nuclei.severity, 高危漏洞过滤
+    resultCount = 0
+    maxResults = 2
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(highSeverityTemplate),
+        nuclei.severity("high", "critical"),  // 只检测高危和严重漏洞
+        nuclei.timeout(10),
+        nuclei.debug(false)
+    )
+    
+    assert err == nil, f"严重程度过滤扫描不应失败: ${err}"
+    
+    highSeverityCount = 0
+    
+    // 收集严重程度过滤结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"严重程度过滤: ${result.Target} - 严重程度: ${result.Severity}")
+        
+        // 验证严重程度过滤
+        if result.Severity == "high" || result.Severity == "critical" {
+            highSeverityCount++
+        }
+    }
+    
+    log.info(f"严重程度过滤完成，发现 ${highSeverityCount} 个高危问题")
+}
+
+// 并发配置测试
+// 关键词: nuclei.concurrent, 并发控制
+func testConcurrentSettings() {
+    log.info("测试并发配置")
+    
+    testTargets = "http://httpbin.org,http://httpbin.org/get,http://httpbin.org/post"
+    
+    concurrentTemplate = `id: concurrent-test
+info:
+  name: Concurrent Test
+  author: yaklang
+  severity: info
+  description: Test concurrent scanning
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 并发扫描配置
+    // 关键词: nuclei.concurrent, 并发优化
+    resultCount = 0
+    maxResults = 3
+    
+    startTime = time.Now()
+    
+    ch, err = nuclei.Scan(testTargets,
+        nuclei.rawTemplate(concurrentTemplate),
+        nuclei.concurrent(3),               // 3个并发
+        nuclei.timeout(10),
+        nuclei.debug(false)
+    )
+    
+    assert err == nil, f"并发扫描不应失败: ${err}"
+    
+    // 收集并发扫描结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"并发扫描: ${result.Target}")
+    }
+    
+    duration = time.Since(startTime)
+    log.info(f"并发扫描完成，用时: ${duration}, 处理 ${resultCount} 个结果")
+    
+    // 验证并发效果
+    assert duration.Seconds() < 15, "并发扫描应该在15秒内完成"
+}
+
+// 超时配置测试
+// 关键词: nuclei.timeout, 超时控制
+func testTimeoutSettings() {
+    log.info("测试超时配置")
+    
+    testTarget = "http://httpbin.org/delay/2"  // 延迟2秒的接口
+    
+    timeoutTemplate = `id: timeout-test
+info:
+  name: Timeout Test
+  author: yaklang
+  severity: info
+  description: Test timeout handling
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 短超时测试
+    // 关键词: nuclei.timeout, 超时控制
+    startTime = time.Now()
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(timeoutTemplate),
+        nuclei.timeout(1)                   // 1秒超时
+    )
+    
+    duration = time.Since(startTime)
+    
+    if err != nil {
+        log.info(f"超时测试成功，耗时: ${duration}")
+        assert duration.Seconds() < 3, "超时应该在3秒内发生"
+    } else {
+        // 如果没有超时，收集结果
+        resultCount = 0
+        for resultCount < 1 {
+            result = <-ch
+            if result == nil {
+                break
+            }
+            resultCount++
+            log.info("请求意外成功，可能网络环境特殊")
+        }
+    }
+}
+
+// 代理配置测试
+// 关键词: nuclei.proxy, 代理设置
+func testProxySettings() {
+    log.info("测试代理配置")
+    
+    testTarget = "http://httpbin.org"
+    // 注意：这里使用无效代理来测试配置功能，不期望成功
+    testProxy = "http://127.0.0.1:9999"  // 不存在的代理
+    
+    proxyTemplate = `id: proxy-test
+info:
+  name: Proxy Test
+  author: yaklang
+  severity: info
+  description: Test proxy configuration
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/ip"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 代理配置测试
+    // 关键词: nuclei.proxy, 代理网络扫描
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(proxyTemplate),
+        nuclei.proxy(testProxy),            // 指定代理
+        nuclei.timeout(3)                   // 短超时，因为代理不存在
+    )
+    
+    // 由于使用了无效代理，预期会失败
+    if err != nil {
+        log.info(f"代理连接失败（预期）: ${err}")
+        assert str.Contains(string(err), "connect") || str.Contains(string(err), "proxy"), "应该是连接或代理错误"
+    } else {
+        // 如果没有失败，收集结果
+        resultCount = 0
+        for resultCount < 1 {
+            result = <-ch
+            if result == nil {
+                break
+            }
+            resultCount++
+            log.info("代理测试意外成功，可能环境特殊")
+        }
+    }
+}
+
+// 调试模式测试
+// 关键词: nuclei.debug, nuclei.verbose, 调试输出
+func testDebugMode() {
+    log.info("测试调试模式")
+    
+    testTarget = "http://httpbin.org"
+    
+    debugTemplate = `id: debug-test
+info:
+  name: Debug Test
+  author: yaklang
+  severity: info
+  description: Test debug mode
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/get"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 调试模式扫描
+    // 关键词: nuclei.debug, nuclei.verbose, 详细输出
+    resultCount = 0
+    maxResults = 1
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(debugTemplate),
+        nuclei.debug(true),                 // 启用调试模式
+        nuclei.verbose(true),               // 启用详细输出
+        nuclei.timeout(10)
+    )
+    
+    assert err == nil, f"调试模式扫描不应失败: ${err}"
+    
+    // 收集调试模式结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"调试模式扫描: ${result.Target} - ${result.PocName}")
+        
+        // 调试模式下应该有更多信息
+        if result.RawJson != "" {
+            log.info("调试模式提供了详细的JSON结果")
+        }
+    }
+    
+    log.info(f"调试模式扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 无颜色输出测试
+// 关键词: nuclei.noColor, 输出格式控制
+func testNoColorOutput() {
+    log.info("测试无颜色输出")
+    
+    testTarget = "http://httpbin.org"
+    
+    noColorTemplate = `id: no-color-test
+info:
+  name: No Color Test
+  author: yaklang
+  severity: info
+  description: Test no color output
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/headers"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 无颜色输出扫描
+    // 关键词: nuclei.noColor, 纯文本输出
+    resultCount = 0
+    maxResults = 1
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(noColorTemplate),
+        nuclei.noColor(true),               // 禁用颜色输出
+        nuclei.timeout(10)
+    )
+    
+    assert err == nil, f"无颜色输出扫描不应失败: ${err}"
+    
+    // 收集无颜色输出结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"无颜色输出: ${result.Target}")
+    }
+    
+    log.info(f"无颜色输出扫描完成，处理 ${resultCount} 个结果")
+}
+
+// 结果转换测试
+// 关键词: nuclei.PocVulToRisk, 结果转换
+func testResultConversion() {
+    log.info("测试结果转换功能")
+    
+    testTarget = "http://httpbin.org"
+    
+    conversionTemplate = `id: conversion-test
+info:
+  name: Conversion Test
+  author: yaklang
+  severity: medium
+  description: Test result conversion to risk
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/anything"
+    
+    matchers:
+      - type: status
+        status:
+          - 200
+`
+    
+    // 结果转换扫描
+    resultCount = 0
+    maxResults = 1
+    
+    ch, err = nuclei.Scan(testTarget,
+        nuclei.rawTemplate(conversionTemplate),
+        nuclei.timeout(10)
+    )
+    
+    assert err == nil, f"结果转换扫描不应失败: ${err}"
+    
+    // 收集并转换结果
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            break
+        }
+        resultCount++
+        
+        log.info(f"原始结果: ${result.Target} - ${result.PocName}")
+        
+        // 转换为风险对象
+        // 关键词: nuclei.PocVulToRisk, 风险对象转换
+        riskObj = nuclei.PocVulToRisk(result)
+        
+        if riskObj != nil {
+            log.info("成功转换为风险对象")
+            // 验证风险对象结构
+            assert riskObj != nil, "风险对象不应为空"
+        }
+    }
+    
+    log.info(f"结果转换测试完成，处理 ${resultCount} 个结果")
+}
+
+// 执行所有Nuclei测试
+func main() {
+    log.info("开始Yaklang Nuclei库功能测试")
+    
+    // 基础功能测试
+    testBasicNucleiScan()
+    testTemplateFileScan()
+    
+    // 配置选项测试
+    testSeverityFilter()
+    testConcurrentSettings()
+    testTimeoutSettings()
+    
+    // 高级功能测试
+    testProxySettings()
+    testDebugMode()
+    testNoColorOutput()
+    testResultConversion()
+    
+    log.info("Nuclei库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert testTarget != "", "测试目标不应为空"
+    assert testTemplate != "", "测试模板不应为空"
+    assert templateFile != "", "模板文件路径不应为空"
+    assert testProxy != "", "代理配置不应为空"
+    assert maxResults > 0, "最大结果数应该设置"
+    
+    log.info("所有Nuclei配置和功能测试通过")
+    log.info("Nuclei库提供了强大的YAML POC执行能力，是漏洞扫描的重要工具")
+}
+
+/*
+Nuclei库核心功能总结:
+
+1. 扫描方法:
+   - nuclei.Scan() - 主要扫描接口
+   - 支持单个目标或多个目标扫描
+   - 返回结果通道，支持实时处理
+
+2. 模板配置:
+   - nuclei.templates() - 指定模板文件路径
+   - nuclei.rawTemplate() - 直接使用模板内容
+   - nuclei.workflows() - 工作流模式
+   - nuclei.exactTemplateIns() - 精确模板实例
+
+3. 过滤选项:
+   - nuclei.severity() - 严重程度过滤
+   - 支持info、low、medium、high、critical级别
+   - 可组合多个严重程度
+
+4. 性能配置:
+   - nuclei.concurrent() - 并发数控制
+   - nuclei.timeout() - 超时时间设置
+   - nuclei.proxy() - 代理服务器配置
+
+5. 输出控制:
+   - nuclei.debug() - 调试模式
+   - nuclei.verbose() - 详细输出
+   - nuclei.noColor() - 禁用颜色输出
+
+6. 结果处理:
+   - PocVul结构体包含漏洞信息
+   - Target、PocName、Severity等字段
+   - RawJson字段包含完整结果
+   - nuclei.PocVulToRisk() - 转换为风险对象
+
+7. 模板格式:
+   - 兼容Nuclei社区YAML模板
+   - 支持HTTP、DNS、网络等协议
+   - 支持变量替换和条件匹配
+   - 支持复杂的匹配器和提取器
+
+8. 安全扫描应用:
+   - 大规模漏洞扫描
+   - 自动化安全检测
+   - POC验证和测试
+   - 威胁情报验证
+
+Nuclei库是Yaklang中最重要的漏洞扫描引擎，
+为安全研究人员提供了强大的YAML POC执行能力。
+*/

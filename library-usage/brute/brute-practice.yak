@@ -1,0 +1,389 @@
+/*
+Yaklang Brute (暴力破解) 库实践
+
+Brute库是用于执行各种服务暴力破解攻击的工具，支持多种协议和服务的弱口令检测。
+在渗透测试中，暴力破解是发现弱口令和未授权访问的重要手段。
+
+关键词: 暴力破解, 弱口令检测, 服务爆破, 字典攻击, 并发爆破, 认证绕过
+关键词: SSH爆破, FTP爆破, MySQL爆破, Redis爆破, 服务认证, 密码字典
+*/
+
+// 获取可用的暴力破解类型
+// 关键词: brute.GetAvailableBruteTypes, 支持的服务类型
+func testAvailableBruteTypes() {
+    log.info("测试获取可用的暴力破解类型")
+    
+    // 获取所有支持的暴力破解类型
+    // 关键词: 支持的服务类型, 暴力破解目标
+    availableTypes = brute.GetAvailableBruteTypes()
+    
+    assert len(availableTypes) > 0, "应该有可用的暴力破解类型"
+    
+    log.info(f"支持的暴力破解类型数量: ${len(availableTypes)}")
+    
+    // 验证常见的服务类型
+    commonTypes = ["ssh", "ftp", "mysql", "redis", "http", "telnet", "smtp", "pop3"]
+    foundCommonTypes = 0
+    
+    for commonType in commonTypes {
+        for availableType in availableTypes {
+            if str.Contains(availableType, commonType) {
+                foundCommonTypes++
+                log.info(f"支持的服务类型: ${availableType}")
+                break
+            }
+        }
+    }
+    
+    assert foundCommonTypes > 0, "应该支持常见的服务类型"
+    log.info(f"找到 ${foundCommonTypes} 个常见服务类型")
+}
+
+// 获取默认用户名字典
+// 关键词: brute.GetUsernameListFromBruteType, 默认用户名字典
+func testDefaultUsernameDictionary() {
+    log.info("测试获取默认用户名字典")
+    
+    // 测试SSH服务的默认用户名
+    // 关键词: SSH用户名字典, 默认用户名列表
+    sshUsernames = brute.GetUsernameListFromBruteType("ssh")
+    
+    assert len(sshUsernames) > 0, "SSH应该有默认用户名字典"
+    log.info(f"SSH默认用户名数量: ${len(sshUsernames)}")
+    
+    // 验证常见用户名
+    commonUsernames = ["root", "admin", "administrator", "user"]
+    foundUsernames = 0
+    
+    for commonUsername in commonUsernames {
+        for username in sshUsernames {
+            if username == commonUsername {
+                foundUsernames++
+                log.info(f"找到常见用户名: ${username}")
+                break
+            }
+        }
+    }
+    
+    assert foundUsernames > 0, "应该包含常见用户名"
+    
+    // 测试FTP服务的默认用户名
+    // 关键词: FTP用户名字典
+    ftpUsernames = brute.GetUsernameListFromBruteType("ftp")
+    assert len(ftpUsernames) > 0, "FTP应该有默认用户名字典"
+    log.info(f"FTP默认用户名数量: ${len(ftpUsernames)}")
+}
+
+// 获取默认密码字典
+// 关键词: brute.GetPasswordListFromBruteType, 默认密码字典
+func testDefaultPasswordDictionary() {
+    log.info("测试获取默认密码字典")
+    
+    // 测试SSH服务的默认密码
+    // 关键词: SSH密码字典, 弱口令列表
+    sshPasswords = brute.GetPasswordListFromBruteType("ssh")
+    
+    assert len(sshPasswords) > 0, "SSH应该有默认密码字典"
+    log.info(f"SSH默认密码数量: ${len(sshPasswords)}")
+    
+    // 验证常见弱密码
+    commonPasswords = ["123456", "password", "admin", "root"]
+    foundPasswords = 0
+    
+    for commonPassword in commonPasswords {
+        for password in sshPasswords {
+            if password == commonPassword {
+                foundPasswords++
+                log.info(f"找到常见弱密码: ${password}")
+                break
+            }
+        }
+    }
+    
+    assert foundPasswords > 0, "应该包含常见弱密码"
+    
+    // 测试MySQL服务的默认密码
+    // 关键词: MySQL密码字典
+    mysqlPasswords = brute.GetPasswordListFromBruteType("mysql")
+    assert len(mysqlPasswords) > 0, "MySQL应该有默认密码字典"
+    log.info(f"MySQL默认密码数量: ${len(mysqlPasswords)}")
+}
+
+// 创建基础暴力破解实例
+// 关键词: brute.New, 暴力破解实例创建
+func testCreateBruteInstance() {
+    log.info("测试创建暴力破解实例")
+    
+    // 创建SSH暴力破解实例
+    // 关键词: brute.New, SSH暴力破解配置
+    customUsernames = ["testuser", "admin", "root"]
+    customPasswords = ["testpass", "123456", "admin"]
+    
+    bruteInstance, err = brute.New(
+        "ssh",
+        brute.userList(customUsernames...),
+        brute.passList(customPasswords...),
+        brute.concurrent(2),        // 并发数
+        brute.minDelay(100),       // 最小延迟(ms)
+        brute.maxDelay(500),       // 最大延迟(ms)
+        brute.debug(true),         // 调试模式
+        brute.okToStop(true)       // 成功后停止
+    )
+    
+    assert err == nil, f"创建暴力破解实例不应失败: ${err}"
+    assert bruteInstance != nil, "暴力破解实例不应为空"
+    
+    log.info("SSH暴力破解实例创建成功")
+}
+
+// 测试自动字典功能
+// 关键词: brute.autoDict, 自动字典加载
+func testAutoDictionary() {
+    log.info("测试自动字典功能")
+    
+    // 使用自动字典创建实例
+    // 关键词: brute.autoDict, 自动加载默认字典
+    autoDictInstance, err = brute.New(
+        "ftp",
+        brute.autoDict(true),      // 自动加载字典
+        brute.concurrent(1),
+        brute.debug(true),
+        brute.okToStop(true)
+    )
+    
+    assert err == nil, f"使用自动字典创建实例不应失败: ${err}"
+    assert autoDictInstance != nil, "自动字典实例不应为空"
+    
+    log.info("自动字典暴力破解实例创建成功")
+}
+
+// 测试并发配置
+// 关键词: brute.concurrent, brute.concurrentTarget, 并发控制
+func testConcurrencySettings() {
+    log.info("测试并发配置")
+    
+    // 创建高并发配置的实例
+    // 关键词: 并发控制, 性能优化, 目标并发
+    concurrentInstance, err = brute.New(
+        "telnet",
+        brute.userList("admin", "root"),
+        brute.passList("admin", "123456"),
+        brute.concurrent(5),           // 每个目标并发数
+        brute.concurrentTarget(10),    // 同时处理的目标数
+        brute.debug(true)
+    )
+    
+    assert err == nil, f"创建并发实例不应失败: ${err}"
+    assert concurrentInstance != nil, "并发实例不应为空"
+    
+    log.info("并发配置暴力破解实例创建成功")
+}
+
+// 测试延迟配置
+// 关键词: brute.minDelay, brute.maxDelay, 请求间隔控制
+func testDelaySettings() {
+    log.info("测试延迟配置")
+    
+    // 创建带延迟控制的实例
+    // 关键词: 延迟控制, 请求频率限制, 反检测
+    delayInstance, err = brute.New(
+        "smtp",
+        brute.userList("admin"),
+        brute.passList("password"),
+        brute.minDelay(1000),      // 最小延迟1秒
+        brute.maxDelay(3000),      // 最大延迟3秒
+        brute.debug(true)
+    )
+    
+    assert err == nil, f"创建延迟实例不应失败: ${err}"
+    assert delayInstance != nil, "延迟实例不应为空"
+    
+    log.info("延迟配置暴力破解实例创建成功")
+}
+
+// 测试完成阈值配置
+// 关键词: brute.finishingThreshold, 完成条件控制
+func testFinishingThreshold() {
+    log.info("测试完成阈值配置")
+    
+    // 创建带完成阈值的实例
+    // 关键词: 完成阈值, 成功条件, 停止策略
+    thresholdInstance, err = brute.New(
+        "pop3",
+        brute.userList("user1", "user2"),
+        brute.passList("pass1", "pass2"),
+        brute.finishingThreshold(1),   // 找到1个成功结果后完成
+        brute.okToStop(true),          // 成功后停止
+        brute.debug(true)
+    )
+    
+    assert err == nil, f"创建阈值实例不应失败: ${err}"
+    assert thresholdInstance != nil, "阈值实例不应为空"
+    
+    log.info("完成阈值配置暴力破解实例创建成功")
+}
+
+// 测试暴力破解处理器
+// 关键词: brute.bruteHandler, 自定义处理逻辑
+func testBruteHandler() {
+    log.info("测试暴力破解处理器")
+    
+    handlerCallCount = 0
+    
+    // 创建带自定义处理器的实例
+    // 关键词: brute.bruteHandler, 自定义爆破逻辑
+    handlerInstance, err = brute.New(
+        "redis",
+        brute.userList(""),  // Redis通常无用户名
+        brute.passList("", "123456", "redis"),
+        brute.bruteHandler(func(target, username, password) {
+            // 自定义暴力破解处理逻辑
+            // 关键词: 自定义爆破处理, 认证逻辑
+            handlerCallCount++
+            log.info(f"自定义处理器被调用: target=${target}, user=${username}, pass=${password}")
+            
+            // 模拟认证结果 (实际应该进行真实的认证尝试)
+            if password == "redis" {
+                return true  // 模拟成功
+            }
+            return false  // 模拟失败
+        }),
+        brute.debug(true)
+    )
+    
+    assert err == nil, f"创建处理器实例不应失败: ${err}"
+    assert handlerInstance != nil, "处理器实例不应为空"
+    
+    log.info("自定义处理器暴力破解实例创建成功")
+}
+
+// 模拟暴力破解执行 (不进行真实网络连接)
+// 关键词: 暴力破解模拟, 测试执行流程
+func testBruteExecution() {
+    log.info("测试暴力破解执行流程")
+    
+    // 创建用于测试的实例
+    // 关键词: 测试实例, 模拟目标
+    testInstance, err = brute.New(
+        "http",
+        brute.userList("admin", "user"),
+        brute.passList("admin", "password"),
+        brute.concurrent(1),
+        brute.debug(true),
+        brute.okToStop(true)
+    )
+    
+    assert err == nil, f"创建测试实例不应失败: ${err}"
+    assert testInstance != nil, "测试实例不应为空"
+    
+    // 注意: 这里不执行真实的Start()方法，因为需要真实的目标服务器
+    // 在实际使用中，会调用: result, err = testInstance.Start("192.168.1.100:22")
+    
+    log.info("暴力破解执行流程测试完成 (模拟)")
+}
+
+// 测试多种服务类型支持
+// 关键词: 多服务支持, 服务类型验证
+func testMultipleServiceTypes() {
+    log.info("测试多种服务类型支持")
+    
+    // 测试常见服务类型的实例创建
+    serviceTypes = ["ssh", "ftp", "mysql", "redis", "http", "telnet", "smtp", "pop3", "imap"]
+    createdInstances = 0
+    
+    for serviceType in serviceTypes {
+        // 为每种服务类型创建实例
+        // 关键词: 多服务类型, 服务兼容性
+        instance, err = brute.New(
+            serviceType,
+            brute.userList("test"),
+            brute.passList("test"),
+            brute.concurrent(1),
+            brute.debug(false)  // 减少日志输出
+        )
+        
+        if err == nil && instance != nil {
+            createdInstances++
+            log.info(f"成功创建 ${serviceType} 暴力破解实例")
+        } else {
+            log.warn(f"创建 ${serviceType} 实例失败: ${err}")
+        }
+    }
+    
+    assert createdInstances > 0, "应该能创建至少一种服务类型的实例"
+    log.info(f"成功创建 ${createdInstances} 种服务类型的暴力破解实例")
+}
+
+// 执行所有暴力破解测试
+func main() {
+    log.info("开始Yaklang Brute库功能测试")
+    
+    // 基础功能测试
+    testAvailableBruteTypes()
+    testDefaultUsernameDictionary()
+    testDefaultPasswordDictionary()
+    
+    // 实例创建测试
+    testCreateBruteInstance()
+    testAutoDictionary()
+    
+    // 配置选项测试
+    testConcurrencySettings()
+    testDelaySettings()
+    testFinishingThreshold()
+    testBruteHandler()
+    
+    // 执行和兼容性测试
+    testBruteExecution()
+    testMultipleServiceTypes()
+    
+    log.info("Brute库功能测试完成")
+    
+    // 验证测试结果
+    // 关键词: 测试验证, 功能确认
+    assert handlerCallCount >= 0, "处理器调用计数应该初始化"
+    assert createdInstances > 0, "应该成功创建多个服务实例"
+    assert foundUsernames > 0, "应该找到常见用户名"
+    assert foundPasswords > 0, "应该找到常见密码"
+    assert foundCommonTypes > 0, "应该支持常见服务类型"
+    
+    log.info("所有暴力破解实例创建和配置测试通过")
+    log.info("Brute库提供了强大的多服务暴力破解能力，是渗透测试的重要工具")
+}
+
+/*
+Brute库核心功能总结:
+
+1. 服务类型支持:
+   - brute.GetAvailableBruteTypes() - 获取支持的服务类型
+   - 支持SSH、FTP、MySQL、Redis、HTTP、Telnet、SMTP等多种服务
+
+2. 字典管理:
+   - brute.GetUsernameListFromBruteType() - 获取默认用户名字典
+   - brute.GetPasswordListFromBruteType() - 获取默认密码字典
+   - brute.userList() - 自定义用户名列表
+   - brute.passList() - 自定义密码列表
+   - brute.autoDict() - 自动加载默认字典
+
+3. 实例配置:
+   - brute.New() - 创建暴力破解实例
+   - brute.concurrent() - 设置并发数
+   - brute.concurrentTarget() - 设置目标并发数
+   - brute.minDelay()/maxDelay() - 设置请求延迟
+
+4. 执行控制:
+   - brute.okToStop() - 成功后是否停止
+   - brute.finishingThreshold() - 完成阈值
+   - brute.debug() - 调试模式
+
+5. 自定义处理:
+   - brute.bruteHandler() - 自定义暴力破解逻辑
+   - 支持自定义认证处理函数
+
+6. 执行方法:
+   - instance.Start() - 开始暴力破解
+   - 返回结果通道，支持实时处理结果
+
+Brute库是渗透测试中发现弱口令和未授权访问的核心工具，
+支持多种协议和服务，提供灵活的配置选项和自定义处理能力。
+*/

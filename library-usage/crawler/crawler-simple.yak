@@ -1,0 +1,258 @@
+// =============================================================================
+// crawler 库简化测试 - 基础HTTP爬虫功能验证（10秒内完成）
+// crawler库 HTTP爬虫 网页抓取 URL发现 基础爬取
+// 关键词: crawler, StartCrawler, HTTP爬虫, 网页抓取, URL发现, 超时控制
+// =============================================================================
+
+println("crawler 库简化测试开始...")
+
+// =============================================================================
+// 1. 启动测试服务器
+// 测试服务器 httpserver 本地服务器 爬虫测试环境
+// 关键词: httpserver, 测试服务器, 本地服务器, 爬虫环境
+// =============================================================================
+
+port = os.GetRandomAvailableTCPPort()
+testUrl = f"http://127.0.0.1:${port}"
+
+log.info("启动测试服务器: %s", testUrl)
+
+// 创建上下文用于管理服务器
+// 关键词: context, 服务器管理, 生命周期控制
+ctx, cancel = context.WithCancel(context.Background())
+
+// 启动测试服务器
+// 关键词: httpserver.Serve, HTTP服务器, 请求处理
+go fn {
+    err = httpserver.Serve("127.0.0.1", port,
+        httpserver.context(ctx),
+        httpserver.handler((rsp, req) => {
+            path = req.URL.Path
+            
+            if path == "/" {
+                rsp.Write(`<html>
+                    <head><title>Home</title></head>
+                    <body>
+                        <h1>Test Site</h1>
+                        <a href="/page1">Page 1</a>
+                        <a href="/page2">Page 2</a>
+                    </body>
+                </html>`)
+            } else if path == "/page1" {
+                rsp.Write(`<html>
+                    <head><title>Page 1</title></head>
+                    <body>
+                        <h1>Page 1</h1>
+                        <a href="/">Home</a>
+                        <a href="/page2">Page 2</a>
+                    </body>
+                </html>`)
+            } else if path == "/page2" {
+                rsp.Write(`<html>
+                    <head><title>Page 2</title></head>
+                    <body>
+                        <h1>Page 2</h1>
+                        <a href="/">Home</a>
+                        <a href="/page1">Page 1</a>
+                    </body>
+                </html>`)
+            } else {
+                rsp.WriteHeader(404)
+                rsp.Write("404 Not Found")
+            }
+        })
+    )
+    if err != nil && err.Error() != "context canceled" {
+        log.error("HTTP server error: %v", err)
+    }
+}
+
+// 等待服务器启动
+// 关键词: 服务器启动等待, 初始化延迟
+time.Sleep(1)
+log.info("测试服务器就绪")
+
+// =============================================================================
+// 2. 基础爬虫测试
+// 基础爬虫 StartCrawler HTTP爬取 链接发现
+// 关键词: StartCrawler, 基础爬虫, HTTP爬取, 链接发现, 超时控制
+// =============================================================================
+println("\n2. 基础爬虫测试")
+
+// ===== 2.1 启动爬虫 =====
+// 关键词: crawler.Start, 爬虫启动, 基础配置
+ch, err = crawler.Start(testUrl,
+    crawler.maxDepth(2),      // 最大深度2
+    crawler.concurrent(2),    // 并发数2
+    crawler.maxUrls(10),      // 最大URL数10
+    crawler.userAgent("Yaklang-Test/1.0")
+)
+
+assert err == nil, f"爬虫启动不应失败: ${err}"
+log.info("爬虫启动成功")
+
+// ===== 2.2 收集结果（有超时控制） =====
+// 关键词: 结果收集, 超时控制, 防止卡死
+results = []
+maxCollect = 5  // 最多收集5个结果
+collected = 0
+
+log.info("开始收集爬虫结果...")
+
+// 使用有限循环避免卡死
+// 关键词: 有限循环, 超时控制, 结果限制
+for collected < maxCollect {
+    req = <-ch
+    if req == nil {
+        log.info("爬虫通道关闭")
+        break
+    }
+    
+    // 记录结果
+    // 关键词: 结果记录, URL收集, 爬取数据
+    result = {
+        "url": req.Url(),
+        "isForm": req.IsForm(),
+        "isHttps": req.IsHttps(),
+        "isLoginForm": req.IsLoginForm()
+    }
+    
+    results = append(results, result)
+    log.info("发现URL: %s (表单: %v, HTTPS: %v)", req.Url(), req.IsForm(), req.IsHttps())
+    
+    collected++
+}
+
+log.info("收集完成，共发现 %d 个URL", len(results))
+
+// =============================================================================
+// 3. 结果验证
+// 结果验证 爬虫验证 URL验证 功能验证
+// 关键词: 结果验证, 爬虫验证, URL验证, assert验证
+// =============================================================================
+println("\n3. 结果验证")
+
+// ===== 3.1 基础验证 =====
+// 关键词: 基础验证, 结果数量验证
+assert len(results) > 0, "应该至少发现一个URL"
+println(f"✓ 发现URL数量: ${len(results)}")
+
+// ===== 3.2 URL验证 =====
+// 关键词: URL验证, 链接验证, 爬取验证
+foundHome = false
+for result in results {
+    if str.Contains(result["url"], testUrl) {
+        foundHome = true
+        break
+    }
+}
+
+assert foundHome == true, "应该发现主页URL"
+println("✓ 发现了主页URL")
+
+// ===== 3.3 表单验证 =====
+// 关键词: 表单验证, 表单检测, IsForm验证
+hasNonForm = false
+for result in results {
+    if result["isForm"] == false {
+        hasNonForm = true
+        break
+    }
+}
+
+assert hasNonForm == true, "应该有非表单URL"
+println("✓ 表单检测正常")
+
+// ===== 3.4 HTTPS验证 =====
+// 关键词: HTTPS验证, 协议验证, isHttps验证
+hasHttp = false
+for result in results {
+    if result["isHttps"] == false {
+        hasHttp = true
+        break
+    }
+}
+
+assert hasHttp == true, "应该有HTTP请求"
+println("✓ 协议检测正常")
+
+println("✓ 基础爬虫测试通过")
+
+// =============================================================================
+// 4. 高级配置测试
+// 高级配置 爬虫配置 过滤配置 头部配置
+// 关键词: 高级配置, 爬虫配置, 过滤配置, 头部配置
+// =============================================================================
+println("\n4. 高级配置测试")
+
+// ===== 4.1 自定义头部测试 =====
+// 关键词: 自定义头部, header配置, User-Agent
+headerResults = []
+ch2, err2 = crawler.Start(testUrl,
+    crawler.header("X-Test", "Yaklang"),
+    crawler.userAgent("Custom-Agent/1.0"),
+    crawler.maxDepth(1),
+    crawler.maxUrls(3)
+)
+
+if err2 == nil {
+    count = 0
+    for count < 2 {
+        req = <-ch2
+        if req == nil {
+            break
+        }
+        headerResults = append(headerResults, req.Url())
+        count++
+    }
+}
+
+assert len(headerResults) > 0, "自定义头部测试应该发现URL"
+println(f"✓ 自定义头部测试通过，发现 ${len(headerResults)} 个URL")
+
+// ===== 4.2 深度限制测试 =====
+// 关键词: 深度限制, maxDepth, 爬取深度控制
+depthResults = []
+ch3, err3 = crawler.Start(testUrl,
+    crawler.maxDepth(1),  // 限制深度为1
+    crawler.maxUrls(5)
+)
+
+if err3 == nil {
+    count = 0
+    for count < 3 {
+        req = <-ch3
+        if req == nil {
+            break
+        }
+        depthResults = append(depthResults, {
+            "url": req.Url(),
+            "isForm": req.IsForm()
+        })
+        count++
+    }
+}
+
+// 验证结果收集
+// 关键词: 结果验证, URL收集验证
+assert len(depthResults) > 0, "应该收集到URL"
+println(f"✓ 深度限制测试通过，收集到 ${len(depthResults)} 个URL")
+
+println("✓ 高级配置测试通过")
+
+// =============================================================================
+// 清理资源
+// =============================================================================
+cancel()
+time.Sleep(0.5)
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+println("\n=== crawler库测试总结 ===")
+println("✅ 基础爬虫 - StartCrawler启动和URL发现")
+println("✅ 结果收集 - 超时控制和结果验证")
+println("✅ 配置验证 - 深度、并发、头部配置")
+println("✅ 高级功能 - 自定义头部、深度限制")
+
+println("\ncrawler库功能测试完成！")
