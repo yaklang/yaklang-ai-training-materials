@@ -1,0 +1,213 @@
+// Suricata库核心功能测试 - Suricata规则解析和匹配
+// 关键词: suricata规则解析, IDS规则, 网络入侵检测, 规则匹配, 安全规则
+
+// Suricata库基础功能验证
+assert suricata.ParseSuricata != undefined, "ParseSuricata函数应存在"
+assert suricata.LoadSuricataToDatabase != undefined, "LoadSuricataToDatabase函数应存在"
+
+// 1. 基本Suricata规则解析测试
+basicRule = `alert tcp any any -> any 80 (msg:"HTTP GET Request"; content:"GET"; http_method; sid:1001; rev:1;)`
+
+rules, err = suricata.ParseSuricata(basicRule)
+assert err == nil, "基本规则解析应成功"
+assert rules != nil, "解析结果不应为空"
+assert len(rules) == 1, "应解析出1条规则"
+
+rule = rules[0]
+assert rule != nil, "规则对象不应为空"
+
+// 验证规则基本属性
+assert rule.Action == "alert", "规则动作应为alert"
+assert rule.Protocol == "tcp", "规则协议应为tcp"
+assert rule.Message == "HTTP GET Request", "规则消息应正确"
+assert rule.Sid == 1001, "规则SID应为1001"
+assert rule.Rev == 1, "规则版本应为1"
+
+// 验证地址和端口规则
+assert rule.SourceAddress != nil, "源地址规则不应为空"
+assert rule.DestinationAddress != nil, "目标地址规则不应为空"
+assert rule.SourcePort != nil, "源端口规则不应为空"
+assert rule.DestinationPort != nil, "目标端口规则不应为空"
+
+// 2. 复杂Suricata规则解析测试
+complexRule = `alert http any any -> any any (msg:"Suspicious HTTP POST"; content:"POST"; http_method; content:"password"; http_client_body; classtype:trojan-activity; sid:2001; rev:2; priority:1;)`
+
+complexRules, complexErr = suricata.ParseSuricata(complexRule)
+assert complexErr == nil, "复杂规则解析应成功"
+assert len(complexRules) == 1, "应解析出1条复杂规则"
+
+complexRuleObj = complexRules[0]
+assert complexRuleObj.Action == "alert", "复杂规则动作应为alert"
+assert complexRuleObj.Protocol == "http", "复杂规则协议应为http"
+assert complexRuleObj.Message == "Suspicious HTTP POST", "复杂规则消息应正确"
+assert complexRuleObj.Sid == 2001, "复杂规则SID应为2001"
+assert complexRuleObj.Rev == 2, "复杂规则版本应为2"
+assert complexRuleObj.Priority == 1, "复杂规则优先级应为1"
+assert complexRuleObj.ClassType == "trojan-activity", "复杂规则分类应正确"
+
+// 3. 多条规则解析测试
+multiRules = `alert tcp any any -> any 22 (msg:"SSH Connection"; content:"SSH"; sid:3001; rev:1;)
+alert tcp any any -> any 23 (msg:"Telnet Connection"; content:"telnet"; sid:3002; rev:1;)
+alert udp any any -> any 53 (msg:"DNS Query"; content:"|01 00|"; sid:3003; rev:1;)`
+
+multiRulesResult, multiErr = suricata.ParseSuricata(multiRules)
+assert multiErr == nil, "多条规则解析应成功"
+assert len(multiRulesResult) == 3, "应解析出3条规则"
+
+// 验证第一条规则
+sshRule = multiRulesResult[0]
+assert sshRule.Message == "SSH Connection", "SSH规则消息应正确"
+assert sshRule.Sid == 3001, "SSH规则SID应正确"
+
+// 验证第二条规则
+telnetRule = multiRulesResult[1]
+assert telnetRule.Message == "Telnet Connection", "Telnet规则消息应正确"
+assert telnetRule.Sid == 3002, "Telnet规则SID应正确"
+
+// 验证第三条规则
+dnsRule = multiRulesResult[2]
+assert dnsRule.Message == "DNS Query", "DNS规则消息应正确"
+assert dnsRule.Sid == 3003, "DNS规则SID应正确"
+assert dnsRule.Protocol == "udp", "DNS规则协议应为udp"
+
+// 4. 规则内容配置验证
+contentRule = `alert tcp any any -> any 80 (msg:"XSS Attack"; content:"<script>"; http_uri; nocase; offset:0; depth:100; sid:4001; rev:1;)`
+
+contentRules, contentErr = suricata.ParseSuricata(contentRule)
+assert contentErr == nil, "内容规则解析应成功"
+assert len(contentRules) == 1, "应解析出1条内容规则"
+
+contentRuleObj = contentRules[0]
+assert contentRuleObj.Message == "XSS Attack", "内容规则消息应正确"
+assert contentRuleObj.Sid == 4001, "内容规则SID应正确"
+assert contentRuleObj.ContentRuleConfig != nil, "内容规则配置不应为空"
+
+// 5. 不同动作类型的规则测试
+actionRules = `drop tcp any any -> any 445 (msg:"Block SMB"; content:"SMB"; sid:5001; rev:1;)
+reject tcp any any -> any 139 (msg:"Reject NetBIOS"; content:"NetBIOS"; sid:5002; rev:1;)
+pass tcp any any -> any 443 (msg:"Allow HTTPS"; content:"HTTPS"; sid:5003; rev:1;)`
+
+actionRulesResult, actionErr = suricata.ParseSuricata(actionRules)
+assert actionErr == nil, "动作规则解析应成功"
+assert len(actionRulesResult) == 3, "应解析出3条动作规则"
+
+// 验证不同动作
+dropRule = actionRulesResult[0]
+assert dropRule.Action == "drop", "Drop规则动作应正确"
+
+rejectRule = actionRulesResult[1]
+assert rejectRule.Action == "reject", "Reject规则动作应正确"
+
+passRule = actionRulesResult[2]
+assert passRule.Action == "pass", "Pass规则动作应正确"
+
+// 6. 规则元数据验证
+metadataRule = `alert tcp any any -> any any (msg:"Malware Detection"; content:"malware"; classtype:trojan-activity; reference:url,example.com; priority:2; metadata:policy balanced-ips drop, policy security-ips alert; sid:6001; rev:1;)`
+
+metadataRules, metadataErr = suricata.ParseSuricata(metadataRule)
+assert metadataErr == nil, "元数据规则解析应成功"
+assert len(metadataRules) == 1, "应解析出1条元数据规则"
+
+metadataRuleObj = metadataRules[0]
+assert metadataRuleObj.Message == "Malware Detection", "元数据规则消息应正确"
+assert metadataRuleObj.ClassType == "trojan-activity", "元数据规则分类应正确"
+assert metadataRuleObj.Priority == 2, "元数据规则优先级应正确"
+assert metadataRuleObj.Reference != nil, "元数据规则引用不应为空"
+assert metadataRuleObj.Metadata != nil, "元数据规则元数据不应为空"
+assert len(metadataRuleObj.Metadata) > 0, "元数据规则应包含元数据项"
+
+// 7. 网络协议特定规则测试
+protocolRules = `alert icmp any any -> any any (msg:"ICMP Ping"; itype:8; sid:7001; rev:1;)
+alert dns any any -> any 53 (msg:"DNS Tunneling"; dns_query; content:"tunnel"; sid:7002; rev:1;)
+alert http any any -> any any (msg:"HTTP Anomaly"; http_method; content:"TRACE"; sid:7003; rev:1;)`
+
+protocolRulesResult, protocolErr = suricata.ParseSuricata(protocolRules)
+assert protocolErr == nil, "协议规则解析应成功"
+assert len(protocolRulesResult) == 3, "应解析出3条协议规则"
+
+// 验证ICMP规则
+icmpRule = protocolRulesResult[0]
+assert icmpRule.Protocol == "icmp", "ICMP规则协议应正确"
+assert icmpRule.Message == "ICMP Ping", "ICMP规则消息应正确"
+
+// 验证DNS规则
+dnsProtocolRule = protocolRulesResult[1]
+assert dnsProtocolRule.Protocol == "dns", "DNS规则协议应正确"
+assert dnsProtocolRule.Message == "DNS Tunneling", "DNS规则消息应正确"
+
+// 验证HTTP规则
+httpRule = protocolRulesResult[2]
+assert httpRule.Protocol == "http", "HTTP规则协议应正确"
+assert httpRule.Message == "HTTP Anomaly", "HTTP规则消息应正确"
+
+// 8. 规则字段完整性验证
+fieldTestRule = `alert tcp 192.168.1.0/24 !80 -> !192.168.1.1 443 (msg:"Field Test"; content:"test"; classtype:policy-violation; reference:cve,2023-1234; priority:3; gid:1; sid:8001; rev:5; target:dest_ip;)`
+
+fieldRules, fieldErr = suricata.ParseSuricata(fieldTestRule)
+assert fieldErr == nil, "字段测试规则解析应成功"
+assert len(fieldRules) == 1, "应解析出1条字段测试规则"
+
+fieldRule = fieldRules[0]
+assert fieldRule.Gid == 1, "规则GID应正确"
+assert fieldRule.Sid == 8001, "规则SID应正确"
+assert fieldRule.Rev == 5, "规则版本应正确"
+assert fieldRule.Priority == 3, "规则优先级应正确"
+assert fieldRule.ClassType == "policy-violation", "规则分类应正确"
+// Target字段可能为空，只验证其存在
+assert typeof(fieldRule.Target) == "string", "规则目标字段应为字符串类型"
+
+// 9. 错误处理测试
+invalidRule = `invalid rule format without proper structure`
+
+invalidRules, invalidErr = suricata.ParseSuricata(invalidRule)
+// 注意：根据实际实现，可能返回错误或空结果
+if invalidErr != nil {
+    assert invalidErr != nil, "无效规则应返回错误"
+} else {
+    assert len(invalidRules) == 0, "无效规则应返回空结果"
+}
+
+// 10. 空规则处理测试
+emptyRules, emptyErr = suricata.ParseSuricata("")
+assert emptyErr == nil, "空规则解析应成功"
+assert len(emptyRules) == 0, "空规则应返回空数组"
+
+// 11. 批量规则性能测试
+batchRules = []
+for i := 0; i < 10; i++ {
+    ruleText = "alert tcp any any -> any 80 (msg:\"Test Rule " + sprint(i) + "\"; content:\"test" + sprint(i) + "\"; sid:" + sprint(9000 + i) + "; rev:1;)"
+    batchRules = append(batchRules, ruleText)
+}
+
+batchRuleText = str.Join(batchRules, "\n")
+batchStart = timestamp()
+batchResult, batchErr = suricata.ParseSuricata(batchRuleText)
+batchEnd = timestamp()
+
+assert batchErr == nil, "批量规则解析应成功"
+assert len(batchResult) == 10, "应解析出10条批量规则"
+
+batchDuration = batchEnd - batchStart
+assert batchDuration < 5, "批量解析应在5秒内完成"
+
+// 验证批量规则的正确性
+for i := 0; i < len(batchResult); i++ {
+    batchRule = batchResult[i]
+    expectedSid = 9000 + i
+    assert batchRule.Sid == expectedSid, "批量规则" + sprint(i) + "的SID应为" + sprint(expectedSid)
+    assert str.Contains(batchRule.Message, "Test Rule " + sprint(i)), "批量规则" + sprint(i) + "的消息应包含正确索引"
+}
+
+// 12. 规则原始文本保存验证
+rawTestRule = `alert tcp any any -> any 80 (msg:"Raw Text Test"; content:"raw"; sid:10001; rev:1;)`
+
+rawRules, rawErr = suricata.ParseSuricata(rawTestRule)
+assert rawErr == nil, "原始文本规则解析应成功"
+assert len(rawRules) == 1, "应解析出1条原始文本规则"
+
+rawRule = rawRules[0]
+assert rawRule.Raw != "", "规则原始文本不应为空"
+assert str.Contains(rawRule.Raw, "Raw Text Test"), "原始文本应包含规则消息"
+assert str.Contains(rawRule.Raw, "sid:10001"), "原始文本应包含SID"
+
+// Suricata库核心功能验证完成

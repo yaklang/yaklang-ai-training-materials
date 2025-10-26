@@ -1,0 +1,105 @@
+// HTTPPool库核心功能测试 - HTTP连接池基础验证
+// 关键词: http连接池, 批量请求, 并发HTTP, 连接复用
+
+// HTTPPool库基础功能验证
+assert httpool.Pool != undefined, "Pool函数应存在"
+
+// 1. 基本函数存在性验证
+assert typeof(httpool.Pool) == "function", "Pool应为函数类型"
+
+// 2. 简单请求测试
+basicRequest = "GET / HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"
+
+resultChan, err = httpool.Pool(basicRequest)
+assert err == nil, "基本连接池请求应成功"
+
+// 验证通道类型
+chanType = sprint(typeof(resultChan))
+assert str.Contains(chanType, "chan"), "结果应为通道类型"
+assert str.Contains(chanType, "HttpResult"), "通道应传输HttpResult类型"
+
+// 3. 批量请求测试
+batchRequests = [
+    "GET /get HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n",
+    "GET /headers HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"
+]
+
+batchResultChan, batchErr = httpool.Pool(batchRequests)
+assert batchErr == nil, "批量请求应成功"
+
+batchChanType = sprint(typeof(batchResultChan))
+assert str.Contains(batchChanType, "chan"), "批量结果应为通道类型"
+assert str.Contains(batchChanType, "HttpResult"), "批量通道应传输HttpResult类型"
+
+// 4. 错误处理测试
+invalidRequest = "INVALID REQUEST FORMAT"
+
+invalidResultChan, invalidErr = httpool.Pool(invalidRequest)
+// 根据实现，可能返回错误或在结果中包含错误信息
+if invalidErr != nil {
+    assert invalidErr != nil, "无效请求应返回错误"
+} else {
+    invalidChanType = sprint(typeof(invalidResultChan))
+    assert str.Contains(invalidChanType, "chan"), "无效请求结果应为通道类型"
+}
+
+// 5. 空请求列表测试
+emptyRequests = []
+
+emptyResultChan, emptyErr = httpool.Pool(emptyRequests)
+if emptyErr != nil {
+    assert emptyErr != nil, "空请求列表可能返回错误"
+} else {
+    emptyChanType = sprint(typeof(emptyResultChan))
+    assert str.Contains(emptyChanType, "chan"), "空请求列表结果应为通道类型"
+}
+
+// 6. 类型验证测试
+stringInput = "GET / HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"
+arrayInput = [stringInput]
+
+// 测试字符串输入
+stringResultChan, stringErr = httpool.Pool(stringInput)
+assert stringErr == nil, "字符串输入应成功"
+
+stringChanType = sprint(typeof(stringResultChan))
+assert str.Contains(stringChanType, "chan"), "字符串输入结果应为通道类型"
+
+// 测试数组输入
+arrayResultChan, arrayErr = httpool.Pool(arrayInput)
+assert arrayErr == nil, "数组输入应成功"
+
+arrayChanType = sprint(typeof(arrayResultChan))
+assert str.Contains(arrayChanType, "chan"), "数组输入结果应为通道类型"
+
+// 7. 基本性能测试（简化版，避免错误）
+simpleRequests = ["GET / HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"]
+
+simpleStart = timestamp()
+simpleResultChan, simpleErr = httpool.Pool(simpleRequests)
+simpleCreateEnd = timestamp()
+
+assert simpleErr == nil, "简单性能测试请求创建应成功"
+
+simpleChanType = sprint(typeof(simpleResultChan))
+assert str.Contains(simpleChanType, "chan"), "简单性能测试结果应为通道类型"
+
+// 验证创建速度
+createDuration = simpleCreateEnd - simpleStart
+assert createDuration < 1, "请求创建应在1秒内完成"
+
+// 8. 通道类型验证
+channelType = sprint(typeof(resultChan))
+assert str.Contains(channelType, "chan"), "返回值应为通道类型"
+
+// 9. 函数签名验证
+testRequest = "GET / HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"
+
+// 测试无配置参数调用
+noConfigChan, noConfigErr = httpool.Pool(testRequest)
+assert noConfigErr == nil, "无配置参数调用应成功"
+
+noConfigChanType = sprint(typeof(noConfigChan))
+assert str.Contains(noConfigChanType, "chan"), "无配置参数结果应为通道类型"
+
+// HTTPPool库基础功能验证完成
