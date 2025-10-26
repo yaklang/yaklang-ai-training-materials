@@ -1,0 +1,167 @@
+// 简单Redis测试 - 专注于API使用演示
+// 关键词: redis.New, Redis配置, API演示
+
+println("开始简单Redis库测试")
+
+println("注意: 此测试演示Redis API使用，不依赖实际Redis服务")
+
+// 测试Redis客户端创建
+println("测试Redis客户端创建...")
+
+// 基本客户端创建
+println("1. 基本客户端创建:")
+basicClient = redis.New()
+if basicClient != nil {
+    println("   ✓ redis.New() 成功")
+} else {
+    println("   ✗ redis.New() 失败")
+}
+
+// 带主机端口配置的客户端
+println("2. 主机端口配置:")
+hostPortClient = redis.New(
+    redis.host("127.0.0.1"),
+    redis.port(6379)
+)
+if hostPortClient != nil {
+    println("   ✓ redis.host() + redis.port() 配置成功")
+} else {
+    println("   ✗ 主机端口配置失败")
+}
+
+// 带地址配置的客户端
+println("3. 地址配置:")
+addrClient = redis.New(
+    redis.addr("127.0.0.1:6379")
+)
+if addrClient != nil {
+    println("   ✓ redis.addr() 配置成功")
+} else {
+    println("   ✗ 地址配置失败")
+}
+
+// 完整配置的客户端
+println("4. 完整配置:")
+fullConfigClient = redis.New(
+    redis.addr("127.0.0.1:6379"),
+    redis.password(""),
+    redis.username(""),
+    redis.timeoutSeconds(5),
+    redis.retry(3)
+)
+if fullConfigClient != nil {
+    println("   ✓ 完整配置成功")
+} else {
+    println("   ✗ 完整配置失败")
+}
+
+// 测试不同的配置组合
+println("\n测试配置组合:")
+
+configTests = [
+    {
+        "name": "本地默认",
+        "config": [redis.addr("localhost:6379")]
+    },
+    {
+        "name": "带密码",
+        "config": [redis.addr("127.0.0.1:6379"), redis.password("mypassword")]
+    },
+    {
+        "name": "带用户名密码",
+        "config": [redis.addr("127.0.0.1:6379"), redis.username("admin"), redis.password("secret")]
+    },
+    {
+        "name": "自定义超时",
+        "config": [redis.addr("127.0.0.1:6379"), redis.timeoutSeconds(10)]
+    },
+    {
+        "name": "自定义重试",
+        "config": [redis.addr("127.0.0.1:6379"), redis.retry(5)]
+    }
+]
+
+for test in configTests {
+    client = redis.New(test["config"]...)
+    if client != nil {
+        println(f"   ✓ ${test['name']} 配置成功")
+        // 注意：由于没有实际Redis服务，不调用Close()避免错误
+    } else {
+        println(f"   ✗ ${test['name']} 配置失败")
+    }
+}
+
+// API方法演示（不实际执行，只展示用法）
+println("\nRedis API方法演示:")
+
+println("1. 字符串操作方法:")
+println("   - client.Set(key, value)           // 设置键值")
+println("   - client.Get(key)                  // 获取键值")
+println("   - client.SetWithTTL(key, val, ttl) // 设置带过期时间的键值")
+println("   - client.GetEx(key, timeout)       // 带超时的获取")
+
+println("2. 发布订阅方法:")
+println("   - client.Publish(channel, message) // 发布消息")
+println("   - client.Subscribe(channel, callback) // 订阅频道")
+
+println("3. 高级操作方法:")
+println("   - client.Do(command, args...)      // 执行原生Redis命令")
+
+println("4. 连接管理方法:")
+println("   - client.Close()                   // 关闭连接")
+
+// 配置选项总结
+println("\nRedis配置选项总结:")
+println("   - redis.host(hostname)             // 设置主机名")
+println("   - redis.port(port)                 // 设置端口号")
+println("   - redis.addr(address)              // 设置完整地址")
+println("   - redis.username(user)             // 设置用户名")
+println("   - redis.password(pass)             // 设置密码")
+println("   - redis.timeoutSeconds(seconds)    // 设置超时时间")
+println("   - redis.retry(count)               // 设置重试次数")
+
+// 使用场景示例
+println("\nRedis使用场景示例:")
+
+println("1. 基本缓存:")
+println("   client = redis.New(redis.addr('localhost:6379'))")
+println("   client.Set('cache:user:1001', userJson)")
+println("   userJson = client.Get('cache:user:1001')")
+
+println("2. 会话存储:")
+println("   client.SetWithTTL('session:abc123', sessionData, 1800)")
+
+println("3. 消息队列:")
+println("   client.Publish('notifications', message)")
+println("   client.Subscribe('notifications', handleMessage)")
+
+println("4. 计数器:")
+println("   client.Do('INCR', 'counter:page_views')")
+
+println("5. 分布式锁:")
+println("   client.Do('SET', 'lock:resource', 'locked', 'NX', 'EX', '30')")
+
+// 最佳实践提示
+println("\nRedis最佳实践提示:")
+println("1. 连接管理:")
+println("   - 使用连接池避免频繁连接")
+println("   - 设置合适的超时和重试参数")
+println("   - 及时关闭不用的连接")
+
+println("2. 键名设计:")
+println("   - 使用有意义的前缀: 'user:profile:1001'")
+println("   - 保持命名一致性: 'cache:api:weather:beijing'")
+println("   - 避免过长的键名")
+
+println("3. 数据管理:")
+println("   - 合理设置TTL避免内存泄露")
+println("   - 选择合适的数据类型")
+println("   - 避免存储过大的值")
+
+println("4. 安全考虑:")
+println("   - 设置访问密码")
+println("   - 限制网络访问")
+println("   - 使用用户名密码认证")
+
+println("简单Redis库测试完成")
+println("Redis API配置和使用方法演示完成")

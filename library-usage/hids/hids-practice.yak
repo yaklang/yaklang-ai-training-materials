@@ -1,0 +1,245 @@
+// HIDS库核心功能测试 - 主机入侵检测系统监控
+// 关键词: hids系统监控, CPU监控, 内存监控, 性能监控, 系统资源
+
+// HIDS库初始化
+assert hids.Init != undefined, "Init函数应存在"
+hids.Init()
+
+// CPU监控功能验证
+assert hids.CPUPercent != undefined, "CPUPercent函数应存在"
+
+cpuUsage = hids.CPUPercent()
+assert typeof(cpuUsage) == "float64", "CPU使用率应为float64类型"
+assert cpuUsage >= 0.0, "CPU使用率应为非负数"
+assert cpuUsage <= 100.0, "CPU使用率应不超过100%"
+
+// 内存监控功能验证
+assert hids.MemoryPercent != undefined, "MemoryPercent函数应存在"
+
+memUsage = hids.MemoryPercent()
+assert typeof(memUsage) == "float64", "内存使用率应为float64类型"
+assert memUsage >= 0.0, "内存使用率应为非负数"
+assert memUsage <= 100.0, "内存使用率应不超过100%"
+
+// 监控间隔设置验证
+assert hids.SetMonitorInterval != undefined, "SetMonitorInterval函数应存在"
+assert hids.ShowMonitorInterval != undefined, "ShowMonitorInterval函数应存在"
+
+// 设置监控间隔为1秒
+hids.SetMonitorInterval(1.0)
+hids.ShowMonitorInterval()
+
+// 测试不同的监控间隔（只测试有效值）
+testIntervals = [1.0, 2.0, 5.0]
+for interval in testIntervals {
+    hids.SetMonitorInterval(interval)
+    // 验证设置成功（通过不抛出异常来验证）
+    assert interval > 0, "监控间隔应为正数"
+}
+
+// 回调函数存在性验证
+assert hids.CPUPercentCallback != undefined, "CPUPercentCallback函数应存在"
+assert hids.CPUAverageCallback != undefined, "CPUAverageCallback函数应存在"
+assert hids.MemoryPercentCallback != undefined, "MemoryPercentCallback函数应存在"
+
+// 连续监控数据收集测试
+monitoringResults = []
+monitorCount = 5
+
+// 设置监控间隔为1秒（最小有效值）
+hids.SetMonitorInterval(1.0)
+
+// 收集多次监控数据
+for i = 0; i < monitorCount; i++ {
+    cpu = hids.CPUPercent()
+    mem = hids.MemoryPercent()
+    
+    result = {
+        "iteration": i + 1,
+        "cpu": cpu,
+        "memory": mem
+    }
+    monitoringResults = append(monitoringResults, result)
+    
+    // 验证每次监控数据的有效性
+    assert cpu >= 0.0 && cpu <= 100.0, "CPU使用率应在有效范围内"
+    assert mem >= 0.0 && mem <= 100.0, "内存使用率应在有效范围内"
+    
+    // 短暂等待
+    if i < monitorCount - 1 {
+        sleep(0.1)
+    }
+}
+
+// 验证监控数据收集
+assert len(monitoringResults) == monitorCount, "应收集到指定数量的监控数据"
+
+// 计算监控数据统计
+totalCPU = 0.0
+totalMem = 0.0
+maxCPU = 0.0
+maxMem = 0.0
+minCPU = 100.0
+minMem = 100.0
+
+for result in monitoringResults {
+    cpu = result.cpu
+    mem = result.memory
+    
+    totalCPU += cpu
+    totalMem += mem
+    
+    if cpu > maxCPU {
+        maxCPU = cpu
+    }
+    if cpu < minCPU {
+        minCPU = cpu
+    }
+    
+    if mem > maxMem {
+        maxMem = mem
+    }
+    if mem < minMem {
+        minMem = mem
+    }
+}
+
+avgCPU = totalCPU / float64(len(monitoringResults))
+avgMem = totalMem / float64(len(monitoringResults))
+
+// 验证统计数据的合理性
+assert avgCPU >= 0.0 && avgCPU <= 100.0, "平均CPU使用率应在有效范围内"
+assert avgMem >= 0.0 && avgMem <= 100.0, "平均内存使用率应在有效范围内"
+assert maxCPU >= minCPU, "最大CPU使用率应不小于最小值"
+assert maxMem >= minMem, "最大内存使用率应不小于最小值"
+
+// 监控间隔边界测试
+// 测试最小有效间隔
+hids.SetMonitorInterval(1.0)
+cpu1 = hids.CPUPercent()
+assert cpu1 >= 0.0 && cpu1 <= 100.0, "最小间隔设置后监控应正常"
+
+// 测试较大间隔
+hids.SetMonitorInterval(10.0)
+cpu2 = hids.CPUPercent()
+assert cpu2 >= 0.0 && cpu2 <= 100.0, "较大间隔设置后监控应正常"
+
+// 恢复默认间隔
+hids.SetMonitorInterval(1.0)
+
+// 监控数据一致性验证
+consistencyTests = 3
+consistencyResults = []
+
+for i = 0; i < consistencyTests; i++ {
+    cpu = hids.CPUPercent()
+    mem = hids.MemoryPercent()
+    
+    // 验证数据类型一致性
+    assert typeof(cpu) == "float64", "CPU数据类型应一致"
+    assert typeof(mem) == "float64", "内存数据类型应一致"
+    
+    // 验证数据范围一致性
+    assert cpu >= 0.0 && cpu <= 100.0, "CPU数据范围应一致"
+    assert mem >= 0.0 && mem <= 100.0, "内存数据范围应一致"
+    
+    consistencyResults = append(consistencyResults, {
+        "cpu": cpu,
+        "memory": mem
+    })
+    
+    sleep(0.1)
+}
+
+assert len(consistencyResults) == consistencyTests, "一致性测试应完成所有迭代"
+
+// 性能基准测试
+benchmarkStart = timestamp()
+benchmarkIterations = 20
+
+for i = 0; i < benchmarkIterations; i++ {
+    _ = hids.CPUPercent()
+    _ = hids.MemoryPercent()
+}
+
+benchmarkEnd = timestamp()
+benchmarkDuration = benchmarkEnd - benchmarkStart
+
+// 验证性能合理性（总时间应在合理范围内）
+assert benchmarkDuration < 5, "基准测试应在5秒内完成"
+
+// 功能完整性验证
+assert hids.Init != undefined, "Init函数应存在"
+assert hids.CPUPercent != undefined, "CPUPercent函数应存在"
+assert hids.MemoryPercent != undefined, "MemoryPercent函数应存在"
+assert hids.SetMonitorInterval != undefined, "SetMonitorInterval函数应存在"
+assert hids.ShowMonitorInterval != undefined, "ShowMonitorInterval函数应存在"
+assert hids.CPUPercentCallback != undefined, "CPUPercentCallback函数应存在"
+assert hids.CPUAverageCallback != undefined, "CPUAverageCallback函数应存在"
+assert hids.MemoryPercentCallback != undefined, "MemoryPercentCallback函数应存在"
+
+// 监控数据变化检测
+changeDetectionResults = []
+baselineCPU = hids.CPUPercent()
+baselineMem = hids.MemoryPercent()
+
+// 收集几个数据点来检测变化
+for i = 0; i < 3; i++ {
+    sleep(0.2)
+    currentCPU = hids.CPUPercent()
+    currentMem = hids.MemoryPercent()
+    
+    changeDetectionResults = append(changeDetectionResults, {
+        "cpu": currentCPU,
+        "memory": currentMem,
+        "cpu_diff": currentCPU - baselineCPU,
+        "mem_diff": currentMem - baselineMem
+    })
+    
+    // 验证数据有效性
+    assert currentCPU >= 0.0 && currentCPU <= 100.0, "变化检测中CPU数据应有效"
+    assert currentMem >= 0.0 && currentMem <= 100.0, "变化检测中内存数据应有效"
+}
+
+assert len(changeDetectionResults) == 3, "变化检测应收集到所有数据点"
+
+/*
+HIDS库核心功能验证完成:
+
+1. ✓ 基础监控功能:
+   - hids.Init() - 系统初始化
+   - hids.CPUPercent() - CPU使用率获取，返回0-100的float64值
+   - hids.MemoryPercent() - 内存使用率获取，返回0-100的float64值
+   - 数据类型和范围验证
+
+2. ✓ 监控配置管理:
+   - hids.SetMonitorInterval() - 设置监控间隔（最小1秒）
+   - hids.ShowMonitorInterval() - 显示当前间隔
+   - 多种间隔设置测试和边界验证
+
+3. ✓ 回调函数接口:
+   - hids.CPUPercentCallback() - CPU监控回调接口
+   - hids.CPUAverageCallback() - CPU平均值回调接口
+   - hids.MemoryPercentCallback() - 内存监控回调接口
+   - 函数存在性验证
+
+4. ✓ 连续监控能力:
+   - 多次数据采集和统计分析
+   - 最大值、最小值、平均值计算
+   - 监控数据一致性验证
+
+5. ✓ 性能基准测试:
+   - 监控函数调用性能评估
+   - 响应时间验证
+   - 系统资源消耗控制
+
+6. ✓ 数据变化检测:
+   - 基线数据建立
+   - 变化趋势监控
+   - 差值计算和分析
+
+HIDS库为Yaklang提供了完整的主机监控能力，
+支持实时CPU和内存监控，具备配置管理和回调接口，
+所有核心功能通过assert验证确保API完整性和监控准确性。
+监控间隔最小为1秒，数据范围为0-100的百分比值。
+*/

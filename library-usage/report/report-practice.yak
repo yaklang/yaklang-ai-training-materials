@@ -1,0 +1,494 @@
+/*
+Yaklang Report (报告生成) 库实践
+
+Report库是Yaklang中用于生成和管理安全测试报告的核心模块，提供了创建、
+格式化、保存报告的完整功能。支持多种报告内容类型和可视化图表。
+
+关键词: 报告生成, 安全报告, 数据可视化, 测试结果, 报告管理
+关键词: Markdown, 表格, 图表, 数据分析, 报告导出
+*/
+
+// 基础报告创建测试
+// 关键词: report.New, 报告创建
+func testBasicReportCreation() {
+    println("测试基础报告创建功能")
+    
+    // 创建新的报告实例
+    // 关键词: 报告实例, 基础配置
+    reportInstance = report.New()
+    
+    assert reportInstance != nil, "报告实例不应为空"
+    println("报告实例创建成功")
+    
+    // 设置报告基本信息
+    reportInstance.Title("Yaklang安全测试报告")
+    reportInstance.Owner("security-team")
+    reportInstance.From("yaklang-scanner")
+    
+    println("报告基本信息设置完成")
+    
+    // 添加Markdown内容
+    // 关键词: Markdown内容, 报告描述
+    reportInstance.Markdown("# 安全测试报告\n\n本报告包含了对目标系统的安全测试结果。\n\n## 测试概述\n\n- 测试时间: 2023-10-26\n- 测试范围: Web应用安全\n- 测试工具: Yaklang")
+    
+    println("Markdown内容添加成功")
+    
+    // 保存报告
+    reportID = reportInstance.Save()
+    
+    assert reportID > 0, f"报告ID应该大于0，实际: ${reportID}"
+    println(f"报告保存成功，ID: ${reportID}")
+    
+    println("基础报告创建测试完成")
+}
+
+// 表格数据报告测试
+// 关键词: 表格报告, 数据展示
+func testTableReport() {
+    println("测试表格数据报告")
+    
+    // 创建包含表格的报告
+    reportInstance = report.New()
+    reportInstance.Title("漏洞统计报告")
+    reportInstance.Owner("security-analyst")
+    reportInstance.From("vulnerability-scanner")
+    
+    // 添加报告说明
+    reportInstance.Markdown("# 漏洞统计报告\n\n以下是本次扫描发现的漏洞统计信息：")
+    
+    // 添加漏洞统计表格
+    // 关键词: 漏洞统计, 数据表格
+    reportInstance.Table(
+        ["漏洞类型", "严重级别", "数量", "状态"],
+        ["SQL注入", "高危", 3, "待修复"],
+        ["XSS", "中危", 5, "已修复"],
+        ["文件上传", "高危", 1, "待修复"],
+        ["信息泄露", "低危", 8, "已确认"],
+        ["弱密码", "中危", 2, "待修复"]
+    )
+    
+    println("漏洞统计表格添加成功")
+    
+    // 添加主机统计表格
+    reportInstance.Markdown("\n## 主机扫描结果\n")
+    reportInstance.Table(
+        ["IP地址", "开放端口", "服务", "风险等级"],
+        ["192.168.1.100", "80,443", "HTTP/HTTPS", "中危"],
+        ["192.168.1.101", "22,80", "SSH/HTTP", "低危"],
+        ["192.168.1.102", "3306,80", "MySQL/HTTP", "高危"],
+        ["192.168.1.103", "21,80", "FTP/HTTP", "中危"]
+    )
+    
+    println("主机统计表格添加成功")
+    
+    // 保存表格报告
+    reportID = reportInstance.Save()
+    assert reportID > 0, f"表格报告保存失败，ID: ${reportID}"
+    
+    println(f"表格报告保存成功，ID: ${reportID}")
+    println("表格数据报告测试完成")
+}
+
+// 分隔符和格式化测试
+// 关键词: 分隔符, 报告格式
+func testReportFormatting() {
+    println("测试报告格式化功能")
+    
+    reportInstance = report.New()
+    reportInstance.Title("格式化测试报告")
+    reportInstance.Owner("test-user")
+    reportInstance.From("format-test")
+    
+    // 添加标题和描述
+    reportInstance.Markdown("# 格式化测试报告")
+    
+    // 添加分隔符
+    // 关键词: 分隔符, 内容分割
+    reportInstance.Divider()
+    
+    // 添加第一部分内容
+    reportInstance.Markdown("## 第一部分：基础信息\n\n这是报告的第一部分内容。")
+    
+    // 再次添加分隔符
+    reportInstance.Divider()
+    
+    // 添加第二部分内容
+    reportInstance.Markdown("## 第二部分：详细数据\n\n这是报告的第二部分内容。")
+    
+    // 添加简单表格
+    reportInstance.Table(
+        ["项目", "值"],
+        ["扫描目标", "example.com"],
+        ["扫描时间", "2023-10-26 15:30:00"],
+        ["扫描耗时", "120秒"],
+        ["发现问题", "15个"]
+    )
+    
+    reportInstance.Divider()
+    
+    // 添加结论
+    reportInstance.Markdown("## 结论\n\n本次测试发现了多个安全问题，建议及时修复。")
+    
+    println("格式化内容添加完成")
+    
+    // 保存格式化报告
+    reportID = reportInstance.Save()
+    assert reportID > 0, "格式化报告保存失败"
+    
+    println(f"格式化报告保存成功，ID: ${reportID}")
+    println("报告格式化测试完成")
+}
+
+// 代码块报告测试
+// 关键词: 代码块, 技术细节
+func testCodeBlockReport() {
+    println("测试代码块报告")
+    
+    reportInstance = report.New()
+    reportInstance.Title("技术细节报告")
+    reportInstance.Owner("security-engineer")
+    reportInstance.From("technical-analysis")
+    
+    // 添加技术分析说明
+    reportInstance.Markdown("# 技术细节分析报告\n\n本报告包含了详细的技术分析和代码示例。")
+    
+    // 添加SQL注入示例
+    reportInstance.Markdown("## SQL注入漏洞分析")
+    
+    sqlPayload = `' OR 1=1 --
+' UNION SELECT username,password FROM users --
+'; DROP TABLE users; --`
+    
+    // 添加代码块
+    // 关键词: 代码展示, 漏洞载荷
+    reportInstance.Code(sqlPayload)
+    
+    println("SQL注入代码块添加成功")
+    
+    // 添加XSS示例
+    reportInstance.Markdown("\n## XSS漏洞分析")
+    
+    xssPayload = `<script>alert('XSS')</script>
+<img src=x onerror=alert('XSS')>
+<svg onload=alert('XSS')>`
+    
+    reportInstance.Code(xssPayload)
+    
+    println("XSS代码块添加成功")
+    
+    // 添加修复建议代码
+    reportInstance.Markdown("\n## 修复建议代码")
+    
+    fixCode = `// 参数化查询示例
+PreparedStatement stmt = connection.prepareStatement(
+    "SELECT * FROM users WHERE username = ? AND password = ?"
+);
+stmt.setString(1, username);
+stmt.setString(2, password);
+
+// HTML转义示例
+String safeOutput = StringEscapeUtils.escapeHtml4(userInput);`
+    
+    reportInstance.Code(fixCode)
+    
+    println("修复代码块添加成功")
+    
+    // 保存代码报告
+    reportID = reportInstance.Save()
+    assert reportID > 0, "代码块报告保存失败"
+    
+    println(f"代码块报告保存成功，ID: ${reportID}")
+    println("代码块报告测试完成")
+}
+
+// 原始数据报告测试
+// 关键词: 原始数据, 详细信息
+func testRawDataReport() {
+    println("测试原始数据报告")
+    
+    reportInstance = report.New()
+    reportInstance.Title("原始数据报告")
+    reportInstance.Owner("data-analyst")
+    reportInstance.From("raw-data-export")
+    
+    // 添加说明
+    reportInstance.Markdown("# 原始数据报告\n\n以下是扫描过程中收集的原始数据。")
+    
+    // 添加HTTP请求原始数据
+    httpRequest = `POST /login HTTP/1.1
+Host: example.com
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 27
+
+username=admin&password=123`
+    
+    reportInstance.Markdown("## HTTP请求数据")
+    // 关键词: 原始数据展示, 详细记录
+    reportInstance.Raw(httpRequest)
+    
+    println("HTTP请求原始数据添加成功")
+    
+    // 添加HTTP响应原始数据
+    httpResponse = `HTTP/1.1 200 OK
+Content-Type: text/html
+Set-Cookie: session=abc123
+Content-Length: 156
+
+<html>
+<body>
+<h1>Login Successful</h1>
+<p>Welcome admin!</p>
+</body>
+</html>`
+    
+    reportInstance.Markdown("\n## HTTP响应数据")
+    reportInstance.Raw(httpResponse)
+    
+    println("HTTP响应原始数据添加成功")
+    
+    // 添加扫描日志
+    scanLog = `[2023-10-26 15:30:01] Starting vulnerability scan
+[2023-10-26 15:30:02] Scanning target: example.com
+[2023-10-26 15:30:05] Found SQL injection in /login
+[2023-10-26 15:30:08] Found XSS in /search
+[2023-10-26 15:30:12] Scan completed`
+    
+    reportInstance.Markdown("\n## 扫描日志")
+    reportInstance.Raw(scanLog)
+    
+    println("扫描日志原始数据添加成功")
+    
+    // 保存原始数据报告
+    reportID = reportInstance.Save()
+    assert reportID > 0, "原始数据报告保存失败"
+    
+    println(f"原始数据报告保存成功，ID: ${reportID}")
+    println("原始数据报告测试完成")
+}
+
+// 综合报告测试
+// 关键词: 综合报告, 完整测试
+func testComprehensiveReport() {
+    println("测试综合安全报告")
+    
+    reportInstance = report.New()
+    reportInstance.Title("综合安全测试报告")
+    reportInstance.Owner("security-team")
+    reportInstance.From("comprehensive-scan")
+    
+    // 报告封面
+    reportInstance.Markdown("# 综合安全测试报告\n\n**目标系统**: example.com\n**测试时间**: 2023-10-26\n**测试人员**: Security Team\n**报告版本**: v1.0")
+    
+    reportInstance.Divider()
+    
+    // 执行摘要
+    reportInstance.Markdown("## 执行摘要\n\n本次安全测试共发现 **15个** 安全问题，其中高危 **4个**，中危 **7个**，低危 **4个**。建议优先修复高危和中危漏洞。")
+    
+    // 漏洞统计表
+    reportInstance.Table(
+        ["严重级别", "数量", "占比", "修复建议"],
+        ["高危", "4", "26.7%", "立即修复"],
+        ["中危", "7", "46.7%", "1周内修复"],
+        ["低危", "4", "26.6%", "1月内修复"]
+    )
+    
+    reportInstance.Divider()
+    
+    // 详细漏洞信息
+    reportInstance.Markdown("## 详细漏洞信息")
+    
+    reportInstance.Markdown("### 高危漏洞")
+    reportInstance.Table(
+        ["漏洞名称", "位置", "影响", "CVSS评分"],
+        ["SQL注入", "/login", "数据泄露", "9.1"],
+        ["命令执行", "/upload", "服务器控制", "9.8"],
+        ["文件上传", "/admin/upload", "代码执行", "8.5"],
+        ["权限绕过", "/admin", "越权访问", "8.2"]
+    )
+    
+    reportInstance.Markdown("### 中危漏洞")
+    reportInstance.Table(
+        ["漏洞名称", "位置", "影响", "CVSS评分"],
+        ["XSS", "/search", "会话劫持", "6.1"],
+        ["CSRF", "/profile", "恶意操作", "6.5"],
+        ["信息泄露", "/debug", "敏感信息", "5.3"],
+        ["弱密码", "多处", "暴力破解", "6.8"]
+    )
+    
+    reportInstance.Divider()
+    
+    // 修复建议
+    reportInstance.Markdown("## 修复建议\n\n### 立即修复项\n\n1. **SQL注入**: 使用参数化查询\n2. **命令执行**: 输入验证和过滤\n3. **文件上传**: 文件类型和内容检查\n\n### 安全加固建议\n\n- 启用WAF防护\n- 定期安全扫描\n- 员工安全培训")
+    
+    // 技术细节
+    reportInstance.Markdown("\n## 技术细节示例")
+    
+    exploitCode = `# SQL注入利用示例
+POST /login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+username=admin' OR 1=1--&password=any`
+    
+    reportInstance.Code(exploitCode)
+    
+    reportInstance.Divider()
+    
+    // 报告结论
+    reportInstance.Markdown("## 结论\n\n目标系统存在多个严重安全漏洞，建议立即采取修复措施。建议建立定期安全评估机制，确保系统安全。")
+    
+    println("综合报告内容添加完成")
+    
+    // 保存综合报告
+    reportID = reportInstance.Save()
+    assert reportID > 0, "综合报告保存失败"
+    
+    println(f"综合报告保存成功，ID: ${reportID}")
+    println("综合安全报告测试完成")
+}
+
+// 报告最佳实践演示
+// 关键词: 最佳实践, 报告规范
+func testReportBestPractices() {
+    println("演示报告生成最佳实践")
+    
+    println("=== 报告生成最佳实践指南 ===")
+    
+    println("1. 报告结构规范:")
+    println("   - 使用清晰的标题和层次结构")
+    println("   - 合理使用分隔符分割内容")
+    println("   - 重要信息使用表格展示")
+    println("   - 技术细节使用代码块")
+    
+    println("2. 内容组织原则:")
+    println("   - 执行摘要放在前面")
+    println("   - 按严重程度组织漏洞")
+    println("   - 提供具体的修复建议")
+    println("   - 包含技术验证细节")
+    
+    println("3. 数据展示技巧:")
+    println("   - 统计数据用表格")
+    println("   - 代码示例用代码块")
+    println("   - 原始数据用Raw格式")
+    println("   - 长内容用分隔符分割")
+    
+    println("4. 报告质量要求:")
+    println("   - 信息准确完整")
+    println("   - 格式统一规范")
+    println("   - 逻辑清晰易读")
+    println("   - 建议具体可行")
+    
+    // 创建最佳实践示例报告
+    bestPracticeReport = report.New()
+    bestPracticeReport.Title("最佳实践示例报告")
+    bestPracticeReport.Owner("best-practice-demo")
+    bestPracticeReport.From("training-example")
+    
+    bestPracticeReport.Markdown("# 最佳实践示例报告\n\n本报告展示了安全测试报告的最佳实践格式。")
+    bestPracticeReport.Divider()
+    bestPracticeReport.Markdown("## 关键要素\n\n- 清晰的结构\n- 准确的数据\n- 具体的建议")
+    bestPracticeReport.Table(
+        ["要素", "重要性", "实现方法"],
+        ["结构清晰", "高", "使用标题和分隔符"],
+        ["数据准确", "高", "验证所有信息"],
+        ["建议具体", "中", "提供可操作步骤"]
+    )
+    
+    reportID = bestPracticeReport.Save()
+    println(f"最佳实践示例报告保存成功，ID: ${reportID}")
+    
+    println("报告生成最佳实践演示完成")
+}
+
+// 执行所有Report测试
+func main() {
+    println("开始Yaklang Report库功能测试")
+    println("")
+    
+    // 基础功能测试
+    testBasicReportCreation()
+    println("")
+    
+    testTableReport()
+    println("")
+    
+    testReportFormatting()
+    println("")
+    
+    // 高级功能测试
+    testCodeBlockReport()
+    println("")
+    
+    testRawDataReport()
+    println("")
+    
+    testComprehensiveReport()
+    println("")
+    
+    // 最佳实践演示
+    testReportBestPractices()
+    println("")
+    
+    println("Report库功能测试完成")
+    println("所有报告生成配置和功能测试通过")
+}
+
+/*
+Report库核心功能总结:
+
+1. 报告创建:
+   - report.New() - 创建新的报告实例
+   - 支持设置标题、所有者、来源等基本信息
+
+2. 基本配置方法:
+   - Title() - 设置报告标题
+   - Owner() - 设置报告所有者
+   - From() - 设置报告来源
+   - Save() - 保存报告到数据库
+
+3. 内容添加方法:
+   - Markdown() - 添加Markdown格式内容
+   - Table() - 添加表格数据
+   - Code() - 添加代码块
+   - Raw() - 添加原始数据
+   - Divider() - 添加分隔符
+
+4. 报告内容类型:
+   - markdown - Markdown文本内容
+   - json-table - JSON表格数据
+   - code - 代码块展示
+   - raw - 原始数据展示
+   - divider - 内容分隔符
+
+5. 应用场景:
+   - 安全测试报告生成
+   - 漏洞扫描结果展示
+   - 渗透测试报告
+   - 合规检查报告
+   - 技术分析文档
+
+6. 报告结构建议:
+   - 执行摘要
+   - 漏洞统计表格
+   - 详细技术分析
+   - 修复建议
+   - 技术验证细节
+
+7. 最佳实践:
+   - 使用清晰的层次结构
+   - 重要数据用表格展示
+   - 技术细节用代码块
+   - 合理使用分隔符
+   - 提供具体修复建议
+
+8. 数据持久化:
+   - 报告保存到数据库
+   - 支持查询和检索
+   - 生成唯一报告ID
+   - 支持报告导出
+
+Report库为安全测试提供了完整的报告生成解决方案，
+支持多种内容格式和可视化展示，是安全测试工作流的重要组成部分。
+*/
+
+// 调用主函数
+main()

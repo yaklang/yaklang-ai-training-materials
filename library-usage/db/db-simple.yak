@@ -1,0 +1,68 @@
+// 简单DB测试
+// 关键词: db.OpenTempSqliteDatabase, 数据库操作
+
+println("开始简单DB库测试")
+
+// 测试临时数据库创建
+println("创建临时数据库...")
+tempDB, err = db.OpenTempSqliteDatabase()
+
+if err != nil {
+    println(f"创建数据库失败: ${err}")
+} else {
+    println("临时数据库创建成功")
+    println(f"数据库类型: ${typeof(tempDB)}")
+    
+    // 创建简单表
+    println("创建测试表...")
+    createSQL = "CREATE TABLE test (id INTEGER, name TEXT)"
+    err = tempDB.Exec(createSQL).Error
+    
+    if err != nil {
+        println(f"创建表失败: ${err}")
+    } else {
+        println("测试表创建成功")
+        
+        // 插入数据
+        println("插入测试数据...")
+        insertSQL = "INSERT INTO test VALUES (?, ?)"
+        
+        err1 = tempDB.Exec(insertSQL, 1, "test1").Error
+        err2 = tempDB.Exec(insertSQL, 2, "test2").Error
+        
+        if err1 != nil || err2 != nil {
+            println(f"插入数据失败: ${err1} ${err2}")
+        } else {
+            println("数据插入成功")
+            
+            // 查询数据
+            println("查询数据...")
+            results, queryErr = db.ScanResult(tempDB, "SELECT * FROM test")
+            
+            if queryErr != nil {
+                println(f"查询失败: ${queryErr}")
+            } else {
+                println(f"查询到 ${len(results)} 条记录")
+                
+                // 遍历结果
+                count = 0
+                for result in results {
+                    count = count + 1
+                    println(f"记录 ${count}: ID=${result['id']}, Name=${result['name']}")
+                }
+            }
+        }
+    }
+}
+
+// 测试键值存储
+println("\n测试键值存储...")
+err = db.SetKey("test_key", "test_value")
+if err != nil {
+    println(f"设置键值失败: ${err}")
+} else {
+    value = db.GetKey("test_key")
+    println(f"键值存储测试: test_key = ${value}")
+}
+
+println("简单DB库测试完成")

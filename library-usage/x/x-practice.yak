@@ -1,0 +1,227 @@
+// X(Extension)库核心功能测试 - 扩展辅助函数库验证
+// 关键词: x扩展库, 辅助函数, 工具函数, 函数式编程, 数据处理
+
+// 数组操作核心功能验证
+// 关键词: 数组操作, 集合处理, 数据结构
+testArray = [1, 2, 3, 4, 5]
+
+// 基础数组操作
+assert x.Contains != undefined, "Contains函数应存在"
+assert x.Contains(testArray, 3) == true, "Contains应正确检测元素存在"
+assert x.Contains(testArray, 10) == false, "Contains应正确检测元素不存在"
+
+assert x.Head != undefined, "Head函数应存在"
+assert x.Head(testArray) == 1, "Head应返回数组第一个元素"
+
+assert x.Tail != undefined, "Tail函数应存在"
+tail = x.Tail(testArray)
+assert len(tail) == 4, "Tail应返回除第一个元素外的所有元素"
+assert tail[0] == 2, "Tail的第一个元素应为2"
+
+assert x.IndexOf != undefined, "IndexOf函数应存在"
+assert x.IndexOf(testArray, 3) == 2, "IndexOf应返回正确的索引位置"
+
+// 数组转换操作
+assert x.Map != undefined, "Map函数应存在"
+doubled = x.Map(testArray, func(n) { return n * 2 })
+assert len(doubled) == 5, "Map应返回相同长度的数组"
+assert doubled[0] == 2, "Map应正确转换第一个元素"
+
+assert x.Filter != undefined, "Filter函数应存在"
+evens = x.Filter(testArray, func(n) { return n % 2 == 0 })
+assert len(evens) == 2, "Filter应找到2个偶数"
+assert x.Contains(evens, 2), "过滤结果应包含2"
+assert x.Contains(evens, 4), "过滤结果应包含4"
+
+assert x.Reduce != undefined, "Reduce函数应存在"
+sum = x.Reduce(testArray, func(acc, n) { return acc + n }, 0)
+assert sum == 15, "Reduce应正确计算数组元素之和"
+
+// 数组查找操作
+assert x.Find != undefined, "Find函数应存在"
+found = x.Find(testArray, func(n) { return n > 3 })
+assert found == 4, "Find应找到第一个大于3的元素"
+
+// 数组统计操作
+assert x.Max != undefined, "Max函数应存在"
+assert x.Max(testArray) == 5, "Max应返回数组最大值"
+
+assert x.Min != undefined, "Min函数应存在"
+assert x.Min(testArray) == 1, "Min应返回数组最小值"
+
+assert x.Sum != undefined, "Sum函数应存在"
+assert x.Sum(testArray) == 15.0, "Sum应正确计算数组元素之和"
+
+// 数组变换操作
+assert x.Reverse != undefined, "Reverse函数应存在"
+reversed = x.Reverse(testArray)
+assert reversed[0] == 5, "Reverse后第一个元素应为5"
+assert reversed[4] == 1, "Reverse后最后一个元素应为1"
+
+assert x.RemoveRepeat != undefined, "RemoveRepeat函数应存在"
+arrayWithDuplicates = [1, 2, 2, 3, 3, 4, 5]
+unique = x.RemoveRepeat(arrayWithDuplicates)
+assert len(unique) == 5, "RemoveRepeat应移除重复元素"
+
+// 数组分块和切片
+assert x.Chunk != undefined, "Chunk函数应存在"
+chunked = x.Chunk(testArray, 2)
+assert len(chunked) == 3, "Chunk应正确分块数组"
+assert len(chunked[0]) == 2, "第一块应包含2个元素"
+
+assert x.Drop != undefined, "Drop函数应存在"
+dropped = x.Drop(testArray, 2)
+assert len(dropped) == 3, "Drop应移除前2个元素"
+assert dropped[0] == 3, "Drop后第一个元素应为3"
+
+// 集合操作
+array1 = [1, 2, 3, 4, 5]
+array2 = [3, 4, 5, 6, 7]
+
+assert x.Intersect != undefined, "Intersect函数应存在"
+intersection = x.Intersect(array1, array2)
+assert len(intersection) == 3, "Intersect应返回正确的交集"
+
+assert x.Subtract != undefined, "Subtract函数应存在"
+subtracted = x.Subtract(array1, array2)
+assert len(subtracted) == 2, "Subtract应返回正确的差集"
+
+assert x.Difference != undefined, "Difference函数应存在"
+diff1, diff2 = x.Difference(array1, array2)
+assert diff1 != nil, "Difference应返回第一个差集"
+assert diff2 != nil, "Difference应返回第二个差集"
+
+// 遍历操作
+assert x.Foreach != undefined, "Foreach函数应存在"
+foreachSum = 0
+x.Foreach(testArray, func(n) { foreachSum += n })
+assert foreachSum == 15, "Foreach应正确遍历并累加所有元素"
+
+assert x.ForeachRight != undefined, "ForeachRight函数应存在"
+reverseSum = 0
+x.ForeachRight(testArray, func(n) { reverseSum += n })
+assert reverseSum == 15, "ForeachRight应正确反向遍历并累加所有元素"
+
+// 条件检查（可变参数）
+assert x.All != undefined, "All函数应存在"
+assert x.All(true, true, true) == true, "All应正确检测所有参数为true"
+assert x.All(true, false, true) == false, "All应正确检测不是所有参数都为true"
+
+assert x.Any != undefined, "Any函数应存在"
+assert x.Any(false, true, false) == true, "Any应正确检测存在true参数"
+assert x.Any(false, false, false) == false, "Any应正确检测不存在true参数"
+
+// 对象和映射操作
+testMap = {"name": "test", "age": 25, "city": "Beijing"}
+
+assert x.Keys != undefined, "Keys函数应存在"
+keys = x.Keys(testMap)
+assert len(keys) == 3, "Keys应返回所有键"
+assert x.Contains(keys, "name"), "Keys应包含name键"
+
+assert x.Values != undefined, "Values函数应存在"
+values = x.Values(testMap)
+assert len(values) == 3, "Values应返回所有值"
+assert x.Contains(values, "test"), "Values应包含test值"
+
+// 工具函数
+assert x.Equal != undefined, "Equal函数应存在"
+assert x.Equal([1, 2, 3], [1, 2, 3]) == true, "Equal应正确检测相等数组"
+assert x.Equal([1, 2, 3], [1, 2, 4]) == false, "Equal应正确检测不相等数组"
+
+assert x.If != undefined, "If函数应存在"
+assert x.If(true, "yes", "no") == "yes", "If应在条件为true时返回第一个值"
+assert x.If(false, "yes", "no") == "no", "If应在条件为false时返回第二个值"
+
+assert x.IsSubset != undefined, "IsSubset函数应存在"
+assert x.IsSubset([1, 2], [1, 2, 3, 4, 5]) == true, "IsSubset应正确检测子集关系"
+assert x.IsSubset([1, 6], [1, 2, 3, 4, 5]) == false, "IsSubset应正确检测非子集关系"
+
+// 类型转换
+assert x.ToFloat64 != undefined, "ToFloat64函数应存在"
+floatVal, ok = x.ToFloat64(123.45)
+assert ok == true, "ToFloat64应成功转换数字"
+assert floatVal == 123.45, "ToFloat64应返回正确的浮点数值"
+
+// 网络工具
+assert x.WaitConnect != undefined, "WaitConnect函数应存在"
+err = x.WaitConnect("127.0.0.1:99999", 0.1)
+assert err != nil, "WaitConnect应在连接失败时返回错误"
+
+// 函数式编程综合测试
+// 关键词: 函数式编程, 链式操作, 数据管道
+numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+// 链式操作：过滤偶数 -> 映射平方 -> 求和
+pipeline_evens = x.Filter(numbers, func(n) { return n % 2 == 0 })
+pipeline_squares = x.Map(pipeline_evens, func(n) { return n * n })
+pipeline_sum = x.Sum(pipeline_squares)
+assert pipeline_sum == 120.0, "函数式编程链式操作应正确计算结果"
+
+// 复杂归约操作
+factorialArray = [1, 2, 3, 4]
+factorial = x.Reduce(factorialArray, func(acc, n) { return acc * n }, 1)
+assert factorial == 24, "Reduce应正确计算阶乘"
+
+// 数据分组和统计
+data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+evenCount = len(x.Filter(data, func(n) { return n % 2 == 0 }))
+oddCount = len(x.Filter(data, func(n) { return n % 2 == 1 }))
+assert evenCount == 5, "应有5个偶数"
+assert oddCount == 5, "应有5个奇数"
+
+// 嵌套数组处理
+nestedData = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+rowSums = x.Map(nestedData, func(row) { return x.Sum(row) })
+assert len(rowSums) == 3, "应计算出3行的和"
+assert rowSums[0] == 6.0, "第一行和应为6"
+assert rowSums[1] == 15.0, "第二行和应为15"
+assert rowSums[2] == 24.0, "第三行和应为24"
+
+// 复杂过滤条件
+complexArray = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+complexFiltered = x.Filter(complexArray, func(n) { 
+    return n % 2 == 0 && n > 4 && n < 10 
+})
+assert len(complexFiltered) == 2, "复杂过滤应找到2个元素"
+assert x.Contains(complexFiltered, 6), "应包含6"
+assert x.Contains(complexFiltered, 8), "应包含8"
+
+/*
+X(Extension)库核心功能验证完成:
+
+1. ✓ 数组操作函数 (20+个):
+   - 基础操作: Contains, Head, Tail, IndexOf
+   - 转换操作: Map, Filter, Reduce, Reverse, RemoveRepeat
+   - 分块切片: Chunk, Drop
+   - 集合操作: Intersect, Subtract, Difference
+   - 统计函数: Max, Min, Sum, Find
+   - 遍历操作: Foreach, ForeachRight
+
+2. ✓ 条件检查函数:
+   - 逻辑操作: All, Any (可变参数)
+
+3. ✓ 对象和映射操作:
+   - 键值提取: Keys, Values
+   - 相等性比较: Equal, IsSubset
+
+4. ✓ 工具函数:
+   - 条件选择: If
+   - 类型转换: ToFloat64
+   - 网络工具: WaitConnect
+
+5. ✓ 函数式编程支持:
+   - 高阶函数: Map, Filter, Reduce, Foreach
+   - 链式操作: 支持数据管道和流式处理
+   - 嵌套数据处理: 多层数组和复杂数据结构
+
+6. ✓ 实际应用场景:
+   - 数据处理: 过滤、映射、归约操作
+   - 统计分析: 求和、最值、计数
+   - 集合运算: 交集、差集、去重
+   - 复杂条件过滤: 多条件组合查询
+
+X库为Yaklang提供了完整的函数式编程和数据处理能力，
+所有核心功能通过assert验证确保API完整性和功能正确性。
+代码事实胜于文档说明，assert验证确保每个功能都能正常工作。
+*/

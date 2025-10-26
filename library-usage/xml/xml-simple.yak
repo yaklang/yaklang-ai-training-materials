@@ -1,0 +1,99 @@
+// XML库简单测试 - XML处理功能演示
+// 关键词: xml处理, XML解析, XML生成, 结构化数据
+
+println("开始XML库测试")
+
+// 测试XML解析
+println("测试XML解析:")
+
+// 创建测试XML内容
+xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <user id="1">
+        <name>张三</name>
+        <age>25</age>
+        <email>zhangsan@example.com</email>
+    </user>
+    <user id="2">
+        <name>李四</name>
+        <age>30</age>
+        <email>lisi@example.com</email>
+    </user>
+</root>`
+
+println("XML内容准备完成")
+
+// 解析XML
+xmlData, xmlErr = xml.loads(xmlContent)
+if xmlErr == nil {
+    println("✓ XML解析成功")
+    println(f"解析结果类型: ${typeof(xmlData)}")
+} else {
+    println(f"✗ XML解析失败: ${xmlErr}")
+}
+
+// 测试XML生成
+println("\n测试XML生成:")
+
+// 创建测试数据结构
+testData = {
+    "product": {
+        "id": "P001",
+        "name": "测试产品",
+        "price": 99.99,
+        "category": "电子产品",
+        "attributes": {
+            "color": "黑色",
+            "weight": "1.5kg"
+        }
+    }
+}
+
+// 生成XML
+xmlOutput, xmlGenErr = xml.dumps(testData)
+if xmlGenErr == nil {
+    println("✓ XML生成成功")
+    println("生成的XML内容:")
+    println(xmlOutput)
+} else {
+    println(f"✗ XML生成失败: ${xmlGenErr}")
+}
+
+// 测试XML格式化
+println("\n测试XML格式化:")
+
+compactXML = "<root><item>value1</item><item>value2</item></root>"
+println(f"原始XML: ${compactXML}")
+
+// 注意：这里演示XML处理概念，实际格式化可能需要其他方法
+println("XML格式化功能演示")
+
+// XML功能总结
+println("\n=== XML库功能总结 ===")
+println("1. XML解析:")
+println("   - xml.loads() - 解析XML字符串")
+println("   - xml.load() - 从文件加载XML")
+
+println("2. XML生成:")
+println("   - xml.dumps() - 生成XML字符串")
+println("   - xml.dump() - 保存XML到文件")
+
+println("3. XML处理特点:")
+println("   - 支持中文内容")
+println("   - 保持数据结构")
+println("   - 处理属性和元素")
+println("   - 支持嵌套结构")
+
+println("4. 应用场景:")
+println("   - 配置文件处理")
+println("   - 数据交换格式")
+println("   - API响应解析")
+println("   - 文档结构化存储")
+
+println("5. 与其他格式对比:")
+println("   - XML vs JSON: 更详细的结构")
+println("   - XML vs YAML: 更严格的语法")
+println("   - 支持属性和命名空间")
+
+println("\nXML库测试完成")
+println("XML处理功能演示完成")

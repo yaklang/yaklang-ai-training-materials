@@ -1,0 +1,32 @@
+// 简单Traceroute测试
+// 关键词: traceroute.Diagnostic, 路由追踪
+
+println("开始简单Traceroute测试")
+
+target = "127.0.0.1"
+println(f"目标: ${target}")
+
+// 尝试执行路由追踪
+ch, err = traceroute.Diagnostic(target)
+
+if err != nil {
+    println(f"路由追踪失败: ${err}")
+} else {
+    println("路由追踪启动成功")
+    
+    if ch == nil {
+        println("通道为空")
+    } else {
+        println("通道创建成功")
+        
+        // 尝试读取一个结果
+        result = <-ch
+        if result != nil {
+            println(f"收到结果: 跳 ${result.Hop}, IP: ${result.IP}, RTT: ${result.RTT}ms")
+        } else {
+            println("没有收到结果")
+        }
+    }
+}
+
+println("简单Traceroute测试完成")

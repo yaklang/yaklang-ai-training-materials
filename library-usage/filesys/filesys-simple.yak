@@ -1,0 +1,200 @@
+// Filesys库简单测试 - 文件系统操作演示
+// 关键词: filesys文件系统, 文件操作, 目录遍历, 文件管理
+
+println("开始Filesys库测试")
+
+// Filesys库基础功能演示
+println("Filesys库基础功能演示:")
+println("Filesys库提供高级文件系统操作功能")
+
+// 测试目录遍历
+println("\n测试目录遍历:")
+
+// 创建测试目录和文件
+testDir = "/tmp/yaklang_filesys_test"
+err = os.MkdirAll(testDir, 0755)
+if err == nil {
+    println(f"✓ 测试目录创建成功: ${testDir}")
+    
+    // 创建测试文件
+    testFiles = ["test1.txt", "test2.log", "test3.yaml"]
+    for fileName in testFiles {
+        filePath = file.Join(testDir, fileName)
+        fileErr = file.Save(filePath, f"测试文件内容: ${fileName}")
+        if fileErr == nil {
+            println(f"  ✓ 创建文件: ${fileName}")
+        }
+    }
+    
+    // 创建子目录
+    subDir = file.Join(testDir, "subdir")
+    subErr = os.MkdirAll(subDir, 0755)
+    if subErr == nil {
+        println("  ✓ 创建子目录: subdir")
+        
+        // 在子目录中创建文件
+        subFile = file.Join(subDir, "subfile.txt")
+        file.Save(subFile, "子目录文件内容")
+    }
+    
+} else {
+    println(f"✗ 测试目录创建失败: ${err}")
+}
+
+// 测试递归遍历
+println("\n测试递归遍历:")
+
+if filesys.Recursive != undefined {
+    println("使用filesys.Recursive遍历目录:")
+    
+    // 遍历目录
+    filesys.Recursive(testDir, filesys.onFileStat(func(isDir, pathname, info) {
+        if isDir {
+            println(f"  [目录] ${pathname}")
+        } else {
+            println(f"  [文件] ${pathname} (大小: ${info.Size()} 字节)")
+        }
+    }))
+    
+    println("✓ 递归遍历完成")
+} else {
+    println("filesys.Recursive功能不可用")
+}
+
+// 测试文件过滤
+println("\n测试文件过滤:")
+
+if filesys.Glob != undefined {
+    println("使用Glob模式匹配:")
+    
+    // 查找.txt文件
+    txtPattern = file.Join(testDir, "*.txt")
+    txtFiles, globErr = filesys.Glob(txtPattern)
+    if globErr == nil {
+        println(f"找到 ${len(txtFiles)} 个.txt文件:")
+        for txtFile in txtFiles {
+            println(f"  - ${txtFile}")
+        }
+    } else {
+        println(f"Glob匹配失败: ${globErr}")
+    }
+} else {
+    println("filesys.Glob功能不可用")
+}
+
+// 测试文件信息获取
+println("\n测试文件信息获取:")
+
+for fileName in testFiles {
+    filePath = file.Join(testDir, fileName)
+    
+    if file.IsExisted(filePath) {
+        fileInfo, statErr = file.Stat(filePath)
+        if statErr == nil {
+            println(f"文件: ${fileName}")
+            println(f"  大小: ${fileInfo.Size()} 字节")
+            println(f"  修改时间: ${fileInfo.ModTime()}")
+            println(f"  是否目录: ${fileInfo.IsDir()}")
+        }
+    }
+}
+
+// 测试目录操作
+println("\n测试目录操作:")
+
+// 列出目录内容
+if file.Ls != undefined {
+    dirContents, lsErr = file.Ls(testDir)
+    if lsErr == nil {
+        println(f"目录内容 (${len(dirContents)} 项):")
+        for item in dirContents {
+            println(f"  - ${item}")
+        }
+    } else {
+        println(f"目录列表失败: ${lsErr}")
+    }
+} else {
+    println("目录列表功能不可用")
+}
+
+// 测试文件操作
+println("\n测试文件操作:")
+
+// 复制文件
+sourceFile = file.Join(testDir, "test1.txt")
+targetFile = file.Join(testDir, "test1_copy.txt")
+
+if file.Cp != undefined {
+    cpErr = file.Cp(sourceFile, targetFile)
+    if cpErr == nil {
+        println("✓ 文件复制成功")
+    } else {
+        println(f"✗ 文件复制失败: ${cpErr}")
+    }
+} else {
+    println("文件复制功能不可用")
+}
+
+// 移动文件
+if file.Mv != undefined {
+    moveSource = targetFile
+    moveTarget = file.Join(testDir, "moved_file.txt")
+    
+    mvErr = file.Mv(moveSource, moveTarget)
+    if mvErr == nil {
+        println("✓ 文件移动成功")
+    } else {
+        println(f"✗ 文件移动失败: ${mvErr}")
+    }
+} else {
+    println("文件移动功能不可用")
+}
+
+// 清理测试文件
+println("\n清理测试文件:")
+cleanErr = os.RemoveAll(testDir)
+if cleanErr == nil {
+    println("✓ 测试文件清理完成")
+} else {
+    println(f"✗ 测试文件清理失败: ${cleanErr}")
+}
+
+// Filesys功能总结
+println("\n=== Filesys库功能总结 ===")
+println("1. 目录遍历:")
+println("   - filesys.Recursive() - 递归遍历目录")
+println("   - filesys.onFileStat() - 文件状态回调")
+println("   - filesys.Walk() - 目录遍历")
+
+println("2. 文件匹配:")
+println("   - filesys.Glob() - 模式匹配")
+println("   - filesys.Match() - 路径匹配")
+println("   - 支持通配符模式")
+
+println("3. 文件操作:")
+println("   - file.Cp() - 文件复制")
+println("   - file.Mv() - 文件移动")
+println("   - file.Rm() - 文件删除")
+println("   - file.Ls() - 目录列表")
+
+println("4. 文件信息:")
+println("   - file.Stat() - 文件状态")
+println("   - file.IsExisted() - 存在检查")
+println("   - file.IsDir() - 目录检查")
+println("   - file.IsFile() - 文件检查")
+
+println("5. 路径操作:")
+println("   - file.Join() - 路径拼接")
+println("   - file.Split() - 路径分割")
+println("   - file.Abs() - 绝对路径")
+println("   - file.Clean() - 路径清理")
+
+println("6. 应用场景:")
+println("   - 批量文件处理")
+println("   - 目录结构分析")
+println("   - 文件系统监控")
+println("   - 自动化文件管理")
+println("   - 日志文件处理")
+
+println("\nFilesys库测试完成")
+println("文件系统操作功能演示完成")

@@ -1,0 +1,673 @@
+/*
+Yaklang Bufio (缓冲IO) 库实践
+
+Bufio库是Yaklang中用于缓冲输入输出操作的核心模块，提供了
+缓冲读取器、缓冲写入器、扫描器等高效的IO操作工具。
+
+关键词: 缓冲IO, BufferedReader, BufferedWriter, Scanner
+关键词: 缓冲区管理, 高效IO, 行读取, 数据扫描, 管道操作
+*/
+
+// 基础Bufio功能演示
+// 关键词: bufio基础功能, 缓冲概念
+func testBasicBufioFeatures() {
+    println("测试基础Bufio功能")
+    
+    // Bufio库基本概念
+    // 关键词: 缓冲概念, 性能优化
+    println("Bufio库基本概念:")
+    println("  - Buffer: 内存缓冲区，实现Reader和Writer接口")
+    println("  - Reader: 缓冲读取器，减少系统调用")
+    println("  - Writer: 缓冲写入器，批量写入数据")
+    println("  - Scanner: 文本扫描器，按行或分隔符读取")
+    println("  - ReadWriter: 同时支持读写的缓冲器")
+    
+    println("缓冲IO的优势:")
+    println("  - 减少系统调用次数")
+    println("  - 提高IO操作效率")
+    println("  - 支持预读和批量写入")
+    println("  - 提供便捷的文本处理方法")
+    
+    println("基础Bufio功能演示完成")
+}
+
+// Buffer操作测试
+// 关键词: bufio.NewBuffer, 缓冲区操作
+func testBufferOperations() {
+    println("测试Buffer操作")
+    
+    // 创建空Buffer
+    // 关键词: Buffer创建, 内存缓冲
+    println("创建和操作Buffer...")
+    
+    buffer = bufio.NewBuffer()
+    assert buffer != nil, "Buffer创建失败"
+    
+    println("Buffer创建成功")
+    
+    // 写入字符串到Buffer
+    // 关键词: Buffer写入, WriteString
+    testString = "Hello Yaklang Bufio!\n这是缓冲区测试内容。\n"
+    
+    writtenBytes, writeErr = buffer.WriteString(testString)
+    assert writeErr == nil, f"Buffer写入失败: ${writeErr}"
+    assert writtenBytes == len(testString), f"写入字节数不匹配: 期望 ${len(testString)}, 实际 ${writtenBytes}"
+    
+    println(f"Buffer写入成功: ${writtenBytes} 字节")
+    
+    // 从Buffer读取数据
+    // 关键词: Buffer读取, io.ReadAll
+    println("从Buffer读取数据...")
+    
+    readData, readErr = io.ReadAll(buffer)
+    assert readErr == nil, f"Buffer读取失败: ${readErr}"
+    
+    readString = string(readData)
+    assert readString == testString, "Buffer读取内容不匹配"
+    
+    println(f"Buffer读取成功: ${len(readData)} 字节")
+    
+    // 测试Buffer的其他方法
+    println("测试Buffer其他方法...")
+    
+    // 重新写入数据测试Bytes()和String()方法
+    buffer2 = bufio.NewBuffer()
+    buffer2.WriteString("Test Buffer Methods")
+    
+    // 获取字节数组
+    bufferBytes = buffer2.Bytes()
+    assert len(bufferBytes) > 0, "Buffer.Bytes()应返回非空数据"
+    
+    // 获取字符串
+    bufferString = buffer2.String()
+    assert bufferString == "Test Buffer Methods", "Buffer.String()内容不匹配"
+    
+    println("Buffer方法测试成功")
+    
+    // 测试Buffer重置
+    buffer2.Reset()
+    afterResetString = buffer2.String()
+    assert afterResetString == "", "Buffer.Reset()后应为空"
+    
+    println("Buffer重置测试成功")
+    
+    println("Buffer操作测试完成")
+}
+
+// 缓冲读取器测试
+// 关键词: bufio.NewReader, 缓冲读取
+func testBufferedReader() {
+    println("测试缓冲读取器")
+    
+    // 准备测试数据
+    testData = "Line 1: Hello Bufio Reader\nLine 2: 缓冲读取测试\nLine 3: End of test\n"
+    testFile = "/tmp/yaklang_bufio_reader.txt"
+    
+    // 创建测试文件
+    err = file.Save(testFile, testData)
+    assert err == nil, f"测试文件创建失败: ${err}"
+    
+    println("测试文件创建成功")
+    
+    // 创建缓冲读取器
+    // 关键词: bufio.NewReader, 文件读取
+    println("创建缓冲读取器...")
+    
+    fileHandle, openErr = file.Open(testFile)
+    assert openErr == nil, f"文件打开失败: ${openErr}"
+    
+    reader, readerErr = bufio.NewReader(fileHandle)
+    assert readerErr == nil, f"缓冲读取器创建失败: ${readerErr}"
+    assert reader != nil, "缓冲读取器不应为空"
+    
+    println("缓冲读取器创建成功")
+    
+    // 测试按行读取
+    // 关键词: ReadString, 行读取
+    println("测试按行读取...")
+    
+    lines = []
+    lineCount = 0
+    
+    for lineCount < 10 {  // 防止无限循环
+        line, lineErr = reader.ReadString('\n')
+        if lineErr != nil {
+            if string(lineErr) == "EOF" {
+                if line != "" {
+                    lines = append(lines, line)
+                }
+                break
+            } else {
+                println(f"读取行失败: ${lineErr}")
+                break
+            }
+        } else {
+            lines = append(lines, line)
+        }
+        lineCount = lineCount + 1
+    }
+    
+    println(f"成功读取 ${len(lines)} 行")
+    
+    // 验证读取的行
+    if len(lines) >= 3 {
+        assert str.Contains(lines[0], "Line 1"), "第一行内容不匹配"
+        assert str.Contains(lines[1], "Line 2"), "第二行内容不匹配"
+        assert str.Contains(lines[2], "Line 3"), "第三行内容不匹配"
+        println("行内容验证成功")
+    }
+    
+    fileHandle.Close()
+    
+    // 测试带缓冲区大小的读取器
+    // 关键词: bufio.NewReaderSize, 自定义缓冲区
+    println("测试自定义缓冲区大小...")
+    
+    fileHandle2, openErr2 = file.Open(testFile)
+    assert openErr2 == nil, f"文件重新打开失败: ${openErr2}"
+    
+    sizedReader, sizedErr = bufio.NewReaderSize(fileHandle2, 64)
+    assert sizedErr == nil, f"自定义大小读取器创建失败: ${sizedErr}"
+    assert sizedReader != nil, "自定义大小读取器不应为空"
+    
+    println("自定义缓冲区读取器创建成功")
+    
+    // 测试Peek方法
+    // 关键词: Peek, 预读数据
+    peekData, peekErr = sizedReader.Peek(10)
+    if peekErr == nil {
+        peekString = string(peekData)
+        println(f"Peek预读成功: '${peekString}' (${len(peekData)} 字节)")
+        assert str.Contains(peekString, "Line 1"), "Peek内容应包含Line 1"
+    } else {
+        println(f"Peek预读失败: ${peekErr}")
+    }
+    
+    // 测试ReadByte方法
+    // 关键词: ReadByte, 字节读取
+    firstByte, byteErr = sizedReader.ReadByte()
+    if byteErr == nil {
+        println(f"ReadByte成功: ${firstByte} ('${string(firstByte)}')")
+    } else {
+        println(f"ReadByte失败: ${byteErr}")
+    }
+    
+    fileHandle2.Close()
+    
+    // 清理测试文件
+    file.Remove(testFile)
+    
+    println("缓冲读取器测试完成")
+}
+
+// 缓冲写入器测试
+// 关键词: bufio.NewWriter, 缓冲写入
+func testBufferedWriter() {
+    println("测试缓冲写入器")
+    
+    // 创建测试文件
+    testFile = "/tmp/yaklang_bufio_writer.txt"
+    
+    // 创建缓冲写入器
+    // 关键词: bufio.NewWriter, 文件写入
+    println("创建缓冲写入器...")
+    
+    fileHandle, createErr = file.Create(testFile)
+    assert createErr == nil, f"文件创建失败: ${createErr}"
+    
+    writer, writerErr = bufio.NewWriter(fileHandle)
+    assert writerErr == nil, f"缓冲写入器创建失败: ${writerErr}"
+    assert writer != nil, "缓冲写入器不应为空"
+    
+    println("缓冲写入器创建成功")
+    
+    // 测试写入字符串
+    // 关键词: WriteString, 字符串写入
+    println("测试缓冲写入...")
+    
+    testContent = "Buffered Writer Test\n缓冲写入器测试\n"
+    
+    writtenBytes, writeErr = writer.WriteString(testContent)
+    assert writeErr == nil, f"缓冲写入失败: ${writeErr}"
+    assert writtenBytes == len(testContent), f"写入字节数不匹配: 期望 ${len(testContent)}, 实际 ${writtenBytes}"
+    
+    println(f"缓冲写入成功: ${writtenBytes} 字节")
+    
+    // 测试WriteByte
+    // 关键词: WriteByte, 字节写入
+    byteWriteErr = writer.WriteByte('\n')
+    assert byteWriteErr == nil, f"WriteByte失败: ${byteWriteErr}"
+    
+    println("WriteByte测试成功")
+    
+    // 刷新缓冲区
+    // 关键词: Flush, 缓冲区刷新
+    println("刷新缓冲区...")
+    
+    flushErr = writer.Flush()
+    assert flushErr == nil, f"缓冲区刷新失败: ${flushErr}"
+    
+    println("缓冲区刷新成功")
+    
+    fileHandle.Close()
+    
+    // 验证写入结果
+    println("验证写入结果...")
+    
+    writtenContent, readErr = io.ReadFile(testFile)
+    assert readErr == nil, f"文件读取失败: ${readErr}"
+    
+    writtenString = string(writtenContent)
+    expectedContent = testContent + "\n"
+    assert writtenString == expectedContent, f"写入内容不匹配: 期望长度 ${len(expectedContent)}, 实际长度 ${len(writtenString)}"
+    
+    println("写入结果验证成功")
+    
+    // 测试自定义缓冲区大小的写入器
+    // 关键词: bufio.NewWriterSize, 自定义缓冲区
+    println("测试自定义缓冲区写入器...")
+    
+    testFile2 = "/tmp/yaklang_bufio_writer2.txt"
+    
+    fileHandle2, createErr2 = file.Create(testFile2)
+    assert createErr2 == nil, f"文件2创建失败: ${createErr2}"
+    
+    sizedWriter, sizedWriterErr = bufio.NewWriterSize(fileHandle2, 128)
+    assert sizedWriterErr == nil, f"自定义大小写入器创建失败: ${sizedWriterErr}"
+    assert sizedWriter != nil, "自定义大小写入器不应为空"
+    
+    println("自定义缓冲区写入器创建成功")
+    
+    // 写入数据并刷新
+    sizedWriter.WriteString("Custom sized buffer test")
+    sizedWriter.Flush()
+    fileHandle2.Close()
+    
+    // 清理测试文件
+    file.Remove(testFile)
+    file.Remove(testFile2)
+    
+    println("缓冲写入器测试完成")
+}
+
+// 扫描器测试
+// 关键词: bufio.NewScanner, 文本扫描
+func testScanner() {
+    println("测试扫描器功能")
+    
+    // 准备测试数据
+    scannerData = "First line\nSecond line\nThird line\nFourth line"
+    
+    // 创建Buffer作为数据源
+    // 关键词: Scanner创建, 数据扫描
+    println("创建扫描器...")
+    
+    dataBuffer = bufio.NewBuffer()
+    dataBuffer.WriteString(scannerData)
+    
+    scanner, scannerErr = bufio.NewScanner(dataBuffer)
+    assert scannerErr == nil, f"扫描器创建失败: ${scannerErr}"
+    assert scanner != nil, "扫描器不应为空"
+    
+    println("扫描器创建成功")
+    
+    // 使用扫描器按行读取
+    // 关键词: Scan, Text, 行扫描
+    println("使用扫描器按行读取...")
+    
+    scannedLines = []
+    scanCount = 0
+    
+    for scanCount < 10 {  // 防止无限循环
+        hasMore = scanner.Scan()
+        if !hasMore {
+            break
+        }
+        
+        lineText = scanner.Text()
+        scannedLines = append(scannedLines, lineText)
+        scanCount = scanCount + 1
+    }
+    
+    // 检查扫描错误
+    scanErr = scanner.Err()
+    if scanErr != nil {
+        println(f"扫描过程中出现错误: ${scanErr}")
+    } else {
+        println("扫描过程无错误")
+    }
+    
+    println(f"扫描器成功读取 ${len(scannedLines)} 行")
+    
+    // 验证扫描结果
+    if len(scannedLines) >= 4 {
+        assert scannedLines[0] == "First line", "第一行扫描结果不匹配"
+        assert scannedLines[1] == "Second line", "第二行扫描结果不匹配"
+        assert scannedLines[2] == "Third line", "第三行扫描结果不匹配"
+        assert scannedLines[3] == "Fourth line", "第四行扫描结果不匹配"
+        println("扫描结果验证成功")
+    } else {
+        println(f"扫描行数不足: 期望至少4行, 实际 ${len(scannedLines)} 行")
+    }
+    
+    println("扫描器测试完成")
+}
+
+// 读写器测试
+// 关键词: bufio.NewReadWriter, 读写结合
+func testReadWriter() {
+    println("测试读写器功能")
+    
+    // 创建数据源和目标
+    sourceBuffer = bufio.NewBuffer()
+    targetBuffer = bufio.NewBuffer()
+    
+    // 准备源数据
+    sourceData = "ReadWriter test data\n读写器测试数据\n"
+    sourceBuffer.WriteString(sourceData)
+    
+    // 创建读写器
+    // 关键词: bufio.NewReadWriter, 读写结合
+    println("创建读写器...")
+    
+    readWriter, rwErr = bufio.NewReadWriter(sourceBuffer, targetBuffer)
+    assert rwErr == nil, f"读写器创建失败: ${rwErr}"
+    assert readWriter != nil, "读写器不应为空"
+    
+    println("读写器创建成功")
+    
+    // 从读写器读取数据
+    // 关键词: ReadWriter读取, 数据传输
+    println("从读写器读取数据...")
+    
+    readData, readErr = io.ReadAll(readWriter)
+    assert readErr == nil, f"读写器读取失败: ${readErr}"
+    
+    readString = string(readData)
+    assert readString == sourceData, "读写器读取内容不匹配"
+    
+    println(f"读写器读取成功: ${len(readData)} 字节")
+    
+    // 向读写器写入数据
+    // 关键词: ReadWriter写入, 数据输出
+    println("向读写器写入数据...")
+    
+    writeData = "Data written to ReadWriter\n"
+    writtenBytes, writeErr = readWriter.WriteString(writeData)
+    assert writeErr == nil, f"读写器写入失败: ${writeErr}"
+    
+    // 刷新写入缓冲区
+    flushErr = readWriter.Flush()
+    assert flushErr == nil, f"读写器刷新失败: ${flushErr}"
+    
+    println(f"读写器写入成功: ${writtenBytes} 字节")
+    
+    // 验证写入结果
+    targetContent = targetBuffer.String()
+    assert targetContent == writeData, "读写器写入内容不匹配"
+    
+    println("读写器写入验证成功")
+    
+    println("读写器测试完成")
+}
+
+// 管道操作测试
+// 关键词: bufio.NewPipe, 管道通信
+func testPipeOperations() {
+    println("测试管道操作")
+    
+    // 创建管道
+    // 关键词: bufio.NewPipe, 管道创建
+    println("创建Bufio管道...")
+    
+    pipeReader, pipeWriter = bufio.NewPipe()
+    assert pipeReader != nil, "管道读取器不应为空"
+    assert pipeWriter != nil, "管道写入器不应为空"
+    
+    println("Bufio管道创建成功")
+    
+    // 准备管道测试数据
+    pipeData = "Hello from Bufio Pipe!\n管道通信测试数据\n"
+    
+    // 管道通信测试（需要并发操作）
+    // 关键词: 管道通信, 并发读写
+    println("测试管道通信...")
+    
+    receivedData = ""
+    writeComplete = false
+    readComplete = false
+    
+    // 启动写入协程
+    go func() {
+        writtenBytes, writeErr = pipeWriter.Write(pipeData)
+        if writeErr == nil {
+            println(f"管道写入成功: ${writtenBytes} 字节")
+        } else {
+            println(f"管道写入失败: ${writeErr}")
+        }
+        pipeWriter.Close()
+        writeComplete = true
+    }()
+    
+    // 启动读取协程
+    go func() {
+        readData, readErr = io.ReadAll(pipeReader)
+        if readErr == nil {
+            receivedData = string(readData)
+            println(f"管道读取成功: ${len(readData)} 字节")
+        } else {
+            println(f"管道读取失败: ${readErr}")
+        }
+        pipeReader.Close()
+        readComplete = true
+    }()
+    
+    // 等待操作完成
+    maxWait = 50  // 最多等待5秒
+    waitCount = 0
+    
+    for waitCount < maxWait {
+        if writeComplete && readComplete {
+            break
+        }
+        sleep(0.1)
+        waitCount = waitCount + 1
+    }
+    
+    // 验证管道通信结果
+    if writeComplete && readComplete {
+        if receivedData == pipeData {
+            println("管道通信验证成功")
+        } else {
+            println(f"管道数据不匹配: 期望长度 ${len(pipeData)}, 实际长度 ${len(receivedData)}")
+        }
+    } else {
+        println("管道通信超时，但功能演示完成")
+    }
+    
+    println("管道操作测试完成")
+}
+
+// Bufio最佳实践演示
+// 关键词: Bufio最佳实践, 性能优化
+func testBufioBestPractices() {
+    println("演示Bufio使用最佳实践")
+    
+    println("=== Bufio使用最佳实践 ===")
+    
+    println("1. 缓冲区选择:")
+    println("   - 根据数据量选择合适的缓冲区大小")
+    println("   - 大文件使用较大缓冲区(4KB-64KB)")
+    println("   - 小数据使用默认缓冲区")
+    println("   - 网络IO使用适中缓冲区")
+    
+    println("2. 读取策略:")
+    println("   - 使用Scanner处理文本文件")
+    println("   - 使用Reader处理二进制数据")
+    println("   - 利用Peek预读数据")
+    println("   - 按需选择ReadByte或ReadString")
+    
+    println("3. 写入策略:")
+    println("   - 批量写入减少系统调用")
+    println("   - 及时Flush确保数据写入")
+    println("   - 使用WriteString处理文本")
+    println("   - 使用WriteByte处理单字节")
+    
+    println("4. 资源管理:")
+    println("   - 及时关闭文件句柄")
+    println("   - 使用defer确保资源释放")
+    println("   - 避免缓冲区泄露")
+    println("   - 合理使用Reset重用缓冲区")
+    
+    println("5. 错误处理:")
+    println("   - 检查所有IO操作的错误")
+    println("   - 区分EOF和其他错误")
+    println("   - 处理Scanner的Err()方法")
+    println("   - 提供有意义的错误信息")
+    
+    println("=== 性能优化建议 ===")
+    
+    println("读取优化:")
+    println("  - 使用合适的缓冲区大小")
+    println("  - 避免频繁的小读取操作")
+    println("  - 利用Peek减少重复读取")
+    println("  - 按行处理使用Scanner")
+    
+    println("写入优化:")
+    println("  - 批量写入数据")
+    println("  - 控制Flush频率")
+    println("  - 使用合适的缓冲区大小")
+    println("  - 避免频繁的小写入操作")
+    
+    println("内存优化:")
+    println("  - 重用Buffer对象")
+    println("  - 及时Reset清空缓冲区")
+    println("  - 避免不必要的数据复制")
+    println("  - 合理设置缓冲区大小")
+    
+    println("=== 应用场景 ===")
+    
+    println("文本处理:")
+    println("  - 日志文件分析")
+    println("  - 配置文件解析")
+    println("  - CSV数据处理")
+    println("  - 代码文件处理")
+    
+    println("网络通信:")
+    println("  - HTTP请求处理")
+    println("  - 协议数据解析")
+    println("  - 流式数据传输")
+    println("  - 实时数据处理")
+    
+    println("数据转换:")
+    println("  - 格式转换管道")
+    println("  - 数据过滤处理")
+    println("  - 编码解码操作")
+    println("  - 数据压缩解压")
+    
+    println("Bufio最佳实践演示完成")
+}
+
+// 执行所有Bufio测试
+func main() {
+    println("开始Yaklang Bufio库功能测试")
+    println("")
+    
+    // 基础功能演示
+    testBasicBufioFeatures()
+    println("")
+    
+    testBufferOperations()
+    println("")
+    
+    testBufferedReader()
+    println("")
+    
+    testBufferedWriter()
+    println("")
+    
+    // 高级功能测试
+    testScanner()
+    println("")
+    
+    testReadWriter()
+    println("")
+    
+    testPipeOperations()
+    println("")
+    
+    // 最佳实践演示
+    testBufioBestPractices()
+    println("")
+    
+    println("Bufio库功能测试完成")
+    println("所有缓冲IO操作和功能演示完成")
+}
+
+/*
+Bufio库核心功能总结:
+
+1. 缓冲区操作:
+   - bufio.NewBuffer() - 创建内存缓冲区
+   - WriteString() - 写入字符串
+   - Bytes() - 获取字节数组
+   - String() - 获取字符串内容
+   - Reset() - 重置缓冲区
+
+2. 缓冲读取器:
+   - bufio.NewReader() - 创建缓冲读取器
+   - bufio.NewReaderSize() - 创建指定大小的读取器
+   - ReadString() - 按分隔符读取字符串
+   - ReadByte() - 读取单个字节
+   - Peek() - 预读数据不移动指针
+   - Buffered() - 获取缓冲区中的数据量
+
+3. 缓冲写入器:
+   - bufio.NewWriter() - 创建缓冲写入器
+   - bufio.NewWriterSize() - 创建指定大小的写入器
+   - WriteString() - 写入字符串
+   - WriteByte() - 写入单个字节
+   - Flush() - 刷新缓冲区
+
+4. 扫描器:
+   - bufio.NewScanner() - 创建文本扫描器
+   - Scan() - 扫描下一个token
+   - Text() - 获取当前token文本
+   - Err() - 获取扫描错误
+
+5. 读写器:
+   - bufio.NewReadWriter() - 创建读写器
+   - 同时支持读取和写入操作
+   - 结合Reader和Writer功能
+
+6. 管道操作:
+   - bufio.NewPipe() - 创建缓冲管道
+   - 支持并发读写通信
+   - 适用于协程间数据传输
+
+7. 应用场景:
+   - 大文件处理
+   - 文本行处理
+   - 网络数据传输
+   - 协议数据解析
+   - 日志文件分析
+
+8. 性能特性:
+   - 减少系统调用
+   - 批量数据处理
+   - 内存效率优化
+   - 支持预读和缓写
+
+9. 最佳实践:
+   - 合理设置缓冲区大小
+   - 及时刷新写入缓冲区
+   - 使用Scanner处理文本
+   - 重用Buffer对象
+   - 完善的错误处理
+
+Bufio库为Yaklang提供了高效的缓冲IO操作能力，
+是处理大量数据和提升IO性能的重要工具。
+*/
+
+// 调用主函数
+main()

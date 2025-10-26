@@ -1,0 +1,529 @@
+/*
+Yaklang SCA (软件成分分析) 库实践
+
+SCA库是Yaklang中用于软件成分分析的核心模块，提供了对Docker镜像、
+容器、Git仓库、本地文件系统的依赖包扫描和漏洞分析功能。
+
+关键词: 软件成分分析, 依赖扫描, 漏洞检测, Docker扫描, 包管理
+关键词: 依赖分析, 安全扫描, 组件识别, 版本检测, 供应链安全
+*/
+
+// 基础SCA功能演示
+// 关键词: sca基础功能, 扫描模式
+func testBasicSCAFeatures() {
+    println("测试基础SCA功能")
+    
+    // SCA扫描模式介绍
+    // 关键词: 扫描模式, MODE配置
+    println("SCA扫描模式:")
+    println(f"  - sca.MODE_ALL: 全模式扫描 (${sca.MODE_ALL})")
+    println(f"  - sca.MODE_PKG: 包管理器扫描 (${sca.MODE_PKG})")  
+    println(f"  - sca.MODE_LANGUAGE: 语言特定扫描 (${sca.MODE_LANGUAGE})")
+    
+    // 支持的分析器类型
+    // 关键词: 分析器类型, 包管理器支持
+    println("\n支持的分析器类型:")
+    
+    // 系统包管理器
+    println("系统包管理器:")
+    println(f"  - DPKG: ${sca.ANALYZER_TYPE_DPKG}")
+    println(f"  - RPM: ${sca.ANALYZER_TYPE_RPM}")
+    println(f"  - APK: ${sca.ANALYZER_TYPE_APK}")
+    
+    // 语言包管理器
+    println("语言包管理器:")
+    println(f"  - Go Mod: ${sca.ANALYZER_TYPE_GO_MOD}")
+    println(f"  - Go Binary: ${sca.ANALYZER_TYPE_GO_BINARY}")
+    println(f"  - Java Maven: ${sca.ANALYZER_TYPE_JAVA_POM}")
+    println(f"  - Java Gradle: ${sca.ANALYZER_TYPE_JAVA_GRADLE}")
+    println(f"  - Java JAR: ${sca.ANALYZER_TYPE_JAVA_JAR}")
+    println(f"  - Node NPM: ${sca.ANALYZER_TYPE_NODE_NPM}")
+    println(f"  - Node Yarn: ${sca.ANALYZER_TYPE_NODE_YARN}")
+    println(f"  - Node PNPM: ${sca.ANALYZER_TYPE_NODE_PNPM}")
+    println(f"  - Python PIP: ${sca.ANALYZER_TYPE_PYTHON_PIP}")
+    println(f"  - Python Poetry: ${sca.ANALYZER_TYPE_PYTHON_POETRY}")
+    println(f"  - Python Pipenv: ${sca.ANALYZER_TYPE_PYTHON_PIPENV}")
+    println(f"  - PHP Composer: ${sca.ANALYZER_TYPE_PHP_COMPOSER}")
+    println(f"  - Ruby Bundler: ${sca.ANALYZER_TYPE_RUBY_BUNDLER}")
+    println(f"  - Ruby GemSpec: ${sca.ANALYZER_TYPE_RUBY_GEMSPEC}")
+    println(f"  - Rust Cargo: ${sca.ANALYZER_TYPE_RUST_CARGO}")
+    println(f"  - C/C++ Conan: ${sca.ANALYZER_TYPE_CLANG_CONAN}")
+    
+    println("基础SCA功能演示完成")
+}
+
+// 本地文件系统扫描测试
+// 关键词: 本地扫描, 文件系统分析
+func testLocalFilesystemScan() {
+    println("测试本地文件系统扫描")
+    
+    // 扫描当前目录（通常包含Go项目）
+    // 关键词: 本地扫描, Go项目分析
+    println("扫描当前项目目录...")
+    
+    currentDir = "."
+    
+    // 执行本地文件系统扫描
+    packages, err = sca.ScanLocalFilesystem(currentDir)
+    
+    if err != nil {
+        println(f"本地扫描失败: ${err}")
+        println("这可能是因为当前目录没有可识别的包管理文件")
+        return
+    }
+    
+    if len(packages) == 0 {
+        println("当前目录未发现依赖包")
+        println("这是正常的，因为测试目录可能不包含包管理文件")
+        return
+    }
+    
+    println(f"发现 ${len(packages)} 个依赖包:")
+    
+    // 显示前几个包的信息
+    count = 0
+    for pkg in packages {
+        if count >= 5 {  // 只显示前5个
+            break
+        }
+        count = count + 1
+        
+        println(f"  包 ${count}:")
+        println(f"    名称: ${pkg.Name}")
+        println(f"    版本: ${pkg.Version}")
+        println(f"    类型: ${pkg.Type}")
+        if pkg.FilePath != "" {
+            println(f"    路径: ${pkg.FilePath}")
+        }
+    }
+    
+    if len(packages) > 5 {
+        println(f"  ... 还有 ${len(packages) - 5} 个包")
+    }
+    
+    println("本地文件系统扫描测试完成")
+}
+
+// 带配置选项的扫描测试
+// 关键词: 扫描配置, 自定义选项
+func testScanWithOptions() {
+    println("测试带配置选项的扫描")
+    
+    // 测试不同的扫描模式
+    // 关键词: 扫描模式配置, 选择性扫描
+    println("测试包管理器模式扫描...")
+    
+    currentDir = "."
+    
+    // 使用包管理器模式扫描
+    packages1, err1 = sca.ScanLocalFilesystem(currentDir, 
+        sca.scanMode(sca.MODE_PKG))
+    
+    if err1 == nil {
+        println(f"包管理器模式发现 ${len(packages1)} 个包")
+    } else {
+        println(f"包管理器模式扫描: ${err1}")
+    }
+    
+    // 使用语言模式扫描
+    println("测试语言特定模式扫描...")
+    
+    packages2, err2 = sca.ScanLocalFilesystem(currentDir,
+        sca.scanMode(sca.MODE_LANGUAGE))
+    
+    if err2 == nil {
+        println(f"语言模式发现 ${len(packages2)} 个包")
+    } else {
+        println(f"语言模式扫描: ${err2}")
+    }
+    
+    // 使用并发配置
+    println("测试并发配置扫描...")
+    
+    packages3, err3 = sca.ScanLocalFilesystem(currentDir,
+        sca.concurrent(3),
+        sca.scanMode(sca.MODE_ALL))
+    
+    if err3 == nil {
+        println(f"并发扫描发现 ${len(packages3)} 个包")
+    } else {
+        println(f"并发扫描: ${err3}")
+    }
+    
+    // 使用特定分析器
+    println("测试特定分析器扫描...")
+    
+    packages4, err4 = sca.ScanLocalFilesystem(currentDir,
+        sca.analyzers(sca.ANALYZER_TYPE_GO_MOD, sca.ANALYZER_TYPE_NODE_NPM))
+    
+    if err4 == nil {
+        println(f"特定分析器发现 ${len(packages4)} 个包")
+    } else {
+        println(f"特定分析器扫描: ${err4}")
+    }
+    
+    println("带配置选项的扫描测试完成")
+}
+
+// Git仓库扫描测试
+// 关键词: Git扫描, 仓库分析
+func testGitRepoScan() {
+    println("测试Git仓库扫描")
+    
+    // 注意：这需要网络连接，可能会失败
+    println("尝试扫描公开Git仓库...")
+    
+    // 使用一个小型的公开仓库进行测试
+    testRepo = "https://github.com/yaklang/yaklang-test-repo.git"
+    
+    println(f"扫描仓库: ${testRepo}")
+    
+    // 执行Git仓库扫描
+    packages, err = sca.ScanGitRepo(testRepo)
+    
+    if err != nil {
+        println(f"Git仓库扫描失败: ${err}")
+        println("这可能是因为:")
+        println("  1. 网络连接问题")
+        println("  2. 仓库不存在或无法访问")
+        println("  3. Git未安装或配置问题")
+        return
+    }
+    
+    if len(packages) == 0 {
+        println("Git仓库中未发现依赖包")
+        return
+    }
+    
+    println(f"Git仓库扫描发现 ${len(packages)} 个依赖包:")
+    
+    // 按类型分组显示
+    typeCount = {}
+    for pkg in packages {
+        if typeCount[pkg.Type] == undefined {
+            typeCount[pkg.Type] = 0
+        }
+        typeCount[pkg.Type] = typeCount[pkg.Type] + 1
+    }
+    
+    println("按类型统计:")
+    for pkgType, count in typeCount {
+        println(f"  ${pkgType}: ${count} 个包")
+    }
+    
+    println("Git仓库扫描测试完成")
+}
+
+// Docker镜像扫描测试
+// 关键词: Docker扫描, 镜像分析
+func testDockerImageScan() {
+    println("测试Docker镜像扫描")
+    
+    // 注意：这需要Docker环境，可能会失败
+    println("尝试扫描Docker镜像...")
+    
+    // 使用一个轻量级的公开镜像
+    testImage = "alpine:latest"
+    
+    println(f"扫描镜像: ${testImage}")
+    
+    // 执行Docker镜像扫描
+    packages, err = sca.ScanImageFromContext(testImage)
+    
+    if err != nil {
+        println(f"Docker镜像扫描失败: ${err}")
+        println("这可能是因为:")
+        println("  1. Docker服务未运行")
+        println("  2. 镜像不存在或无法拉取")
+        println("  3. 权限不足")
+        println("  4. 网络连接问题")
+        return
+    }
+    
+    if len(packages) == 0 {
+        println("Docker镜像中未发现依赖包")
+        return
+    }
+    
+    println(f"Docker镜像扫描发现 ${len(packages)} 个依赖包:")
+    
+    // 显示系统包信息
+    systemPackages = []
+    languagePackages = []
+    
+    for pkg in packages {
+        if pkg.Type == "dpkg" || pkg.Type == "rpm" || pkg.Type == "apk" {
+            systemPackages = append(systemPackages, pkg)
+        } else {
+            languagePackages = append(languagePackages, pkg)
+        }
+    }
+    
+    println(f"系统包: ${len(systemPackages)} 个")
+    count = 0
+    for pkg in systemPackages {
+        if count >= 3 {
+            break
+        }
+        count = count + 1
+        println(f"  ${pkg.Name} ${pkg.Version} (${pkg.Type})")
+    }
+    
+    if len(languagePackages) > 0 {
+        println(f"语言包: ${len(languagePackages)} 个")
+        count = 0
+        for pkg in languagePackages {
+            if count >= 3 {
+                break
+            }
+            count = count + 1
+            println(f"  ${pkg.Name} ${pkg.Version} (${pkg.Type})")
+        }
+    }
+    
+    println("Docker镜像扫描测试完成")
+}
+
+// 自定义分析器测试
+// 关键词: 自定义分析器, 扩展功能
+func testCustomAnalyzer() {
+    println("测试自定义分析器功能")
+    
+    // 自定义分析器演示
+    // 关键词: 自定义匹配, 分析逻辑
+    println("自定义分析器概念演示:")
+    
+    println("自定义分析器可以:")
+    println("  1. 识别特定的文件模式")
+    println("  2. 解析自定义的依赖格式")
+    println("  3. 提取特定的包信息")
+    println("  4. 支持私有包管理器")
+    
+    println("自定义分析器组成:")
+    println("  - 匹配函数: 识别目标文件")
+    println("  - 分析函数: 解析依赖信息")
+    println("  - 返回包信息: 标准化输出")
+    
+    // 注意：实际的自定义分析器需要复杂的匹配和解析逻辑
+    println("由于自定义分析器需要复杂的实现，这里只做概念演示")
+    
+    println("自定义分析器测试完成")
+}
+
+// SCA结果分析演示
+// 关键词: 结果分析, 包信息解析
+func testSCAResultAnalysis() {
+    println("演示SCA结果分析")
+    
+    // 模拟包信息分析
+    // 关键词: 包信息结构, 依赖关系
+    println("SCA扫描结果包含的信息:")
+    
+    println("包基本信息:")
+    println("  - Name: 包名称")
+    println("  - Version: 版本号")
+    println("  - Type: 包类型 (dpkg, npm, pip等)")
+    println("  - FilePath: 文件路径")
+    
+    println("包详细信息:")
+    println("  - License: 许可证信息")
+    println("  - Dependencies: 依赖关系")
+    println("  - Vulnerabilities: 已知漏洞")
+    println("  - Metadata: 元数据信息")
+    
+    // 安全分析要点
+    println("\n安全分析要点:")
+    println("1. 版本检查:")
+    println("   - 识别过时版本")
+    println("   - 检查安全补丁")
+    println("   - 版本兼容性")
+    
+    println("2. 漏洞评估:")
+    println("   - CVE数据库对比")
+    println("   - 风险等级评估")
+    println("   - 影响范围分析")
+    
+    println("3. 许可证合规:")
+    println("   - 开源许可证检查")
+    println("   - 商业使用限制")
+    println("   - 法律风险评估")
+    
+    println("4. 供应链安全:")
+    println("   - 依赖链分析")
+    println("   - 传递依赖检查")
+    println("   - 恶意包检测")
+    
+    println("SCA结果分析演示完成")
+}
+
+// SCA最佳实践演示
+// 关键词: 最佳实践, 安全建议
+func testSCABestPractices() {
+    println("演示SCA使用最佳实践")
+    
+    println("=== SCA使用最佳实践 ===")
+    
+    println("1. 扫描策略:")
+    println("   - 定期执行SCA扫描")
+    println("   - 集成到CI/CD流程")
+    println("   - 多环境扫描覆盖")
+    
+    println("2. 扫描范围:")
+    println("   - 源代码依赖扫描")
+    println("   - 容器镜像扫描")
+    println("   - 生产环境扫描")
+    println("   - 第三方组件扫描")
+    
+    println("3. 结果处理:")
+    println("   - 建立漏洞数据库")
+    println("   - 设置风险阈值")
+    println("   - 制定修复计划")
+    println("   - 跟踪修复进度")
+    
+    println("4. 工具配置:")
+    println("   - 选择合适的分析器")
+    println("   - 配置扫描模式")
+    println("   - 设置并发参数")
+    println("   - 自定义分析规则")
+    
+    println("5. 安全措施:")
+    println("   - 及时更新依赖")
+    println("   - 移除未使用组件")
+    println("   - 使用安全版本")
+    println("   - 监控新漏洞")
+    
+    println("6. 合规管理:")
+    println("   - 许可证审查")
+    println("   - 合规性检查")
+    println("   - 法律风险评估")
+    println("   - 文档记录维护")
+    
+    println("=== 实际应用场景 ===")
+    
+    println("开发阶段:")
+    println("  - 依赖选择评估")
+    println("  - 版本安全检查")
+    println("  - 许可证兼容性")
+    
+    println("构建阶段:")
+    println("  - 自动化SCA扫描")
+    println("  - 安全门禁检查")
+    println("  - 报告生成")
+    
+    println("部署阶段:")
+    println("  - 容器镜像扫描")
+    println("  - 运行时检查")
+    println("  - 环境验证")
+    
+    println("运维阶段:")
+    println("  - 持续监控")
+    println("  - 漏洞响应")
+    println("  - 更新管理")
+    
+    println("SCA最佳实践演示完成")
+}
+
+// 执行所有SCA测试
+func main() {
+    println("开始Yaklang SCA库功能测试")
+    println("")
+    
+    // 基础功能演示
+    testBasicSCAFeatures()
+    println("")
+    
+    testLocalFilesystemScan()
+    println("")
+    
+    testScanWithOptions()
+    println("")
+    
+    // 高级功能测试（可能需要外部依赖）
+    testGitRepoScan()
+    println("")
+    
+    testDockerImageScan()
+    println("")
+    
+    testCustomAnalyzer()
+    println("")
+    
+    // 分析和最佳实践
+    testSCAResultAnalysis()
+    println("")
+    
+    testSCABestPractices()
+    println("")
+    
+    println("SCA库功能测试完成")
+    println("所有软件成分分析功能演示完成")
+}
+
+/*
+SCA库核心功能总结:
+
+1. 扫描功能:
+   - sca.ScanLocalFilesystem() - 扫描本地文件系统
+   - sca.ScanGitRepo() - 扫描Git仓库
+   - sca.ScanImageFromContext() - 扫描Docker镜像
+   - sca.ScanContainerFromContext() - 扫描Docker容器
+   - sca.ScanImageFromFile() - 从文件扫描镜像
+
+2. 扫描模式:
+   - sca.MODE_ALL - 全模式扫描
+   - sca.MODE_PKG - 包管理器扫描
+   - sca.MODE_LANGUAGE - 语言特定扫描
+
+3. 配置选项:
+   - sca.scanMode() - 设置扫描模式
+   - sca.concurrent() - 设置并发数
+   - sca.analyzers() - 指定分析器
+   - sca.endpoint() - 设置端点
+   - sca.customAnalyzer() - 自定义分析器
+
+4. 支持的分析器:
+   - 系统包: DPKG, RPM, APK
+   - Go: Go Mod, Go Binary
+   - Java: Maven POM, Gradle, JAR
+   - Node.js: NPM, Yarn, PNPM
+   - Python: PIP, Poetry, Pipenv
+   - PHP: Composer
+   - Ruby: Bundler, GemSpec
+   - Rust: Cargo
+   - C/C++: Conan
+
+5. 包信息结构:
+   - Name - 包名称
+   - Version - 版本号
+   - Type - 包类型
+   - FilePath - 文件路径
+   - License - 许可证
+   - Dependencies - 依赖关系
+
+6. 应用场景:
+   - 依赖漏洞扫描
+   - 许可证合规检查
+   - 供应链安全分析
+   - 容器安全扫描
+   - 代码审计
+
+7. 安全特性:
+   - 多语言支持
+   - 容器镜像分析
+   - Git仓库扫描
+   - 自定义分析器
+   - 并发扫描优化
+
+8. 最佳实践:
+   - 定期扫描
+   - CI/CD集成
+   - 风险评估
+   - 及时更新
+   - 合规管理
+
+SCA库为软件供应链安全提供了全面的分析能力，
+支持多种包管理器和部署环境，是现代安全开发的重要工具。
+*/
+
+// 调用主函数
+main()

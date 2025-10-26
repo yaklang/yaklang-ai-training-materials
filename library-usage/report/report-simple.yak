@@ -1,0 +1,37 @@
+// 简单Report测试
+// 关键词: report.New, 报告生成
+
+println("开始简单Report库测试")
+
+// 测试report.New()
+println("调用report.New()...")
+reportInstance = report.New()
+
+if reportInstance == nil {
+    println("report.New()返回nil")
+} else {
+    println("report.New()成功")
+    println(f"报告实例类型: ${typeof(reportInstance)}")
+    
+    // 尝试设置基本信息
+    println("设置报告信息...")
+    reportInstance.Title("测试报告")
+    reportInstance.Owner("test-user")
+    reportInstance.From("test-script")
+    
+    // 添加简单内容
+    println("添加内容...")
+    reportInstance.Markdown("# 测试报告\n\n这是一个测试报告。")
+    
+    // 保存报告
+    println("保存报告...")
+    reportID = reportInstance.Save()
+    
+    if reportID > 0 {
+        println(f"报告保存成功，ID: ${reportID}")
+    } else {
+        println("报告保存失败")
+    }
+}
+
+println("简单Report库测试完成")

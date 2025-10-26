@@ -1,0 +1,38 @@
+// 简单DNSLog测试
+// 关键词: dnslog.NewCustomDNSLog, DNSLog检测
+
+println("开始简单DNSLog库测试")
+
+// 测试dnslog.NewCustomDNSLog()
+println("调用dnslog.NewCustomDNSLog()...")
+dnslogInstance = dnslog.NewCustomDNSLog()
+
+if dnslogInstance == nil {
+    println("dnslog.NewCustomDNSLog()返回nil")
+} else {
+    println("dnslog.NewCustomDNSLog()成功")
+    println(f"DNSLog实例类型: ${typeof(dnslogInstance)}")
+    
+    // 尝试获取域名和token
+    println("获取域名和token...")
+    domain, token, err = dnslogInstance.GetSubDomainAndToken()
+    
+    if err != nil {
+        println(f"获取域名失败: ${err}")
+    } else {
+        println(f"域名: ${domain}")
+        println(f"Token: ${token}")
+        
+        // 尝试检查事件
+        println("检查DNSLog事件...")
+        events, checkErr = dnslogInstance.CheckDNSLogByToken()
+        
+        if checkErr != nil {
+            println(f"检查事件: ${checkErr}")
+        } else {
+            println(f"找到 ${len(events)} 个事件")
+        }
+    }
+}
+
+println("简单DNSLog库测试完成")

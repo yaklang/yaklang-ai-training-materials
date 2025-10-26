@@ -1,0 +1,206 @@
+// HIDS库简单测试 - 主机入侵检测系统演示
+// 关键词: hids主机检测, 入侵检测, 安全监控, 系统安全
+
+println("开始HIDS库测试")
+
+// HIDS库基础功能演示
+println("HIDS库基础功能演示:")
+println("HIDS (Host Intrusion Detection System) 主机入侵检测系统")
+println("用于监控和检测主机上的可疑活动和安全威胁")
+
+// 测试系统信息收集
+println("\n测试系统信息收集:")
+
+// 获取系统基本信息
+println("系统基本信息:")
+println(f"  操作系统: ${os.OS}")
+println(f"  架构: ${os.ARCH}")
+
+hostname, hostErr = os.Hostname()
+if hostErr == nil {
+    println(f"  主机名: ${hostname}")
+} else {
+    println(f"  主机名获取失败: ${hostErr}")
+}
+
+// 获取当前用户信息
+println(f"  当前用户ID: ${os.Getuid()}")
+println(f"  当前进程ID: ${os.Getpid()}")
+println(f"  父进程ID: ${os.Getppid()}")
+
+// 测试进程监控
+println("\n测试进程监控概念:")
+println("HIDS进程监控功能:")
+println("  - 监控新进程创建")
+println("  - 检测异常进程行为")
+println("  - 分析进程权限变化")
+println("  - 监控进程网络连接")
+
+// 测试文件系统监控
+println("\n测试文件系统监控概念:")
+println("HIDS文件系统监控功能:")
+println("  - 监控文件创建/删除/修改")
+println("  - 检测敏感文件访问")
+println("  - 监控权限变化")
+println("  - 检测异常文件操作")
+
+// 创建测试文件进行演示
+testFile = "/tmp/hids_test_file.txt"
+testContent = "HIDS测试文件内容"
+
+err = file.Save(testFile, testContent)
+if err == nil {
+    println(f"✓ 创建测试文件: ${testFile}")
+    
+    // 获取文件信息
+    fileInfo, statErr = file.Stat(testFile)
+    if statErr == nil {
+        println(f"  文件大小: ${fileInfo.Size()} 字节")
+        println(f"  修改时间: ${fileInfo.ModTime()}")
+        println("  ✓ 文件监控信息获取成功")
+    }
+    
+    // 清理测试文件
+    file.Remove(testFile)
+    println("✓ 测试文件清理完成")
+} else {
+    println(f"✗ 测试文件创建失败: ${err}")
+}
+
+// 测试网络监控
+println("\n测试网络监控概念:")
+println("HIDS网络监控功能:")
+println("  - 监控网络连接建立")
+println("  - 检测异常网络流量")
+println("  - 分析端口使用情况")
+println("  - 监控DNS查询")
+
+// 测试端口检查
+testPort = os.GetRandomAvailableTCPPort()
+println(f"随机可用端口: ${testPort}")
+
+isOpen = os.IsTCPPortOpen("127.0.0.1", testPort)
+println(f"端口 ${testPort} 开放状态: ${isOpen}")
+
+// 测试安全事件检测
+println("\n测试安全事件检测概念:")
+println("HIDS安全事件检测:")
+println("  - 登录失败检测")
+println("  - 权限提升检测")
+println("  - 恶意软件检测")
+println("  - 异常行为分析")
+
+// 模拟安全事件日志
+securityEvents = [
+    {
+        "timestamp": timestamp(),
+        "event_type": "file_access",
+        "severity": "info",
+        "description": "正常文件访问",
+        "file_path": testFile
+    },
+    {
+        "timestamp": timestamp(),
+        "event_type": "process_creation",
+        "severity": "warning", 
+        "description": "新进程创建",
+        "process_name": "test_process"
+    },
+    {
+        "timestamp": timestamp(),
+        "event_type": "network_connection",
+        "severity": "info",
+        "description": "网络连接建立",
+        "remote_addr": "127.0.0.1:8080"
+    }
+]
+
+println("模拟安全事件:")
+for i, event in securityEvents {
+    println(f"  事件${i+1}:")
+    println(f"    类型: ${event.event_type}")
+    println(f"    严重程度: ${event.severity}")
+    println(f"    描述: ${event.description}")
+}
+
+// 测试威胁检测规则
+println("\n测试威胁检测规则概念:")
+println("HIDS威胁检测规则:")
+
+detectionRules = [
+    {
+        "rule_name": "异常登录检测",
+        "description": "检测非正常时间或地点的登录尝试",
+        "severity": "high"
+    },
+    {
+        "rule_name": "文件完整性检查",
+        "description": "监控关键系统文件的修改",
+        "severity": "critical"
+    },
+    {
+        "rule_name": "进程行为分析",
+        "description": "检测异常的进程执行模式",
+        "severity": "medium"
+    },
+    {
+        "rule_name": "网络流量异常",
+        "description": "识别可疑的网络通信模式",
+        "severity": "high"
+    }
+]
+
+for rule in detectionRules {
+    println(f"  规则: ${rule.rule_name}")
+    println(f"    描述: ${rule.description}")
+    println(f"    严重程度: ${rule.severity}")
+}
+
+// HIDS功能总结
+println("\n=== HIDS库功能总结 ===")
+println("1. 系统监控:")
+println("   - 进程监控和分析")
+println("   - 文件系统监控")
+println("   - 网络活动监控")
+println("   - 系统调用监控")
+
+println("2. 威胁检测:")
+println("   - 异常行为检测")
+println("   - 恶意软件识别")
+println("   - 入侵尝试检测")
+println("   - 权限滥用检测")
+
+println("3. 日志分析:")
+println("   - 安全事件记录")
+println("   - 日志聚合分析")
+println("   - 模式识别")
+println("   - 告警生成")
+
+println("4. 响应机制:")
+println("   - 实时告警")
+println("   - 自动响应")
+println("   - 事件上报")
+println("   - 取证支持")
+
+println("5. 配置管理:")
+println("   - 检测规则配置")
+println("   - 白名单管理")
+println("   - 阈值设置")
+println("   - 策略更新")
+
+println("6. 应用场景:")
+println("   - 服务器安全监控")
+println("   - 终端安全防护")
+println("   - 合规性检查")
+println("   - 安全事件响应")
+println("   - 威胁情报分析")
+
+println("7. 核心特性:")
+println("   - 实时监控")
+println("   - 低误报率")
+println("   - 高性能处理")
+println("   - 可扩展架构")
+println("   - 易于部署")
+
+println("\nHIDS库测试完成")
+println("主机入侵检测系统功能演示完成")

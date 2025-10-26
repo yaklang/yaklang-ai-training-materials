@@ -1,0 +1,170 @@
+// X库简单测试 - 扩展功能库演示
+// 关键词: x扩展功能, 辅助函数, 工具函数, 实用工具
+
+println("开始X库(扩展功能)测试")
+
+// X库基础功能演示
+println("X库基础功能演示:")
+println("X库是Yaklang的辅助函数库，提供各种实用工具函数")
+
+// 测试数组操作函数
+println("\n测试数组操作函数:")
+
+testArray = [1, 2, 3, 4, 5]
+println(f"原始数组: ${testArray}")
+
+// 测试数组反转
+if x.Reverse != undefined {
+    reversed = x.Reverse(testArray)
+    println(f"反转后: ${reversed}")
+    println("✓ 数组反转功能可用")
+} else {
+    println("数组反转功能不可用")
+}
+
+// 测试数组去重
+testArrayWithDup = [1, 2, 2, 3, 3, 4, 5]
+println(f"带重复的数组: ${testArrayWithDup}")
+
+if x.Uniq != undefined {
+    unique = x.Uniq(testArrayWithDup)
+    println(f"去重后: ${unique}")
+    println("✓ 数组去重功能可用")
+} else {
+    println("数组去重功能不可用")
+}
+
+// 测试字符串操作函数
+println("\n测试字符串操作函数:")
+
+testString = "Hello World"
+println(f"原始字符串: '${testString}'")
+
+// 测试字符串处理
+if x.Contains != undefined {
+    contains = x.Contains(testString, "World")
+    println(f"包含'World': ${contains}")
+    println("✓ 字符串包含检查可用")
+} else {
+    println("字符串包含检查不可用")
+}
+
+// 测试数学工具函数
+println("\n测试数学工具函数:")
+
+numbers = [10, 5, 8, 3, 15, 1]
+println(f"数字数组: ${numbers}")
+
+// 测试最大值最小值
+if x.Max != undefined {
+    maxVal = x.Max(numbers)
+    println(f"最大值: ${maxVal}")
+    println("✓ 最大值函数可用")
+} else {
+    println("最大值函数不可用")
+}
+
+if x.Min != undefined {
+    minVal = x.Min(numbers)
+    println(f"最小值: ${minVal}")
+    println("✓ 最小值函数可用")
+} else {
+    println("最小值函数不可用")
+}
+
+// 测试类型检查函数
+println("\n测试类型检查函数:")
+
+testValues = [
+    "字符串",
+    123,
+    true,
+    [1, 2, 3],
+    {"key": "value"}
+]
+
+for i, value in testValues {
+    println(f"值${i+1}: ${value}")
+    
+    if x.IsString != undefined {
+        isStr = x.IsString(value)
+        println(f"  是字符串: ${isStr}")
+    }
+    
+    if x.IsNumber != undefined {
+        isNum = x.IsNumber(value)
+        println(f"  是数字: ${isNum}")
+    }
+    
+    if x.IsArray != undefined {
+        isArr = x.IsArray(value)
+        println(f"  是数组: ${isArr}")
+    }
+}
+
+// 测试函数式编程工具
+println("\n测试函数式编程工具:")
+
+numbers2 = [1, 2, 3, 4, 5]
+println(f"原始数组: ${numbers2}")
+
+// 测试Map函数
+if x.Map != undefined {
+    doubled = x.Map(numbers2, func(n) { return n * 2 })
+    println(f"映射(x2): ${doubled}")
+    println("✓ Map函数可用")
+} else {
+    println("Map函数不可用")
+}
+
+// 测试Filter函数
+if x.Filter != undefined {
+    evens = x.Filter(numbers2, func(n) { return n % 2 == 0 })
+    println(f"过滤偶数: ${evens}")
+    println("✓ Filter函数可用")
+} else {
+    println("Filter函数不可用")
+}
+
+// X库功能总结
+println("\n=== X库功能总结 ===")
+println("1. 数组操作:")
+println("   - x.Reverse() - 数组反转")
+println("   - x.Uniq() - 数组去重")
+println("   - x.Contains() - 包含检查")
+println("   - x.Map() - 数组映射")
+println("   - x.Filter() - 数组过滤")
+
+println("2. 数学工具:")
+println("   - x.Max() - 最大值")
+println("   - x.Min() - 最小值")
+println("   - x.Sum() - 求和")
+println("   - x.Avg() - 平均值")
+
+println("3. 类型检查:")
+println("   - x.IsString() - 字符串检查")
+println("   - x.IsNumber() - 数字检查")
+println("   - x.IsArray() - 数组检查")
+println("   - x.IsObject() - 对象检查")
+
+println("4. 字符串工具:")
+println("   - x.Contains() - 包含检查")
+println("   - x.StartsWith() - 前缀检查")
+println("   - x.EndsWith() - 后缀检查")
+println("   - x.Trim() - 去除空白")
+
+println("5. 函数式编程:")
+println("   - x.Map() - 映射转换")
+println("   - x.Filter() - 条件过滤")
+println("   - x.Reduce() - 归约操作")
+println("   - x.ForEach() - 遍历操作")
+
+println("6. 应用场景:")
+println("   - 数据处理和转换")
+println("   - 集合操作")
+println("   - 类型验证")
+println("   - 函数式编程")
+println("   - 代码简化和优化")
+
+println("\nX库(扩展功能)测试完成")
+println("辅助工具函数演示完成")

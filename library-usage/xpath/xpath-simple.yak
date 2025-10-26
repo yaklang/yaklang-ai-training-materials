@@ -1,0 +1,108 @@
+// XPath库简单测试 - HTML/XML查询功能演示
+// 关键词: xpath查询, HTML解析, XML查询, 节点选择
+
+println("开始XPath库测试")
+
+// 测试HTML文档解析和XPath查询
+println("测试HTML文档解析和XPath查询:")
+
+// 创建测试HTML内容
+htmlContent = `<html>
+<head>
+    <title>XPath测试页面</title>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">主标题</h1>
+        <p class="content">第一段内容</p>
+        <p class="content">第二段内容</p>
+        <ul>
+            <li>列表项1</li>
+            <li>列表项2</li>
+            <li>列表项3</li>
+        </ul>
+    </div>
+</body>
+</html>`
+
+println("HTML内容准备完成")
+
+// 解析HTML文档
+doc, err = xpath.LoadHTMLDocument(htmlContent)
+if err == nil && doc != nil {
+    println("✓ HTML文档解析成功")
+    
+    // 测试基础XPath查询
+    println("\n测试基础XPath查询:")
+    
+    // 查询标题
+    titleNode, titleErr = xpath.Query(doc, "//h1[@id='title']")
+    if titleErr == nil && titleNode != nil {
+        titleText = xpath.InnerText(titleNode)
+        println(f"  标题查询: '${titleText}'")
+        println("  ✓ 标题查询成功")
+    } else {
+        println("  ✗ 标题查询失败")
+    }
+    
+    // 查询所有段落
+    paragraphs, pErr = xpath.QueryAll(doc, "//p[@class='content']")
+    if pErr == nil && len(paragraphs) > 0 {
+        println(f"  段落查询: 找到 ${len(paragraphs)} 个段落")
+        for i, p in paragraphs {
+            pText = xpath.InnerText(p)
+            println(f"    段落${i+1}: '${pText}'")
+        }
+        println("  ✓ 段落查询成功")
+    } else {
+        println("  ✗ 段落查询失败")
+    }
+    
+    // 查询列表项
+    listItems, liErr = xpath.QueryAll(doc, "//ul/li")
+    if liErr == nil && len(listItems) > 0 {
+        println(f"  列表项查询: 找到 ${len(listItems)} 个列表项")
+        for i, li in listItems {
+            liText = xpath.InnerText(li)
+            println(f"    列表项${i+1}: '${liText}'")
+        }
+        println("  ✓ 列表项查询成功")
+    } else {
+        println("  ✗ 列表项查询失败")
+    }
+    
+} else {
+    println(f"✗ HTML文档解析失败: ${err}")
+}
+
+// XPath功能总结
+println("\n=== XPath库功能总结 ===")
+println("1. 文档解析:")
+println("   - xpath.LoadHTMLDocument() - 解析HTML文档")
+println("   - xpath.LoadXMLDocument() - 解析XML文档")
+
+println("2. 节点查询:")
+println("   - xpath.Query() - 查询单个节点")
+println("   - xpath.QueryAll() - 查询所有匹配节点")
+println("   - xpath.Find() - 查找节点(会panic)")
+println("   - xpath.FindOne() - 查找单个节点(会panic)")
+
+println("3. 节点操作:")
+println("   - xpath.InnerText() - 获取节点文本")
+println("   - xpath.SelectAttr() - 获取属性值")
+println("   - xpath.ExistedAttr() - 检查属性存在")
+
+println("4. 常用XPath表达式:")
+println("   - //tagname - 查找所有tagname元素")
+println("   - //tagname[@attr='value'] - 按属性查找")
+println("   - //tagname[position()=1] - 查找第一个元素")
+println("   - //tagname/text() - 获取元素文本")
+
+println("5. 应用场景:")
+println("   - HTML页面解析")
+println("   - XML文档处理")
+println("   - 网页数据提取")
+println("   - 结构化数据查询")
+
+println("\nXPath库测试完成")
+println("HTML/XML查询功能演示完成")

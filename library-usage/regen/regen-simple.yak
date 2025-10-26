@@ -1,0 +1,245 @@
+// 简单Regen测试 - 专注于基础功能演示
+// 关键词: regen基础功能, 正则生成, API演示
+
+println("开始简单Regen库测试")
+
+// 测试基础生成功能
+println("测试基础生成功能:")
+
+// 测试简单字符类生成
+println("1. 测试字符类生成:")
+pattern1 = "[abc]"
+results1, err1 = regen.Generate(pattern1)
+if err1 == nil {
+    println(f"  模式 '${pattern1}' 生成结果:")
+    for result in results1 {
+        println(f"    - '${result}'")
+    }
+    println(f"  ✓ 生成了 ${len(results1)} 个结果")
+} else {
+    println(f"  ✗ 生成失败: ${err1}")
+}
+
+// 测试数字范围生成
+println("\n2. 测试数字范围生成:")
+pattern2 = "[0-2]"
+results2, err2 = regen.Generate(pattern2)
+if err2 == nil {
+    println(f"  模式 '${pattern2}' 生成结果:")
+    for result in results2 {
+        println(f"    - '${result}'")
+    }
+    println(f"  ✓ 生成了 ${len(results2)} 个结果")
+} else {
+    println(f"  ✗ 生成失败: ${err2}")
+}
+
+// 测试可选字符
+println("\n3. 测试可选字符:")
+pattern3 = "a?"
+results3, err3 = regen.Generate(pattern3)
+if err3 == nil {
+    println(f"  模式 '${pattern3}' 生成结果:")
+    for result in results3 {
+        if result == "" {
+            println("    - '' (空字符串)")
+        } else {
+            println(f"    - '${result}'")
+        }
+    }
+    println(f"  ✓ 生成了 ${len(results3)} 个结果")
+} else {
+    println(f"  ✗ 生成失败: ${err3}")
+}
+
+// 测试单个字符串生成
+println("\n测试单个字符串生成:")
+
+// 测试GenerateOne
+println("4. 测试GenerateOne:")
+pattern4 = "[a-z]"
+result4, err4 = regen.GenerateOne(pattern4)
+if err4 == nil {
+    println(f"  模式 '${pattern4}' 生成单个结果: '${result4}'")
+    if len(result4) == 1 && result4 >= "a" && result4 <= "z" {
+        println("  ✓ 结果验证成功")
+    } else {
+        println("  ✗ 结果验证失败")
+    }
+} else {
+    println(f"  ✗ 生成失败: ${err4}")
+}
+
+// 测试数字生成
+println("\n5. 测试数字生成:")
+pattern5 = "[0-9]"
+result5, err5 = regen.GenerateOne(pattern5)
+if err5 == nil {
+    println(f"  模式 '${pattern5}' 生成单个结果: '${result5}'")
+    if len(result5) == 1 && result5 >= "0" && result5 <= "9" {
+        println("  ✓ 结果验证成功")
+    } else {
+        println("  ✗ 结果验证失败")
+    }
+} else {
+    println(f"  ✗ 生成失败: ${err5}")
+}
+
+// 测试可见字符生成
+println("\n测试可见字符生成:")
+
+// 测试GenerateVisibleOne
+println("6. 测试GenerateVisibleOne:")
+pattern6 = "[a-zA-Z0-9]"
+result6, err6 = regen.GenerateVisibleOne(pattern6)
+if err6 == nil {
+    println(f"  模式 '${pattern6}' 生成可见字符: '${result6}'")
+    isValid = (result6 >= "a" && result6 <= "z") || 
+              (result6 >= "A" && result6 <= "Z") || 
+              (result6 >= "0" && result6 <= "9")
+    if isValid {
+        println("  ✓ 可见字符验证成功")
+    } else {
+        println("  ✗ 可见字符验证失败")
+    }
+} else {
+    println(f"  ✗ 生成失败: ${err6}")
+}
+
+// 测试复杂模式
+println("\n测试复杂模式:")
+
+// 测试组合模式
+println("7. 测试组合模式:")
+pattern7 = "[a-z][0-9]"
+result7, err7 = regen.GenerateOne(pattern7)
+if err7 == nil {
+    println(f"  模式 '${pattern7}' 生成结果: '${result7}'")
+    if len(result7) == 2 {
+        firstChar = result7[0:1]
+        secondChar = result7[1:2]
+        if (firstChar >= "a" && firstChar <= "z") && (secondChar >= "0" && secondChar <= "9") {
+            println("  ✓ 组合模式验证成功")
+        } else {
+            println("  ✗ 组合模式验证失败")
+        }
+    } else {
+        println("  ✗ 组合模式长度验证失败")
+    }
+} else {
+    println(f"  ✗ 生成失败: ${err7}")
+}
+
+// 测试选择模式
+println("\n8. 测试选择模式:")
+pattern8 = "(cat|dog)"
+results8, err8 = regen.Generate(pattern8)
+if err8 == nil {
+    println(f"  模式 '${pattern8}' 生成结果:")
+    for result in results8 {
+        println(f"    - '${result}'")
+    }
+    if len(results8) == 2 {
+        println("  ✓ 选择模式验证成功")
+    } else {
+        println(f"  ✗ 选择模式结果数量不正确: ${len(results8)}")
+    }
+} else {
+    println(f"  ✗ 生成失败: ${err8}")
+}
+
+// 测试Must函数
+println("\n测试Must函数:")
+
+// 测试MustGenerate
+println("9. 测试MustGenerate:")
+pattern9 = "[xyz]"
+results9 = regen.MustGenerate(pattern9)
+println(f"  模式 '${pattern9}' MustGenerate结果:")
+for result in results9 {
+    println(f"    - '${result}'")
+}
+if len(results9) == 3 {
+    println("  ✓ MustGenerate验证成功")
+} else {
+    println(f"  ✗ MustGenerate结果数量不正确: ${len(results9)}")
+}
+
+// 测试MustGenerateOne
+println("\n10. 测试MustGenerateOne:")
+pattern10 = "[A-Z]"
+result10 = regen.MustGenerateOne(pattern10)
+println(f"  模式 '${pattern10}' MustGenerateOne结果: '${result10}'")
+if len(result10) == 1 && result10 >= "A" && result10 <= "Z" {
+    println("  ✓ MustGenerateOne验证成功")
+} else {
+    println("  ✗ MustGenerateOne验证失败")
+}
+
+// 测试实用模式
+println("\n测试实用模式:")
+
+// 测试邮箱格式
+println("11. 测试邮箱格式:")
+emailPattern = "[a-z]{3}@[a-z]{3}\\.(com|org)"
+emailResult, emailErr = regen.GenerateOne(emailPattern)
+if emailErr == nil {
+    println(f"  邮箱模式 '${emailPattern}' 生成: '${emailResult}'")
+    if str.Contains(emailResult, "@") && str.Contains(emailResult, ".") {
+        println("  ✓ 邮箱格式验证成功")
+    } else {
+        println("  ✗ 邮箱格式验证失败")
+    }
+} else {
+    println(f"  ✗ 邮箱生成失败: ${emailErr}")
+}
+
+// 测试手机号格式
+println("\n12. 测试手机号格式:")
+phonePattern = "1[3-9][0-9]{9}"
+phoneResult, phoneErr = regen.GenerateOne(phonePattern)
+if phoneErr == nil {
+    println(f"  手机号模式 '${phonePattern}' 生成: '${phoneResult}'")
+    if len(phoneResult) == 11 && str.HasPrefix(phoneResult, "1") {
+        println("  ✓ 手机号格式验证成功")
+    } else {
+        println("  ✗ 手机号格式验证失败")
+    }
+} else {
+    println(f"  ✗ 手机号生成失败: ${phoneErr}")
+}
+
+// Regen功能总结
+println("\n=== Regen库功能总结 ===")
+
+println("1. 基础生成功能:")
+println("   - regen.Generate(pattern) - 生成所有匹配字符串")
+println("   - regen.GenerateOne(pattern) - 生成单个匹配字符串")
+println("   - regen.GenerateVisibleOne(pattern) - 生成可见字符串")
+
+println("2. Must函数:")
+println("   - regen.MustGenerate(pattern) - 必须成功生成所有")
+println("   - regen.MustGenerateOne(pattern) - 必须成功生成单个")
+println("   - regen.MustGenerateVisibleOne(pattern) - 必须成功生成可见字符")
+
+println("3. 支持的正则语法:")
+println("   - 字符类: [a-z], [0-9], [abc]")
+println("   - 重复: ?, +, *, {n,m}")
+println("   - 选择: (a|b|c)")
+println("   - 分组: (pattern)")
+
+println("4. 应用场景:")
+println("   - 测试数据生成")
+println("   - 模糊测试输入")
+println("   - 格式验证测试")
+println("   - 数据模拟生成")
+
+println("5. 常用模式示例:")
+println("   - [a-z] - 小写字母")
+println("   - [0-9] - 数字")
+println("   - [a-zA-Z0-9] - 字母数字")
+println("   - [a-z]{3}@[a-z]{3}\\.(com|org) - 邮箱格式")
+println("   - 1[3-9][0-9]{9} - 手机号格式")
+
+println("\n简单Regen库测试完成")
+println("正则表达式生成功能演示和验证完成")

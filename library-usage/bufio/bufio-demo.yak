@@ -1,0 +1,242 @@
+// Bufio库API演示 - 专注于可用功能展示
+// 关键词: bufio功能演示, 缓冲IO, API展示
+
+println("开始Bufio库API演示")
+
+// 测试缓冲读取器功能
+println("测试缓冲读取器功能:")
+
+// 创建测试文件
+testFile = "/tmp/yaklang_bufio_demo.txt"
+testContent = "Line 1: Hello Bufio Reader\nLine 2: 缓冲读取演示\nLine 3: API功能测试\nLine 4: 结束行\n"
+
+err = file.Save(testFile, testContent)
+if err == nil {
+    println("✓ 测试文件创建成功")
+    
+    // 使用bufio.NewReader创建缓冲读取器
+    fileHandle, openErr = file.Open(testFile)
+    if openErr == nil {
+        reader, readerErr = bufio.NewReader(fileHandle)
+        if readerErr == nil && reader != nil {
+            println("✓ bufio.NewReader创建成功")
+            
+            // 测试ReadString按行读取
+            println("\n按行读取测试:")
+            lineNum = 1
+            for lineNum <= 4 {
+                line, lineErr = reader.ReadString('\n')
+                if lineErr != nil {
+                    if string(lineErr) == "EOF" {
+                        if line != "" {
+                            println(f"  第${lineNum}行: ${str.TrimSpace(line)}")
+                        }
+                        break
+                    } else {
+                        println(f"  读取错误: ${lineErr}")
+                        break
+                    }
+                } else {
+                    println(f"  第${lineNum}行: ${str.TrimSpace(line)}")
+                }
+                lineNum = lineNum + 1
+            }
+            
+            println("✓ ReadString功能验证完成")
+        } else {
+            println(f"✗ 缓冲读取器创建失败: ${readerErr}")
+        }
+        fileHandle.Close()
+    } else {
+        println(f"✗ 文件打开失败: ${openErr}")
+    }
+    
+    // 测试带缓冲区大小的读取器
+    println("\n测试自定义缓冲区大小:")
+    fileHandle2, openErr2 = file.Open(testFile)
+    if openErr2 == nil {
+        sizedReader, sizedErr = bufio.NewReaderSize(fileHandle2, 64)
+        if sizedErr == nil && sizedReader != nil {
+            println("✓ bufio.NewReaderSize创建成功")
+            
+            // 测试Peek功能
+            peekData, peekErr = sizedReader.Peek(10)
+            if peekErr == nil {
+                peekStr = string(peekData)
+                println(f"  Peek(10): '${peekStr}'")
+                println("✓ Peek功能验证完成")
+            } else {
+                println(f"  Peek失败: ${peekErr}")
+            }
+            
+            // 测试ReadByte功能
+            firstByte, byteErr = sizedReader.ReadByte()
+            if byteErr == nil {
+                println(f"  ReadByte: ${firstByte} ('${string(firstByte)}')")
+                println("✓ ReadByte功能验证完成")
+            } else {
+                println(f"  ReadByte失败: ${byteErr}")
+            }
+        } else {
+            println(f"✗ 自定义大小读取器创建失败: ${sizedErr}")
+        }
+        fileHandle2.Close()
+    }
+} else {
+    println(f"✗ 测试文件创建失败: ${err}")
+}
+
+// 测试扫描器功能
+println("\n测试扫描器功能:")
+
+// 使用NewBuffer创建数据源
+println("创建数据源...")
+scannerData = "Scanner Line 1\nScanner Line 2\nScanner Line 3\nScanner Line 4"
+
+// 直接使用字符串创建Buffer
+dataBuffer = bufio.NewBuffer(scannerData)
+if dataBuffer != nil {
+    println("✓ 数据Buffer创建成功")
+    
+    scanner, scannerErr = bufio.NewScanner(dataBuffer)
+    if scannerErr == nil && scanner != nil {
+        println("✓ bufio.NewScanner创建成功")
+        
+        println("\n扫描器按行读取:")
+        lineCount = 0
+        for lineCount < 10 {  // 防止无限循环
+            hasMore = scanner.Scan()
+            if !hasMore {
+                break
+            }
+            
+            lineText = scanner.Text()
+            lineCount = lineCount + 1
+            println(f"  扫描第${lineCount}行: '${lineText}'")
+        }
+        
+        // 检查扫描错误
+        scanErr = scanner.Err()
+        if scanErr == nil {
+            println("✓ 扫描过程无错误")
+        } else {
+            println(f"✗ 扫描错误: ${scanErr}")
+        }
+        
+        println(f"✓ 扫描器成功处理 ${lineCount} 行")
+    } else {
+        println(f"✗ 扫描器创建失败: ${scannerErr}")
+    }
+} else {
+    println("✗ 数据Buffer创建失败")
+}
+
+// 测试管道功能
+println("\n测试管道功能:")
+
+pipeReader, pipeWriter = bufio.NewPipe()
+if pipeReader != nil && pipeWriter != nil {
+    println("✓ bufio.NewPipe创建成功")
+    
+    // 准备管道测试数据
+    pipeData = "Hello from Bufio Pipe!\n管道通信测试\n"
+    
+    // 管道通信演示
+    println("演示管道通信...")
+    
+    writeComplete = false
+    readComplete = false
+    receivedData = ""
+    
+    // 写入协程
+    go func() {
+        writtenBytes, writeErr = pipeWriter.Write(pipeData)
+        if writeErr == nil {
+            println(f"  管道写入: ${writtenBytes} 字节")
+        }
+        pipeWriter.Close()
+        writeComplete = true
+    }()
+    
+    // 读取协程
+    go func() {
+        readData, readErr = io.ReadAll(pipeReader)
+        if readErr == nil {
+            receivedData = string(readData)
+            println(f"  管道读取: ${len(readData)} 字节")
+        }
+        pipeReader.Close()
+        readComplete = true
+    }()
+    
+    // 等待完成
+    waitCount = 0
+    for waitCount < 30 {  // 等待3秒
+        if writeComplete && readComplete {
+            break
+        }
+        sleep(0.1)
+        waitCount = waitCount + 1
+    }
+    
+    if writeComplete && readComplete {
+        if receivedData == pipeData {
+            println("✓ 管道通信验证成功")
+        } else {
+            println("✗ 管道数据不匹配")
+        }
+    } else {
+        println("管道通信演示完成（可能超时）")
+    }
+} else {
+    println("✗ 管道创建失败")
+}
+
+// Bufio库功能总结
+println("\n=== Bufio库功能总结 ===")
+
+println("1. 缓冲读取器 (bufio.NewReader):")
+println("   ✓ 支持从io.Reader创建缓冲读取器")
+println("   ✓ ReadString(delim) - 按分隔符读取")
+println("   ✓ ReadByte() - 读取单个字节")
+println("   ✓ Peek(n) - 预读n个字节不移动指针")
+
+println("2. 自定义缓冲区 (bufio.NewReaderSize):")
+println("   ✓ 支持指定缓冲区大小")
+println("   ✓ 优化IO性能")
+println("   ✓ 适用于不同数据量场景")
+
+println("3. 文本扫描器 (bufio.NewScanner):")
+println("   ✓ 按行扫描文本数据")
+println("   ✓ Scan() - 扫描下一个token")
+println("   ✓ Text() - 获取当前token文本")
+println("   ✓ Err() - 获取扫描错误")
+
+println("4. 数据缓冲区 (bufio.NewBuffer):")
+println("   ✓ 创建内存缓冲区")
+println("   ✓ 支持字符串初始化")
+println("   ✓ 实现Reader和Writer接口")
+
+println("5. 管道通信 (bufio.NewPipe):")
+println("   ✓ 创建缓冲管道")
+println("   ✓ 支持并发读写")
+println("   ✓ 适用于协程间通信")
+
+println("=== 应用场景 ===")
+println("• 大文件按行处理")
+println("• 网络数据流处理")
+println("• 文本解析和分析")
+println("• 协程间数据传输")
+println("• 高效IO操作")
+
+println("=== 性能优势 ===")
+println("• 减少系统调用次数")
+println("• 批量数据处理")
+println("• 内存使用优化")
+println("• 支持预读操作")
+
+// 清理测试文件
+file.Remove(testFile)
+
+println("\nBufio库API演示完成")
+println("缓冲IO功能展示和验证完成")

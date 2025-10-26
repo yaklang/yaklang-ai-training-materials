@@ -1,0 +1,168 @@
+// 简单IO测试 - 专注于API使用演示
+// 关键词: io基础功能, Reader, Writer, API演示
+
+println("开始简单IO库测试")
+
+// 测试基础IO功能
+println("测试基础IO功能:")
+
+// IO常量
+println("IO常量:")
+println(f"  - io.EOF: ${io.EOF}")
+println("  - io.Discard: 丢弃写入器")
+
+// 测试文件读取
+println("\n测试文件读取:")
+
+// 创建测试文件
+testFile = "/tmp/yaklang_io_simple.txt"
+testContent = "Hello Yaklang IO!\nSimple test content.\n"
+
+// 写入测试文件
+err = file.Save(testFile, testContent)
+if err != nil {
+    println(f"文件写入失败: ${err}")
+} else {
+    println("测试文件创建成功")
+    
+    // 使用io.ReadFile读取
+    content, readErr = io.ReadFile(testFile)
+    if readErr != nil {
+        println(f"io.ReadFile失败: ${readErr}")
+    } else {
+        contentStr = string(content)
+        println(f"io.ReadFile成功: ${len(contentStr)} 字节")
+        
+        if contentStr == testContent {
+            println("✓ 文件内容验证成功")
+        } else {
+            println("✗ 文件内容验证失败")
+        }
+    }
+    
+    // 使用io.ReadAll读取文件句柄
+    fileHandle, openErr = file.Open(testFile)
+    if openErr != nil {
+        println(f"文件打开失败: ${openErr}")
+    } else {
+        allContent, allErr = io.ReadAll(fileHandle)
+        if allErr != nil {
+            println(f"io.ReadAll失败: ${allErr}")
+        } else {
+            allStr = string(allContent)
+            println(f"io.ReadAll成功: ${len(allStr)} 字节")
+            
+            if allStr == testContent {
+                println("✓ ReadAll内容验证成功")
+            } else {
+                println("✗ ReadAll内容验证失败")
+            }
+        }
+        fileHandle.Close()
+    }
+}
+
+// 测试Reader操作
+println("\n测试Reader操作:")
+
+// 创建多个测试文件用于MultiReader
+file1 = "/tmp/yaklang_multi1.txt"
+file2 = "/tmp/yaklang_multi2.txt"
+file3 = "/tmp/yaklang_multi3.txt"
+
+data1 = "Part 1. "
+data2 = "Part 2. "
+data3 = "Part 3."
+
+file.Save(file1, data1)
+file.Save(file2, data2)
+file.Save(file3, data3)
+
+// 测试LimitReader
+println("测试io.LimitReader:")
+reader1, err1 = file.Open(file1)
+if err1 == nil {
+    limitReader = io.LimitReader(reader1, 5)
+    limitData, limitErr = io.ReadAll(limitReader)
+    if limitErr == nil {
+        limitStr = string(limitData)
+        println(f"  LimitReader(5): '${limitStr}' (${len(limitData)} 字节)")
+        
+        if len(limitData) == 5 {
+            println("  ✓ LimitReader长度验证成功")
+        }
+    }
+    reader1.Close()
+}
+
+// 测试MultiReader
+println("测试io.MultiReader:")
+r1, e1 = file.Open(file1)
+r2, e2 = file.Open(file2)
+r3, e3 = file.Open(file3)
+
+if e1 == nil && e2 == nil && e3 == nil {
+    multiReader = io.MultiReader(r1, r2, r3)
+    multiData, multiErr = io.ReadAll(multiReader)
+    if multiErr == nil {
+        multiStr = string(multiData)
+        expectedMulti = data1 + data2 + data3
+        println(f"  MultiReader: '${multiStr}'")
+        
+        if multiStr == expectedMulti {
+            println("  ✓ MultiReader内容验证成功")
+        } else {
+            println("  ✗ MultiReader内容验证失败")
+        }
+    }
+    r1.Close()
+    r2.Close()
+    r3.Close()
+}
+
+// 测试稳定读取
+println("\n测试io.ReadStable:")
+stableReader, stableErr = file.Open(file1)
+if stableErr == nil {
+    stableData = io.ReadStable(stableReader, 1.0)
+    stableStr = string(stableData)
+    println(f"  ReadStable: '${stableStr}' (${len(stableData)} 字节)")
+    stableReader.Close()
+}
+
+// IO功能总结
+println("\nIO库功能总结:")
+println("1. 文件读取:")
+println("   - io.ReadFile(path) - 直接读取文件")
+println("   - io.ReadAll(reader) - 读取Reader全部内容")
+
+println("2. Reader操作:")
+println("   - io.LimitReader(r, n) - 限制读取长度")
+println("   - io.MultiReader(r1, r2, ...) - 合并多个Reader")
+println("   - io.TeeReader(r, w) - 分流读取")
+
+println("3. 数据复制:")
+println("   - io.Copy(dst, src) - 完整复制")
+println("   - io.CopyN(dst, src, n) - 复制指定长度")
+
+println("4. 工具函数:")
+println("   - io.WriteString(w, s) - 写入字符串")
+println("   - io.NopCloser(r) - 无操作关闭器")
+println("   - io.ReadStable(r, timeout) - 稳定读取")
+
+println("5. 管道操作:")
+println("   - io.Pipe() - 创建管道")
+println("   - 支持并发读写通信")
+
+println("6. 常量:")
+println("   - io.EOF - 文件结束标识")
+println("   - io.Discard - 丢弃写入器")
+
+// 清理测试文件
+file.Remove(testFile)
+file.Remove(file1)
+file.Remove(file2)
+file.Remove(file3)
+
+println("\n简单IO库测试完成")
+println("IO库API演示和基础功能验证完成")

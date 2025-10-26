@@ -1,0 +1,619 @@
+/*
+Yaklang Regen (正则表达式生成) 库实践
+
+Regen库是Yaklang中用于根据正则表达式生成匹配字符串的核心模块，
+提供了从正则模式生成所有可能匹配字符串的强大功能。
+
+关键词: 正则表达式生成, 字符串生成, 模式匹配, 数据生成
+关键词: 正则逆向, 字符串枚举, 测试数据生成, 模糊测试
+*/
+
+// 基础Regen功能演示
+// 关键词: regen基础功能, 正则生成概念
+func testBasicRegenFeatures() {
+    println("测试基础Regen功能")
+    
+    // Regen库基本概念
+    // 关键词: 正则生成概念, 逆向匹配
+    println("Regen库基本概念:")
+    println("  - 根据正则表达式生成匹配的字符串")
+    println("  - 支持大部分标准正则表达式语法")
+    println("  - 可以生成单个或多个匹配字符串")
+    println("  - 支持流式生成和批量生成")
+    println("  - 适用于测试数据生成和模糊测试")
+    
+    println("Regen库主要功能:")
+    println("  - regen.Generate() - 生成所有匹配字符串")
+    println("  - regen.GenerateOne() - 生成单个匹配字符串")
+    println("  - regen.GenerateStream() - 流式生成字符串")
+    println("  - regen.GenerateVisibleOne() - 生成可见字符串")
+    println("  - regen.MustGenerate() - 必须成功的生成")
+    
+    println("基础Regen功能演示完成")
+}
+
+// 简单正则生成测试
+// 关键词: regen.Generate, 基础生成
+func testSimpleGeneration() {
+    println("测试简单正则生成")
+    
+    // 测试字符类生成
+    // 关键词: 字符类, [a-z], 字符范围
+    println("测试字符类生成...")
+    
+    simplePattern = "[abc]"
+    results, err = regen.Generate(simplePattern)
+    assert err == nil, f"简单字符类生成失败: ${err}"
+    
+    println(f"模式 '${simplePattern}' 生成结果:")
+    for result in results {
+        println(f"  - '${result}'")
+    }
+    
+    // 验证结果
+    assert len(results) == 3, f"字符类应生成3个结果，实际: ${len(results)}"
+    assert str.Contains(str.Join(results, ","), "a"), "结果应包含字符a"
+    assert str.Contains(str.Join(results, ","), "b"), "结果应包含字符b"
+    assert str.Contains(str.Join(results, ","), "c"), "结果应包含字符c"
+    
+    println("✓ 字符类生成验证成功")
+    
+    // 测试数字范围生成
+    // 关键词: 数字范围, [0-9], 数字生成
+    println("\n测试数字范围生成...")
+    
+    digitPattern = "[0-2]"
+    digitResults, digitErr = regen.Generate(digitPattern)
+    assert digitErr == nil, f"数字范围生成失败: ${digitErr}"
+    
+    println(f"模式 '${digitPattern}' 生成结果:")
+    for result in digitResults {
+        println(f"  - '${result}'")
+    }
+    
+    assert len(digitResults) == 3, f"数字范围应生成3个结果，实际: ${len(digitResults)}"
+    
+    println("✓ 数字范围生成验证成功")
+    
+    // 测试可选字符生成
+    // 关键词: 可选字符, ?, 可选模式
+    println("\n测试可选字符生成...")
+    
+    optionalPattern = "a?"
+    optionalResults, optionalErr = regen.Generate(optionalPattern)
+    assert optionalErr == nil, f"可选字符生成失败: ${optionalErr}"
+    
+    println(f"模式 '${optionalPattern}' 生成结果:")
+    for result in optionalResults {
+        println(f"  - '${result}' (长度: ${len(result)})")
+    }
+    
+    assert len(optionalResults) == 2, f"可选字符应生成2个结果，实际: ${len(optionalResults)}"
+    
+    println("✓ 可选字符生成验证成功")
+    
+    println("简单正则生成测试完成")
+}
+
+// 单个字符串生成测试
+// 关键词: regen.GenerateOne, 单个生成
+func testSingleGeneration() {
+    println("测试单个字符串生成")
+    
+    // 测试生成单个字符
+    // 关键词: GenerateOne, 单字符生成
+    println("测试生成单个字符...")
+    
+    singlePattern = "[a-z]"
+    singleResult, singleErr = regen.GenerateOne(singlePattern)
+    assert singleErr == nil, f"单个字符生成失败: ${singleErr}"
+    
+    println(f"模式 '${singlePattern}' 生成单个结果: '${singleResult}'")
+    
+    // 验证结果是小写字母
+    assert len(singleResult) == 1, f"单个字符长度应为1，实际: ${len(singleResult)}"
+    assert singleResult >= "a" && singleResult <= "z", f"结果应为小写字母，实际: ${singleResult}"
+    
+    println("✓ 单个字符生成验证成功")
+    
+    // 测试生成数字
+    // 关键词: 数字生成, [0-9]
+    println("\n测试生成单个数字...")
+    
+    numberPattern = "[0-9]"
+    numberResult, numberErr = regen.GenerateOne(numberPattern)
+    assert numberErr == nil, f"单个数字生成失败: ${numberErr}"
+    
+    println(f"模式 '${numberPattern}' 生成单个结果: '${numberResult}'")
+    
+    // 验证结果是数字
+    assert len(numberResult) == 1, f"单个数字长度应为1，实际: ${len(numberResult)}"
+    assert numberResult >= "0" && numberResult <= "9", f"结果应为数字，实际: ${numberResult}"
+    
+    println("✓ 单个数字生成验证成功")
+    
+    // 测试复杂模式单个生成
+    // 关键词: 复杂模式, 组合生成
+    println("\n测试复杂模式单个生成...")
+    
+    complexPattern = "[a-z][0-9]"
+    complexResult, complexErr = regen.GenerateOne(complexPattern)
+    assert complexErr == nil, f"复杂模式生成失败: ${complexErr}"
+    
+    println(f"模式 '${complexPattern}' 生成单个结果: '${complexResult}'")
+    
+    // 验证结果格式
+    assert len(complexResult) == 2, f"复杂模式结果长度应为2，实际: ${len(complexResult)}"
+    
+    firstChar = complexResult[0:1]
+    secondChar = complexResult[1:2]
+    
+    assert firstChar >= "a" && firstChar <= "z", f"第一个字符应为小写字母，实际: ${firstChar}"
+    assert secondChar >= "0" && secondChar <= "9", f"第二个字符应为数字，实际: ${secondChar}"
+    
+    println("✓ 复杂模式生成验证成功")
+    
+    println("单个字符串生成测试完成")
+}
+
+// 可见字符生成测试
+// 关键词: regen.GenerateVisibleOne, 可见字符
+func testVisibleGeneration() {
+    println("测试可见字符生成")
+    
+    // 测试可见字符生成
+    // 关键词: GenerateVisibleOne, 可见字符过滤
+    println("测试可见字符生成...")
+    
+    visiblePattern = "[\\x20-\\x7E]"  // ASCII可见字符范围
+    visibleResult, visibleErr = regen.GenerateVisibleOne(visiblePattern)
+    assert visibleErr == nil, f"可见字符生成失败: ${visibleErr}"
+    
+    println(f"模式 '${visiblePattern}' 生成可见字符: '${visibleResult}' (ASCII: ${[]byte(visibleResult)[0]})")
+    
+    // 验证结果是可见字符
+    assert len(visibleResult) == 1, f"可见字符长度应为1，实际: ${len(visibleResult)}"
+    
+    charCode = []byte(visibleResult)[0]
+    assert charCode >= 32 && charCode <= 126, f"字符应在可见ASCII范围内，实际: ${charCode}"
+    
+    println("✓ 可见字符生成验证成功")
+    
+    // 测试字母数字可见字符
+    // 关键词: 字母数字, 可见字符组合
+    println("\n测试字母数字可见字符...")
+    
+    alnumPattern = "[a-zA-Z0-9]"
+    alnumResult, alnumErr = regen.GenerateVisibleOne(alnumPattern)
+    assert alnumErr == nil, f"字母数字生成失败: ${alnumErr}"
+    
+    println(f"模式 '${alnumPattern}' 生成字母数字: '${alnumResult}'")
+    
+    // 验证结果是字母或数字
+    assert len(alnumResult) == 1, f"字母数字长度应为1，实际: ${len(alnumResult)}"
+    
+    isValid = (alnumResult >= "a" && alnumResult <= "z") || 
+              (alnumResult >= "A" && alnumResult <= "Z") || 
+              (alnumResult >= "0" && alnumResult <= "9")
+    assert isValid, f"结果应为字母或数字，实际: ${alnumResult}"
+    
+    println("✓ 字母数字可见字符验证成功")
+    
+    println("可见字符生成测试完成")
+}
+
+// 流式生成测试
+// 关键词: regen.GenerateStream, 流式生成
+func testStreamGeneration() {
+    println("测试流式生成")
+    
+    // 测试基础流式生成
+    // 关键词: GenerateStream, 流式处理
+    println("测试基础流式生成...")
+    
+    streamPattern = "[abc]"
+    
+    ch, cancel, err = regen.GenerateStream(streamPattern)
+    assert err == nil, f"流式生成创建失败: ${err}"
+    assert ch != nil, "生成通道不应为空"
+    assert cancel != nil, "取消函数不应为空"
+    
+    println(f"模式 '${streamPattern}' 流式生成结果:")
+    
+    // 收集流式生成的结果
+    streamResults = []
+    resultCount = 0
+    maxResults = 10  // 限制结果数量防止无限循环
+    
+    for resultCount < maxResults {
+        result = <-ch
+        if result == "" {
+            break  // 通道关闭
+        }
+        streamResults = append(streamResults, result)
+        println(f"  - '${result}'")
+        resultCount = resultCount + 1
+    }
+    
+    // 取消生成
+    cancel()
+    
+    // 验证流式生成结果
+    assert len(streamResults) > 0, "流式生成应产生结果"
+    assert len(streamResults) <= 3, f"字符类应最多生成3个结果，实际: ${len(streamResults)}"
+    
+    println("✓ 流式生成验证成功")
+    
+    println("流式生成测试完成")
+}
+
+// 复杂正则模式测试
+// 关键词: 复杂模式, 高级正则
+func testComplexPatterns() {
+    println("测试复杂正则模式")
+    
+    // 测试重复模式
+    // 关键词: 重复模式, +, *, {n,m}
+    println("测试重复模式...")
+    
+    plusPattern = "a+"
+    plusResults, plusErr = regen.Generate(plusPattern)
+    assert plusErr == nil, f"加号重复模式生成失败: ${plusErr}"
+    
+    println(f"模式 '${plusPattern}' 生成结果 (前5个):")
+    displayCount = 0
+    for result in plusResults {
+        if displayCount >= 5 {
+            break
+        }
+        println(f"  - '${result}' (长度: ${len(result)})")
+        displayCount = displayCount + 1
+    }
+    
+    // 验证重复模式结果
+    assert len(plusResults) >= 2, "加号模式应生成至少2个结果"
+    
+    println("✓ 重复模式验证成功")
+    
+    // 测试选择模式
+    // 关键词: 选择模式, |, 或操作
+    println("\n测试选择模式...")
+    
+    alternatePattern = "(cat|dog)"
+    alternateResults, alternateErr = regen.Generate(alternatePattern)
+    assert alternateErr == nil, f"选择模式生成失败: ${alternateErr}"
+    
+    println(f"模式 '${alternatePattern}' 生成结果:")
+    for result in alternateResults {
+        println(f"  - '${result}'")
+    }
+    
+    // 验证选择模式结果
+    assert len(alternateResults) == 2, f"选择模式应生成2个结果，实际: ${len(alternateResults)}"
+    
+    hasCat = false
+    hasDog = false
+    for result in alternateResults {
+        if result == "cat" {
+            hasCat = true
+        }
+        if result == "dog" {
+            hasDog = true
+        }
+    }
+    
+    assert hasCat || hasDog, "选择模式应包含cat或dog"
+    
+    println("✓ 选择模式验证成功")
+    
+    // 测试组合模式
+    // 关键词: 组合模式, 复杂组合
+    println("\n测试组合模式...")
+    
+    combinedPattern = "[a-z][0-9]?"
+    combinedResults, combinedErr = regen.Generate(combinedPattern)
+    assert combinedErr == nil, f"组合模式生成失败: ${combinedErr}"
+    
+    println(f"模式 '${combinedPattern}' 生成结果 (前10个):")
+    displayCount = 0
+    for result in combinedResults {
+        if displayCount >= 10 {
+            break
+        }
+        println(f"  - '${result}' (长度: ${len(result)})")
+        displayCount = displayCount + 1
+    }
+    
+    println("✓ 组合模式验证成功")
+    
+    println("复杂正则模式测试完成")
+}
+
+// 实用模式生成测试
+// 关键词: 实用模式, 实际应用
+func testPracticalPatterns() {
+    println("测试实用模式生成")
+    
+    // 测试邮箱格式生成
+    // 关键词: 邮箱格式, 实用模式
+    println("测试邮箱格式生成...")
+    
+    emailPattern = "[a-z]{3}@[a-z]{3}\\.(com|org)"
+    emailResult, emailErr = regen.GenerateOne(emailPattern)
+    assert emailErr == nil, f"邮箱格式生成失败: ${emailErr}"
+    
+    println(f"邮箱格式 '${emailPattern}' 生成结果: '${emailResult}'")
+    
+    // 验证邮箱格式
+    assert str.Contains(emailResult, "@"), "邮箱应包含@符号"
+    assert str.Contains(emailResult, "."), "邮箱应包含.符号"
+    assert str.Contains(emailResult, "com") || str.Contains(emailResult, "org"), "邮箱应包含com或org"
+    
+    println("✓ 邮箱格式生成验证成功")
+    
+    // 测试手机号格式生成
+    // 关键词: 手机号格式, 数字模式
+    println("\n测试手机号格式生成...")
+    
+    phonePattern = "1[3-9][0-9]{9}"
+    phoneResult, phoneErr = regen.GenerateOne(phonePattern)
+    assert phoneErr == nil, f"手机号格式生成失败: ${phoneErr}"
+    
+    println(f"手机号格式 '${phonePattern}' 生成结果: '${phoneResult}'")
+    
+    // 验证手机号格式
+    assert len(phoneResult) == 11, f"手机号长度应为11，实际: ${len(phoneResult)}"
+    assert str.HasPrefix(phoneResult, "1"), "手机号应以1开头"
+    
+    secondDigit = phoneResult[1:2]
+    assert secondDigit >= "3" && secondDigit <= "9", f"手机号第二位应为3-9，实际: ${secondDigit}"
+    
+    println("✓ 手机号格式生成验证成功")
+    
+    // 测试IP地址格式生成
+    // 关键词: IP地址格式, 网络地址
+    println("\n测试IP地址格式生成...")
+    
+    ipPattern = "([0-9]{1,3}\\.){3}[0-9]{1,3}"
+    ipResult, ipErr = regen.GenerateOne(ipPattern)
+    assert ipErr == nil, f"IP地址格式生成失败: ${ipErr}"
+    
+    println(f"IP地址格式 '${ipPattern}' 生成结果: '${ipResult}'")
+    
+    // 验证IP地址格式
+    ipParts = str.Split(ipResult, ".")
+    assert len(ipParts) == 4, f"IP地址应有4个部分，实际: ${len(ipParts)}"
+    
+    for part in ipParts {
+        assert len(part) >= 1 && len(part) <= 3, f"IP地址部分长度应为1-3，实际: ${len(part)}"
+    }
+    
+    println("✓ IP地址格式生成验证成功")
+    
+    println("实用模式生成测试完成")
+}
+
+// Must函数测试
+// 关键词: Must函数, 必须成功
+func testMustFunctions() {
+    println("测试Must函数")
+    
+    // 测试MustGenerate
+    // 关键词: MustGenerate, 必须生成
+    println("测试MustGenerate...")
+    
+    mustPattern = "[xyz]"
+    mustResults = regen.MustGenerate(mustPattern)
+    
+    println(f"MustGenerate模式 '${mustPattern}' 结果:")
+    for result in mustResults {
+        println(f"  - '${result}'")
+    }
+    
+    assert len(mustResults) == 3, f"MustGenerate应生成3个结果，实际: ${len(mustResults)}"
+    
+    println("✓ MustGenerate验证成功")
+    
+    // 测试MustGenerateOne
+    // 关键词: MustGenerateOne, 必须生成单个
+    println("\n测试MustGenerateOne...")
+    
+    mustOnePattern = "[A-Z]"
+    mustOneResult = regen.MustGenerateOne(mustOnePattern)
+    
+    println(f"MustGenerateOne模式 '${mustOnePattern}' 结果: '${mustOneResult}'")
+    
+    assert len(mustOneResult) == 1, f"MustGenerateOne结果长度应为1，实际: ${len(mustOneResult)}"
+    assert mustOneResult >= "A" && mustOneResult <= "Z", f"结果应为大写字母，实际: ${mustOneResult}"
+    
+    println("✓ MustGenerateOne验证成功")
+    
+    // 测试MustGenerateVisibleOne
+    // 关键词: MustGenerateVisibleOne, 必须生成可见字符
+    println("\n测试MustGenerateVisibleOne...")
+    
+    mustVisiblePattern = "[!@#]"
+    mustVisibleResult = regen.MustGenerateVisibleOne(mustVisiblePattern)
+    
+    println(f"MustGenerateVisibleOne模式 '${mustVisiblePattern}' 结果: '${mustVisibleResult}'")
+    
+    assert len(mustVisibleResult) == 1, f"MustGenerateVisibleOne结果长度应为1，实际: ${len(mustVisibleResult)}"
+    assert mustVisibleResult == "!" || mustVisibleResult == "@" || mustVisibleResult == "#", f"结果应为!、@或#，实际: ${mustVisibleResult}"
+    
+    println("✓ MustGenerateVisibleOne验证成功")
+    
+    println("Must函数测试完成")
+}
+
+// Regen最佳实践演示
+// 关键词: 最佳实践, 使用建议
+func testRegenBestPractices() {
+    println("演示Regen使用最佳实践")
+    
+    println("=== Regen使用最佳实践 ===")
+    
+    println("1. 模式设计:")
+    println("   - 使用具体的字符类而非通配符")
+    println("   - 限制重复次数避免生成过多结果")
+    println("   - 使用分组和选择优化模式")
+    println("   - 考虑生成结果的数量和复杂度")
+    
+    println("2. 函数选择:")
+    println("   - Generate() - 需要所有可能结果")
+    println("   - GenerateOne() - 只需要一个示例")
+    println("   - GenerateStream() - 处理大量结果")
+    println("   - GenerateVisibleOne() - 需要可见字符")
+    
+    println("3. 性能考虑:")
+    println("   - 避免使用.*等可能无限匹配的模式")
+    println("   - 使用具体范围而非开放式重复")
+    println("   - 对于大量数据使用流式生成")
+    println("   - 合理设置生成限制")
+    
+    println("4. 错误处理:")
+    println("   - 检查生成函数的错误返回")
+    println("   - 验证生成结果的格式")
+    println("   - 处理空结果情况")
+    println("   - 使用Must函数时注意异常")
+    
+    println("=== 应用场景 ===")
+    
+    println("测试数据生成:")
+    println("  - 生成各种格式的测试数据")
+    println("  - 创建边界值测试用例")
+    println("  - 构造异常输入数据")
+    println("  - 验证输入验证逻辑")
+    
+    println("模糊测试:")
+    println("  - 生成随机输入数据")
+    println("  - 构造恶意输入样本")
+    println("  - 测试输入处理鲁棒性")
+    println("  - 发现潜在安全问题")
+    
+    println("数据模拟:")
+    println("  - 生成符合格式的模拟数据")
+    println("  - 创建测试环境数据")
+    println("  - 构造演示数据集")
+    println("  - 填充数据库测试数据")
+    
+    println("格式验证:")
+    println("  - 验证正则表达式正确性")
+    println("  - 测试模式匹配逻辑")
+    println("  - 检查格式定义完整性")
+    println("  - 确认输入验证规则")
+    
+    println("=== 常用模式示例 ===")
+    
+    println("基础模式:")
+    println("  [a-z] - 小写字母")
+    println("  [A-Z] - 大写字母")
+    println("  [0-9] - 数字")
+    println("  [a-zA-Z0-9] - 字母数字")
+    
+    println("实用模式:")
+    println("  [a-z]{3,8} - 3-8位小写字母")
+    println("  1[3-9][0-9]{9} - 手机号格式")
+    println("  [a-z]+@[a-z]+\\.[a-z]{2,4} - 邮箱格式")
+    println("  ([0-9]{1,3}\\.){3}[0-9]{1,3} - IP地址格式")
+    
+    println("Regen最佳实践演示完成")
+}
+
+// 执行所有Regen测试
+func main() {
+    println("开始Yaklang Regen库功能测试")
+    println("")
+    
+    // 基础功能演示
+    testBasicRegenFeatures()
+    println("")
+    
+    testSimpleGeneration()
+    println("")
+    
+    testSingleGeneration()
+    println("")
+    
+    testVisibleGeneration()
+    println("")
+    
+    // 高级功能测试
+    testStreamGeneration()
+    println("")
+    
+    testComplexPatterns()
+    println("")
+    
+    testPracticalPatterns()
+    println("")
+    
+    testMustFunctions()
+    println("")
+    
+    // 最佳实践演示
+    testRegenBestPractices()
+    println("")
+    
+    println("Regen库功能测试完成")
+    println("所有正则表达式生成功能演示完成")
+}
+
+/*
+Regen库核心功能总结:
+
+1. 基础生成功能:
+   - regen.Generate(pattern) - 生成所有匹配字符串
+   - regen.GenerateOne(pattern) - 生成单个匹配字符串
+   - regen.GenerateVisibleOne(pattern) - 生成可见字符串
+   - regen.GenerateStream(pattern) - 流式生成字符串
+
+2. Must函数:
+   - regen.MustGenerate() - 必须成功生成所有
+   - regen.MustGenerateOne() - 必须成功生成单个
+   - regen.MustGenerateVisibleOne() - 必须成功生成可见字符
+
+3. 支持的正则语法:
+   - 字符类: [a-z], [0-9], [abc]
+   - 重复: ?, +, *, {n,m}
+   - 选择: (a|b|c)
+   - 分组: (pattern)
+   - 转义字符: \\d, \\w, \\s
+
+4. 应用场景:
+   - 测试数据生成
+   - 模糊测试输入
+   - 格式验证测试
+   - 数据模拟生成
+   - 输入边界测试
+
+5. 性能特性:
+   - 支持流式生成处理大量数据
+   - 智能限制避免无限生成
+   - 可见字符过滤
+   - 高效的模式解析
+
+6. 最佳实践:
+   - 使用具体字符类
+   - 限制重复次数
+   - 选择合适的生成函数
+   - 处理生成错误
+   - 验证生成结果
+
+7. 常用模式:
+   - 邮箱: [a-z]+@[a-z]+\\.[a-z]{2,4}
+   - 手机号: 1[3-9][0-9]{9}
+   - IP地址: ([0-9]{1,3}\\.){3}[0-9]{1,3}
+   - 密码: [a-zA-Z0-9!@#]{8,16}
+
+8. 注意事项:
+   - 避免可能无限匹配的模式
+   - 检查生成结果数量
+   - 处理空结果情况
+   - 合理使用Must函数
+
+Regen库为Yaklang提供了强大的正则表达式逆向生成能力，
+是测试数据生成和模糊测试的重要工具。
+*/
+
+// 调用主函数
+main()

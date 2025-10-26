@@ -1,0 +1,30 @@
+// 简单Risk测试
+// 关键词: risk.CreateRisk, 风险管理
+
+println("开始简单Risk库测试")
+
+// 测试基础风险创建
+target = "http://example.com/test"
+
+println("创建基础风险记录...")
+riskRecord = risk.CreateRisk(target, 
+    risk.title("测试SQL注入漏洞"),
+    risk.type("sqli"),
+    risk.severity("high"),
+    risk.description("这是一个测试用的SQL注入漏洞"))
+
+if riskRecord != nil {
+    println("风险记录创建成功")
+    println(f"标题: ${riskRecord.Title}")
+    println(f"类型: ${riskRecord.RiskType}")
+    println(f"严重级别: ${riskRecord.Severity}")
+    
+    // 保存风险记录
+    println("保存风险记录...")
+    risk.Save(riskRecord)
+    println("风险记录保存成功")
+} else {
+    println("风险记录创建失败")
+}
+
+println("简单Risk库测试完成")

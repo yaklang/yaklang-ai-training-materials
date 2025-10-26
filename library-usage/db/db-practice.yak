@@ -1,0 +1,709 @@
+/*
+Yaklang DB (数据库接口) 库实践
+
+DB库是Yaklang中的数据库操作核心模块，提供了SQLite、MySQL等数据库的
+连接、查询、操作功能，以及键值存储、Payload管理等高级功能。
+
+关键词: 数据库操作, SQLite, MySQL, SQL查询, 键值存储
+关键词: Payload管理, 数据持久化, 临时数据库, 数据库连接
+*/
+
+// 基础数据库连接测试
+// 关键词: db.OpenTempSqliteDatabase, 数据库连接
+func testBasicDatabaseConnection() {
+    println("测试基础数据库连接功能")
+    
+    // 创建临时SQLite数据库
+    // 关键词: 临时数据库, SQLite连接
+    println("创建临时SQLite数据库...")
+    tempDB, err = db.OpenTempSqliteDatabase()
+    
+    if err != nil {
+        println(f"创建临时数据库失败: ${err}")
+        return
+    }
+    
+    assert tempDB != nil, "临时数据库不应为空"
+    println("临时SQLite数据库创建成功")
+    
+    // 创建测试表
+    // 关键词: 创建表, SQL DDL
+    println("创建测试表...")
+    createTableSQL = `
+    CREATE TABLE IF NOT EXISTS test_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        email TEXT,
+        age INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`
+    
+    err = tempDB.Exec(createTableSQL).Error
+    assert err == nil, f"创建表失败: ${err}"
+    
+    println("测试表创建成功")
+    
+    // 插入测试数据
+    // 关键词: 插入数据, SQL DML
+    println("插入测试数据...")
+    insertSQL = "INSERT INTO test_users (username, email, age) VALUES (?, ?, ?)"
+    
+    testUsers = [
+        ["admin", "admin@example.com", 25],
+        ["user1", "user1@example.com", 30],
+        ["test", "test@example.com", 22],
+        ["guest", "guest@example.com", 28]
+    ]
+    
+    for user in testUsers {
+        err = tempDB.Exec(insertSQL, user[0], user[1], user[2]).Error
+        assert err == nil, f"插入数据失败: ${err}"
+    }
+    
+    println(f"成功插入 ${len(testUsers)} 条测试数据")
+    
+    println("基础数据库连接测试完成")
+}
+
+// 数据库查询测试
+// 关键词: db.ScanResult, SQL查询
+func testDatabaseQuery() {
+    println("测试数据库查询功能")
+    
+    // 创建临时数据库并插入数据
+    tempDB, err = db.OpenTempSqliteDatabase()
+    if err != nil {
+        println(f"创建数据库失败: ${err}")
+        return
+    }
+    
+    // 创建表和插入数据
+    tempDB.Exec(`CREATE TABLE test_products (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        price REAL,
+        category TEXT
+    )`)
+    
+    products = [
+        [1, "Laptop", 999.99, "Electronics"],
+        [2, "Phone", 599.99, "Electronics"],
+        [3, "Book", 29.99, "Education"],
+        [4, "Chair", 199.99, "Furniture"]
+    ]
+    
+    for product in products {
+        tempDB.Exec("INSERT INTO test_products VALUES (?, ?, ?, ?)", 
+                   product[0], product[1], product[2], product[3])
+    }
+    
+    // 使用db.ScanResult查询数据
+    // 关键词: db.ScanResult, 查询结果, 数据映射
+    println("使用db.ScanResult查询所有产品...")
+    
+    allProducts, err = db.ScanResult(tempDB, "SELECT * FROM test_products ORDER BY id")
+    assert err == nil, f"查询失败: ${err}"
+    assert len(allProducts) == 4, f"应该有4个产品，实际: ${len(allProducts)}"
+    
+    println(f"查询到 ${len(allProducts)} 个产品:")
+    count = 0
+    for product in allProducts {
+        count = count + 1
+        println(f"  产品 ${count}: ${product['name']} - \$${product['price']} (${product['category']})")
+    }
+    
+    // 条件查询
+    // 关键词: 条件查询, 参数化查询
+    println("查询Electronics类别的产品...")
+    
+    electronics, err = db.ScanResult(tempDB, 
+        "SELECT * FROM test_products WHERE category = ? ORDER BY price DESC", 
+        "Electronics")
+    assert err == nil, f"条件查询失败: ${err}"
+    assert len(electronics) == 2, f"应该有2个电子产品，实际: ${len(electronics)}"
+    
+    println(f"Electronics产品 ${len(electronics)} 个:")
+    for product in electronics {
+        println(f"  ${product['name']}: \$${product['price']}")
+    }
+    
+    // 聚合查询
+    // 关键词: 聚合查询, COUNT, AVG
+    println("执行聚合查询...")
+    
+    stats, err = db.ScanResult(tempDB, `
+        SELECT 
+            category,
+            COUNT(*) as count,
+            AVG(price) as avg_price,
+            MIN(price) as min_price,
+            MAX(price) as max_price
+        FROM test_products 
+        GROUP BY category
+        ORDER BY avg_price DESC
+    `)
+    assert err == nil, f"聚合查询失败: ${err}"
+    
+    println("产品统计信息:")
+    for stat in stats {
+        println(f"  ${stat['category']}: ${stat['count']}个产品, 平均价格: \$${stat['avg_price']}")
+    }
+    
+    println("数据库查询测试完成")
+}
+
+// 键值存储测试
+// 关键词: db.SetKey, db.GetKey, 键值存储
+func testKeyValueStorage() {
+    println("测试键值存储功能")
+    
+    // 设置键值对
+    // 关键词: 设置键值, 数据存储
+    println("设置键值对...")
+    
+    testData = {
+        "app_name": "Yaklang Security Scanner",
+        "version": "1.0.0",
+        "author": "Yaklang Team",
+        "config_timeout": "30",
+        "debug_mode": "true"
+    }
+    
+    for key, value in testData {
+        err = db.SetKey(key, value)
+        assert err == nil, f"设置键值失败 ${key}: ${err}"
+    }
+    
+    println(f"成功设置 ${len(testData)} 个键值对")
+    
+    // 读取键值对
+    // 关键词: 读取键值, 数据获取
+    println("读取键值对...")
+    
+    for key, expectedValue in testData {
+        actualValue = db.GetKey(key)
+        assert actualValue == expectedValue, f"键值不匹配 ${key}: 期望 ${expectedValue}, 实际 ${actualValue}"
+        println(f"  ${key}: ${actualValue}")
+    }
+    
+    println("键值对读取验证成功")
+    
+    // 测试TTL键值存储
+    // 关键词: TTL, 过期时间, 临时存储
+    println("测试TTL键值存储...")
+    
+    ttlKey = "temp_session"
+    ttlValue = "session_12345"
+    ttlSeconds = 2
+    
+    err = db.SetKeyWithTTL(ttlKey, ttlValue, ttlSeconds)
+    assert err == nil, f"设置TTL键值失败: ${err}"
+    
+    // 立即读取应该成功
+    immediateValue = db.GetKey(ttlKey)
+    assert immediateValue == ttlValue, f"TTL键值立即读取失败: ${immediateValue}"
+    println(f"TTL键值设置成功: ${ttlKey} = ${immediateValue}")
+    
+    // 等待过期后读取
+    waitSeconds = ttlSeconds + 1
+    println(f"等待 ${waitSeconds} 秒后读取...")
+    sleep(waitSeconds)
+    
+    expiredValue = db.GetKey(ttlKey)
+    println(f"过期后读取结果: '${expiredValue}'")
+    
+    // 删除键值
+    // 关键词: 删除键值, 数据清理
+    println("测试键值删除...")
+    
+    deleteKey = "test_delete"
+    db.SetKey(deleteKey, "to_be_deleted")
+    
+    beforeDelete = db.GetKey(deleteKey)
+    assert beforeDelete == "to_be_deleted", "删除前应该能读取到值"
+    
+    db.DelKey(deleteKey)
+    
+    afterDelete = db.GetKey(deleteKey)
+    assert afterDelete == "", "删除后应该读取不到值"
+    
+    println("键值删除测试成功")
+    
+    println("键值存储测试完成")
+}
+
+// Payload管理测试
+// 关键词: db.SavePayload, db.YieldPayload, Payload管理
+func testPayloadManagement() {
+    println("测试Payload管理功能")
+    
+    // 保存用户名Payload
+    // 关键词: 保存Payload, 字典管理
+    println("保存用户名Payload...")
+    
+    usernames = [
+        "admin", "administrator", "root", "user", "test",
+        "guest", "demo", "manager", "operator", "service"
+    ]
+    
+    err = db.SavePayload("test-usernames", usernames)
+    assert err == nil, f"保存用户名Payload失败: ${err}"
+    
+    println(f"成功保存 ${len(usernames)} 个用户名到 test-usernames 组")
+    
+    // 保存密码Payload
+    println("保存密码Payload...")
+    
+    passwords = [
+        "123456", "password", "admin", "123123", "root",
+        "qwerty", "test", "1234567890", "password123", "admin123"
+    ]
+    
+    err = db.SavePayload("test-passwords", passwords)
+    assert err == nil, f"保存密码Payload失败: ${err}"
+    
+    println(f"成功保存 ${len(passwords)} 个密码到 test-passwords 组")
+    
+    // 读取Payload
+    // 关键词: 读取Payload, 字典遍历
+    println("读取用户名Payload...")
+    
+    readUsernames = []
+    for username in db.YieldPayload("test-usernames") {
+        readUsernames = append(readUsernames, username)
+    }
+    
+    assert len(readUsernames) == len(usernames), f"用户名数量不匹配: 期望 ${len(usernames)}, 实际 ${len(readUsernames)}"
+    
+    println(f"成功读取 ${len(readUsernames)} 个用户名:")
+    count = 0
+    for username in readUsernames {
+        if count < 5 {  // 只显示前5个
+            count = count + 1
+            println(f"  ${count}. ${username}")
+        }
+    }
+    if len(readUsernames) > 5 {
+        println(f"  ... 还有 ${len(readUsernames) - 5} 个")
+    }
+    
+    // 读取密码Payload
+    println("读取密码Payload...")
+    
+    readPasswords = []
+    for password in db.YieldPayload("test-passwords") {
+        readPasswords = append(readPasswords, password)
+    }
+    
+    assert len(readPasswords) == len(passwords), f"密码数量不匹配: 期望 ${len(passwords)}, 实际 ${len(readPasswords)}"
+    
+    println(f"成功读取 ${len(readPasswords)} 个密码")
+    
+    // 获取Payload组列表
+    // 关键词: Payload组列表, 组管理
+    println("获取Payload组列表...")
+    
+    groups = db.GetAllPayloadGroupsName()
+    println(f"当前Payload组 ${len(groups)} 个:")
+    for group in groups {
+        println(f"  - ${group}")
+    }
+    
+    // 删除Payload组
+    // 关键词: 删除Payload组, 数据清理
+    println("删除测试Payload组...")
+    
+    err = db.DeletePayloadByGroup("test-usernames")
+    assert err == nil, f"删除用户名组失败: ${err}"
+    
+    err = db.DeletePayloadByGroup("test-passwords")
+    assert err == nil, f"删除密码组失败: ${err}"
+    
+    println("测试Payload组删除成功")
+    
+    println("Payload管理测试完成")
+}
+
+// 项目键值存储测试
+// 关键词: db.SetProjectKey, db.GetProjectKey, 项目配置
+func testProjectKeyStorage() {
+    println("测试项目键值存储功能")
+    
+    // 设置项目配置
+    // 关键词: 项目配置, 项目级存储
+    println("设置项目配置...")
+    
+    projectConfig = {
+        "project_name": "Security Assessment",
+        "target_domain": "example.com",
+        "scan_depth": "3",
+        "concurrent_threads": "10",
+        "enable_aggressive": "false"
+    }
+    
+    for key, value in projectConfig {
+        err = db.SetProjectKey(key, value)
+        assert err == nil, f"设置项目配置失败 ${key}: ${err}"
+    }
+    
+    println(f"成功设置 ${len(projectConfig)} 个项目配置")
+    
+    // 读取项目配置
+    // 关键词: 读取项目配置, 配置验证
+    println("读取项目配置...")
+    
+    for key, expectedValue in projectConfig {
+        actualValue = db.GetProjectKey(key)
+        assert actualValue == expectedValue, f"项目配置不匹配 ${key}: 期望 ${expectedValue}, 实际 ${actualValue}"
+        println(f"  ${key}: ${actualValue}")
+    }
+    
+    println("项目配置读取验证成功")
+    
+    // 测试复杂数据类型
+    // 关键词: 复杂数据, JSON存储
+    println("测试复杂数据类型存储...")
+    
+    complexData = {
+        "scan_targets": ["192.168.1.1", "192.168.1.100-200", "example.com"],
+        "excluded_ports": [22, 3389, 5900],
+        "scan_options": {
+            "timeout": 5,
+            "retry": 3,
+            "user_agent": "Yaklang Scanner"
+        }
+    }
+    
+    // 将复杂数据序列化为JSON字符串存储
+    complexDataJSON = json.dumps(complexData)
+    err = db.SetProjectKey("complex_config", complexDataJSON)
+    assert err == nil, f"存储复杂数据失败: ${err}"
+    
+    // 读取并反序列化
+    retrievedJSON = db.GetProjectKey("complex_config")
+    retrievedData = json.loads(retrievedJSON)
+    
+    assert len(retrievedData["scan_targets"]) == 3, "扫描目标数量不匹配"
+    assert len(retrievedData["excluded_ports"]) == 3, "排除端口数量不匹配"
+    assert retrievedData["scan_options"]["timeout"] == 5, "超时配置不匹配"
+    
+    println("复杂数据类型存储测试成功")
+    
+    println("项目键值存储测试完成")
+}
+
+// 数据库高级操作测试
+// 关键词: 高级SQL, 事务, 批量操作
+func testAdvancedDatabaseOperations() {
+    println("测试数据库高级操作")
+    
+    // 创建临时数据库
+    tempDB, err = db.OpenTempSqliteDatabase()
+    if err != nil {
+        println(f"创建数据库失败: ${err}")
+        return
+    }
+    
+    // 创建复杂表结构
+    // 关键词: 复杂表结构, 外键, 索引
+    println("创建复杂表结构...")
+    
+    createTablesSQL = `
+    CREATE TABLE categories (
+        id INTEGER PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT
+    );
+    
+    CREATE TABLE products (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        category_id INTEGER,
+        stock INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+    );
+    
+    CREATE INDEX idx_products_category ON products(category_id);
+    CREATE INDEX idx_products_price ON products(price);
+    `
+    
+    err = tempDB.Exec(createTablesSQL).Error
+    assert err == nil, f"创建表结构失败: ${err}"
+    
+    println("复杂表结构创建成功")
+    
+    // 插入关联数据
+    // 关键词: 关联数据, 外键关系
+    println("插入关联数据...")
+    
+    // 插入分类
+    categories = [
+        [1, "Electronics", "Electronic devices and gadgets"],
+        [2, "Books", "Educational and entertainment books"],
+        [3, "Clothing", "Fashion and apparel"]
+    ]
+    
+    for category in categories {
+        tempDB.Exec("INSERT INTO categories VALUES (?, ?, ?)", 
+                   category[0], category[1], category[2])
+    }
+    
+    // 插入产品
+    products = [
+        [1, "Laptop Pro", 1299.99, 1, 50],
+        [2, "Smartphone", 699.99, 1, 100],
+        [3, "Programming Guide", 49.99, 2, 200],
+        [4, "T-Shirt", 19.99, 3, 500],
+        [5, "Tablet", 399.99, 1, 75]
+    ]
+    
+    for product in products {
+        tempDB.Exec("INSERT INTO products (id, name, price, category_id, stock) VALUES (?, ?, ?, ?, ?)",
+                   product[0], product[1], product[2], product[3], product[4])
+    }
+    
+    println(f"成功插入 ${len(categories)} 个分类和 ${len(products)} 个产品")
+    
+    // 复杂查询测试
+    // 关键词: JOIN查询, 子查询, 聚合函数
+    println("执行复杂JOIN查询...")
+    
+    joinQuery = `
+    SELECT 
+        c.name as category_name,
+        p.name as product_name,
+        p.price,
+        p.stock,
+        p.price * p.stock as total_value
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    ORDER BY total_value DESC
+    `
+    
+    joinResults, err = db.ScanResult(tempDB, joinQuery)
+    assert err == nil, f"JOIN查询失败: ${err}"
+    
+    println(f"JOIN查询结果 ${len(joinResults)} 条:")
+    count = 0
+    for result in joinResults {
+        if count < 3 {  // 显示前3条
+            count = count + 1
+            println(f"  ${result['category_name']} - ${result['product_name']}: \$${result['price']} x ${result['stock']} = \$${result['total_value']}")
+        }
+    }
+    
+    // 聚合统计查询
+    println("执行聚合统计查询...")
+    
+    statsQuery = `
+    SELECT 
+        c.name as category,
+        COUNT(p.id) as product_count,
+        AVG(p.price) as avg_price,
+        SUM(p.stock) as total_stock,
+        SUM(p.price * p.stock) as category_value
+    FROM categories c
+    LEFT JOIN products p ON c.id = p.category_id
+    GROUP BY c.id, c.name
+    ORDER BY category_value DESC
+    `
+    
+    statsResults, err = db.ScanResult(tempDB, statsQuery)
+    assert err == nil, f"统计查询失败: ${err}"
+    
+    println("分类统计结果:")
+    for stat in statsResults {
+        println(f"  ${stat['category']}: ${stat['product_count']}个产品, 平均价格\$${stat['avg_price']}, 总库存${stat['total_stock']}")
+    }
+    
+    println("数据库高级操作测试完成")
+}
+
+// 数据库最佳实践演示
+// 关键词: 最佳实践, 性能优化, 安全性
+func testDatabaseBestPractices() {
+    println("演示数据库使用最佳实践")
+    
+    println("=== 数据库使用最佳实践 ===")
+    
+    println("1. 连接管理:")
+    println("   - 使用临时数据库进行测试")
+    println("   - 及时关闭数据库连接")
+    println("   - 避免连接泄露")
+    
+    println("2. SQL安全:")
+    println("   - 始终使用参数化查询")
+    println("   - 避免SQL注入风险")
+    println("   - 验证输入数据")
+    
+    println("3. 性能优化:")
+    println("   - 合理使用索引")
+    println("   - 避免N+1查询问题")
+    println("   - 使用批量操作")
+    
+    println("4. 数据完整性:")
+    println("   - 使用事务保证一致性")
+    println("   - 设置合适的约束")
+    println("   - 定期备份数据")
+    
+    println("5. 错误处理:")
+    println("   - 检查所有数据库操作的错误")
+    println("   - 提供有意义的错误信息")
+    println("   - 实现重试机制")
+    
+    // 演示参数化查询
+    println("\n=== 参数化查询示例 ===")
+    
+    tempDB, err = db.OpenTempSqliteDatabase()
+    if err == nil {
+        // 创建测试表
+        tempDB.Exec("CREATE TABLE secure_test (id INTEGER, name TEXT, value TEXT)")
+        
+        // 安全的参数化查询
+        safeQuery = "INSERT INTO secure_test (id, name, value) VALUES (?, ?, ?)"
+        
+        testData = [
+            [1, "test'name", "safe value"],
+            [2, "normal", "another value"],
+            [3, "special\"chars", "value with 'quotes'"]
+        ]
+        
+        println("使用参数化查询插入数据:")
+        for data in testData {
+            err = tempDB.Exec(safeQuery, data[0], data[1], data[2]).Error
+            if err == nil {
+                println(f"  安全插入: ID=${data[0]}, Name='${data[1]}'")
+            }
+        }
+        
+        // 安全的查询
+        results, err = db.ScanResult(tempDB, "SELECT * FROM secure_test WHERE name = ?", "test'name")
+        if err == nil && len(results) > 0 {
+            println(f"  安全查询结果: ${results[0]['name']}")
+        }
+    }
+    
+    println("\n=== 键值存储最佳实践 ===")
+    
+    println("1. 键名规范:")
+    println("   - 使用有意义的键名")
+    println("   - 采用一致的命名约定")
+    println("   - 避免键名冲突")
+    
+    println("2. 数据类型:")
+    println("   - 简单数据直接存储")
+    println("   - 复杂数据序列化为JSON")
+    println("   - 考虑数据大小限制")
+    
+    println("3. 生命周期管理:")
+    println("   - 合理使用TTL")
+    println("   - 及时清理过期数据")
+    println("   - 避免内存泄露")
+    
+    println("数据库最佳实践演示完成")
+}
+
+// 执行所有DB测试
+func main() {
+    println("开始Yaklang DB库功能测试")
+    println("")
+    
+    // 基础功能测试
+    testBasicDatabaseConnection()
+    println("")
+    
+    testDatabaseQuery()
+    println("")
+    
+    testKeyValueStorage()
+    println("")
+    
+    // 高级功能测试
+    testPayloadManagement()
+    println("")
+    
+    testProjectKeyStorage()
+    println("")
+    
+    testAdvancedDatabaseOperations()
+    println("")
+    
+    // 最佳实践演示
+    testDatabaseBestPractices()
+    println("")
+    
+    println("DB库功能测试完成")
+    println("所有数据库操作和配置测试通过")
+}
+
+/*
+DB库核心功能总结:
+
+1. 数据库连接:
+   - db.OpenTempSqliteDatabase() - 创建临时SQLite数据库
+   - db.OpenSqliteDatabase(path) - 打开指定路径SQLite数据库
+   - db.OpenDatabase(dialect, source) - 打开其他类型数据库
+
+2. SQL操作:
+   - db.ScanResult(db, query, args...) - 执行查询并返回结果
+   - db.Exec(sql, args...) - 执行SQL语句(INSERT/UPDATE/DELETE)
+   - 支持参数化查询防止SQL注入
+
+3. 键值存储:
+   - db.SetKey(key, value) - 设置键值对
+   - db.GetKey(key) - 获取键值
+   - db.DelKey(key) - 删除键值
+   - db.SetKeyWithTTL(key, value, ttl) - 设置带过期时间的键值
+
+4. 项目配置:
+   - db.SetProjectKey(key, value) - 设置项目级配置
+   - db.GetProjectKey(key) - 获取项目级配置
+   - 项目配置与全局配置隔离
+
+5. Payload管理:
+   - db.SavePayload(group, payloads) - 保存Payload字典
+   - db.YieldPayload(group) - 遍历Payload字典
+   - db.DeletePayloadByGroup(group) - 删除Payload组
+   - db.GetAllPayloadGroupsName() - 获取所有Payload组名
+
+6. 数据库特性:
+   - 支持SQLite和MySQL
+   - 自动创建表结构
+   - 支持事务操作
+   - 内置连接池管理
+
+7. 安全特性:
+   - 参数化查询防止SQL注入
+   - 自动转义特殊字符
+   - 连接安全管理
+   - 数据验证
+
+8. 性能优化:
+   - 连接复用
+   - 批量操作支持
+   - 索引优化
+   - 查询缓存
+
+9. 应用场景:
+   - 扫描结果存储
+   - 配置管理
+   - 字典管理
+   - 临时数据存储
+   - 数据分析
+
+10. 最佳实践:
+    - 使用参数化查询
+    - 合理设计表结构
+    - 及时关闭连接
+    - 定期清理数据
+    - 错误处理完善
+
+DB库为Yaklang提供了完整的数据库解决方案，
+支持从简单的键值存储到复杂的关系型数据库操作，
+是安全测试数据管理的核心组件。
+*/
+
+// 调用主函数
+main()

@@ -1,0 +1,41 @@
+// 简单CSRF测试
+// 关键词: csrf.Generate, CSRF POC生成
+
+println("开始CSRF库测试")
+
+// 构造测试HTTP请求
+testRequest = `POST /api/transfer HTTP/1.1
+Host: bank.example.com
+Content-Type: application/x-www-form-urlencoded
+Cookie: session=abc123
+Content-Length: 30
+
+to=attacker&amount=1000&submit=1`
+
+println("构造测试请求完成")
+
+// 生成CSRF POC
+csrfPoc, err = csrf.Generate(testRequest)
+
+if err != nil {
+    println(f"CSRF POC生成失败: ${err}")
+    return
+}
+
+println("CSRF POC生成成功")
+println(f"POC长度: ${len(csrfPoc)}")
+
+// 验证POC内容
+if str.Contains(csrfPoc, "<form") {
+    println("POC包含HTML表单 ✓")
+} else {
+    println("POC不包含HTML表单 ✗")
+}
+
+if str.Contains(csrfPoc, "bank.example.com") {
+    println("POC包含目标主机 ✓")
+} else {
+    println("POC不包含目标主机 ✗")
+}
+
+println("CSRF库测试完成")

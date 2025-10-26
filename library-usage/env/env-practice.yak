@@ -1,0 +1,464 @@
+/*
+Yaklang Env (环境变量) 库实践
+
+Env库是Yaklang中用于环境变量操作的简化模块，提供了
+获取和设置环境变量的基础功能。
+
+注意：env库已被标记为弃用，推荐使用os库的环境变量功能。
+
+关键词: 环境变量, env.Get, env.Set, 系统环境
+关键词: 环境配置, 系统变量, 配置管理, 运行环境
+*/
+
+// 基础Env功能演示
+// 关键词: env基础功能, 环境变量概念
+func testBasicEnvFeatures() {
+    println("测试基础Env功能")
+    
+    // Env库基本概念
+    // 关键词: 环境变量概念, 系统配置
+    println("Env库基本概念:")
+    println("  - 环境变量是操作系统提供的配置机制")
+    println("  - 用于存储系统和应用程序的配置信息")
+    println("  - 可以在不修改代码的情况下改变程序行为")
+    println("  - 常用于配置路径、代理、认证信息等")
+    
+    println("Env库功能:")
+    println("  - env.Get(key) - 获取环境变量值")
+    println("  - env.Set(key, value) - 设置环境变量值")
+    
+    println("注意：env库已弃用，推荐使用os库的环境变量功能")
+    
+    println("基础Env功能演示完成")
+}
+
+// 环境变量获取测试
+// 关键词: env.Get, 环境变量获取
+func testEnvGet() {
+    println("测试环境变量获取")
+    
+    // 获取常见的系统环境变量
+    // 关键词: PATH环境变量, 系统路径
+    println("获取系统环境变量...")
+    
+    pathValue = env.Get("PATH")
+    if pathValue != "" {
+        println(f"PATH环境变量长度: ${len(pathValue)} 字符")
+        println("PATH环境变量获取成功")
+        
+        // 验证PATH包含常见路径
+        if str.Contains(pathValue, "/usr/bin") || str.Contains(pathValue, "/bin") {
+            println("✓ PATH包含标准系统路径")
+        } else {
+            println("PATH内容可能是Windows格式或自定义配置")
+        }
+    } else {
+        println("PATH环境变量为空（这很不寻常）")
+    }
+    
+    // 获取HOME目录环境变量
+    // 关键词: HOME环境变量, 用户目录
+    println("\n获取用户目录环境变量...")
+    
+    homeValue = env.Get("HOME")
+    if homeValue != "" {
+        println(f"HOME目录: ${homeValue}")
+        println("✓ HOME环境变量获取成功")
+    } else {
+        // Windows系统可能使用USERPROFILE
+        userProfile = env.Get("USERPROFILE")
+        if userProfile != "" {
+            println(f"USERPROFILE目录: ${userProfile}")
+            println("✓ Windows用户目录获取成功")
+        } else {
+            println("未找到用户目录环境变量")
+        }
+    }
+    
+    // 获取Shell环境变量
+    // 关键词: SHELL环境变量, 命令解释器
+    println("\n获取Shell环境变量...")
+    
+    shellValue = env.Get("SHELL")
+    if shellValue != "" {
+        println(f"当前Shell: ${shellValue}")
+        println("✓ SHELL环境变量获取成功")
+    } else {
+        println("SHELL环境变量未设置（可能是Windows系统）")
+    }
+    
+    // 获取不存在的环境变量
+    // 关键词: 不存在环境变量, 空值处理
+    println("\n测试不存在的环境变量...")
+    
+    nonExistentValue = env.Get("YAKLANG_NONEXISTENT_TEST_VAR_12345")
+    if nonExistentValue == "" {
+        println("✓ 不存在的环境变量正确返回空字符串")
+    } else {
+        println(f"意外：不存在的环境变量返回了值: ${nonExistentValue}")
+    }
+    
+    println("环境变量获取测试完成")
+}
+
+// 环境变量设置测试
+// 关键词: env.Set, 环境变量设置
+func testEnvSet() {
+    println("测试环境变量设置")
+    
+    // 设置测试环境变量
+    // 关键词: 环境变量设置, 自定义变量
+    println("设置测试环境变量...")
+    
+    testKey = "YAKLANG_TEST_ENV_VAR"
+    testValue = "Hello Yaklang Env Library!"
+    
+    env.Set(testKey, testValue)
+    println(f"设置环境变量: ${testKey} = ${testValue}")
+    
+    // 验证设置结果
+    // 关键词: 环境变量验证, 设置验证
+    println("验证环境变量设置...")
+    
+    retrievedValue = env.Get(testKey)
+    if retrievedValue == testValue {
+        println("✓ 环境变量设置和获取验证成功")
+    } else {
+        println(f"✗ 环境变量设置失败: 期望 '${testValue}', 实际 '${retrievedValue}'")
+    }
+    
+    // 设置多个测试环境变量
+    // 关键词: 多环境变量, 批量设置
+    println("\n设置多个测试环境变量...")
+    
+    testVars = {
+        "YAKLANG_TEST_STRING": "测试字符串值",
+        "YAKLANG_TEST_NUMBER": "12345",
+        "YAKLANG_TEST_PATH": "/tmp/yaklang/test",
+        "YAKLANG_TEST_URL": "https://yaklang.com",
+        "YAKLANG_TEST_BOOLEAN": "true"
+    }
+    
+    // 设置所有测试变量
+    for key, value in testVars {
+        env.Set(key, value)
+        println(f"设置: ${key} = ${value}")
+    }
+    
+    println("多个环境变量设置完成")
+    
+    // 验证所有设置的变量
+    println("\n验证所有设置的环境变量...")
+    
+    allSuccess = true
+    for key, expectedValue in testVars {
+        actualValue = env.Get(key)
+        if actualValue == expectedValue {
+            println(f"✓ ${key}: 验证成功")
+        } else {
+            println(f"✗ ${key}: 验证失败 (期望: ${expectedValue}, 实际: ${actualValue})")
+            allSuccess = false
+        }
+    }
+    
+    if allSuccess {
+        println("✓ 所有环境变量设置验证成功")
+    } else {
+        println("✗ 部分环境变量设置验证失败")
+    }
+    
+    println("环境变量设置测试完成")
+}
+
+// 环境变量修改测试
+// 关键词: 环境变量修改, 值更新
+func testEnvModification() {
+    println("测试环境变量修改")
+    
+    // 创建可修改的测试变量
+    // 关键词: 环境变量修改, 值变更
+    println("创建可修改的测试变量...")
+    
+    modifyKey = "YAKLANG_MODIFY_TEST"
+    originalValue = "原始值"
+    
+    env.Set(modifyKey, originalValue)
+    println(f"设置原始值: ${modifyKey} = ${originalValue}")
+    
+    // 验证原始值
+    currentValue = env.Get(modifyKey)
+    if currentValue == originalValue {
+        println("✓ 原始值设置成功")
+    } else {
+        println("✗ 原始值设置失败")
+        return
+    }
+    
+    // 修改环境变量值
+    // 关键词: 值修改, 环境变量更新
+    println("\n修改环境变量值...")
+    
+    newValue = "修改后的值"
+    env.Set(modifyKey, newValue)
+    println(f"修改为新值: ${modifyKey} = ${newValue}")
+    
+    // 验证修改结果
+    updatedValue = env.Get(modifyKey)
+    if updatedValue == newValue {
+        println("✓ 环境变量修改成功")
+    } else {
+        println(f"✗ 环境变量修改失败: 期望 '${newValue}', 实际 '${updatedValue}'")
+    }
+    
+    // 多次修改测试
+    // 关键词: 多次修改, 连续更新
+    println("\n测试多次修改...")
+    
+    modifications = ["第一次修改", "第二次修改", "第三次修改", "最终值"]
+    
+    for i, value in modifications {
+        env.Set(modifyKey, value)
+        retrievedValue = env.Get(modifyKey)
+        
+        if retrievedValue == value {
+            println(f"✓ 第${i+1}次修改成功: ${value}")
+        } else {
+            println(f"✗ 第${i+1}次修改失败: 期望 '${value}', 实际 '${retrievedValue}'")
+        }
+    }
+    
+    println("环境变量修改测试完成")
+}
+
+// 特殊字符和编码测试
+// 关键词: 特殊字符, 编码处理
+func testSpecialCharacters() {
+    println("测试特殊字符和编码")
+    
+    // 测试包含特殊字符的环境变量
+    // 关键词: 特殊字符, 字符编码
+    println("测试特殊字符环境变量...")
+    
+    specialTests = {
+        "YAKLANG_CHINESE": "中文测试值",
+        "YAKLANG_SYMBOLS": "!@#$%^&*()_+-=[]{}|;:,.<>?",
+        "YAKLANG_SPACES": "包含 空格 的 值",
+        "YAKLANG_QUOTES": "包含\"双引号\"和'单引号'的值",
+        "YAKLANG_NEWLINES": "包含\n换行符\n的值",
+        "YAKLANG_UNICODE": "Unicode测试: 🚀 ✨ 🎯",
+        "YAKLANG_EMPTY": "",
+        "YAKLANG_LONG": str.Repeat("长字符串测试", 100)
+    }
+    
+    println("设置特殊字符环境变量...")
+    
+    for key, value in specialTests {
+        env.Set(key, value)
+        retrievedValue = env.Get(key)
+        
+        if retrievedValue == value {
+            println(f"✓ ${key}: 特殊字符处理成功")
+        } else {
+            println(f"✗ ${key}: 特殊字符处理失败")
+            println(f"  期望长度: ${len(value)}, 实际长度: ${len(retrievedValue)}")
+        }
+    }
+    
+    println("特殊字符和编码测试完成")
+}
+
+// 与os库环境变量功能对比
+// 关键词: os库对比, 功能对比
+func testComparisonWithOS() {
+    println("测试与os库环境变量功能对比")
+    
+    // env库与os库功能对比
+    // 关键词: 功能对比, API对比
+    println("env库与os库功能对比:")
+    
+    testKey = "YAKLANG_COMPARISON_TEST"
+    testValue = "对比测试值"
+    
+    // 使用env库设置
+    env.Set(testKey, testValue)
+    envValue = env.Get(testKey)
+    
+    // 使用os库获取（验证兼容性）
+    osValue = os.Getenv(testKey)
+    
+    println(f"env.Get结果: ${envValue}")
+    println(f"os.Getenv结果: ${osValue}")
+    
+    if envValue == osValue && envValue == testValue {
+        println("✓ env库与os库环境变量兼容")
+    } else {
+        println("✗ env库与os库环境变量可能存在差异")
+    }
+    
+    // 功能对比总结
+    println("\n功能对比总结:")
+    println("env库:")
+    println("  - env.Get(key) - 简单的获取接口")
+    println("  - env.Set(key, value) - 简单的设置接口")
+    println("  - 已标记为弃用")
+    
+    println("os库 (推荐):")
+    println("  - os.Getenv(key) - 获取环境变量")
+    println("  - os.Setenv(key, value) - 设置环境变量")
+    println("  - os.LookupEnv(key) - 检查变量是否存在")
+    println("  - os.Unsetenv(key) - 删除环境变量")
+    println("  - os.Environ() - 获取所有环境变量")
+    println("  - os.Clearenv() - 清空所有环境变量")
+    println("  - os.ExpandEnv(s) - 展开环境变量")
+    
+    println("与os库环境变量功能对比完成")
+}
+
+// Env库最佳实践演示
+// 关键词: 最佳实践, 使用建议
+func testEnvBestPractices() {
+    println("演示Env库使用最佳实践")
+    
+    println("=== Env库使用最佳实践 ===")
+    
+    println("1. 迁移建议:")
+    println("   - env库已被标记为弃用")
+    println("   - 推荐迁移到os库的环境变量功能")
+    println("   - os库提供更完整的环境变量操作")
+    
+    println("2. 环境变量命名:")
+    println("   - 使用大写字母和下划线")
+    println("   - 添加应用程序前缀避免冲突")
+    println("   - 使用描述性名称")
+    println("   - 例: YAKLANG_CONFIG_PATH, APP_DEBUG_MODE")
+    
+    println("3. 值处理:")
+    println("   - 检查环境变量是否存在")
+    println("   - 提供默认值处理")
+    println("   - 验证值的格式和范围")
+    println("   - 处理特殊字符和编码")
+    
+    println("4. 安全考虑:")
+    println("   - 避免在环境变量中存储敏感信息")
+    println("   - 使用专门的密钥管理系统")
+    println("   - 记录环境变量的使用")
+    println("   - 定期审查环境变量配置")
+    
+    println("=== 实际应用场景 ===")
+    
+    println("配置管理:")
+    println("  - 数据库连接字符串")
+    println("  - API端点配置")
+    println("  - 日志级别设置")
+    println("  - 功能开关控制")
+    
+    println("开发环境:")
+    println("  - 调试模式开关")
+    println("  - 测试数据路径")
+    println("  - 开发工具配置")
+    println("  - 代理服务器设置")
+    
+    println("部署配置:")
+    println("  - 服务端口配置")
+    println("  - 资源路径设置")
+    println("  - 性能参数调优")
+    println("  - 监控配置")
+    
+    println("=== 迁移到os库示例 ===")
+    
+    println("env库代码:")
+    println("  value = env.Get(\"CONFIG_PATH\")")
+    println("  env.Set(\"DEBUG_MODE\", \"true\")")
+    
+    println("os库代码 (推荐):")
+    println("  value = os.Getenv(\"CONFIG_PATH\")")
+    println("  os.Setenv(\"DEBUG_MODE\", \"true\")")
+    println("  value, exists = os.LookupEnv(\"CONFIG_PATH\")")
+    
+    println("Env库最佳实践演示完成")
+}
+
+// 执行所有Env测试
+func main() {
+    println("开始Yaklang Env库功能测试")
+    println("")
+    
+    // 基础功能演示
+    testBasicEnvFeatures()
+    println("")
+    
+    testEnvGet()
+    println("")
+    
+    testEnvSet()
+    println("")
+    
+    // 高级功能测试
+    testEnvModification()
+    println("")
+    
+    testSpecialCharacters()
+    println("")
+    
+    testComparisonWithOS()
+    println("")
+    
+    // 最佳实践演示
+    testEnvBestPractices()
+    println("")
+    
+    println("Env库功能测试完成")
+    println("所有环境变量操作和功能演示完成")
+    println("")
+    println("重要提醒：env库已弃用，建议使用os库的环境变量功能")
+}
+
+/*
+Env库核心功能总结:
+
+1. 基础功能:
+   - env.Get(key) - 获取环境变量值
+   - env.Set(key, value) - 设置环境变量值
+
+2. 特点:
+   - 简化的API接口
+   - 与os库环境变量兼容
+   - 已标记为弃用状态
+
+3. 应用场景:
+   - 配置管理
+   - 环境区分
+   - 运行时参数
+   - 系统集成
+
+4. 限制:
+   - 功能相对简单
+   - 缺少高级功能
+   - 已被标记为弃用
+   - 推荐使用os库替代
+
+5. 迁移建议:
+   - env.Get() → os.Getenv()
+   - env.Set() → os.Setenv()
+   - 使用os.LookupEnv()检查存在性
+   - 使用os.Unsetenv()删除变量
+
+6. 最佳实践:
+   - 使用描述性变量名
+   - 添加应用程序前缀
+   - 提供默认值处理
+   - 验证环境变量值
+   - 考虑安全性
+
+7. 推荐替代:
+   - 使用os库的完整环境变量功能
+   - os.Environ() - 获取所有变量
+   - os.Clearenv() - 清空所有变量
+   - os.ExpandEnv() - 展开变量引用
+
+Env库虽然提供了简单的环境变量操作，但由于功能有限且已弃用，
+建议在新项目中直接使用os库的环境变量功能。
+*/
+
+// 调用主函数
+main()

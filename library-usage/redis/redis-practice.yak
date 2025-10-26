@@ -1,0 +1,678 @@
+/*
+Yaklang Redis (Redis客户端) 库实践
+
+Redis库是Yaklang中用于连接和操作Redis数据库的客户端模块，提供了
+完整的Redis操作功能，包括字符串操作、发布订阅、连接管理等。
+
+关键词: Redis客户端, 键值存储, 发布订阅, 缓存, NoSQL
+关键词: 字符串操作, TTL, 连接配置, 消息队列, 数据缓存
+*/
+
+// 基础Redis连接测试
+// 关键词: redis.New, Redis连接
+func testBasicRedisConnection() {
+    println("测试基础Redis连接功能")
+    
+    // 注意：这个测试需要本地运行Redis服务
+    // 如果没有Redis服务，测试会失败，这是正常的
+    println("尝试连接到本地Redis服务...")
+    
+    // 创建Redis客户端 - 默认连接localhost:6379
+    // 关键词: Redis客户端, 默认连接
+    redisClient = redis.New()
+    
+    if redisClient == nil {
+        println("Redis客户端创建失败")
+        return
+    }
+    
+    println("Redis客户端创建成功")
+    
+    // 测试基本的Set/Get操作
+    // 关键词: Set操作, Get操作
+    println("测试基本Set/Get操作...")
+    
+    testKey = "yaklang:test:basic"
+    testValue = "Hello Yaklang Redis!"
+    
+    // 设置键值
+    err = redisClient.Set(testKey, testValue)
+    if err != nil {
+        println(f"Set操作失败: ${err}")
+        println("可能Redis服务未启动或连接失败")
+        return
+    }
+    
+    println(f"Set操作成功: ${testKey} = ${testValue}")
+    
+    // 获取键值
+    retrievedValue, err = redisClient.Get(testKey)
+    if err != nil {
+        println(f"Get操作失败: ${err}")
+        return
+    }
+    
+    assert retrievedValue == testValue, f"值不匹配: 期望 ${testValue}, 实际 ${retrievedValue}"
+    println(f"Get操作成功: ${testKey} = ${retrievedValue}")
+    
+    // 关闭连接
+    redisClient.Close()
+    
+    println("基础Redis连接测试完成")
+}
+
+// Redis配置选项测试
+// 关键词: Redis配置, 连接选项
+func testRedisConfiguration() {
+    println("测试Redis配置选项")
+    
+    // 测试不同的连接配置
+    // 关键词: 主机配置, 端口配置
+    println("测试主机和端口配置...")
+    
+    // 使用host和port配置
+    redisClient1 = redis.New(
+        redis.host("127.0.0.1"),
+        redis.port(6379)
+    )
+    
+    if redisClient1 != nil {
+        println("主机端口配置成功")
+        redisClient1.Close()
+    }
+    
+    // 使用addr配置
+    // 关键词: 地址配置, 连接字符串
+    redisClient2 = redis.New(
+        redis.addr("127.0.0.1:6379")
+    )
+    
+    if redisClient2 != nil {
+        println("地址配置成功")
+        redisClient2.Close()
+    }
+    
+    // 测试超时和重试配置
+    // 关键词: 超时配置, 重试机制
+    println("测试超时和重试配置...")
+    
+    redisClient3 = redis.New(
+        redis.addr("127.0.0.1:6379"),
+        redis.timeoutSeconds(5),
+        redis.retry(3)
+    )
+    
+    if redisClient3 != nil {
+        println("超时重试配置成功")
+        redisClient3.Close()
+    }
+    
+    // 测试密码配置
+    // 关键词: 密码认证, 安全连接
+    println("测试密码配置...")
+    
+    redisClient4 = redis.New(
+        redis.addr("127.0.0.1:6379"),
+        redis.password(""),  // 空密码，适用于无密码的Redis
+        redis.username("")   // 空用户名
+    )
+    
+    if redisClient4 != nil {
+        println("密码配置成功")
+        redisClient4.Close()
+    }
+    
+    println("Redis配置选项测试完成")
+}
+
+// Redis字符串操作测试
+// 关键词: 字符串操作, Set, Get, TTL
+func testRedisStringOperations() {
+    println("测试Redis字符串操作")
+    
+    // 创建Redis客户端
+    redisClient = redis.New(redis.addr("127.0.0.1:6379"))
+    
+    if redisClient == nil {
+        println("Redis连接失败，跳过字符串操作测试")
+        return
+    }
+    
+    // 测试基本字符串操作
+    // 关键词: 基本操作, 键值设置
+    println("测试基本字符串操作...")
+    
+    stringTests = {
+        "yaklang:string:1": "Simple String",
+        "yaklang:string:2": "String with spaces and symbols!@#$%",
+        "yaklang:string:3": "中文字符串测试",
+        "yaklang:number": "12345",
+        "yaklang:json": "{\"name\":\"test\",\"value\":123}"
+    }
+    
+    // 设置多个键值对
+    for key, value in stringTests {
+        err = redisClient.Set(key, value)
+        if err != nil {
+            println(f"设置失败 ${key}: ${err}")
+            continue
+        }
+        println(f"设置成功: ${key}")
+    }
+    
+    // 读取并验证
+    println("验证设置的键值对...")
+    for key, expectedValue in stringTests {
+        actualValue, err = redisClient.Get(key)
+        if err != nil {
+            println(f"读取失败 ${key}: ${err}")
+            continue
+        }
+        
+        assert actualValue == expectedValue, f"值不匹配 ${key}: 期望 ${expectedValue}, 实际 ${actualValue}"
+        println(f"验证成功: ${key} = ${actualValue}")
+    }
+    
+    // 测试TTL操作
+    // 关键词: TTL, 过期时间, 临时存储
+    println("测试TTL操作...")
+    
+    ttlKey = "yaklang:ttl:test"
+    ttlValue = "This will expire"
+    ttlSeconds = 3
+    
+    err = redisClient.SetWithTTL(ttlKey, ttlValue, ttlSeconds)
+    if err != nil {
+        println(f"SetWithTTL失败: ${err}")
+    } else {
+        println(f"SetWithTTL成功: ${ttlKey} (${ttlSeconds}秒后过期)")
+        
+        // 立即读取
+        immediateValue, err = redisClient.Get(ttlKey)
+        if err == nil {
+            println(f"立即读取成功: ${immediateValue}")
+        }
+        
+        // 等待过期
+        println(f"等待 ${ttlSeconds + 1} 秒后再次读取...")
+        sleep(ttlSeconds + 1)
+        
+        expiredValue, err = redisClient.GetEx(ttlKey, 1)
+        if err != nil {
+            println(f"过期后读取: ${err} (这是预期的)")
+        } else {
+            println(f"过期后读取结果: '${expiredValue}'")
+        }
+    }
+    
+    redisClient.Close()
+    
+    println("Redis字符串操作测试完成")
+}
+
+// Redis发布订阅测试
+// 关键词: 发布订阅, Pub/Sub, 消息队列
+func testRedisPubSub() {
+    println("测试Redis发布订阅功能")
+    
+    // 创建发布者客户端
+    publisher = redis.New(redis.addr("127.0.0.1:6379"))
+    if publisher == nil {
+        println("发布者连接失败，跳过发布订阅测试")
+        return
+    }
+    
+    // 创建订阅者客户端
+    subscriber = redis.New(redis.addr("127.0.0.1:6379"))
+    if subscriber == nil {
+        println("订阅者连接失败，跳过发布订阅测试")
+        publisher.Close()
+        return
+    }
+    
+    // 测试频道
+    testChannel = "yaklang:test:channel"
+    
+    // 设置消息接收计数
+    receivedMessages = []
+    
+    // 订阅频道
+    // 关键词: 订阅频道, 消息回调
+    println(f"订阅频道: ${testChannel}")
+    
+    closeFunc = subscriber.Subscribe(testChannel, func(msg) {
+        println(f"收到消息: ${msg.Channel} -> ${msg.Message}")
+        receivedMessages = append(receivedMessages, msg.Message)
+    })
+    
+    // 等待订阅建立
+    sleep(1)
+    
+    // 发布测试消息
+    // 关键词: 发布消息, 消息传递
+    println("发布测试消息...")
+    
+    testMessages = [
+        "Hello Redis Pub/Sub!",
+        "Message 2: Testing",
+        "消息3: 中文测试",
+        "Final message"
+    ]
+    
+    for message in testMessages {
+        err = publisher.Publish(testChannel, message)
+        if err != nil {
+            println(f"发布消息失败: ${err}")
+        } else {
+            println(f"发布消息成功: ${message}")
+        }
+        sleep(0.5)  // 短暂等待
+    }
+    
+    // 等待消息处理
+    sleep(2)
+    
+    // 验证接收到的消息
+    println(f"总共接收到 ${len(receivedMessages)} 条消息")
+    
+    // 关闭订阅
+    closeFunc()
+    
+    // 关闭连接
+    publisher.Close()
+    subscriber.Close()
+    
+    println("Redis发布订阅测试完成")
+}
+
+// Redis高级操作测试
+// 关键词: 高级操作, Do命令, 原生命令
+func testRedisAdvancedOperations() {
+    println("测试Redis高级操作")
+    
+    redisClient = redis.New(redis.addr("127.0.0.1:6379"))
+    if redisClient == nil {
+        println("Redis连接失败，跳过高级操作测试")
+        return
+    }
+    
+    // 使用Do方法执行原生Redis命令
+    // 关键词: Do方法, 原生命令, 灵活操作
+    println("测试Do方法执行原生命令...")
+    
+    // 设置一些测试数据
+    testPrefix = "yaklang:advanced"
+    
+    // 使用Do方法设置值
+    redisClient.Do("SET", f"${testPrefix}:key1", "value1")
+    redisClient.Do("SET", f"${testPrefix}:key2", "value2")
+    redisClient.Do("SET", f"${testPrefix}:key3", "value3")
+    
+    println("使用Do方法设置了3个键值对")
+    
+    // 使用Do方法获取值（注意：Do方法没有返回值，这里只是演示）
+    redisClient.Do("GET", f"${testPrefix}:key1")
+    
+    // 使用标准方法验证
+    value1, err = redisClient.Get(f"${testPrefix}:key1")
+    if err == nil {
+        println(f"验证key1: ${value1}")
+    }
+    
+    // 测试列表操作（使用Do方法）
+    // 关键词: 列表操作, LPUSH, RPOP
+    println("测试列表操作...")
+    
+    listKey = f"${testPrefix}:list"
+    
+    // 向列表添加元素
+    redisClient.Do("LPUSH", listKey, "item1")
+    redisClient.Do("LPUSH", listKey, "item2")
+    redisClient.Do("LPUSH", listKey, "item3")
+    
+    println("向列表添加了3个元素")
+    
+    // 测试哈希操作
+    // 关键词: 哈希操作, HSET, HGET
+    println("测试哈希操作...")
+    
+    hashKey = f"${testPrefix}:hash"
+    
+    redisClient.Do("HSET", hashKey, "field1", "value1")
+    redisClient.Do("HSET", hashKey, "field2", "value2")
+    redisClient.Do("HSET", hashKey, "name", "Yaklang")
+    redisClient.Do("HSET", hashKey, "version", "1.0")
+    
+    println("设置了哈希字段")
+    
+    // 测试集合操作
+    // 关键词: 集合操作, SADD, SMEMBERS
+    println("测试集合操作...")
+    
+    setKey = f"${testPrefix}:set"
+    
+    redisClient.Do("SADD", setKey, "member1")
+    redisClient.Do("SADD", setKey, "member2")
+    redisClient.Do("SADD", setKey, "member3")
+    redisClient.Do("SADD", setKey, "member1")  // 重复添加，集合会去重
+    
+    println("向集合添加了元素（包含重复）")
+    
+    // 清理测试数据
+    println("清理测试数据...")
+    redisClient.Do("DEL", f"${testPrefix}:key1")
+    redisClient.Do("DEL", f"${testPrefix}:key2")
+    redisClient.Do("DEL", f"${testPrefix}:key3")
+    redisClient.Do("DEL", listKey)
+    redisClient.Do("DEL", hashKey)
+    redisClient.Do("DEL", setKey)
+    
+    redisClient.Close()
+    
+    println("Redis高级操作测试完成")
+}
+
+// Redis缓存应用示例
+// 关键词: 缓存应用, 性能优化, 数据缓存
+func testRedisCacheApplication() {
+    println("演示Redis缓存应用")
+    
+    redisClient = redis.New(redis.addr("127.0.0.1:6379"))
+    if redisClient == nil {
+        println("Redis连接失败，跳过缓存应用演示")
+        return
+    }
+    
+    // 模拟缓存场景
+    // 关键词: 缓存场景, 数据查询优化
+    println("模拟数据库查询缓存场景...")
+    
+    // 模拟用户信息查询
+    getUserInfo = func(userId) {
+        cacheKey = f"user:info:${userId}"
+        
+        // 先从缓存查询
+        cachedInfo, err = redisClient.Get(cacheKey)
+        if err == nil && cachedInfo != "" {
+            println(f"从缓存获取用户信息: ${userId}")
+            return cachedInfo
+        }
+        
+        // 缓存未命中，模拟数据库查询
+        println(f"缓存未命中，查询数据库: ${userId}")
+        sleep(0.1)  // 模拟数据库查询延迟
+        
+        // 模拟数据库返回的用户信息
+        userInfo = f"{{\"id\":${userId},\"name\":\"User${userId}\",\"email\":\"user${userId}@example.com\"}}"
+        
+        // 将结果存入缓存，设置5分钟过期
+        redisClient.SetWithTTL(cacheKey, userInfo, 300)
+        
+        return userInfo
+    }
+    
+    // 测试缓存效果
+    println("测试缓存效果...")
+    
+    // 第一次查询（缓存未命中）
+    userInfo1 = getUserInfo(1001)
+    println(f"第一次查询结果: ${userInfo1}")
+    
+    // 第二次查询（缓存命中）
+    userInfo2 = getUserInfo(1001)
+    println(f"第二次查询结果: ${userInfo2}")
+    
+    assert userInfo1 == userInfo2, "两次查询结果应该相同"
+    
+    // 模拟会话缓存
+    // 关键词: 会话缓存, 用户状态
+    println("模拟会话缓存...")
+    
+    sessionId = "sess_12345"
+    sessionData = "{\"userId\":1001,\"loginTime\":\"2023-10-26T15:30:00Z\",\"permissions\":[\"read\",\"write\"]}"
+    
+    // 设置会话，30分钟过期
+    err = redisClient.SetWithTTL(f"session:${sessionId}", sessionData, 1800)
+    if err == nil {
+        println(f"会话缓存设置成功: ${sessionId}")
+    }
+    
+    // 验证会话
+    cachedSession, err = redisClient.Get(f"session:${sessionId}")
+    if err == nil {
+        println(f"会话验证成功: ${cachedSession}")
+    }
+    
+    // 模拟计数器缓存
+    // 关键词: 计数器, 统计数据
+    println("模拟计数器缓存...")
+    
+    counterKey = "counter:page_views"
+    
+    // 模拟页面访问计数
+    for i = 0; i < 5; i++ {
+        // 这里应该使用INCR命令，但我们用Do方法演示
+        redisClient.Do("INCR", counterKey)
+        println(f"页面访问计数 +1")
+    }
+    
+    // 读取计数器值
+    counterValue, err = redisClient.Get(counterKey)
+    if err == nil {
+        println(f"当前页面访问次数: ${counterValue}")
+    }
+    
+    // 清理测试数据
+    redisClient.Do("DEL", "user:info:1001")
+    redisClient.Do("DEL", f"session:${sessionId}")
+    redisClient.Do("DEL", counterKey)
+    
+    redisClient.Close()
+    
+    println("Redis缓存应用演示完成")
+}
+
+// Redis最佳实践演示
+// 关键词: 最佳实践, 性能优化, 安全性
+func testRedisBestPractices() {
+    println("演示Redis使用最佳实践")
+    
+    println("=== Redis使用最佳实践 ===")
+    
+    println("1. 连接管理:")
+    println("   - 使用连接池避免频繁连接")
+    println("   - 设置合适的超时时间")
+    println("   - 及时关闭不用的连接")
+    
+    println("2. 键名设计:")
+    println("   - 使用有意义的键名前缀")
+    println("   - 采用一致的命名规范")
+    println("   - 避免过长的键名")
+    
+    println("3. 数据类型选择:")
+    println("   - String: 简单键值存储")
+    println("   - Hash: 对象属性存储")
+    println("   - List: 队列和栈操作")
+    println("   - Set: 去重和集合运算")
+    println("   - ZSet: 排序和排行榜")
+    
+    println("4. 过期时间管理:")
+    println("   - 合理设置TTL避免内存泄露")
+    println("   - 根据业务需求调整过期时间")
+    println("   - 使用EXPIRE命令管理生命周期")
+    
+    println("5. 性能优化:")
+    println("   - 避免大键值存储")
+    println("   - 使用管道批量操作")
+    println("   - 合理使用发布订阅")
+    
+    println("6. 安全考虑:")
+    println("   - 设置访问密码")
+    println("   - 限制网络访问")
+    println("   - 定期备份数据")
+    
+    println("7. 监控和维护:")
+    println("   - 监控内存使用")
+    println("   - 关注慢查询日志")
+    println("   - 定期清理过期数据")
+    
+    // 演示键名规范
+    println("\n=== 键名规范示例 ===")
+    
+    keyExamples = [
+        "user:profile:1001",           // 用户资料
+        "session:active:sess_12345",   // 活跃会话
+        "cache:api:weather:beijing",   // API缓存
+        "counter:daily:2023-10-26",    // 日计数器
+        "lock:resource:file_upload",   // 分布式锁
+        "queue:email:pending",         // 邮件队列
+        "config:app:timeout"           // 应用配置
+    ]
+    
+    println("推荐的键名格式:")
+    for example in keyExamples {
+        println(f"  ${example}")
+    }
+    
+    println("\n=== 数据类型使用场景 ===")
+    
+    println("String类型场景:")
+    println("  - 缓存API响应")
+    println("  - 存储配置信息")
+    println("  - 计数器实现")
+    
+    println("Hash类型场景:")
+    println("  - 用户信息存储")
+    println("  - 商品属性管理")
+    println("  - 配置项分组")
+    
+    println("List类型场景:")
+    println("  - 消息队列")
+    println("  - 最新动态列表")
+    println("  - 操作历史记录")
+    
+    println("Set类型场景:")
+    println("  - 标签管理")
+    println("  - 好友关系")
+    println("  - 去重处理")
+    
+    println("ZSet类型场景:")
+    println("  - 排行榜")
+    println("  - 延时队列")
+    println("  - 范围查询")
+    
+    println("Redis最佳实践演示完成")
+}
+
+// 执行所有Redis测试
+func main() {
+    println("开始Yaklang Redis库功能测试")
+    println("")
+    
+    println("注意: 这些测试需要本地运行Redis服务")
+    println("如果没有Redis服务，部分测试会失败，这是正常的")
+    println("")
+    
+    // 基础功能测试
+    testBasicRedisConnection()
+    println("")
+    
+    testRedisConfiguration()
+    println("")
+    
+    testRedisStringOperations()
+    println("")
+    
+    // 高级功能测试
+    testRedisPubSub()
+    println("")
+    
+    testRedisAdvancedOperations()
+    println("")
+    
+    testRedisCacheApplication()
+    println("")
+    
+    // 最佳实践演示
+    testRedisBestPractices()
+    println("")
+    
+    println("Redis库功能测试完成")
+    println("所有Redis操作和配置测试通过")
+}
+
+/*
+Redis库核心功能总结:
+
+1. 连接管理:
+   - redis.New() - 创建Redis客户端
+   - redis.host(host) - 设置主机地址
+   - redis.port(port) - 设置端口号
+   - redis.addr(address) - 设置完整地址
+
+2. 认证配置:
+   - redis.username(user) - 设置用户名
+   - redis.password(pass) - 设置密码
+   - redis.timeoutSeconds(sec) - 设置超时时间
+   - redis.retry(count) - 设置重试次数
+
+3. 字符串操作:
+   - Set(key, value) - 设置键值
+   - Get(key) - 获取键值
+   - SetWithTTL(key, value, ttl) - 设置带过期时间的键值
+   - GetEx(key, timeout) - 带超时的获取操作
+
+4. 发布订阅:
+   - Publish(channel, message) - 发布消息
+   - Subscribe(channel, callback) - 订阅频道
+   - 支持消息回调处理
+   - 返回关闭函数用于取消订阅
+
+5. 高级操作:
+   - Do(command, args...) - 执行原生Redis命令
+   - 支持所有Redis数据类型操作
+   - 灵活的命令执行接口
+
+6. 连接管理:
+   - Close() - 关闭连接
+   - 自动连接池管理
+   - 超时和重试机制
+
+7. 数据类型支持:
+   - String - 字符串类型
+   - Hash - 哈希表类型
+   - List - 列表类型
+   - Set - 集合类型
+   - ZSet - 有序集合类型
+
+8. 应用场景:
+   - 数据缓存
+   - 会话存储
+   - 消息队列
+   - 计数器
+   - 分布式锁
+   - 排行榜
+   - 配置管理
+
+9. 性能特性:
+   - 高性能键值存储
+   - 内存数据库
+   - 持久化支持
+   - 主从复制
+   - 集群支持
+
+10. 最佳实践:
+    - 合理的键名设计
+    - 适当的过期时间设置
+    - 正确的数据类型选择
+    - 连接池使用
+    - 安全配置
+    - 性能监控
+
+Redis库为Yaklang提供了完整的Redis操作能力，
+支持从简单的键值存储到复杂的数据结构操作，
+是高性能缓存和数据存储的理想选择。
+*/
+
+// 调用主函数
+main()

@@ -1,0 +1,397 @@
+/*
+Yaklang Traceroute (路由追踪) 库实践
+
+Traceroute库是用于网络路由追踪的工具，可以追踪数据包从源到目标的路径，
+显示每一跳的IP地址和延迟时间。在网络诊断和故障排除中非常有用。
+
+注意：Traceroute功能需要特殊的网络权限（如root权限）来创建原始套接字，
+在某些环境下可能无法正常工作。本测试主要验证API接口的正确性。
+
+关键词: 路由追踪, 网络诊断, 跳数检测, 延迟测量, 网络路径分析
+关键词: TTL, ICMP, UDP, 网络连通性, 路由器检测, 网络拓扑
+*/
+
+// 基础路由追踪API测试
+// 关键词: traceroute.Diagnostic, API接口测试
+func testTracerouteAPI() {
+    println("测试Traceroute API接口")
+    
+    // 测试API调用
+    target = "127.0.0.1"
+    
+    // 执行路由追踪（可能因权限问题失败）
+    ch, err = traceroute.Diagnostic(target, traceroute.timeout(2.0), traceroute.hops(3))
+    
+    if err != nil {
+        println(f"路由追踪API调用失败: ${err}")
+        println("这通常是由于缺少网络权限（需要root权限创建原始套接字）")
+        return
+    }
+    
+    if ch == nil {
+        println("路由追踪通道为空")
+        println("这可能是由于权限限制或网络配置问题")
+        return
+    }
+    
+    println("路由追踪API调用成功")
+    
+    // 尝试读取结果（设置超时）
+    resultCount = 0
+    maxResults = 3
+    
+    for resultCount < maxResults {
+        result = <-ch
+        if result == nil {
+            println("通道已关闭，没有更多结果")
+            break
+        }
+        
+        resultCount++
+        
+        // 验证结果结构
+        assert result.Hop > 0, f"跳数应该大于0，实际: ${result.Hop}"
+        
+        if result.IP != "" {
+            println(f"跳 ${result.Hop}: ${result.IP} (${result.RTT}ms)")
+            assert result.RTT >= 0, f"延迟应该非负，实际: ${result.RTT}ms"
+        } else {
+            println(f"跳 ${result.Hop}: 无响应 (${result.Reason})")
+        }
+    }
+    
+    if resultCount > 0 {
+        println("成功获取到路由追踪结果")
+    } else {
+        println("未获取到路由追踪结果")
+    }
+    
+    println("Traceroute API测试完成")
+}
+
+// 配置选项测试
+// 关键词: traceroute配置, 参数验证
+func testTracerouteOptions() {
+    println("测试Traceroute配置选项")
+    
+    target = "localhost"
+    
+    // 测试各种配置选项的组合
+    configs = [
+        {
+            "name": "基础配置",
+            "options": [traceroute.timeout(1.0), traceroute.hops(2)]
+        },
+        {
+            "name": "UDP协议配置", 
+            "options": [traceroute.protocol("udp"), traceroute.udpPort(33434), traceroute.timeout(1.0)]
+        },
+        {
+            "name": "重试配置",
+            "options": [traceroute.retry(2), traceroute.timeout(1.0), traceroute.hops(2)]
+        },
+        {
+            "name": "TTL配置",
+            "options": [traceroute.firstTTL(2), traceroute.hops(3), traceroute.timeout(1.0)]
+        }
+    ]
+    
+    for config in configs {
+        println(f"测试 ${config['name']}")
+        
+        ch, err = traceroute.Diagnostic(target, config["options"]...)
+        
+        if err != nil {
+            println(f"  配置测试失败: ${err}")
+        } else if ch == nil {
+            println(f"  配置测试返回空通道（权限问题）")
+        } else {
+            println(f"  配置测试成功")
+            
+            // 尝试读取一个结果
+            result = <-ch
+            if result != nil {
+                println(f"  收到结果: 跳 ${result.Hop}")
+            }
+        }
+    }
+    
+    println("配置选项测试完成")
+}
+
+// 错误处理测试
+// 关键词: 错误处理, 异常情况
+func testTracerouteErrorHandling() {
+    println("测试Traceroute错误处理")
+    
+    // 测试无效目标
+    invalidTargets = ["", "invalid-host-name-12345", "999.999.999.999"]
+    
+    for target in invalidTargets {
+        println(f"测试无效目标: ${target}")
+        
+        ch, err = traceroute.Diagnostic(target, traceroute.timeout(1.0), traceroute.hops(1))
+        
+        if err != nil {
+            println(f"  预期错误: ${err}")
+        } else if ch == nil {
+            println(f"  返回空通道")
+        } else {
+            println(f"  意外成功")
+            
+            // 检查是否有错误结果
+            result = <-ch
+            if result != nil && result.Reason != "" {
+                println(f"  错误原因: ${result.Reason}")
+            }
+        }
+    }
+    
+    println("错误处理测试完成")
+}
+
+// 网络权限检测测试
+// 关键词: 权限检测, 环境验证
+func testNetworkPermissions() {
+    println("测试网络权限检测")
+    
+    // 尝试执行简单的traceroute来检测权限
+    target = "127.0.0.1"
+    
+    ch, err = traceroute.Diagnostic(target, traceroute.timeout(1.0), traceroute.hops(1))
+    
+    if err != nil {
+        println("网络权限检测结果:")
+        println(f"  错误: ${err}")
+        
+        if str.Contains(str.ToLower(err), "permission") || str.Contains(str.ToLower(err), "operation not permitted") {
+            println("  原因: 缺少网络权限")
+            println("  解决方案: 需要以管理员权限运行或配置网络权限")
+        } else if str.Contains(str.ToLower(err), "socket") {
+            println("  原因: 套接字创建失败")
+            println("  解决方案: 检查网络配置和防火墙设置")
+        } else {
+            println("  原因: 其他网络问题")
+        }
+    } else if ch == nil {
+        println("网络权限检测结果:")
+        println("  通道为空，可能是权限或配置问题")
+    } else {
+        println("网络权限检测结果:")
+        println("  权限检测通过，可以创建网络连接")
+        
+        // 尝试获取结果
+        result = <-ch
+        if result != nil {
+            if result.IP != "" {
+                println(f"  成功获取结果: ${result.IP}")
+            } else {
+                println(f"  获取到错误结果: ${result.Reason}")
+            }
+        }
+    }
+    
+    println("网络权限检测完成")
+}
+
+// Traceroute功能概述测试
+// 关键词: 功能概述, 使用说明
+func testTracerouteFunctionality() {
+    println("Traceroute功能概述")
+    
+    println("=== Traceroute库功能说明 ===")
+    println("1. 主要函数:")
+    println("   - traceroute.Diagnostic(host, options...) - 执行路由追踪")
+    println("")
+    println("2. 配置选项:")
+    println("   - traceroute.timeout(seconds) - 设置超时时间")
+    println("   - traceroute.hops(count) - 设置最大跳数")
+    println("   - traceroute.protocol(proto) - 设置协议(udp/icmp)")
+    println("   - traceroute.retry(times) - 设置重试次数")
+    println("   - traceroute.firstTTL(ttl) - 设置起始TTL")
+    println("   - traceroute.udpPort(port) - 设置UDP端口")
+    println("   - traceroute.localIp(ip) - 设置本地IP")
+    println("")
+    println("3. 返回结果:")
+    println("   - 通道 (chan *TracerouteResponse)")
+    println("   - 结果包含: Hop(跳数), IP(地址), RTT(延迟), Reason(错误原因)")
+    println("")
+    println("4. 权限要求:")
+    println("   - 需要创建原始套接字的权限")
+    println("   - 在Unix系统上通常需要root权限")
+    println("   - 在Windows上可能需要管理员权限")
+    println("")
+    println("5. 应用场景:")
+    println("   - 网络故障诊断")
+    println("   - 路由路径分析")
+    println("   - 网络延迟测量")
+    println("   - 网络拓扑发现")
+    
+    println("功能概述完成")
+}
+
+// 模拟traceroute结果分析
+// 关键词: 结果分析, 数据处理
+func testTracerouteResultAnalysis() {
+    println("测试Traceroute结果分析")
+    
+    // 模拟一些traceroute结果进行分析
+    mockResults = [
+        {"Hop": 1, "IP": "192.168.1.1", "RTT": 1, "Reason": ""},
+        {"Hop": 2, "IP": "10.0.0.1", "RTT": 5, "Reason": ""},
+        {"Hop": 3, "IP": "", "RTT": 0, "Reason": "timeout"},
+        {"Hop": 4, "IP": "8.8.8.8", "RTT": 20, "Reason": ""}
+    ]
+    
+    println("分析模拟的traceroute结果:")
+    
+    totalHops = 0
+    successfulHops = 0
+    totalRTT = 0
+    minRTT = 999999
+    maxRTT = 0
+    failedHops = 0
+    
+    for result in mockResults {
+        totalHops++
+        
+        if result["IP"] != "" {
+            successfulHops++
+            rtt = result["RTT"]
+            totalRTT += rtt
+            
+            if rtt < minRTT {
+                minRTT = rtt
+            }
+            if rtt > maxRTT {
+                maxRTT = rtt
+            }
+            
+            println(f"  跳 ${result['Hop']}: ${result['IP']} (${rtt}ms)")
+        } else {
+            failedHops++
+            println(f"  跳 ${result['Hop']}: 失败 (${result['Reason']})")
+        }
+    }
+    
+    println("")
+    println("=== 分析结果统计 ===")
+    println(f"总跳数: ${totalHops}")
+    println(f"成功跳数: ${successfulHops}")
+    println(f"失败跳数: ${failedHops}")
+    
+    if successfulHops > 0 {
+        avgRTT = totalRTT / successfulHops
+        println(f"平均延迟: ${avgRTT}ms")
+        println(f"最小延迟: ${minRTT}ms")
+        println(f"最大延迟: ${maxRTT}ms")
+        
+        successRate = (successfulHops * 100) / totalHops
+        println(f"成功率: ${successRate}%")
+        
+        // 验证统计数据
+        assert avgRTT >= 0, "平均延迟应该非负"
+        assert minRTT <= maxRTT, "最小延迟应该小于等于最大延迟"
+        assert successRate >= 0 && successRate <= 100, "成功率应该在0-100%之间"
+    }
+    
+    println("结果分析测试完成")
+}
+
+// 执行所有Traceroute测试
+func main() {
+    println("开始Yaklang Traceroute库功能测试")
+    println("")
+    
+    // API和配置测试
+    testTracerouteAPI()
+    println("")
+    
+    testTracerouteOptions()
+    println("")
+    
+    // 错误处理和权限测试
+    testTracerouteErrorHandling()
+    println("")
+    
+    testNetworkPermissions()
+    println("")
+    
+    // 功能说明和分析
+    testTracerouteFunctionality()
+    println("")
+    
+    testTracerouteResultAnalysis()
+    println("")
+    
+    println("Traceroute库功能测试完成")
+    println("")
+    println("注意: Traceroute功能依赖于系统网络权限，")
+    println("在受限环境中可能无法完全正常工作。")
+    println("这是正常现象，不影响API接口的正确性。")
+}
+
+/*
+Traceroute库核心功能总结:
+
+1. 主要函数:
+   - traceroute.Diagnostic() - 主要路由追踪接口
+   - 返回通道接收TracerouteResponse结果
+   - 支持多种配置选项
+
+2. 配置选项:
+   - traceroute.timeout() - 设置读写超时
+   - traceroute.hops() - 设置最大跳数
+   - traceroute.protocol() - 设置协议(udp/icmp)
+   - traceroute.retry() - 设置重试次数
+   - traceroute.firstTTL() - 设置起始TTL值
+   - traceroute.udpPort() - 设置UDP端口
+   - traceroute.localIp() - 设置本地IP地址
+
+3. 结果结构:
+   - IP - 跳的IP地址
+   - RTT - 往返时间(毫秒)
+   - Hop - 跳数
+   - Reason - 失败原因
+
+4. 协议支持:
+   - UDP协议 - 传统traceroute方式
+   - ICMP协议 - 使用ICMP Echo请求
+
+5. 权限要求:
+   - 需要创建原始套接字(raw socket)
+   - Unix系统通常需要root权限
+   - Windows系统需要管理员权限
+   - 某些环境可能有网络限制
+
+6. 网络诊断应用:
+   - 路由路径发现 - 显示数据包传输路径
+   - 网络延迟测量 - 测量每跳的延迟
+   - 网络故障定位 - 找出网络中断点
+   - 网络拓扑分析 - 了解网络结构
+
+7. 高级特性:
+   - 超时控制 - 防止长时间等待
+   - 重试机制 - 提高结果可靠性
+   - 跳数限制 - 控制追踪深度
+   - 起始TTL - 跳过已知跳数
+
+8. 实际应用场景:
+   - 网络故障排除 - 定位网络问题
+   - 性能分析 - 分析网络延迟
+   - 安全审计 - 发现网络路径
+   - 网络监控 - 持续监控网络状态
+
+9. 使用注意事项:
+   - 权限依赖 - 需要适当的网络权限
+   - 防火墙影响 - 可能被防火墙阻止
+   - 网络环境 - 某些网络环境可能限制功能
+   - 超时设置 - 合理设置超时避免长时间等待
+
+Traceroute库是网络诊断和故障排除的重要工具，
+为网络管理员和安全研究人员提供了强大的路由分析能力。
+在使用时需要注意权限和网络环境的限制。
+*/
+
+// 调用主函数
+main()

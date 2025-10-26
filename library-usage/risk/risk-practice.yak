@@ -1,0 +1,344 @@
+/*
+Yaklang Risk (风险管理) 库实践
+
+Risk库是Yaklang中用于漏洞风险管理的核心模块，提供了创建、保存、查询、
+分析漏洞风险记录的完整功能。在安全测试和漏洞管理中发挥重要作用。
+
+关键词: 风险管理, 漏洞记录, 安全测试, 风险评估, 漏洞数据库
+关键词: 风险等级, 漏洞类型, 安全报告, 风险分析, 漏洞验证
+*/
+
+// 基础风险创建测试
+// 关键词: risk.CreateRisk, 风险创建
+func testBasicRiskCreation() {
+    println("测试基础风险创建功能")
+    
+    // 创建一个基础的风险记录
+    target = "http://example.com/vulnerable"
+    
+    // 使用CreateRisk创建风险记录
+    // 关键词: 风险记录创建, 基础风险信息
+    riskRecord = risk.CreateRisk(target, 
+        risk.title("SQL注入漏洞"),
+        risk.type("sqli"),
+        risk.severity("high"),
+        risk.description("在登录页面发现SQL注入漏洞，可能导致数据库信息泄露"),
+        risk.solution("使用参数化查询，避免直接拼接SQL语句"),
+        risk.parameter("username"),
+        risk.payload("' OR 1=1 --"))
+    
+    assert riskRecord != nil, "风险记录不应为空"
+    println("基础风险记录创建成功")
+    
+    // 验证风险记录的基本属性
+    assert riskRecord.Title == "SQL注入漏洞", f"标题不匹配: ${riskRecord.Title}"
+    assert riskRecord.RiskType == "sqli", f"类型不匹配: ${riskRecord.RiskType}"
+    assert riskRecord.Severity == "high", f"严重级别不匹配: ${riskRecord.Severity}"
+    assert riskRecord.Parameter == "username", f"参数不匹配: ${riskRecord.Parameter}"
+    
+    // 注意：payload字段会被自动加引号，所以需要检查带引号的版本
+    expectedPayload = "\"' OR 1=1 --\""
+    assert riskRecord.Payload == expectedPayload, f"载荷不匹配: ${riskRecord.Payload}"
+    
+    println("风险记录属性验证通过")
+    
+    // 保存风险记录
+    risk.Save(riskRecord)
+    println("风险记录已保存到数据库")
+}
+
+// 不同类型风险创建测试
+// 关键词: 风险类型, 多种漏洞类型
+func testDifferentRiskTypes() {
+    println("测试不同类型风险创建")
+    
+    // XSS风险
+    // 关键词: XSS漏洞, 跨站脚本攻击
+    xssRisk = risk.CreateRisk("http://example.com/search", 
+        risk.title("反射型XSS漏洞"),
+        risk.type("xss"),
+        risk.severity("medium"),
+        risk.description("搜索功能存在反射型XSS漏洞"),
+        risk.parameter("q"),
+        risk.payload("<script>alert('XSS')</script>"))
+    
+    assert xssRisk != nil, "XSS风险记录不应为空"
+    assert xssRisk.RiskType == "xss", "XSS风险类型验证"
+    risk.Save(xssRisk)
+    println("XSS风险记录创建并保存成功")
+    
+    // 命令执行风险
+    // 关键词: 命令执行, RCE漏洞
+    rceRisk = risk.CreateRisk("http://example.com/exec", 
+        risk.title("远程命令执行漏洞"),
+        risk.type("rce"),
+        risk.severity("critical"),
+        risk.description("系统命令执行接口存在注入漏洞"),
+        risk.parameter("cmd"),
+        risk.payload("; cat /etc/passwd"))
+    
+    assert rceRisk != nil, "RCE风险记录不应为空"
+    assert rceRisk.RiskType == "rce", "RCE风险类型验证"
+    assert rceRisk.Severity == "critical", "RCE严重级别验证"
+    risk.Save(rceRisk)
+    println("RCE风险记录创建并保存成功")
+    
+    println("不同类型风险创建测试完成")
+}
+
+// 风险严重级别测试
+// 关键词: 风险等级, 严重程度分类
+func testRiskSeverityLevels() {
+    println("测试风险严重级别分类")
+    
+    severityLevels = [
+        {"level": "info", "title": "信息泄露", "description": "版本信息泄露"},
+        {"level": "low", "title": "弱密码", "description": "使用弱密码"},
+        {"level": "high", "title": "权限绕过", "description": "身份验证绕过"},
+        {"level": "critical", "title": "系统后门", "description": "发现系统后门"}
+    ]
+    
+    for levelInfo in severityLevels {
+        target = f"http://example.com/${levelInfo['level']}"
+        
+        // 创建不同严重级别的风险
+        riskRecord = risk.CreateRisk(target,
+            risk.title(levelInfo["title"]),
+            risk.type("misc"),
+            risk.severity(levelInfo["level"]),
+            risk.description(levelInfo["description"]))
+        
+        assert riskRecord != nil, f"${levelInfo['level']} 级别风险记录不应为空"
+        assert riskRecord.Severity != "", f"严重级别不应为空: ${levelInfo['level']}"
+        
+        risk.Save(riskRecord)
+        println(f"${levelInfo['level']} 级别风险记录创建成功: ${levelInfo['title']}")
+    }
+    
+    println("风险严重级别测试完成")
+}
+
+// 风险记录详细信息测试
+// 关键词: 详细信息, 风险属性
+func testRiskDetailedInformation() {
+    println("测试风险记录详细信息")
+    
+    target = "http://example.com/detailed"
+    
+    // 创建包含详细信息的风险记录
+    // 关键词: 详细风险信息, 完整属性
+    detailedRisk = risk.CreateRisk(target,
+        risk.title("详细SQL注入漏洞分析"),
+        risk.titleVerbose("用户登录接口存在基于时间的盲注SQL注入漏洞"),
+        risk.type("sqli"),
+        risk.typeVerbose("SQL注入"),
+        risk.severity("high"),
+        risk.description("在用户登录接口的username参数中发现SQL注入漏洞"),
+        risk.solution("使用参数化查询或预编译语句"),
+        risk.parameter("username"),
+        risk.payload("admin' AND SLEEP(5) --"),
+        risk.details("漏洞详细信息: 基于时间的盲注"),
+        risk.fromYakScript("sql_injection_scanner"),
+        risk.cve("CVE-2023-12345"))
+    
+    assert detailedRisk != nil, "详细风险记录不应为空"
+    println("详细风险记录创建成功")
+    
+    // 验证详细信息
+    assert detailedRisk.Title == "详细SQL注入漏洞分析", "标题验证"
+    assert detailedRisk.TitleVerbose != "", "详细标题验证"
+    assert detailedRisk.RiskTypeVerbose == "SQL注入", "类型详细描述验证"
+    assert detailedRisk.CVE == "CVE-2023-12345", "CVE编号验证"
+    assert detailedRisk.FromYakScript == "sql_injection_scanner", "来源脚本验证"
+    
+    risk.Save(detailedRisk)
+    println("详细风险记录保存成功")
+    println("风险记录详细信息测试完成")
+}
+
+// 反向连接功能测试
+// 关键词: 反向连接, 漏洞验证
+func testReverseConnectionFeatures() {
+    println("测试反向连接功能")
+    
+    // 测试DNS日志域名生成
+    // 关键词: DNS日志, DNS外带检测
+    dnsLogDomain = risk.NewDNSLogDomain()
+    if dnsLogDomain != "" {
+        println(f"生成DNS日志域名成功")
+    } else {
+        println("DNS日志域名生成失败（可能需要特殊配置）")
+    }
+    
+    // 测试随机端口触发器
+    // 关键词: 随机端口触发, 端口扫描检测
+    portTrigger = risk.NewRandomPortTrigger()
+    if portTrigger != nil {
+        println("创建随机端口触发器成功")
+    } else {
+        println("随机端口触发器创建失败")
+    }
+    
+    // 测试HTTP日志
+    // 关键词: HTTP日志, HTTP外带检测
+    httpLog = risk.NewHTTPLog()
+    if httpLog != nil {
+        println("创建HTTP日志成功")
+    } else {
+        println("HTTP日志创建失败")
+    }
+    
+    println("反向连接功能测试完成")
+}
+
+// 风险管理最佳实践演示
+// 关键词: 最佳实践, 风险管理流程
+func testRiskManagementBestPractices() {
+    println("演示风险管理最佳实践")
+    
+    println("=== 风险管理最佳实践指南 ===")
+    
+    println("1. 风险记录创建规范:")
+    println("   - 使用准确的漏洞类型标识")
+    println("   - 设置合适的严重级别")
+    println("   - 提供详细的描述和解决方案")
+    println("   - 记录准确的参数和载荷信息")
+    
+    println("2. 风险分类标准:")
+    println("   - Critical: 可直接获取系统控制权")
+    println("   - High: 可获取敏感信息或部分控制权")
+    println("   - Medium: 可能导致信息泄露或功能异常")
+    println("   - Low: 轻微的安全问题")
+    println("   - Info: 信息收集类问题")
+    
+    println("3. 支持的漏洞类型:")
+    println("   - sqli: SQL注入")
+    println("   - xss: 跨站脚本攻击")
+    println("   - rce: 远程命令执行")
+    println("   - lfi/rfi: 本地/远程文件包含")
+    println("   - xxe: XML外部实体攻击")
+    println("   - file-upload: 文件上传漏洞")
+    
+    // 演示最佳实践风险记录
+    bestPracticeTarget = "http://example.com/best-practice"
+    
+    bestPracticeRisk = risk.CreateRisk(bestPracticeTarget,
+        risk.title("标准化SQL注入漏洞"),
+        risk.titleVerbose("用户管理模块存在SQL注入漏洞"),
+        risk.type("sqli"),
+        risk.typeVerbose("SQL注入"),
+        risk.severity("high"),
+        risk.description("在用户管理模块的用户搜索功能中发现SQL注入漏洞"),
+        risk.solution("使用参数化查询替换字符串拼接"),
+        risk.parameter("search_user"),
+        risk.payload("admin' UNION SELECT username,password FROM users --"),
+        risk.details("技术细节: UNION查询注入"),
+        risk.fromYakScript("comprehensive_sql_scanner"),
+        risk.cve("CVE-2023-XXXX"))
+    
+    assert bestPracticeRisk != nil, "最佳实践风险记录创建失败"
+    risk.Save(bestPracticeRisk)
+    
+    println("最佳实践风险记录创建成功")
+    println("风险管理最佳实践演示完成")
+}
+
+// 执行所有Risk测试
+func main() {
+    println("开始Yaklang Risk库功能测试")
+    println("")
+    
+    // 基础功能测试
+    testBasicRiskCreation()
+    println("")
+    
+    testDifferentRiskTypes()
+    println("")
+    
+    testRiskSeverityLevels()
+    println("")
+    
+    // 高级功能测试
+    testRiskDetailedInformation()
+    println("")
+    
+    testReverseConnectionFeatures()
+    println("")
+    
+    // 最佳实践演示
+    testRiskManagementBestPractices()
+    println("")
+    
+    println("Risk库功能测试完成")
+    println("所有风险管理配置和功能测试通过")
+}
+
+/*
+Risk库核心功能总结:
+
+1. 风险记录创建:
+   - risk.CreateRisk() - 创建风险记录
+   - risk.NewRisk() - 创建并保存风险记录
+   - risk.NewUnverifiedRisk() - 创建未验证风险记录
+   - risk.Save() - 保存风险记录到数据库
+
+2. 风险属性配置:
+   - risk.title() - 设置风险标题
+   - risk.titleVerbose() - 设置详细标题
+   - risk.type() - 设置风险类型
+   - risk.typeVerbose() - 设置类型详细描述
+   - risk.severity() - 设置严重级别
+   - risk.description() - 设置风险描述
+   - risk.solution() - 设置解决方案
+   - risk.parameter() - 设置相关参数
+   - risk.payload() - 设置攻击载荷
+   - risk.details() - 设置详细信息
+
+3. 风险类型支持:
+   - sqli - SQL注入
+   - xss - 跨站脚本攻击
+   - rce - 远程命令执行
+   - lfi/rfi - 本地/远程文件包含
+   - xxe - XML外部实体攻击
+   - file-upload - 文件上传漏洞
+   - url-redirect - URL重定向
+   - ldap - LDAP注入
+
+4. 严重级别分类:
+   - critical - 严重
+   - high - 高危
+   - medium - 中危
+   - low - 低危
+   - info - 信息
+
+5. 反向连接和验证:
+   - risk.NewLocalReverseHTTPUrl() - 创建HTTP反向连接
+   - risk.NewLocalReverseHTTPSUrl() - 创建HTTPS反向连接
+   - risk.NewLocalReverseRMIUrl() - 创建RMI反向连接
+   - risk.NewRandomPortTrigger() - 创建随机端口触发器
+   - risk.NewDNSLogDomain() - 创建DNS日志域名
+   - risk.NewHTTPLog() - 创建HTTP日志
+   - risk.HaveReverseRisk() - 检查反向风险
+
+6. 高级特性:
+   - CVE关联 - 关联CVE编号
+   - 脚本来源 - 记录发现脚本
+   - 运行时ID - 关联具体测试
+   - 请求响应 - 记录HTTP交互
+   - 潜在风险 - 标记可能的风险
+   - 验证状态 - 跟踪验证进度
+
+7. 应用场景:
+   - 漏洞扫描结果管理
+   - 渗透测试报告生成
+   - 安全评估数据分析
+   - 风险跟踪和修复
+   - 合规性检查报告
+   - 安全态势感知
+
+Risk库是Yaklang安全测试框架的核心组件，
+为安全研究人员和测试工程师提供了完整的漏洞风险管理解决方案。
+*/
+
+// 调用主函数
+main()
