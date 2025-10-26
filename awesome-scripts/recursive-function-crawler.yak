@@ -1,0 +1,489 @@
+// =============================================================================
+// Yaklang递归函数与爬虫实现完整指南 - 解决AI递归函数编写错误
+// 功能: 详细演示递归函数的正确实现方式，特别是爬虫场景
+// 用途: 递归编程、深度优先遍历、爬虫实现、树形结构遍历、递归调用
+//
+// 核心技术栈:
+// - 递归函数: 函数调用自身
+// - 终止条件: 递归的边界条件
+// - 深度控制: 限制递归深度避免栈溢出
+// - 状态传递: 在递归调用间传递状态
+// - 去重机制: 避免重复访问
+//
+// 递归函数关键要素:
+// 1. 明确的终止条件（base case）
+// 2. 递归调用自身（recursive case）
+// 3. 状态向终止条件推进
+// 4. 避免无限递归
+// 5. 正确的参数传递
+//
+// 关键词: 递归函数 爬虫 深度优先 递归调用 终止条件 递归边界 网页爬虫
+// 搜索标签: #recursive-function #crawler #dfs #recursion #base-case
+// AI常见错误: 无终止条件 无限递归 栈溢出 函数未定义 递归调用语法错误
+// AI错误搜索: recursive function definition recursion base case stack overflow infinite recursion
+// =============================================================================
+
+println("=== Yaklang递归函数与爬虫实现完整指南 ===\n")
+
+// ==========================================
+// 1. 基础递归函数 - 阶乘计算
+// ==========================================
+// 关键词: 基础递归, 阶乘, 递归调用, 终止条件
+// AI搜索词: basic recursion factorial recursive function base case
+
+println("=== 1. 基础递归函数 - 阶乘 ===")
+
+// 递归计算阶乘
+// 关键词: 阶乘函数, 递归实现, 基础递归示例
+factorial = func(n) {
+    // 终止条件: n <= 1 时返回1
+    // 关键词: 终止条件, base case, 递归边界, 递归出口
+    if n <= 1 {
+        return 1
+    }
+    
+    // 递归调用: n * factorial(n-1)
+    // 关键词: 递归调用, recursive case, 自身调用, 递归步骤
+    return n * factorial(n - 1)
+}
+
+// 测试阶乘函数
+// 关键词: 递归测试, 函数验证
+result1 = factorial(5)  // 5! = 120
+println(f"factorial(5) = ${result1}")
+assert result1 == 120, "factorial(5) should be 120"
+
+result2 = factorial(1)  // 1! = 1
+println(f"factorial(1) = ${result2}")
+assert result2 == 1, "factorial(1) should be 1"
+
+// ==========================================
+// 2. 带深度控制的递归 - 斐波那契数列
+// ==========================================
+// 关键词: 深度控制, 斐波那契, 递归深度, 多重递归调用
+// AI搜索词: depth control fibonacci recursive depth multiple recursive calls
+
+println("\n=== 2. 带深度控制的递归 - 斐波那契 ===")
+
+// 斐波那契数列 - 经典递归示例
+// 关键词: 斐波那契函数, 多重递归, 递归树
+fibonacci = func(n) {
+    // 终止条件: n <= 1 时返回n
+    // 关键词: 多重终止条件, 递归边界
+    if n <= 0 {
+        return 0
+    }
+    if n == 1 {
+        return 1
+    }
+    
+    // 递归调用两次 - 递归树结构
+    // 关键词: 多重递归调用, 递归树, 分支递归
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+// 测试斐波那契
+// 关键词: 递归验证, 斐波那契测试
+result3 = fibonacci(7)  // 0,1,1,2,3,5,8,13
+println(f"fibonacci(7) = ${result3}")
+assert result3 == 13, "fibonacci(7) should be 13"
+
+// ==========================================
+// 3. 递归遍历数组 - 累加求和
+// ==========================================
+// 关键词: 递归遍历, 数组递归, 累加, 尾递归
+// AI搜索词: recursive traverse array sum accumulate
+
+println("\n=== 3. 递归遍历数组 ===")
+
+// 递归求和数组元素
+// 关键词: 数组求和, 递归遍历, 索引递归
+sumArray = func(arr, index) {
+    // 终止条件: 索引超出数组长度
+    // 关键词: 索引边界, 数组长度检查, 递归终止
+    if index >= len(arr) {
+        return 0
+    }
+    
+    // 递归调用: 当前元素 + 剩余元素之和
+    // 关键词: 元素累加, 递归累加, 索引递进
+    return arr[index] + sumArray(arr, index + 1)
+}
+
+testArray = [1, 2, 3, 4, 5]
+sum = sumArray(testArray, 0)
+println(f"Sum of array: ${sum}")
+assert sum == 15, "sum should be 15"
+
+// ==========================================
+// 4. 递归查找 - 在嵌套结构中查找值
+// ==========================================
+// 关键词: 递归查找, 嵌套结构, 深度搜索, 树形遍历
+// AI搜索词: recursive search nested structure deep search tree traversal
+
+println("\n=== 4. 递归查找嵌套结构 ===")
+
+// 在嵌套map中递归查找键
+// 关键词: 递归查找, map遍历, 嵌套查找
+findInNested = func(data, targetKey) {
+    // 遍历当前层级的所有键
+    // 关键词: 键遍历, map迭代
+    for key, value in data {
+        if key == targetKey {
+            // 找到目标键
+            // 关键词: 查找成功, 返回结果
+            return value
+        }
+        
+        // 如果值是map，递归搜索
+        // 关键词: 类型检查, 递归搜索子结构
+        if typeof(value) == "map" {
+            result = findInNested(value, targetKey)
+            if result != nil && result != undefined {
+                return result
+            }
+        }
+    }
+    
+    // 未找到
+    // 关键词: 查找失败, 返回nil
+    return nil
+}
+
+// 测试嵌套查找
+// 关键词: 嵌套数据结构, 测试数据
+nestedData = {
+    "level1": {
+        "level2": {
+            "level3": {
+                "target": "found!"
+            }
+        }
+    },
+    "other": "data"
+}
+
+found = findInNested(nestedData, "target")
+println(f"Found in nested structure: ${found}")
+assert found == "found!", "should find nested value"
+
+// ==========================================
+// 5. 简单URL爬虫 - 带深度限制
+// ==========================================
+// 关键词: URL爬虫, 深度限制, 递归爬虫, 网页爬取
+// AI搜索词: url crawler depth limit recursive crawler web scraping
+
+println("\n=== 5. 简单URL爬虫（模拟）===")
+
+// 模拟的URL结构 - 实际爬虫会发送HTTP请求
+// 关键词: URL结构, 模拟数据, 链接关系
+mockUrlData = {
+    "http://example.com": ["http://example.com/page1", "http://example.com/page2"],
+    "http://example.com/page1": ["http://example.com/page1/sub1", "http://example.com/page1/sub2"],
+    "http://example.com/page2": ["http://example.com/page2/sub1"],
+    "http://example.com/page1/sub1": [],
+    "http://example.com/page1/sub2": [],
+    "http://example.com/page2/sub1": []
+}
+
+// 已访问URL集合 - 防止重复访问
+// 关键词: 去重, 已访问集合, 防止重复, 访问记录
+visitedUrls = {}
+
+// 递归爬虫函数
+// 关键词: 爬虫函数, 递归爬取, 深度控制, URL爬取
+crawlUrl = func(url, currentDepth, maxDepth) {
+    // 深度限制检查 - 防止无限递归
+    // 关键词: 深度限制, 递归深度控制, 防止栈溢出
+    if currentDepth > maxDepth {
+        println(f"${'  ' * currentDepth}[SKIP] Max depth reached: ${url}")
+        return
+    }
+    
+    // 去重检查 - 避免重复访问
+    // 关键词: 去重检查, 重复访问防止, 访问标记
+    if visitedUrls[url] {
+        println(f"${'  ' * currentDepth}[SKIP] Already visited: ${url}")
+        return
+    }
+    
+    // 标记为已访问
+    // 关键词: 标记访问, 记录访问, 去重标记
+    visitedUrls[url] = true
+    
+    // 处理当前URL
+    // 关键词: URL处理, 页面处理, 数据提取
+    println(f"${'  ' * currentDepth}[VISIT] Depth ${currentDepth}: ${url}")
+    
+    // 获取当前URL的链接列表
+    // 关键词: 获取链接, 子链接, 链接提取
+    links = mockUrlData[url]
+    if links == nil || links == undefined {
+        return
+    }
+    
+    // 递归爬取所有子链接
+    // 关键词: 递归爬取, 遍历子链接, 深度优先爬取
+    for link in links {
+        // 递归调用，深度+1
+        // 关键词: 递归调用爬虫, 深度递增, 子链接爬取
+        crawlUrl(link, currentDepth + 1, maxDepth)
+    }
+}
+
+// 开始爬取
+// 关键词: 爬虫启动, 爬取入口, 初始调用
+println("Starting crawler with max depth 2:")
+crawlUrl("http://example.com", 0, 2)
+
+println(f"\nTotal URLs visited: ${len(visitedUrls)}")
+assert len(visitedUrls) > 0, "should visit at least one URL"
+
+// ==========================================
+// 6. 带结果收集的爬虫 - 使用全局结果数组
+// ==========================================
+// 关键词: 结果收集, 返回结果, 数据收集, 爬虫结果
+// AI搜索词: result collection return results data collection crawler results
+
+println("\n=== 6. 带结果收集的爬虫 ===")
+
+// 重置访问记录和结果数组
+// 关键词: 重置状态, 清空访问记录
+visitedUrls2 = {}
+collectedResults = []  // 全局结果数组
+
+// 带结果收集的爬虫 - 使用外部results数组
+// 关键词: 结果收集爬虫, 数据返回, 结果聚合
+crawlAndCollect = func(url, currentDepth, maxDepth) {
+    // 深度限制
+    // 关键词: 深度检查, 递归边界
+    if currentDepth > maxDepth {
+        return
+    }
+    
+    // 去重检查
+    // 关键词: 去重, 访问检查
+    if visitedUrls2[url] {
+        return
+    }
+    
+    // 标记已访问
+    visitedUrls2[url] = true
+    
+    // 收集结果 - 添加到全局结果数组
+    // 关键词: 收集结果, 添加结果, 结果记录
+    collectedResults = append(collectedResults, {
+        "url": url,
+        "depth": currentDepth
+    })
+    
+    // 获取子链接
+    links = mockUrlData[url]
+    if links == nil || links == undefined {
+        return
+    }
+    
+    // 递归收集子链接结果
+    // 关键词: 递归收集, 结果传递, 结果聚合
+    for link in links {
+        crawlAndCollect(link, currentDepth + 1, maxDepth)
+    }
+}
+
+// 执行爬虫并收集结果
+// 关键词: 执行爬虫, 结果收集, 爬取结果
+crawlAndCollect("http://example.com", 0, 1)
+
+println("Collected results:")
+for item in collectedResults {
+    println(f"  Depth ${item['depth']}: ${item['url']}")
+}
+
+println(f"\nTotal collected: ${len(collectedResults)}")
+assert len(collectedResults) > 0, "should collect results"
+
+// ==========================================
+// 7. 实际HTTP爬虫示例 - 真实请求
+// ==========================================
+// 关键词: HTTP爬虫, 真实请求, 网页爬取, 链接提取
+// AI搜索词: http crawler real request web scraping link extraction
+
+println("\n=== 7. 实际HTTP爬虫示例（演示） ===")
+
+// 实际爬虫的访问记录
+// 关键词: 爬虫状态, 访问记录
+actualVisited = {}
+
+// 实际HTTP爬虫函数
+// 关键词: HTTP爬虫实现, 真实爬虫, 递归HTTP爬取
+crawlWebsite = func(url, depth, maxDepth) {
+    // 深度限制
+    // 关键词: 深度控制, 递归深度限制
+    if depth > maxDepth {
+        return
+    }
+    
+    // 去重
+    // 关键词: URL去重, 防止重复爬取
+    if actualVisited[url] {
+        return
+    }
+    
+    actualVisited[url] = true
+    
+    println(f"${'  ' * depth}Would crawl: ${url}")
+    
+    // 实际爬虫会在这里发送HTTP请求
+    // 关键词: HTTP请求, 发送请求, 获取页面
+    // rsp, err = http.Get(url)
+    // if err != nil {
+    //     println(f"Error: ${err}")
+    //     return
+    // }
+    
+    // 解析HTML，提取链接
+    // 关键词: HTML解析, 链接提取, 页面解析
+    // body = rsp.ReadBody()
+    // links = extractLinks(body)
+    
+    // 递归爬取每个链接
+    // 关键词: 递归爬取链接, 深度优先遍历
+    // for link in links {
+    //     crawlWebsite(link, depth + 1, maxDepth)
+    // }
+}
+
+// 演示调用（不实际发送请求）
+// 关键词: 爬虫演示, 示例调用
+println("Demo: How a real crawler would work:")
+crawlWebsite("http://example.com", 0, 2)
+
+// ==========================================
+// 8. 递归遍历文件系统（模拟）
+// ==========================================
+// 关键词: 文件系统遍历, 目录递归, 文件遍历
+// AI搜索词: file system traversal directory recursion file tree
+
+println("\n=== 8. 递归遍历文件系统（模拟）===")
+
+// 模拟文件系统结构
+// 关键词: 文件系统结构, 目录树, 文件树
+mockFileSystem = {
+    "type": "dir",
+    "name": "/root",
+    "children": [
+        {
+            "type": "file",
+            "name": "file1.txt"
+        },
+        {
+            "type": "dir",
+            "name": "subdir1",
+            "children": [
+                {"type": "file", "name": "file2.txt"},
+                {"type": "file", "name": "file3.txt"}
+            ]
+        },
+        {
+            "type": "dir",
+            "name": "subdir2",
+            "children": [
+                {
+                    "type": "dir",
+                    "name": "subsubdir",
+                    "children": [
+                        {"type": "file", "name": "file4.txt"}
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+// 递归遍历文件系统
+// 关键词: 文件系统遍历函数, 递归遍历目录, 树形遍历
+traverseFileSystem = func(node, indent) {
+    if node == nil || node == undefined {
+        return
+    }
+    
+    // 打印当前节点
+    // 关键词: 打印节点, 显示路径
+    if node["type"] == "dir" {
+        println(f"${indent}[DIR] ${node['name']}")
+    } else {
+        println(f"${indent}[FILE] ${node['name']}")
+    }
+    
+    // 如果是目录，递归遍历子节点
+    // 关键词: 递归遍历子节点, 目录递归, 子节点遍历
+    if node["type"] == "dir" && node["children"] != nil {
+        children = node["children"]
+        for child in children {
+            traverseFileSystem(child, indent + "  ")
+        }
+    }
+}
+
+println("File system traversal:")
+traverseFileSystem(mockFileSystem, "")
+
+// ==========================================
+// 9. 递归函数常见错误和解决方案
+// ==========================================
+// 关键词: 常见错误, 错误解决, 调试技巧, 递归陷阱
+// AI搜索词: common errors error solutions debugging recursive pitfalls
+
+println("\n=== 9. 递归函数常见错误 ===")
+
+println("常见错误:")
+println("1. 缺少终止条件 - 导致无限递归和栈溢出")
+println("   解决: 始终明确定义base case")
+println("")
+println("2. 终止条件永远不满足 - 递归永不停止")
+println("   解决: 确保参数向终止条件推进")
+println("")
+println("3. 函数定义在调用之后 - 函数未定义错误")
+println("   解决: 确保递归函数在调用前定义")
+println("")
+println("4. 忘记返回递归调用的结果 - 结果丢失")
+println("   解决: return recursiveCall()")
+println("")
+println("5. 深度太大导致栈溢出")
+println("   解决: 添加maxDepth参数限制递归深度")
+
+// 错误示例（注释形式，避免实际执行）
+println("\n错误示例（注释形式）:")
+println("// badRecursive = func(n) {")
+println("//     return badRecursive(n)  // 错误: 无终止条件，无限递归")
+println("// }")
+println("")
+println("// wrongRecursive = func(n) {")
+println("//     if n == 0 { return 0 }")
+println("//     wrongRecursive(n + 1)  // 错误: n永远不会等于0，且未返回结果")
+println("// }")
+
+// 正确示例
+// 关键词: 正确递归, 标准写法, 推荐模式
+println("\n正确示例:")
+correctRecursive = func(n) {
+    // 终止条件
+    if n <= 0 {
+        return 0
+    }
+    // 返回递归调用结果，参数向终止条件推进
+    return n + correctRecursive(n - 1)
+}
+
+println(f"correctRecursive(5) = ${correctRecursive(5)}")
+assert correctRecursive(5) == 15, "correct recursive should work"
+
+println("\n=== 递归函数与爬虫实现指南完成 ===")
+println("核心要点:")
+println("1. 递归函数必须有明确的终止条件")
+println("2. 递归调用要让参数向终止条件推进")
+println("3. 爬虫要有深度限制和去重机制")
+println("4. 使用visited集合防止重复访问")
+println("5. 递归函数定义必须在调用之前")
+println("6. 记得返回递归调用的结果")
+

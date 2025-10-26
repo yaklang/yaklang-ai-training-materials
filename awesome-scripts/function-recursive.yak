@@ -1,0 +1,196 @@
+// =============================================================================
+// Yaklang递归函数实现 - 递归调用和终止条件
+// 关键词: 递归函数 终止条件 递归调用 深度控制 爬虫
+// AI错误: 无终止条件 无限递归 栈溢出 递归结果未返回
+// =============================================================================
+
+// 基础递归 - 阶乘
+// 关键词: 阶乘, 递归基础, base case, recursive case
+factorial = func(n) {
+    if n <= 1 {
+        return 1  // 终止条件
+    }
+    return n * factorial(n - 1)  // 递归调用
+}
+assert factorial(5) == 120, "5! = 120"
+assert factorial(1) == 1, "1! = 1"
+assert factorial(4) == 24, "4! = 24"
+
+// 斐波那契数列 - 多重递归
+// 关键词: 斐波那契, 多重递归, 递归树
+fibonacci = func(n) {
+    if n <= 0 {
+        return 0
+    }
+    if n == 1 {
+        return 1
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+assert fibonacci(0) == 0, "fib(0) = 0"
+assert fibonacci(1) == 1, "fib(1) = 1"
+assert fibonacci(7) == 13, "fib(7) = 13"
+assert fibonacci(10) == 55, "fib(10) = 55"
+
+// 递归求和数组
+// 关键词: 递归遍历, 数组递归, 索引递归
+sumArray = func(arr, idx) {
+    if idx >= len(arr) {
+        return 0  // 终止条件
+    }
+    return arr[idx] + sumArray(arr, idx + 1)
+}
+testArr = [1, 2, 3, 4, 5]
+assert sumArray(testArr, 0) == 15, "数组求和正确"
+assert sumArray([10, 20, 30], 0) == 60, "另一个数组求和"
+
+// 递归查找嵌套结构
+// 关键词: 递归查找, 嵌套遍历, 深度搜索
+findNested = func(data, key) {
+    for k, v in data {
+        if k == key {
+            return v
+        }
+        if typeof(v) == "map" {
+            result = findNested(v, key)
+            if result != nil && result != undefined {
+                return result
+            }
+        }
+    }
+    return nil
+}
+nested = {
+    "a": {
+        "b": {
+            "target": "found"
+        }
+    }
+}
+assert findNested(nested, "target") == "found", "应该找到嵌套值"
+assert findNested(nested, "notexist") == nil, "找不到返回nil"
+
+// 递归爬虫 - 带深度限制和去重
+// 关键词: 递归爬虫, 深度限制, 去重机制, URL爬取
+urls = {
+    "A": ["B", "C"],
+    "B": ["D", "E"],
+    "C": ["F"],
+    "D": [],
+    "E": [],
+    "F": []
+}
+visited = {}
+crawlCount = 0
+
+crawl = func(url, depth, maxDepth) {
+    // 深度限制
+    if depth > maxDepth {
+        return
+    }
+    // 去重检查
+    if visited[url] {
+        return
+    }
+    visited[url] = true
+    crawlCount++
+    
+    // 递归爬取子链接
+    links = urls[url]
+    if links != nil && links != undefined {
+        for link in links {
+            crawl(link, depth + 1, maxDepth)
+        }
+    }
+}
+
+crawl("A", 0, 1)
+assert visited["A"] == true, "应该访问A"
+assert visited["B"] == true, "应该访问B"
+assert visited["C"] == true, "应该访问C"
+assert visited["D"] == undefined, "深度限制不访问D"
+assert crawlCount == 3, "应该访问3个URL"
+
+// 递归收集结果 - 使用外部数组
+// 关键词: 递归收集, 结果聚合, 全局结果数组
+visited2 = {}
+results = []
+
+collectCrawl = func(url, depth) {
+    if depth > 1 {
+        return
+    }
+    if visited2[url] {
+        return
+    }
+    visited2[url] = true
+    results = append(results, url)
+    
+    links = urls[url]
+    if links != nil && links != undefined {
+        for link in links {
+            collectCrawl(link, depth + 1)
+        }
+    }
+}
+
+collectCrawl("A", 0)
+assert len(results) == 3, "应该收集3个结果"
+assert results[0] == "A", "第一个是A"
+
+// 记忆化递归 - 性能优化
+// 关键词: 记忆化, 缓存, 递归优化
+fastFib = func(n, memo) {
+    if memo == nil {
+        memo = {}
+    }
+    key = string(n)
+    if memo[key] != nil && memo[key] != undefined {
+        return memo[key]
+    }
+    if n <= 1 {
+        return n
+    }
+    result = fastFib(n - 1, memo) + fastFib(n - 2, memo)
+    memo[key] = result
+    return result
+}
+assert fastFib(10, {}) == 55, "记忆化斐波那契正确"
+assert fastFib(15, {}) == 610, "记忆化可以计算更大值"
+
+// 递归遍历树形结构
+// 关键词: 树形遍历, 递归遍历, 文件树
+tree = {
+    "name": "root",
+    "children": [
+        {"name": "child1", "children": []},
+        {"name": "child2", "children": [
+            {"name": "grandchild", "children": []}
+        ]}
+    ]
+}
+nodeCount = 0
+traverse = func(node) {
+    if node == nil {
+        return
+    }
+    nodeCount++
+    children = node["children"]
+    if children != nil && children != undefined {
+        for child in children {
+            traverse(child)
+        }
+    }
+}
+traverse(tree)
+assert nodeCount == 4, "应该遍历4个节点"
+
+// 验证总结
+// 关键词: 递归验证, 核心规则验证
+println("=== Yaklang递归函数验证通过 ===")
+println("1. 递归必须有明确的终止条件")
+println("2. 递归调用要让参数向终止条件推进")
+println("3. 爬虫需要深度限制和去重机制")
+println("4. 记得返回递归调用的结果")
+println("5. 使用记忆化优化性能")
+

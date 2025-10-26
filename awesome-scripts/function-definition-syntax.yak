@@ -1,0 +1,383 @@
+// =============================================================================
+// Yaklang函数定义语法完整指南 - 解决AI在函数定义时的常见语法错误
+// 功能: 详细演示命名函数和匿名函数的正确定义方式，避免语法混淆
+// 用途: 函数定义、语法学习、错误预防、AI训练、函数声明规范
+//
+// 核心技术栈:
+// - 匿名函数赋值: variable = func(params) { ... }
+// - 函数参数列表: 逗号分隔的参数名
+// - 函数返回值: return 语句返回结果
+// - 函数调用: functionName(args)
+// - 闭包和作用域: 函数内访问外部变量
+//
+// 关键语法规则:
+// 1. Yaklang不支持 func funcName() {} 命名函数声明语法
+// 2. 必须使用匿名函数赋值方式: funcName = func() {}
+// 3. 参数列表必须用逗号分隔，不需要类型声明
+// 4. 函数必须在调用之前定义
+// 5. 函数是一等公民，可以作为参数传递和返回
+//
+// 关键词: 函数定义 匿名函数 函数语法 参数列表 函数赋值 函数声明
+// 搜索标签: #function-definition #anonymous-function #function-syntax #parameters
+// AI常见错误: func funcName() 命名函数声明 参数类型声明 函数提升 先调用后定义
+// AI错误搜索: mismatched input expecting = function definition syntax yaklang func keyword
+// =============================================================================
+
+println("=== Yaklang函数定义语法完整指南 ===\n")
+
+// ==========================================
+// 1. 基础函数定义 - 正确的匿名函数赋值方式
+// ==========================================
+// 关键词: 匿名函数定义, 函数赋值, 基础语法, 无参数函数
+// AI搜索词: yaklang function definition anonymous function assignment function syntax
+
+println("=== 1. 基础函数定义 - 无参数函数 ===")
+
+// 错误示例 (不要使用):
+// func sayHello() {  // 这种命名函数声明语法在Yaklang中不支持
+//     println("Hello")
+// }
+
+// 正确示例: 使用匿名函数赋值
+// 关键词: 无参数函数, func()语法, 匿名函数赋值, 函数定义正确方式
+sayHello = func() {
+    println("Hello from anonymous function")
+}
+
+// 函数调用 - 定义后才能调用
+// 关键词: 函数调用, 函数执行, 括号调用语法
+sayHello()
+
+// 验证函数可被调用
+// 关键词: assert验证, 函数类型检查, 类型验证
+// 函数类型是 *yakvm.Function，但我们主要关心它可以被调用
+
+// ==========================================
+// 2. 带参数的函数定义 - 参数列表语法
+// ==========================================
+// 关键词: 带参数函数, 参数列表, 函数参数, 多参数函数
+// AI搜索词: function parameters parameter list yaklang function arguments
+
+println("\n=== 2. 带参数的函数定义 ===")
+
+// 单个参数的函数
+// 关键词: 单参数函数, 参数接收, 函数参数使用
+greet = func(name) {
+    println(f"Hello, ${name}!")
+}
+
+greet("Alice")
+
+// 多个参数的函数 - 参数用逗号分隔
+// 关键词: 多参数函数, 逗号分隔参数, 参数列表语法
+add = func(a, b) {
+    return a + b
+}
+
+result = add(10, 20)
+println(f"10 + 20 = ${result}")
+assert result == 30, "add function should return 30"
+
+// 三个参数的函数
+// 关键词: 三参数函数, 多参数定义, 参数顺序
+multiply = func(x, y, z) {
+    return x * y * z
+}
+
+product = multiply(2, 3, 4)
+println(f"2 * 3 * 4 = ${product}")
+assert product == 24, "multiply function should return 24"
+
+// ==========================================
+// 3. 函数返回值 - return语句的使用
+// ==========================================
+// 关键词: 函数返回值, return语句, 返回结果, 函数输出
+// AI搜索词: function return value return statement yaklang function result
+
+println("\n=== 3. 函数返回值 ===")
+
+// 返回单个值
+// 关键词: 单返回值, return单值, 函数结果返回
+square = func(n) {
+    return n * n
+}
+
+squared = square(5)
+println(f"Square of 5 = ${squared}")
+assert squared == 25, "square function should return 25"
+
+// 返回计算结果
+// 关键词: 计算后返回, 复杂返回值, 表达式返回
+divide = func(a, b) {
+    if b == 0 {
+        return 0  // 避免除零错误
+    }
+    return a / b
+}
+
+quotient = divide(100, 4)
+println(f"100 / 4 = ${quotient}")
+assert quotient == 25, "divide function should return 25"
+
+// 提前返回
+// 关键词: 提前返回, 条件返回, 多return语句
+checkPositive = func(n) {
+    if n > 0 {
+        return "positive"
+    }
+    if n < 0 {
+        return "negative"
+    }
+    return "zero"
+}
+
+println(f"checkPositive(10) = ${checkPositive(10)}")
+println(f"checkPositive(-5) = ${checkPositive(-5)}")
+println(f"checkPositive(0) = ${checkPositive(0)}")
+assert checkPositive(10) == "positive", "should return positive"
+assert checkPositive(-5) == "negative", "should return negative"
+assert checkPositive(0) == "zero", "should return zero"
+
+// ==========================================
+// 4. 无返回值的函数 - 副作用函数
+// ==========================================
+// 关键词: 无返回值函数, 副作用函数, 过程式函数, void函数
+// AI搜索词: function without return void function side effect function
+
+println("\n=== 4. 无返回值的函数 ===")
+
+// 只执行操作不返回值
+// 关键词: 副作用操作, 打印函数, 无return函数
+logMessage = func(msg) {
+    println(f"[LOG] ${msg}")
+    // 不需要return语句
+}
+
+logMessage("This is a log message")
+
+// 修改外部变量的函数
+// 关键词: 修改外部变量, 闭包, 变量修改, 副作用
+counter = 0
+increment = func() {
+    counter++  // 修改外部变量
+    println(f"Counter: ${counter}")
+}
+
+increment()
+increment()
+increment()
+assert counter == 3, "counter should be incremented to 3"
+
+// ==========================================
+// 5. 函数作为参数 - 高阶函数
+// ==========================================
+// 关键词: 高阶函数, 函数作为参数, 回调函数, 函数传递
+// AI搜索词: higher order function function as parameter callback function
+
+println("\n=== 5. 函数作为参数传递 ===")
+
+// 接受函数作为参数的高阶函数
+// 关键词: 高阶函数定义, 函数参数, 回调执行
+applyOperation = func(a, b, operation) {
+    return operation(a, b)
+}
+
+// 定义不同的操作函数
+// 关键词: 操作函数, 算术函数, 函数定义
+addFunc = func(x, y) { return x + y }
+subFunc = func(x, y) { return x - y }
+mulFunc = func(x, y) { return x * y }
+
+// 使用不同的函数作为参数
+// 关键词: 函数调用, 传递函数参数, 高阶函数调用
+result1 = applyOperation(10, 5, addFunc)
+result2 = applyOperation(10, 5, subFunc)
+result3 = applyOperation(10, 5, mulFunc)
+
+println(f"applyOperation(10, 5, add) = ${result1}")
+println(f"applyOperation(10, 5, sub) = ${result2}")
+println(f"applyOperation(10, 5, mul) = ${result3}")
+
+assert result1 == 15, "addition should return 15"
+assert result2 == 5, "subtraction should return 5"
+assert result3 == 50, "multiplication should return 50"
+
+// ==========================================
+// 6. 函数作为返回值 - 函数工厂
+// ==========================================
+// 关键词: 函数作为返回值, 函数工厂, 闭包, 函数生成器
+// AI搜索词: function factory return function closure function generator
+
+println("\n=== 6. 函数作为返回值 ===")
+
+// 返回函数的函数工厂
+// 关键词: 函数工厂, 创建函数, 闭包捕获, 函数返回
+makeMultiplier = func(factor) {
+    // 返回一个新函数，该函数捕获factor变量
+    // 关键词: 返回匿名函数, 闭包捕获变量, 内部函数
+    return func(n) {
+        return n * factor
+    }
+}
+
+// 创建不同的乘法器
+// 关键词: 函数工厂使用, 创建专用函数, 闭包应用
+doubler = makeMultiplier(2)
+tripler = makeMultiplier(3)
+quadrupler = makeMultiplier(4)
+
+println(f"doubler(5) = ${doubler(5)}")
+println(f"tripler(5) = ${tripler(5)}")
+println(f"quadrupler(5) = ${quadrupler(5)}")
+
+assert doubler(5) == 10, "doubler should return 10"
+assert tripler(5) == 15, "tripler should return 15"
+assert quadrupler(5) == 20, "quadrupler should return 20"
+
+// ==========================================
+// 7. 闭包和作用域 - 变量捕获
+// ==========================================
+// 关键词: 闭包, 作用域, 变量捕获, 词法作用域
+// AI搜索词: closure scope variable capture lexical scope
+
+println("\n=== 7. 闭包和作用域 ===")
+
+// 闭包示例 - 函数捕获外部变量
+// 关键词: 闭包示例, 变量捕获, 计数器闭包, 私有变量
+makeCounter = func() {
+    count = 0  // 私有变量，被闭包捕获
+    
+    // 返回包含多个方法的map
+    // 关键词: 返回方法集合, 闭包方法, 私有状态
+    return {
+        "increment": func() {
+            count++
+            return count
+        },
+        "decrement": func() {
+            count--
+            return count
+        },
+        "getCount": func() {
+            return count
+        }
+    }
+}
+
+// 创建计数器实例
+// 关键词: 计数器使用, 闭包实例, 状态管理
+counter1 = makeCounter()
+counter2 = makeCounter()
+
+// 每个计数器有独立的状态
+// 关键词: 独立状态, 闭包隔离, 私有变量独立
+println(f"counter1 increment: ${counter1['increment']()}")
+println(f"counter1 increment: ${counter1['increment']()}")
+println(f"counter1 count: ${counter1['getCount']()}")
+
+println(f"counter2 increment: ${counter2['increment']()}")
+println(f"counter2 count: ${counter2['getCount']()}")
+
+assert counter1["getCount"]() == 2, "counter1 should be 2"
+assert counter2["getCount"]() == 1, "counter2 should be 1"
+
+// ==========================================
+// 8. 立即执行函数 - IIFE模式
+// ==========================================
+// 关键词: 立即执行函数, IIFE, 匿名函数立即调用, 函数表达式
+// AI搜索词: IIFE immediately invoked function expression anonymous function call
+
+println("\n=== 8. 立即执行函数表达式 (IIFE) ===")
+
+// 立即执行的匿名函数
+// 关键词: IIFE模式, 立即执行, 函数自调用, 私有作用域
+result = func() {
+    localVar = "I am local"
+    return f"IIFE executed: ${localVar}"
+}()  // 注意这里的()表示立即执行
+
+println(result)
+assert result == "IIFE executed: I am local", "IIFE should execute immediately"
+
+// 带参数的IIFE
+// 关键词: 带参数IIFE, 立即执行带参数, 参数传递立即执行
+result2 = func(x, y) {
+    return x + y
+}(10, 20)  // 立即执行并传入参数
+
+println(f"IIFE with params: ${result2}")
+assert result2 == 30, "IIFE with params should return 30"
+
+// ==========================================
+// 9. 函数定义顺序 - 必须先定义后调用
+// ==========================================
+// 关键词: 函数顺序, 先定义后调用, 定义顺序, 函数提升
+// AI搜索词: function order define before use function hoisting yaklang
+
+println("\n=== 9. 函数定义顺序规则 ===")
+
+// 正确: 先定义函数
+// 关键词: 先定义, 定义在前, 正确顺序
+functionA = func() {
+    return "Function A"
+}
+
+// 后调用函数
+// 关键词: 后调用, 调用在后, 正确调用顺序
+resultA = functionA()
+println(f"functionA result: ${resultA}")
+assert resultA == "Function A", "functionA should return 'Function A'"
+
+// 函数可以相互调用，但都需要在调用前定义
+// 关键词: 函数互相调用, 相互调用, 函数依赖
+helperFunction = func(n) {
+    return n * 2
+}
+
+mainFunction = func(n) {
+    // 可以调用之前定义的函数
+    // 关键词: 调用已定义函数, 函数依赖关系
+    return helperFunction(n) + 10
+}
+
+resultB = mainFunction(5)
+println(f"mainFunction(5) = ${resultB}")
+assert resultB == 20, "mainFunction should return 20"
+
+// ==========================================
+// 10. 常见错误和正确写法对比
+// ==========================================
+// 关键词: 常见错误, 错误对比, 正确写法, 语法纠正
+// AI搜索词: common errors correct syntax function definition mistakes
+
+println("\n=== 10. 常见错误和正确写法对比 ===")
+
+println("错误写法示例 (注释形式):")
+println("// func myFunc() {}  // 错误: Yaklang不支持命名函数声明")
+println("// myFunc = func(a b) {}  // 错误: 参数需要逗号分隔")
+println("// myFunc = func(int a, int b) {}  // 错误: 参数不需要类型声明")
+
+println("\n正确写法:")
+println("// myFunc = func() {}  // 正确: 无参数函数")
+println("// myFunc = func(a, b) {}  // 正确: 多参数用逗号分隔")
+println("// myFunc = func(a, b) { return a + b }  // 正确: 返回值")
+
+// 实际的正确示例
+// 关键词: 正确示例, 标准写法, 推荐语法
+correctFunc = func(a, b, c) {
+    sum = a + b + c
+    return sum
+}
+
+finalResult = correctFunc(1, 2, 3)
+println(f"\n正确函数定义和调用: correctFunc(1, 2, 3) = ${finalResult}")
+assert finalResult == 6, "correctFunc should return 6"
+
+println("\n=== 函数定义语法指南完成 ===")
+println("核心要点:")
+println("1. 使用 funcName = func(params) {} 定义函数")
+println("2. 参数用逗号分隔，不需要类型声明")
+println("3. 函数必须在调用前定义")
+println("4. 函数是一等公民，可以作为参数和返回值")
+println("5. 支持闭包和词法作用域")
+

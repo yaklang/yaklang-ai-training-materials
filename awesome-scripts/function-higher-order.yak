@@ -1,0 +1,169 @@
+// =============================================================================
+// Yaklang高阶函数 - 函数作为参数和返回值
+// 关键词: 高阶函数 函数参数 函数返回值 map filter reduce 函数组合
+// AI错误: 函数传递错误 闭包理解错误 组合函数错误
+// =============================================================================
+
+// map - 数组转换
+// 关键词: map操作, 数组转换, 高阶函数
+mapArray = func(arr, transform) {
+    result = []
+    for item in arr {
+        result = append(result, transform(item))
+    }
+    return result
+}
+nums = [1, 2, 3, 4, 5]
+doubled = mapArray(nums, func(n) { return n * 2 })
+assert len(doubled) == 5, "map结果长度正确"
+assert doubled[0] == 2 && doubled[4] == 10, "map转换正确"
+
+squared = mapArray(nums, func(n) { return n * n })
+assert squared[2] == 9 && squared[4] == 25, "平方转换正确"
+
+// filter - 数组过滤
+// 关键词: filter操作, 条件筛选, 谓词函数
+filterArray = func(arr, predicate) {
+    result = []
+    for item in arr {
+        if predicate(item) {
+            result = append(result, item)
+        }
+    }
+    return result
+}
+evens = filterArray(nums, func(n) { return n % 2 == 0 })
+assert len(evens) == 2, "偶数有2个"
+assert evens[0] == 2 && evens[1] == 4, "偶数筛选正确"
+
+large = filterArray(nums, func(n) { return n > 3 })
+assert len(large) == 2, "大于3的有2个"
+assert large[0] == 4 && large[1] == 5, "大值筛选正确"
+
+// reduce - 数组聚合
+// 关键词: reduce操作, 累积计算, 聚合函数
+reduceArray = func(arr, reducer, initial) {
+    acc = initial
+    for item in arr {
+        acc = reducer(acc, item)
+    }
+    return acc
+}
+sum = reduceArray(nums, func(a, b) { return a + b }, 0)
+assert sum == 15, "求和正确"
+
+product = reduceArray(nums, func(a, b) { return a * b }, 1)
+assert product == 120, "求积正确"
+
+maxVal = reduceArray(nums, func(a, b) { 
+    if b > a { return b }
+    return a
+}, nums[0])
+assert maxVal == 5, "最大值正确"
+
+// 函数作为返回值 - 函数工厂
+// 关键词: 函数工厂, 返回函数, 闭包应用
+makeMultiplier = func(factor) {
+    return func(n) {
+        return n * factor
+    }
+}
+times3 = makeMultiplier(3)
+times7 = makeMultiplier(7)
+assert times3(4) == 12, "乘3工厂正确"
+assert times7(5) == 35, "乘7工厂正确"
+assert times3(10) == 30, "工厂状态保持"
+
+// 函数组合 - compose
+// 关键词: 函数组合, compose, 函数链式调用
+compose = func(f, g) {
+    return func(x) {
+        return f(g(x))
+    }
+}
+addOne = func(n) { return n + 1 }
+timesTwo = func(n) { return n * 2 }
+addThenDouble = compose(timesTwo, addOne)
+assert addThenDouble(5) == 12, "组合函数正确: (5+1)*2=12"
+assert addThenDouble(10) == 22, "组合函数正确: (10+1)*2=22"
+
+// 管道 - 多个函数组合
+// 关键词: 管道, pipeline, 函数序列
+pipeline = func(x, funcs) {
+    res = x
+    for f in funcs {
+        res = f(res)
+    }
+    return res
+}
+steps = [addOne, timesTwo, func(n) { return n * n }]
+result = pipeline(2, steps)  // ((2+1)*2)^2 = 36
+assert result == 36, "管道计算正确"
+
+// 偏函数应用
+// 关键词: 偏函数, partial application, 参数固定
+partial = func(f, fixed) {
+    return func(arg) {
+        return f(fixed, arg)
+    }
+}
+add = func(a, b) { return a + b }
+add10 = partial(add, 10)
+add100 = partial(add, 100)
+assert add10(5) == 15, "偏函数add10正确"
+assert add100(23) == 123, "偏函数add100正确"
+
+// 柯里化
+// 关键词: 柯里化, curry, 单参数函数链
+curry = func(f) {
+    return func(a) {
+        return func(b) {
+            return f(a, b)
+        }
+    }
+}
+curriedAdd = curry(add)
+assert curriedAdd(5)(3) == 8, "柯里化函数正确"
+assert curriedAdd(10)(20) == 30, "柯里化链式调用"
+
+// 记忆化包装
+// 关键词: 记忆化, memoization, 缓存优化
+memoize = func(f) {
+    cache = {}
+    return func(arg) {
+        key = string(arg)
+        if cache[key] != nil && cache[key] != undefined {
+            return cache[key]
+        }
+        result = f(arg)
+        cache[key] = result
+        return result
+    }
+}
+expensiveCalc = func(n) {
+    return n * n + n
+}
+memoized = memoize(expensiveCalc)
+assert memoized(5) == 30, "记忆化函数计算正确"
+assert memoized(5) == 30, "缓存命中返回相同结果"
+assert memoized(10) == 110, "新参数正确计算"
+
+// 链式调用数据处理
+// 关键词: 链式处理, 数据流, 函数组合应用
+data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+filtered = filterArray(data, func(n) { return n % 2 == 0 })
+mapped = mapArray(filtered, func(n) { return n * n })
+result = reduceArray(mapped, func(a, b) { return a + b }, 0)
+// 偶数: 2,4,6,8,10 -> 平方: 4,16,36,64,100 -> 和: 220
+assert result == 220, "链式处理正确"
+
+// 验证总结
+// 关键词: 高阶函数验证, 函数式编程验证
+println("=== Yaklang高阶函数验证通过 ===")
+println("1. map: 转换数组元素")
+println("2. filter: 过滤数组元素")
+println("3. reduce: 聚合数组元素")
+println("4. compose: 组合函数")
+println("5. partial/curry: 参数固定和柯里化")
+println("6. memoize: 缓存优化")
+

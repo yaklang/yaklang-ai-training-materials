@@ -1,0 +1,89 @@
+// =============================================================================
+// Yaklang基础函数语法 - 函数定义和调用的核心规则
+// 关键词: 函数定义 匿名函数 参数列表 返回值 函数调用
+// AI错误: func funcName() 命名函数声明 参数类型声明 先调用后定义
+// =============================================================================
+
+// 错误写法: func sayHello() {}  // Yaklang不支持命名函数声明
+// 正确写法: 使用匿名函数赋值
+
+// 无参数函数定义
+// 关键词: 无参数函数, func()语法, 函数赋值
+sayHello = func() {
+    return "Hello"
+}
+assert sayHello() == "Hello", "无参数函数应该正常工作"
+
+// 单参数函数
+// 关键词: 单参数函数, 参数传递
+greet = func(name) {
+    return f"Hello, ${name}"
+}
+assert greet("Alice") == "Hello, Alice", "单参数函数应该正常工作"
+
+// 多参数函数 - 参数用逗号分隔，不需要类型声明
+// 关键词: 多参数函数, 逗号分隔参数, 参数列表
+add = func(a, b) {
+    return a + b
+}
+assert add(10, 20) == 30, "多参数函数应该正常工作"
+assert add(5, 3) == 8, "加法应该正确计算"
+
+// 三参数函数
+// 关键词: 三参数函数, 多参数定义
+sum3 = func(x, y, z) {
+    return x + y + z
+}
+assert sum3(1, 2, 3) == 6, "三参数求和应该正确"
+
+// 函数返回值
+// 关键词: 函数返回值, return语句
+square = func(n) {
+    return n * n
+}
+assert square(5) == 25, "平方函数应该正确"
+assert square(10) == 100, "平方计算正确"
+
+// 条件返回 - 提前返回
+// 关键词: 条件返回, 提前返回, 多return语句
+checkSign = func(n) {
+    if n > 0 {
+        return "positive"
+    }
+    if n < 0 {
+        return "negative"
+    }
+    return "zero"
+}
+assert checkSign(10) == "positive", "正数判断正确"
+assert checkSign(-5) == "negative", "负数判断正确"
+assert checkSign(0) == "zero", "零判断正确"
+
+// 无返回值函数 - 副作用函数
+// 关键词: 无返回值函数, 副作用, 修改外部变量
+counter = 0
+increment = func() {
+    counter++
+}
+increment()
+increment()
+assert counter == 2, "无返回值函数应该能修改外部变量"
+
+// 函数定义顺序 - 必须先定义后调用
+// 关键词: 函数定义顺序, 先定义后调用, 调用依赖
+helper = func(n) {
+    return n * 2
+}
+main = func(n) {
+    return helper(n) + 10  // 可以调用已定义的helper
+}
+assert main(5) == 20, "函数调用顺序正确"
+
+// 验证总结
+// 关键词: 函数语法验证, 核心规则验证
+println("=== Yaklang函数基础语法验证通过 ===")
+println("1. 函数定义: funcName = func(params) { ... }")
+println("2. 参数列表: 逗号分隔，无需类型声明")
+println("3. 调用顺序: 必须先定义后调用")
+println("4. 返回值: 使用return语句")
+

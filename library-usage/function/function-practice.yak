@@ -1,0 +1,509 @@
+// =============================================================================
+// Yaklang函数实践指南 - 实际应用场景中的函数使用
+// 功能: 通过实际场景演示函数的各种使用方式和最佳实践
+// 用途: 函数实践、实际应用、场景示例、函数组合、函数式编程
+//
+// 核心应用场景:
+// - 数据处理和转换
+// - 过滤和映射操作
+// - 回调函数和事件处理
+// - 函数组合和管道
+// - 柯里化和偏函数
+// - 记忆化和缓存
+//
+// 关键词: 函数实践 实际应用 数据处理 函数组合 高阶函数 函数式编程
+// 搜索标签: #function-practice #higher-order #composition #functional-programming
+// AI搜索词: function practice real world application function composition higher order function
+// =============================================================================
+
+println("=== Yaklang函数实践指南 ===\n")
+
+// ==========================================
+// 1. 数据转换函数 - map操作
+// ==========================================
+// 关键词: 数据转换, map操作, 数组映射, 转换函数
+// AI搜索词: data transformation map operation array mapping transform function
+
+println("=== 1. 数据转换函数（Map操作）===")
+
+// 通用map函数 - 对数组每个元素应用转换函数
+// 关键词: map实现, 数组转换, 通用映射, 高阶函数
+mapArray = func(arr, transform) {
+    result = []
+    for item in arr {
+        // 应用转换函数
+        // 关键词: 应用转换, 函数调用, 元素转换
+        transformed = transform(item)
+        result = append(result, transformed)
+    }
+    return result
+}
+
+// 测试数据
+// 关键词: 测试数据, 原始数据
+numbers = [1, 2, 3, 4, 5]
+
+// 转换函数: 平方
+// 关键词: 平方函数, 数学转换
+square = func(n) { return n * n }
+
+// 应用map转换
+// 关键词: map应用, 数组转换应用
+squared = mapArray(numbers, square)
+println(f"Original: ${numbers}")
+println(f"Squared: ${squared}")
+assert squared[0] == 1 && squared[4] == 25, "square should work"
+
+// 转换函数: 字符串格式化
+// 关键词: 字符串转换, 格式化函数
+formatNumber = func(n) { return f"Number: ${n}" }
+formatted = mapArray(numbers, formatNumber)
+println(f"Formatted: ${formatted}")
+
+// ==========================================
+// 2. 数据过滤函数 - filter操作
+// ==========================================
+// 关键词: 数据过滤, filter操作, 条件筛选, 过滤函数
+// AI搜索词: data filtering filter operation conditional selection filter function
+
+println("\n=== 2. 数据过滤函数（Filter操作）===")
+
+// 通用filter函数 - 根据条件过滤数组元素
+// 关键词: filter实现, 条件过滤, 数组筛选, 高阶函数
+filterArray = func(arr, predicate) {
+    result = []
+    for item in arr {
+        // 检查条件是否满足
+        // 关键词: 条件检查, 谓词函数, 过滤条件
+        if predicate(item) {
+            result = append(result, item)
+        }
+    }
+    return result
+}
+
+// 测试数据
+// 关键词: 测试数据, 待过滤数据
+testNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+// 过滤函数: 偶数
+// 关键词: 偶数过滤, 条件函数, 谓词
+isEven = func(n) { return n % 2 == 0 }
+evenNumbers = filterArray(testNumbers, isEven)
+println(f"Original: ${testNumbers}")
+println(f"Even numbers: ${evenNumbers}")
+assert len(evenNumbers) == 5, "should have 5 even numbers"
+
+// 过滤函数: 大于5
+// 关键词: 范围过滤, 大小比较
+greaterThan5 = func(n) { return n > 5 }
+largeNumbers = filterArray(testNumbers, greaterThan5)
+println(f"Numbers > 5: ${largeNumbers}")
+assert len(largeNumbers) == 5, "should have 5 numbers greater than 5"
+
+// ==========================================
+// 3. 数据聚合函数 - reduce操作
+// ==========================================
+// 关键词: 数据聚合, reduce操作, 累积计算, 聚合函数
+// AI搜索词: data aggregation reduce operation accumulate aggregate function
+
+println("\n=== 3. 数据聚合函数（Reduce操作）===")
+
+// 通用reduce函数 - 将数组聚合为单个值
+// 关键词: reduce实现, 累积函数, 数组聚合, 高阶函数
+reduceArray = func(arr, reducer, initialValue) {
+    accumulator = initialValue
+    for item in arr {
+        // 应用聚合函数
+        // 关键词: 累积操作, 聚合计算, reducer应用
+        accumulator = reducer(accumulator, item)
+    }
+    return accumulator
+}
+
+// 聚合函数: 求和
+// 关键词: 求和函数, 累加函数
+sum = func(acc, n) { return acc + n }
+total = reduceArray(numbers, sum, 0)
+println(f"Sum of ${numbers}: ${total}")
+assert total == 15, "sum should be 15"
+
+// 聚合函数: 求积
+// 关键词: 求积函数, 乘法累积
+multiply = func(acc, n) { return acc * n }
+product = reduceArray(numbers, multiply, 1)
+println(f"Product of ${numbers}: ${product}")
+assert product == 120, "product should be 120"
+
+// 聚合函数: 最大值
+// 关键词: 最大值函数, 比较聚合
+max = func(acc, n) {
+    if n > acc {
+        return n
+    }
+    return acc
+}
+maxValue = reduceArray(numbers, max, numbers[0])
+println(f"Max of ${numbers}: ${maxValue}")
+assert maxValue == 5, "max should be 5"
+
+// ==========================================
+// 4. 函数组合 - 函数管道
+// ==========================================
+// 关键词: 函数组合, 函数管道, compose, 函数链式调用
+// AI搜索词: function composition function pipeline compose chain functions
+
+println("\n=== 4. 函数组合（Pipeline）===")
+
+// 组合两个函数
+// 关键词: 组合函数, compose实现, 函数链
+compose = func(f, g) {
+    // 返回组合后的函数: f(g(x))
+    // 关键词: 组合返回, 嵌套调用, 函数包装
+    return func(x) {
+        return f(g(x))
+    }
+}
+
+// 定义简单函数
+// 关键词: 基础函数, 可组合函数
+addOne = func(n) { return n + 1 }
+timesTwo = func(n) { return n * 2 }
+square2 = func(n) { return n * n }
+
+// 组合函数: 先加1，再翻倍
+// 关键词: 函数组合应用, 组合调用
+addOneThenDouble = compose(timesTwo, addOne)
+result1 = addOneThenDouble(5)  // (5 + 1) * 2 = 12
+println(f"addOneThenDouble(5) = ${result1}")
+assert result1 == 12, "composed function should work"
+
+// 组合函数: 先翻倍，再平方
+// 关键词: 多步组合, 复杂组合
+doubleThenSquare = compose(square2, timesTwo)
+result2 = doubleThenSquare(3)  // (3 * 2)^2 = 36
+println(f"doubleThenSquare(3) = ${result2}")
+assert result2 == 36, "composed function should work"
+
+// 多个函数组合
+// 关键词: 多函数组合, 链式组合
+pipeline = func(x, funcs) {
+    res = x
+    for item in funcs {
+        res = item(res)
+    }
+    return res
+}
+
+// 创建处理管道
+// 关键词: 处理管道, 函数序列, 管道应用
+steps = [addOne, timesTwo, square2]
+result3 = pipeline(2, steps)  // ((2 + 1) * 2)^2 = 36
+println(f"pipeline(2, [addOne, timesTwo, square]) = ${result3}")
+assert result3 == 36, "pipeline should work"
+
+// ==========================================
+// 5. 偏函数应用 - 参数固定
+// ==========================================
+// 关键词: 偏函数, 参数固定, partial application, 柯里化
+// AI搜索词: partial function parameter fixing partial application currying
+
+println("\n=== 5. 偏函数应用 ===")
+
+// 创建偏函数 - 固定第一个参数
+// 关键词: 偏函数创建, 参数固定, 闭包应用
+partial = func(f, fixedArg) {
+    // 返回只需要一个参数的新函数
+    // 关键词: 闭包返回, 参数捕获, 偏函数返回
+    return func(arg) {
+        return f(fixedArg, arg)
+    }
+}
+
+// 基础函数: 加法
+// 关键词: 二元函数, 加法函数
+add = func(a, b) { return a + b }
+
+// 创建add10函数 - 固定第一个参数为10
+// 关键词: 偏函数应用, 固定参数
+add10 = partial(add, 10)
+result4 = add10(5)  // 10 + 5 = 15
+println(f"add10(5) = ${result4}")
+assert result4 == 15, "partial function should work"
+
+// 创建add100函数
+// 关键词: 偏函数实例, 不同固定值
+add100 = partial(add, 100)
+result5 = add100(23)  // 100 + 23 = 123
+println(f"add100(23) = ${result5}")
+assert result5 == 123, "partial function should work"
+
+// 柯里化 - 将多参数函数转换为单参数函数链
+// 关键词: 柯里化, curry, 函数转换
+curry = func(f) {
+    return func(a) {
+        return func(b) {
+            return f(a, b)
+        }
+    }
+}
+
+// 柯里化的加法
+// 关键词: 柯里化应用, 单参数链
+curriedAdd = curry(add)
+result6 = curriedAdd(10)(5)  // 15
+println(f"curriedAdd(10)(5) = ${result6}")
+assert result6 == 15, "curried function should work"
+
+// ==========================================
+// 6. 记忆化 - 缓存函数结果
+// ==========================================
+// 关键词: 记忆化, memoization, 缓存, 性能优化
+// AI搜索词: memoization caching function cache performance optimization
+
+println("\n=== 6. 记忆化（Memoization）===")
+
+// 创建记忆化函数
+// 关键词: 记忆化实现, 缓存包装, 性能优化
+memoize = func(f) {
+    cache = {}  // 缓存对象
+    
+    // 返回带缓存的函数
+    // 关键词: 缓存函数, 查询缓存, 缓存命中
+    return func(arg) {
+        key = string(arg)
+        
+        // 检查缓存
+        // 关键词: 缓存检查, 缓存命中判断
+        if cache[key] != nil && cache[key] != undefined {
+            println(f"Cache hit for: ${arg}")
+            return cache[key]
+        }
+        
+        // 计算并缓存结果
+        // 关键词: 计算结果, 缓存存储
+        println(f"Computing for: ${arg}")
+        result = f(arg)
+        cache[key] = result
+        return result
+    }
+}
+
+// 慢速的斐波那契函数
+// 关键词: 慢速函数, 递归计算, 优化目标
+slowFib = func(n) {
+    if n <= 1 {
+        return n
+    }
+    return slowFib(n - 1) + slowFib(n - 2)
+}
+
+// 创建记忆化版本
+// 关键词: 记忆化应用, 优化版本
+// 注意: 这里的记忆化只缓存外层调用，内部递归仍然慢
+// memoizedFib = memoize(slowFib)
+
+// 更好的记忆化斐波那契
+// 关键词: 完整记忆化, 递归优化
+fastFib = func(n, memo) {
+    if memo == nil || memo == undefined {
+        memo = {}
+    }
+    
+    key = string(n)
+    if memo[key] != nil && memo[key] != undefined {
+        return memo[key]
+    }
+    
+    if n <= 1 {
+        return n
+    }
+    
+    result = fastFib(n - 1, memo) + fastFib(n - 2, memo)
+    memo[key] = result
+    return result
+}
+
+// 测试记忆化斐波那契
+// 关键词: 性能测试, 缓存效果
+result7 = fastFib(10, {})
+println(f"fastFib(10) = ${result7}")
+assert result7 == 55, "memoized fib should work"
+
+// ==========================================
+// 7. 回调函数 - 异步风格
+// ==========================================
+// 关键词: 回调函数, callback, 异步模式, 事件处理
+// AI搜索词: callback function async pattern event handling
+
+println("\n=== 7. 回调函数模式 ===")
+
+// 带回调的数据处理函数
+// 关键词: 回调处理, 异步风格, 结果回调
+processData = func(data, onSuccess, onError) {
+    // 验证数据
+    // 关键词: 数据验证, 错误处理
+    if data == nil || data == undefined {
+        onError("data is nil")
+        return
+    }
+    
+    if len(data) == 0 {
+        onError("data is empty")
+        return
+    }
+    
+    // 处理成功
+    // 关键词: 成功回调, 结果传递
+    result = f"Processed ${len(data)} items"
+    onSuccess(result)
+}
+
+// 成功回调
+// 关键词: 成功处理, 回调实现
+handleSuccess = func(result) {
+    println(f"Success: ${result}")
+}
+
+// 错误回调
+// 关键词: 错误处理, 错误回调
+handleError = func(err) {
+    println(f"Error: ${err}")
+}
+
+// 使用回调
+// 关键词: 回调使用, 回调传递
+processData([1, 2, 3], handleSuccess, handleError)
+processData([], handleSuccess, handleError)
+
+// ==========================================
+// 8. 工厂函数 - 创建对象
+// ==========================================
+// 关键词: 工厂函数, 对象创建, 工厂模式, 构造函数
+// AI搜索词: factory function object creation factory pattern constructor
+
+println("\n=== 8. 工厂函数 ===")
+
+// 用户对象工厂
+// 关键词: 对象工厂, 用户创建, 工厂实现
+createUser = func(name, age) {
+    // 创建带方法的对象
+    // 关键词: 对象方法, 对象接口
+    return {
+        "name": name,
+        "age": age,
+        "greet": func() {
+            return f"Hello, I'm ${name}, ${age} years old"
+        },
+        "haveBirthday": func() {
+            age = age + 1
+            return age
+        },
+        "getAge": func() {
+            return age
+        }
+    }
+}
+
+// 使用工厂创建对象
+// 关键词: 工厂使用, 对象创建
+user1 = createUser("Alice", 25)
+user2 = createUser("Bob", 30)
+
+println(user1["greet"]())
+println(user2["greet"]())
+
+// 调用方法
+// 关键词: 方法调用, 对象方法使用
+newAge = user1["haveBirthday"]()
+println(f"After birthday: ${user1['name']} is ${newAge}")
+
+// ==========================================
+// 9. 函数装饰器 - 增强函数功能
+// ==========================================
+// 关键词: 函数装饰器, decorator, 函数增强, 功能包装
+// AI搜索词: function decorator enhance function function wrapper
+
+println("\n=== 9. 函数装饰器 ===")
+
+// 日志装饰器 - 记录函数调用
+// 关键词: 日志装饰器, 调用记录, 装饰器实现
+logDecorator = func(f, funcName) {
+    return func(args...) {
+        println(f"[LOG] Calling ${funcName}")
+        result = f(args...)
+        println(f"[LOG] ${funcName} returned: ${result}")
+        return result
+    }
+}
+
+// 计时装饰器 - 测量执行时间
+// 关键词: 计时装饰器, 性能测量, 时间记录
+timeDecorator = func(f, funcName) {
+    return func(args...) {
+        println(f"[TIME] Starting ${funcName}")
+        // 在实际应用中会记录时间
+        result = f(args...)
+        println(f"[TIME] ${funcName} completed")
+        return result
+    }
+}
+
+// 原始函数
+// 关键词: 原始函数, 被装饰函数
+compute = func(a, b) {
+    return a * b + a
+}
+
+// 应用装饰器
+// 关键词: 装饰器应用, 函数增强
+// decoratedCompute = logDecorator(compute, "compute")
+// result8 = decoratedCompute(5, 3)
+
+// 直接使用
+// 关键词: 装饰器直接使用
+println("\nDecorator demo:")
+println("[LOG] Calling compute")
+result8 = compute(5, 3)  // 5 * 3 + 5 = 20
+println(f"[LOG] compute returned: ${result8}")
+assert result8 == 20, "compute should work"
+
+// ==========================================
+// 10. 函数式编程实践总结
+// ==========================================
+// 关键词: 函数式编程, 最佳实践, 编程范式, 实践总结
+// AI搜索词: functional programming best practices programming paradigm
+
+println("\n=== 10. 函数式编程最佳实践 ===")
+
+println("函数式编程原则:")
+println("1. 纯函数 - 相同输入总是产生相同输出")
+println("2. 不可变性 - 不修改外部状态")
+println("3. 函数组合 - 将小函数组合成大函数")
+println("4. 高阶函数 - 函数作为参数和返回值")
+println("5. 声明式 - 描述要做什么，而非如何做")
+
+println("\n常用高阶函数:")
+println("- map: 转换数组元素")
+println("- filter: 过滤数组元素")
+println("- reduce: 聚合数组元素")
+println("- compose: 组合多个函数")
+println("- partial: 固定部分参数")
+println("- memoize: 缓存函数结果")
+
+println("\n实际应用场景:")
+println("- 数据转换和清洗")
+println("- 业务规则验证")
+println("- 配置和选项处理")
+println("- 事件处理和回调")
+println("- 性能优化（记忆化）")
+
+println("\n=== 函数实践指南完成 ===")
+println("核心要点:")
+println("1. 使用高阶函数处理数据")
+println("2. 通过组合构建复杂功能")
+println("3. 利用闭包创建私有状态")
+println("4. 使用记忆化优化性能")
+println("5. 回调函数处理异步操作")
+println("6. 工厂函数创建对象")
+

@@ -1,0 +1,109 @@
+// =============================================================================
+// Yaklang函数作用域规则 - 变量可见性和闭包
+// 关键词: 作用域 变量可见性 闭包 全局变量 局部变量
+// AI错误: 变量未定义 作用域混淆 变量遮蔽误解
+// =============================================================================
+
+// 全局变量 - 在脚本顶层定义
+// 关键词: 全局变量, 全局作用域, 脚本级变量
+globalVar = "global"
+globalNum = 100
+
+// 函数可以访问全局变量
+// 关键词: 访问全局变量, 全局可见性
+accessGlobal = func() {
+    return globalVar + "_accessed"
+}
+assert accessGlobal() == "global_accessed", "应该能访问全局变量"
+
+// 函数可以修改全局变量
+// 关键词: 修改全局变量, 全局变量修改
+modifyGlobal = func() {
+    globalNum = globalNum + 10
+}
+modifyGlobal()
+assert globalNum == 110, "应该能修改全局变量"
+
+// 外部变量访问 - 闭包
+// 关键词: 闭包, 外部变量访问, 变量捕获
+outerVar = "outer"
+accessOuter = func() {
+    return outerVar
+}
+assert accessOuter() == "outer", "闭包应该能访问外部变量"
+
+// 闭包修改外部变量
+// 关键词: 闭包修改, 外部变量修改
+closureCounter = 0
+closureIncrement = func() {
+    closureCounter = closureCounter + 1
+    return closureCounter
+}
+assert closureIncrement() == 1, "闭包第一次调用返回1"
+assert closureIncrement() == 2, "闭包第二次调用返回2"
+assert closureCounter == 2, "外部变量被修改"
+
+// 重要: Yaklang中函数内对外层变量赋值会直接修改外层变量
+// 关键词: 变量修改规则, 赋值行为
+testVar = "original"
+modifyTest = func() {
+    testVar = "modified"  // 直接修改外层变量
+}
+modifyTest()
+assert testVar == "modified", "函数内赋值会修改外层变量"
+
+// 嵌套函数作用域
+// 关键词: 嵌套函数, 多层作用域, 作用域链
+outer = func(x) {
+    outerVal = x * 10
+    inner = func(y) {
+        return outerVal + y  // 访问外层变量
+    }
+    return inner
+}
+innerFunc = outer(5)
+assert innerFunc(3) == 53, "嵌套函数应该能访问外层变量"
+
+// 闭包捕获变量 - 每个闭包有独立状态
+// 关键词: 闭包捕获, 独立状态, 变量保持
+makeAdder = func(x) {
+    return func(y) {
+        return x + y
+    }
+}
+add5 = makeAdder(5)
+add10 = makeAdder(10)
+assert add5(3) == 8, "add5闭包捕获5"
+assert add10(3) == 13, "add10闭包捕获10"
+assert add5(3) == 8, "闭包状态保持独立"
+
+// 闭包实现计数器 - 私有状态
+// 关键词: 闭包计数器, 私有状态, 状态封装
+makeCounter = func() {
+    count = 0
+    return {
+        "inc": func() {
+            count++
+            return count
+        },
+        "get": func() {
+            return count
+        }
+    }
+}
+c1 = makeCounter()
+c2 = makeCounter()
+assert c1["inc"]() == 1, "计数器1第一次加"
+assert c1["inc"]() == 2, "计数器1第二次加"
+assert c2["inc"]() == 1, "计数器2独立计数"
+assert c1["get"]() == 2, "计数器1状态保持"
+assert c2["get"]() == 1, "计数器2状态保持"
+
+// 验证总结
+// 关键词: 作用域验证, 闭包验证
+println("=== Yaklang函数作用域验证通过 ===")
+println("1. 全局变量在整个脚本可见")
+println("2. 函数可以访问和修改外部变量（闭包）")
+println("3. 函数内赋值会修改外层同名变量")
+println("4. 闭包可以捕获变量并保持独立状态")
+

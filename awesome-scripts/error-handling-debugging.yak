@@ -1,0 +1,514 @@
+// =============================================================================
+// Yaklang错误处理与调试完整指南 - 解决AI错误处理和调试问题
+// 功能: 详细演示错误处理、调试技巧、常见编译错误的解决方案
+// 用途: 错误处理、异常捕获、调试技巧、错误预防、问题诊断
+//
+// 核心技术栈:
+// - try-catch: 异常捕获和处理
+// - panic/recover: 错误恢复机制
+// - 错误返回值: 函数返回错误
+// - 调试输出: println、log、desc函数
+// - 类型检查: typeof函数
+// - 断言验证: assert语句
+//
+// 错误处理模式:
+// 1. 返回错误值 - 通过返回值传递错误
+// 2. try-catch - 捕获异常并处理
+// 3. panic-recover - 错误恢复机制
+// 4. 提前返回 - 错误时提前退出
+// 5. 默认值处理 - 错误时使用默认值
+//
+// 关键词: 错误处理 异常捕获 调试 错误恢复 try-catch panic-recover 调试技巧
+// 搜索标签: #error-handling #exception #debugging #try-catch #panic-recover
+// AI常见错误: 未处理错误 语法错误 类型错误 nil引用 未定义变量
+// AI错误搜索: error handling exception handling debugging errors nil pointer undefined variable
+// =============================================================================
+
+println("=== Yaklang错误处理与调试完整指南 ===\n")
+
+// ==========================================
+// 1. 基础错误处理 - 返回错误值
+// ==========================================
+// 关键词: 返回错误值, 错误检查, 错误处理模式
+// AI搜索词: return error error check error handling pattern
+
+println("=== 1. 基础错误处理 - 返回错误值 ===")
+
+// 函数返回结果和错误标志
+// 关键词: 返回错误, 错误标志, 错误检查
+divide = func(a, b) {
+    // 检查除数是否为0
+    // 关键词: 参数检查, 边界条件, 错误条件
+    if b == 0 {
+        // 返回错误标志
+        // 关键词: 返回错误, 错误指示
+        return nil, "division by zero error"
+    }
+    
+    // 正常返回结果
+    // 关键词: 正常返回, 成功结果, 无错误
+    return a / b, nil
+}
+
+// 调用并检查错误
+// 关键词: 错误检查, 调用检查, 错误处理
+result, err = divide(10, 2)
+if err != nil && err != undefined {
+    println(f"Error: ${err}")
+} else {
+    println(f"Result: ${result}")
+    assert result == 5, "division should work"
+}
+
+// 除零错误测试
+// 关键词: 错误测试, 异常情况测试
+result2, err2 = divide(10, 0)
+if err2 != nil && err2 != undefined {
+    println(f"Expected error: ${err2}")
+    assert err2 == "division by zero error", "should return error"
+} else {
+    println("This should not execute")
+}
+
+// ==========================================
+// 2. try-catch 异常捕获
+// ==========================================
+// 关键词: try-catch, 异常捕获, 错误捕获, 异常处理
+// AI搜索词: try catch exception handling error catching
+
+println("\n=== 2. try-catch 异常捕获 ===")
+
+// 使用try-catch捕获异常
+// 关键词: try块, catch块, 异常捕获
+try {
+    // 可能抛出异常的代码
+    // 关键词: 危险代码, 可能异常代码
+    riskyOperation = func() {
+        // 模拟可能出错的操作
+        // 关键词: 模拟错误, 测试异常
+        someData = nil
+        // 访问nil可能导致错误
+        // result = someData["key"]  // 这可能引发错误
+        println("Risky operation executed")
+    }
+    
+    riskyOperation()
+    println("Operation completed successfully")
+} catch err {
+    // 捕获异常并处理
+    // 关键词: 异常处理, 错误恢复, catch处理
+    println(f"Caught exception: ${err}")
+}
+
+// ==========================================
+// 3. 错误检查最佳实践 - nil和undefined检查
+// ==========================================
+// 关键词: nil检查, undefined检查, 空值检查, 最佳实践
+// AI搜索词: nil check undefined check null check best practices
+
+println("\n=== 3. nil和undefined检查 ===")
+
+// 安全的数据访问函数
+// 关键词: 安全访问, 防御性编程, 错误预防
+safeAccess = func(data, key) {
+    // 检查data是否为nil或undefined
+    // 关键词: nil检查, undefined检查, 数据验证
+    if data == nil || data == undefined {
+        println(f"Warning: data is nil/undefined")
+        return nil, "data is nil"
+    }
+    
+    // 检查是否为map类型
+    // 关键词: 类型检查, typeof检查, 类型验证
+    if typeof(data) != "map" {
+        println(f"Warning: data is not a map, got ${typeof(data)}")
+        return nil, "data is not a map"
+    }
+    
+    // 访问键
+    // 关键词: 键访问, map访问
+    value = data[key]
+    
+    // 检查值是否存在
+    // 关键词: 值检查, 存在性检查
+    if value == nil || value == undefined {
+        return nil, f"key '${key}' not found"
+    }
+    
+    return value, nil
+}
+
+// 测试安全访问
+// 关键词: 测试安全访问, 错误处理测试
+testData = {"name": "Alice", "age": 30}
+
+// 成功访问
+// 关键词: 正常访问, 成功情况
+value1, err1 = safeAccess(testData, "name")
+if err1 == nil {
+    println(f"Name: ${value1}")
+    assert value1 == "Alice", "should get correct value"
+}
+
+// 键不存在
+// 关键词: 键不存在, 错误情况
+value2, err2 = safeAccess(testData, "email")
+if err2 != nil && err2 != undefined {
+    println(f"Expected error: ${err2}")
+}
+
+// 数据为nil
+// 关键词: nil数据, 空数据处理
+value3, err3 = safeAccess(nil, "key")
+if err3 != nil && err3 != undefined {
+    println(f"Expected error: ${err3}")
+}
+
+// ==========================================
+// 4. 提前返回错误 - guard子句模式
+// ==========================================
+// 关键词: 提前返回, guard子句, 错误优先, 快速失败
+// AI搜索词: early return guard clause error first fail fast
+
+println("\n=== 4. 提前返回错误（Guard子句）===")
+
+// 使用提前返回处理错误情况
+// 关键词: 提前返回函数, guard模式, 错误优先处理
+processUser = func(user) {
+    // 检查user是否为nil
+    // 关键词: nil检查, 提前返回, 错误检查
+    if user == nil || user == undefined {
+        return nil, "user is nil"
+    }
+    
+    // 检查必需字段
+    // 关键词: 字段检查, 必需字段验证
+    if user["name"] == nil || user["name"] == undefined {
+        return nil, "user name is required"
+    }
+    
+    if user["age"] == nil || user["age"] == undefined {
+        return nil, "user age is required"
+    }
+    
+    // 验证年龄范围
+    // 关键词: 范围验证, 业务逻辑验证
+    age = user["age"]
+    if age < 0 || age > 150 {
+        return nil, "invalid age"
+    }
+    
+    // 所有检查通过，处理数据
+    // 关键词: 正常处理, 业务逻辑, 成功路径
+    result = f"Processed user: ${user['name']}, age ${age}"
+    return result, nil
+}
+
+// 测试各种情况
+// 关键词: 错误场景测试, 边界测试
+
+// 正常情况
+// 关键词: 正常用户, 成功情况
+validUser = {"name": "Bob", "age": 25}
+result1, err1 = processUser(validUser)
+if err1 == nil {
+    println(result1)
+    assert result1 != nil, "should process valid user"
+}
+
+// nil用户
+// 关键词: nil用户, 错误情况
+result2, err2 = processUser(nil)
+if err2 != nil && err2 != undefined {
+    println(f"Error: ${err2}")
+    assert err2 == "user is nil", "should catch nil user"
+}
+
+// 缺少字段
+// 关键词: 缺少字段, 验证错误
+invalidUser = {"name": "Charlie"}
+result3, err3 = processUser(invalidUser)
+if err3 != nil && err3 != undefined {
+    println(f"Error: ${err3}")
+    assert err3 == "user age is required", "should catch missing field"
+}
+
+// 无效年龄
+// 关键词: 无效数据, 范围错误
+invalidAgeUser = {"name": "David", "age": 200}
+result4, err4 = processUser(invalidAgeUser)
+if err4 != nil && err4 != undefined {
+    println(f"Error: ${err4}")
+    assert err4 == "invalid age", "should catch invalid age"
+}
+
+// ==========================================
+// 5. 调试输出技巧 - println、log、desc
+// ==========================================
+// 关键词: 调试输出, println, log, desc, 调试技巧
+// AI搜索词: debug output println log desc debugging techniques
+
+println("\n=== 5. 调试输出技巧 ===")
+
+// println - 基础调试输出
+// 关键词: println输出, 基础调试, 标准输出
+debugVar1 = "Hello"
+debugVar2 = 42
+debugVar3 = [1, 2, 3]
+println(f"Debug: debugVar1=${debugVar1}, debugVar2=${debugVar2}")
+
+// desc函数 - 查看对象详细信息
+// 关键词: desc函数, 对象详情, 结构查看, 调试工具
+complexObj = {
+    "name": "test",
+    "nested": {
+        "value": 123
+    },
+    "array": [1, 2, 3]
+}
+
+println("\nUsing desc() to inspect object:")
+desc(complexObj)
+
+// typeof检查类型
+// 关键词: typeof检查, 类型调试, 类型验证
+println(f"\nType checking:")
+println(f"typeof('string') = ${typeof('string')}")
+println(f"typeof(42) = ${typeof(42)}")
+println(f"typeof([1,2,3]) = ${typeof([1,2,3])}")
+testMap = {"key": "value"}
+println(f"typeof(map) = ${typeof(testMap)}")
+
+// ==========================================
+// 6. 常见编译错误和解决方案
+// ==========================================
+// 关键词: 编译错误, 语法错误, 常见错误, 错误解决
+// AI搜索词: compile errors syntax errors common mistakes error solutions
+
+println("\n=== 6. 常见编译错误和解决方案 ===")
+
+println("常见编译器错误:")
+println("")
+println("1. mismatched input ')' expecting {'=', ':='}")
+println("   原因: 函数定义语法错误，使用了不支持的命名函数语法")
+println("   错误: func myFunc() {}")
+println("   正确: myFunc = func() {}")
+println("")
+println("2. undefined: functionName")
+println("   原因: 函数在定义前被调用")
+println("   解决: 确保函数定义在调用之前")
+println("")
+println("3. mismatched input '}' expecting <EOF>")
+println("   原因: 括号或花括号不匹配")
+println("   解决: 检查所有括号是否正确配对")
+println("")
+println("4. undefined variable: varName")
+println("   原因: 变量未定义就使用")
+println("   解决: 在使用前定义变量")
+println("")
+println("5. type error: cannot access property of nil")
+println("   原因: 尝试访问nil对象的属性")
+println("   解决: 在访问前检查对象是否为nil")
+
+// ==========================================
+// 7. 断言验证 - assert语句
+// ==========================================
+// 关键词: 断言, assert, 验证, 测试断言
+// AI搜索词: assertion assert statement validation testing
+
+println("\n=== 7. 断言验证 ===")
+
+// 使用assert验证条件
+// 关键词: assert验证, 条件验证, 测试验证
+testValue = 100
+
+// 简单断言
+// 关键词: 简单断言, 布尔断言
+assert testValue == 100, "testValue should be 100"
+println("Assertion 1 passed")
+
+// 范围断言
+// 关键词: 范围断言, 边界验证
+assert testValue > 0 && testValue < 200, "testValue should be in range"
+println("Assertion 2 passed")
+
+// 类型断言
+// 关键词: 类型断言, 类型验证
+assert typeof(testValue) == "int", "testValue should be integer"
+println("Assertion 3 passed")
+
+// 数组长度断言
+// 关键词: 数组断言, 长度验证
+testArray = [1, 2, 3, 4, 5]
+assert len(testArray) == 5, "array should have 5 elements"
+println("Assertion 4 passed")
+
+// ==========================================
+// 8. 错误处理完整示例 - 实际场景
+// ==========================================
+// 关键词: 完整示例, 实际场景, 错误处理实践
+// AI搜索词: complete example real world error handling practice
+
+println("\n=== 8. 错误处理完整示例 ===")
+
+// 模拟的用户数据库
+// 关键词: 模拟数据, 用户数据库
+userDatabase = {
+    "1": {"id": "1", "name": "Alice", "email": "alice@example.com"},
+    "2": {"id": "2", "name": "Bob", "email": "bob@example.com"}
+}
+
+// 完整的用户查询函数 - 包含所有错误处理
+// 关键词: 完整错误处理, 用户查询, 防御性编程
+getUserById = func(userId) {
+    // 参数验证
+    // 关键词: 参数验证, 输入检查
+    if userId == nil || userId == undefined {
+        return nil, "userId is required"
+    }
+    
+    // 转换为字符串
+    // 关键词: 类型转换, 字符串转换
+    userIdStr = string(userId)
+    
+    // 查询数据库
+    // 关键词: 数据库查询, 数据获取
+    user = userDatabase[userIdStr]
+    
+    // 检查用户是否存在
+    // 关键词: 存在性检查, 未找到处理
+    if user == nil || user == undefined {
+        return nil, f"user not found: ${userIdStr}"
+    }
+    
+    // 验证用户数据完整性
+    // 关键词: 数据完整性, 字段验证
+    if user["name"] == nil || user["email"] == nil {
+        return nil, "user data is incomplete"
+    }
+    
+    // 返回用户数据
+    // 关键词: 成功返回, 用户数据
+    return user, nil
+}
+
+// 安全调用函数
+// 关键词: 安全调用, 错误处理调用
+callGetUser = func(userId) {
+    println(f"\nQuerying user: ${userId}")
+    user, err = getUserById(userId)
+    
+    if err != nil && err != undefined {
+        println(f"Error: ${err}")
+        return nil
+    }
+    
+    println(f"Found user: ${user['name']} (${user['email']})")
+    return user
+}
+
+// 测试各种情况
+// 关键词: 完整测试, 错误场景测试
+
+// 成功情况
+user1 = callGetUser("1")
+assert user1 != nil, "should find user 1"
+
+// 用户不存在
+user2 = callGetUser("999")
+assert user2 == nil, "should not find user 999"
+
+// nil参数
+user3 = callGetUser(nil)
+assert user3 == nil, "should handle nil userId"
+
+// ==========================================
+// 9. 调试策略和最佳实践
+// ==========================================
+// 关键词: 调试策略, 最佳实践, 调试技巧, 问题诊断
+// AI搜索词: debugging strategy best practices debugging tips problem diagnosis
+
+println("\n=== 9. 调试策略和最佳实践 ===")
+
+println("调试策略:")
+println("1. 使用println输出关键变量的值")
+println("2. 使用desc()查看复杂对象的结构")
+println("3. 使用typeof()检查变量类型")
+println("4. 使用assert验证假设和前置条件")
+println("5. 在函数入口处验证参数")
+println("6. 在函数出口前验证返回值")
+println("7. 使用try-catch捕获和记录异常")
+println("8. 添加日志输出跟踪执行流程")
+
+println("\n错误处理最佳实践:")
+println("1. 始终检查可能为nil的值")
+println("2. 使用提前返回处理错误情况")
+println("3. 为错误提供清晰的错误消息")
+println("4. 在函数级别处理错误，不要忽略")
+println("5. 使用guard子句让代码更清晰")
+println("6. 对用户输入进行严格验证")
+
+// ==========================================
+// 10. 错误处理模式对比
+// ==========================================
+// 关键词: 错误模式, 模式对比, 处理策略
+// AI搜索词: error patterns pattern comparison handling strategies
+
+println("\n=== 10. 错误处理模式对比 ===")
+
+println("模式1: 返回错误值")
+println("优点: 明确、可预测")
+println("缺点: 需要每次检查返回值")
+println("适用: 预期的错误情况")
+println("")
+
+println("模式2: try-catch")
+println("优点: 集中处理异常")
+println("缺点: 可能隐藏错误")
+println("适用: 不可预期的异常")
+println("")
+
+println("模式3: 提前返回")
+println("优点: 代码清晰，避免深层嵌套")
+println("缺点: 多个返回点")
+println("适用: 多个验证条件")
+println("")
+
+println("模式4: 默认值")
+println("优点: 简单，不中断流程")
+println("缺点: 可能掩盖错误")
+println("适用: 错误可以容忍的情况")
+
+// 默认值模式示例
+// 关键词: 默认值模式, 容错处理
+getConfigValue = func(config, key, defaultValue) {
+    if config == nil || config == undefined {
+        return defaultValue
+    }
+    
+    value = config[key]
+    if value == nil || value == undefined {
+        return defaultValue
+    }
+    
+    return value
+}
+
+config = {"timeout": 30}
+timeout = getConfigValue(config, "timeout", 10)
+retries = getConfigValue(config, "retries", 3)  // 使用默认值
+
+println(f"\nConfig: timeout=${timeout}, retries=${retries}")
+assert timeout == 30, "should get config value"
+assert retries == 3, "should use default value"
+
+println("\n=== 错误处理与调试指南完成 ===")
+println("核心要点:")
+println("1. 始终检查nil和undefined")
+println("2. 使用提前返回处理错误")
+println("3. 提供清晰的错误消息")
+println("4. 使用desc()和typeof()调试")
+println("5. 用assert验证假设")
+println("6. 函数定义语法: funcName = func() {}")
+println("7. 参数必须用逗号分隔")
+

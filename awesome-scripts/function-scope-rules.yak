@@ -1,0 +1,429 @@
+// =============================================================================
+// Yaklang函数作用域和调用规则完整指南 - 解决AI作用域相关错误
+// 功能: 详细演示函数作用域、变量可见性、调用顺序等规则
+// 用途: 作用域理解、变量生命周期、函数调用规则、AI错误预防
+//
+// 核心技术栈:
+// - 全局作用域: 脚本顶层定义的变量和函数
+// - 局部作用域: 函数内部定义的变量
+// - 闭包作用域: 函数捕获外部变量
+// - 变量遮蔽: 内层作用域变量覆盖外层同名变量
+// - 函数提升: Yaklang不支持函数提升，必须先定义后调用
+//
+// 关键作用域规则:
+// 1. 全局变量在整个脚本中可见
+// 2. 局部变量只在定义它的函数内可见
+// 3. 函数可以访问外部作用域的变量（闭包）
+// 4. 内层变量会遮蔽同名的外层变量
+// 5. 函数必须在调用之前定义，没有函数提升
+//
+// 关键词: 作用域 变量可见性 函数调用顺序 闭包 变量遮蔽 全局变量 局部变量
+// 搜索标签: #scope #visibility #closure #hoisting #variable-shadowing
+// AI常见错误: 未定义函数 变量未声明 作用域混淆 调用顺序错误 闭包理解错误
+// AI错误搜索: undefined function variable not defined scope error calling before definition
+// =============================================================================
+
+println("=== Yaklang函数作用域和调用规则完整指南 ===\n")
+
+// ==========================================
+// 1. 全局作用域 - 脚本级别的变量和函数
+// ==========================================
+// 关键词: 全局作用域, 全局变量, 脚本级变量, 全局可见
+// AI搜索词: global scope global variable script level variable
+
+println("=== 1. 全局作用域 ===")
+
+// 全局变量定义 - 在任何函数外部定义
+// 关键词: 全局变量定义, 顶层变量, 脚本变量
+globalVar = "I am global"
+globalNumber = 100
+
+// 全局函数定义 - 在脚本顶层定义的函数
+// 关键词: 全局函数, 顶层函数, 全局可调用函数
+globalFunction = func() {
+    // 可以访问全局变量
+    // 关键词: 访问全局变量, 全局变量可见性
+    println(f"Global function accessing globalVar: ${globalVar}")
+    println(f"Global function accessing globalNumber: ${globalNumber}")
+}
+
+// 调用全局函数
+globalFunction()
+
+// 全局变量可以在任何地方访问
+// 关键词: 全局变量访问, 随处可访问
+println(f"Accessing globalVar directly: ${globalVar}")
+assert globalVar == "I am global", "globalVar should be accessible"
+assert globalNumber == 100, "globalNumber should be accessible"
+
+// ==========================================
+// 2. 局部作用域 - 函数内部的变量
+// ==========================================
+// 关键词: 局部作用域, 局部变量, 函数内变量, 作用域隔离
+// AI搜索词: local scope local variable function scope variable isolation
+
+println("\n=== 2. 局部作用域 ===")
+
+// 函数内定义的变量是局部变量
+// 关键词: 局部变量定义, 函数内变量, 私有变量
+testLocalScope = func() {
+    // 局部变量 - 只在函数内可见
+    // 关键词: 局部变量, 函数私有变量, 作用域限制
+    localVar = "I am local"
+    localNumber = 42
+    
+    println(f"Inside function - localVar: ${localVar}")
+    println(f"Inside function - localNumber: ${localNumber}")
+    
+    return localVar
+}
+
+result = testLocalScope()
+println(f"Function returned: ${result}")
+
+// 尝试在函数外访问局部变量会失败
+// 关键词: 局部变量不可见, 作用域外访问失败
+// 注意: 在函数外访问localVar会导致错误，所以我们不尝试访问
+
+// ==========================================
+// 3. 函数访问外部变量 - 闭包基础
+// ==========================================
+// 关键词: 访问外部变量, 闭包, 变量捕获, 词法作用域
+// AI搜索词: access outer variable closure variable capture lexical scope
+
+println("\n=== 3. 函数访问外部变量 ===")
+
+// 外部变量
+// 关键词: 外部变量, 闭包捕获变量
+outerVar = "I am outer"
+
+// 函数可以访问外部作用域的变量
+// 关键词: 访问外部变量, 闭包读取, 外部变量可见
+accessOuterVar = func() {
+    // 可以读取外部变量
+    // 关键词: 读取外部变量, 闭包访问
+    println(f"Accessing outer variable: ${outerVar}")
+    
+    // 也可以访问全局变量
+    // 关键词: 访问全局变量, 多层作用域访问
+    println(f"Accessing global variable: ${globalVar}")
+    
+    return outerVar
+}
+
+result = accessOuterVar()
+assert result == "I am outer", "function should access outer variable"
+
+// ==========================================
+// 4. 修改外部变量 - 闭包写入
+// ==========================================
+// 关键词: 修改外部变量, 闭包写入, 变量修改, 副作用
+// AI搜索词: modify outer variable closure write side effect
+
+println("\n=== 4. 修改外部变量 ===")
+
+// 可修改的外部变量
+// 关键词: 外部变量, 可修改变量, 共享状态
+modifiableVar = 0
+
+// 函数可以修改外部变量
+// 关键词: 修改外部变量, 闭包修改, 变量赋值
+modifyOuterVar = func() {
+    modifiableVar = modifiableVar + 1
+    println(f"Modified outer variable to: ${modifiableVar}")
+}
+
+println(f"Before modification: ${modifiableVar}")
+modifyOuterVar()
+modifyOuterVar()
+modifyOuterVar()
+println(f"After modification: ${modifiableVar}")
+assert modifiableVar == 3, "outer variable should be modified to 3"
+
+// ==========================================
+// 5. 变量修改行为 - 函数内修改外层变量
+// ==========================================
+// 关键词: 变量修改, 闭包修改, 变量作用域, 外层变量修改
+// AI搜索词: variable modification closure modification scope behavior outer variable
+
+println("\n=== 5. 变量修改行为 ===")
+
+// 重要: Yaklang中，函数内对外层变量的赋值会直接修改外层变量
+// 关键词: 变量修改规则, 闭包行为, 作用域规则
+println("重要: Yaklang中函数内赋值会修改外层同名变量")
+
+// 外层变量
+// 关键词: 外层变量, 可修改变量
+modifyVar = "outer value"
+
+testModify = func() {
+    // 对变量赋值会修改外层变量，而不是创建新的局部变量
+    // 关键词: 修改外层变量, 赋值修改, 变量赋值
+    modifyVar = "inner value"
+    
+    // 访问的是修改后的值
+    // 关键词: 访问修改值, 修改效果
+    println(f"Inside function: ${modifyVar}")
+    
+    return modifyVar
+}
+
+println(f"Before calling function: ${modifyVar}")
+innerResult = testModify()
+println(f"Function returned: ${innerResult}")
+println(f"After calling function: ${modifyVar}")
+
+// 函数内的修改会影响外层变量
+// 关键词: 外层变量被修改, 修改生效
+assert modifyVar == "inner value", "outer variable should be modified"
+assert innerResult == "inner value", "function should return modified value"
+
+// ==========================================
+// 6. 函数定义顺序 - 必须先定义后调用
+// ==========================================
+// 关键词: 函数定义顺序, 先定义后调用, 调用顺序, 函数提升
+// AI搜索词: function definition order define before call function hoisting
+
+println("\n=== 6. 函数定义顺序 ===")
+
+// 正确: 先定义函数A
+// 关键词: 先定义, 定义在前, 正确顺序
+funcA = func() {
+    return "Function A"
+}
+
+// 正确: 在funcA定义之后调用
+// 关键词: 后调用, 调用在后, 定义后调用
+resultA = funcA()
+println(f"funcA result: ${resultA}")
+assert resultA == "Function A", "funcA should be callable"
+
+// 错误示例 (通过注释说明):
+// resultB = funcB()  // 错误: funcB还未定义，会导致错误
+// funcB = func() {
+//     return "Function B"
+// }
+
+// 正确示例: 先定义再调用
+// 关键词: 先定义后调用, 正确顺序示例
+funcB = func() {
+    return "Function B"
+}
+resultB = funcB()  // 正确: funcB已经定义
+println(f"funcB result: ${resultB}")
+assert resultB == "Function B", "funcB should be callable after definition"
+
+// ==========================================
+// 7. 函数相互调用 - 定义顺序的重要性
+// ==========================================
+// 关键词: 函数相互调用, 函数依赖, 调用依赖关系
+// AI搜索词: mutual function call function dependency call order
+
+println("\n=== 7. 函数相互调用 ===")
+
+// 正确: helper定义在前
+// 关键词: 辅助函数, 被调用函数, 依赖函数
+helperFunc = func(n) {
+    return n * 2
+}
+
+// main函数调用helper - helper必须先定义
+// 关键词: 主函数, 调用辅助函数, 函数依赖
+mainFunc = func(n) {
+    // 可以调用已定义的helperFunc
+    // 关键词: 调用已定义函数, 依赖已定义
+    doubled = helperFunc(n)
+    return doubled + 10
+}
+
+result = mainFunc(5)
+println(f"mainFunc(5) = ${result}")
+assert result == 20, "mainFunc should use helperFunc correctly"
+
+// ==========================================
+// 8. 嵌套函数作用域 - 多层嵌套
+// ==========================================
+// 关键词: 嵌套函数, 多层作用域, 作用域链, 内部函数
+// AI搜索词: nested function scope chain inner function
+
+println("\n=== 8. 嵌套函数作用域 ===")
+
+// 外层函数
+// 关键词: 外层函数, 父函数, 外部作用域
+outerFunc = func(x) {
+    outerVar = x * 10
+    
+    // 中间层函数
+    // 关键词: 中间层函数, 嵌套函数, 内部函数
+    middleFunc = func(y) {
+        middleVar = y * 2
+        
+        // 内层函数 - 可以访问所有外层变量
+        // 关键词: 内层函数, 最内层, 访问外层变量
+        innerFunc = func(z) {
+            // 可以访问所有外层变量
+            // 关键词: 访问外层所有变量, 作用域链, 多层访问
+            total = outerVar + middleVar + z
+            println(f"innerFunc: outerVar=${outerVar}, middleVar=${middleVar}, z=${z}, total=${total}")
+            return total
+        }
+        
+        return innerFunc
+    }
+    
+    return middleFunc
+}
+
+// 调用嵌套函数
+// 关键词: 调用嵌套函数, 链式调用, 多层调用
+middle = outerFunc(5)     // outerVar = 50
+inner = middle(3)         // middleVar = 6
+finalResult = inner(7)    // total = 50 + 6 + 7 = 63
+
+println(f"Nested function result: ${finalResult}")
+assert finalResult == 63, "nested functions should access all outer variables"
+
+// ==========================================
+// 9. 闭包捕获变量 - 变量生命周期
+// ==========================================
+// 关键词: 闭包捕获, 变量生命周期, 变量保持, 闭包状态
+// AI搜索词: closure capture variable lifetime variable persistence
+
+println("\n=== 9. 闭包捕获变量 ===")
+
+// 创建多个闭包，每个捕获不同的变量值
+// 关键词: 闭包工厂, 变量捕获, 独立闭包
+makeAdder = func(x) {
+    // x被闭包捕获，每个返回的函数有独立的x
+    // 关键词: 捕获参数, 独立变量, 闭包独立性
+    return func(y) {
+        return x + y
+    }
+}
+
+// 创建不同的加法器，捕获不同的x值
+// 关键词: 创建闭包实例, 独立闭包, 不同捕获值
+add5 = makeAdder(5)
+add10 = makeAdder(10)
+add20 = makeAdder(20)
+
+// 每个闭包保持自己捕获的x值
+// 关键词: 闭包独立状态, 变量保持, 捕获值保持
+println(f"add5(3) = ${add5(3)}")
+println(f"add10(3) = ${add10(3)}")
+println(f"add20(3) = ${add20(3)}")
+
+assert add5(3) == 8, "add5 should add 5"
+assert add10(3) == 13, "add10 should add 10"
+assert add20(3) == 23, "add20 should add 20"
+
+// ==========================================
+// 10. 作用域链查找规则 - 变量解析顺序
+// ==========================================
+// 关键词: 作用域链, 变量查找, 解析顺序, 作用域优先级
+// AI搜索词: scope chain variable lookup resolution order scope priority
+
+println("\n=== 10. 作用域链查找规则 ===")
+
+// 定义多层变量
+// 关键词: 多层变量, 作用域层次
+level1 = "L1"
+
+testScopeChain = func() {
+    level2 = "L2"
+    
+    nestedFunc = func() {
+        level3 = "L3"
+        
+        // 变量查找顺序: level3 (当前) -> level2 (外层) -> level1 (全局)
+        // 关键词: 变量查找, 作用域链查找, 由内向外
+        println(f"Level 3 (current): ${level3}")
+        println(f"Level 2 (outer): ${level2}")
+        println(f"Level 1 (global): ${level1}")
+        
+        // 如果定义同名变量，会遮蔽外层
+        // 关键词: 同名变量, 遮蔽外层, 优先当前层
+        level1 = "L1-shadowed"
+        println(f"Level 1 (shadowed): ${level1}")
+        
+        return level1 + level2 + level3
+    }
+    
+    return nestedFunc()
+}
+
+result = testScopeChain()
+println(f"Scope chain result: ${result}")
+assert result == "L1-shadowedL2L3", "scope chain should work correctly"
+
+// 全局level1被修改了
+// 关键词: 全局变量被修改, 函数内赋值影响外层
+println(f"Global level1 after function: ${level1}")
+assert level1 == "L1-shadowed", "global level1 is modified by nested function"
+
+// ==========================================
+// 11. 函数作用域最佳实践
+// ==========================================
+// 关键词: 最佳实践, 作用域规范, 编码规范, 推荐做法
+// AI搜索词: best practices scope guidelines coding standards
+
+println("\n=== 11. 函数作用域最佳实践 ===")
+
+println("作用域最佳实践:")
+println("1. 先定义函数，后调用函数")
+println("2. 避免过度使用全局变量")
+println("3. 使用闭包来创建私有状态")
+println("4. 注意变量遮蔽可能导致的混淆")
+println("5. 函数间依赖要保证定义顺序正确")
+
+// 好的实践示例
+// 关键词: 最佳实践示例, 推荐写法, 规范代码
+
+// 1. 辅助函数定义在前
+// 关键词: 辅助函数在前, 依赖关系清晰
+validateInput = func(n) {
+    return n > 0 && n < 100
+}
+
+processInput = func(n) {
+    if !validateInput(n) {
+        return "Invalid input"
+    }
+    return f"Valid input: ${n}"
+}
+
+// 2. 使用闭包创建模块化功能
+// 关键词: 闭包模块化, 私有状态, 封装
+createModule = func() {
+    // 私有变量
+    privateState = 0
+    
+    return {
+        "increment": func() {
+            privateState++
+            return privateState
+        },
+        "getValue": func() {
+            return privateState
+        }
+    }
+}
+
+module = createModule()
+println(f"\nModule demo:")
+println(f"Initial: ${module['getValue']()}")
+println(f"After increment: ${module['increment']()}")
+println(f"After increment: ${module['increment']()}")
+println(f"Current value: ${module['getValue']()}")
+
+assert module["getValue"]() == 2, "module should work correctly"
+
+println("\n=== 函数作用域和调用规则指南完成 ===")
+println("核心要点:")
+println("1. 全局变量在整个脚本中可见")
+println("2. 局部变量只在函数内可见")
+println("3. 函数可以访问和修改外部变量（闭包）")
+println("4. 内层变量会遮蔽同名外层变量")
+println("5. 函数必须先定义后调用，无函数提升")
+println("6. 作用域链从内向外查找变量")
+
