@@ -1,0 +1,686 @@
+// =============================================================================
+// yaklang diff.DiffZIPFile 库使用练习和实战案例
+// ZIP文件差异比较 压缩包对比 版本控制 代码审计 配置变更检测
+// 关键词: diff.DiffZIPFile, ZIP比较, 压缩包差异, 版本对比, 配置审计
+// =============================================================================
+
+println("yaklang diff.DiffZIPFile 功能测试开始...")
+
+// =============================================================================
+// 1. 基础 ZIP 文件差异比较
+// ZIP文件比较 压缩包差异 基础对比 文件变化检测
+// 关键词: ZIP比较, 压缩包差异, 文件变化, 基础对比
+// =============================================================================
+println("\n1. 基础 ZIP 文件差异比较")
+
+// 创建第一个 ZIP 文件 - 原始版本
+zip1Files = {
+    "config.txt": `server:
+  host: localhost
+  port: 8080
+database:
+  user: admin
+  password: secret123`,
+    "app/main.go": `package main
+
+func main() {
+    println("Hello World")
+    start()
+}`,
+    "app/utils.go": `package main
+
+func helper() string {
+    return "help"
+}`,
+    "README.md": `# My Application
+This is a simple application.
+Version: 1.0.0`
+}
+
+// 创建第二个 ZIP 文件 - 修改版本
+zip2Files = {
+    "config.txt": `server:
+  host: localhost
+  port: 9090
+database:
+  user: admin
+  password: newpassword456
+  timeout: 30`,
+    "app/main.go": `package main
+
+// Added comment for new feature
+func main() {
+    println("Hello Yaklang")
+    start()
+    cleanup()
+}`,
+    // 注意: app/utils.go 在第二个版本中被删除
+    "app/logger.go": `package main
+
+func log(msg string) {
+    println(msg)
+}`,
+    "README.md": `# My Application
+This is a simple application with new features.
+Version: 2.0.0
+
+## New Features
+- Added logging support
+- Improved configuration`
+}
+
+// 使用 zip.CompressRaw 创建 ZIP 文件
+zip1Raw = zip.CompressRaw(zip1Files)~
+zip2Raw = zip.CompressRaw(zip2Files)~
+
+// 保存到临时文件
+tmpDir = os.TempDir()
+zip1Path = file.Join(tmpDir, "test1.zip")
+zip2Path = file.Join(tmpDir, "test2.zip")
+
+file.Save(zip1Path, zip1Raw)~
+file.Save(zip2Path, zip2Raw)~
+
+// 清理函数
+defer func() {
+    file.Remove(zip1Path)
+    file.Remove(zip2Path)
+}()
+
+// 基础 ZIP 文件差异比较
+println("执行基础 ZIP 文件差异比较...")
+diffResult, err = diff.DiffZIPFile(zip1Path, zip2Path)
+die(err)
+
+assert diffResult != "", "ZIP diff should return non-empty result"
+assert diffResult.Contains("config.txt"), "should detect config.txt changes"
+assert diffResult.Contains("app/main.go"), "should detect main.go changes"
+println("基础 ZIP 文件差异比较: 通过")
+
+// =============================================================================
+// 2. 使用回调函数处理差异
+// 回调处理 差异分析 变更统计 自定义处理
+// 关键词: 回调函数, 差异处理, 变更统计, 自定义分析
+// =============================================================================
+println("\n2. 使用回调函数处理差异")
+
+// 统计变更信息
+changeStats = {
+    "added": [],
+    "modified": [],
+    "deleted": []
+}
+
+// 使用回调函数处理每个变更
+_, err = diff.DiffZIPFile(zip1Path, zip2Path, func(commit, change, patch) {
+    if patch == nil {
+        return
+    }
+    
+    patchStr = patch.String()
+    
+    // 分析变更类型
+    if patchStr.Contains("new file mode") {
+        // 新增文件
+        lines = str.Split(patchStr, "\n")
+        for line in lines {
+            if str.HasPrefix(line, "+++ b/") {
+                filename = str.TrimPrefix(line, "+++ b/")
+                changeStats["added"] = append(changeStats["added"], filename)
+                break
+            }
+        }
+    } else if patchStr.Contains("deleted file mode") {
+        // 删除文件
+        lines = str.Split(patchStr, "\n")
+        for line in lines {
+            if str.HasPrefix(line, "--- a/") {
+                filename = str.TrimPrefix(line, "--- a/")
+                changeStats["deleted"] = append(changeStats["deleted"], filename)
+                break
+            }
+        }
+    } else {
+        // 修改文件
+        lines = str.Split(patchStr, "\n")
+        for line in lines {
+            if str.HasPrefix(line, "+++ b/") {
+                filename = str.TrimPrefix(line, "+++ b/")
+                changeStats["modified"] = append(changeStats["modified"], filename)
+                break
+            }
+        }
+    }
+    
+    println("检测到变更:", change.String())
+})
+die(err)
+
+// 验证统计结果
+assert len(changeStats["added"]) > 0, "should detect added files"
+assert len(changeStats["modified"]) > 0, "should detect modified files"
+assert len(changeStats["deleted"]) > 0, "should detect deleted files"
+
+println("变更统计:")
+println("  新增文件:", changeStats["added"])
+println("  修改文件:", changeStats["modified"])
+println("  删除文件:", changeStats["deleted"])
+println("回调函数处理差异: 通过")
+
+// =============================================================================
+// 3. 配置文件变更检测场景
+// 配置管理 版本控制 部署验证 环境对比
+// 关键词: 配置管理, 版本控制, 部署验证, 环境对比
+// =============================================================================
+println("\n3. 配置文件变更检测场景")
+
+// 创建开发环境配置
+devConfig = {
+    "app.properties": `# Development Configuration
+server.port=8080
+database.url=jdbc:mysql://localhost:3306/dev_db
+database.username=dev_user
+database.password=dev_pass
+logging.level=DEBUG
+cache.enabled=false`,
+    "nginx.conf": `server {
+    listen 80;
+    server_name dev.example.com;
+    location / {
+        proxy_pass http://localhost:8080;
+    }
+}`
+}
+
+// 创建生产环境配置
+prodConfig = {
+    "app.properties": `# Production Configuration
+server.port=8080
+database.url=jdbc:mysql://prod-db:3306/prod_db
+database.username=prod_user
+database.password=secure_prod_password
+logging.level=INFO
+cache.enabled=true
+cache.ttl=3600`,
+    "nginx.conf": `server {
+    listen 80;
+    listen 443 ssl;
+    server_name prod.example.com;
+    
+    ssl_certificate /etc/ssl/certs/prod.crt;
+    ssl_certificate_key /etc/ssl/private/prod.key;
+    
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}`
+}
+
+// 创建配置 ZIP 文件
+devZipRaw = zip.CompressRaw(devConfig)~
+prodZipRaw = zip.CompressRaw(prodConfig)~
+
+devZipPath = file.Join(tmpDir, "dev-config.zip")
+prodZipPath = file.Join(tmpDir, "prod-config.zip")
+
+file.Save(devZipPath, devZipRaw)~
+file.Save(prodZipPath, prodZipRaw)~
+
+defer func() {
+    file.Remove(devZipPath)
+    file.Remove(prodZipPath)
+}()
+
+// 比较开发和生产环境配置
+println("比较开发和生产环境配置...")
+configDiff, err = diff.DiffZIPFile(devZipPath, prodZipPath)
+die(err)
+
+assert configDiff.Contains("database.url"), "should detect database URL changes"
+assert configDiff.Contains("ssl_certificate") || configDiff.Contains("443"), "should detect SSL configuration"
+println("配置文件变更检测: 通过")
+
+// =============================================================================
+// 4. 代码版本比较场景
+// 代码审计 版本控制 安全检查 变更追踪
+// 关键词: 代码审计, 版本控制, 安全检查, 变更追踪
+// =============================================================================
+println("\n4. 代码版本比较场景")
+
+// 创建原始代码版本
+originalCode = {
+    "src/auth.py": `import hashlib
+
+def authenticate(username, password):
+    # Simple MD5 hash authentication
+    hash_obj = hashlib.md5(password.encode())
+    return check_hash(username, hash_obj.hexdigest())
+
+def check_hash(username, hash_value):
+    # Check against database
+    return True`,
+    "src/api.py": `from flask import Flask, request, jsonify
+import auth
+
+app = Flask(__name__)
+
+@app.route('/login', methods=['POST'])
+def handle_login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    if auth.authenticate(username, password):
+        return jsonify({"message": "Login successful"})
+    else:
+        return jsonify({"message": "Login failed"})`
+}
+
+// 创建安全改进版本
+secureCode = {
+    "src/auth.py": `import bcrypt
+import time
+import redis
+
+redis_client = redis.Redis()
+
+def authenticate(username, password):
+    # Secure bcrypt hash authentication with rate limiting
+    if not check_rate_limit(username):
+        return False
+
+    stored_hash = get_stored_hash(username)
+    if stored_hash is None:
+        return False
+
+    return bcrypt.checkpw(password.encode(), stored_hash)
+
+def check_rate_limit(username):
+    # Implement rate limiting with Redis
+    key = f"login_attempts:{username}"
+    attempts = redis_client.get(key)
+    if attempts and int(attempts) >= 5:
+        return False
+    redis_client.incr(key)
+    redis_client.expire(key, 300)  # 5 minutes
+    return True
+
+def get_stored_hash(username):
+    # Get hash from secure database
+    # This would typically query a database
+    return None`,
+    "src/api.py": `from flask import Flask, request, jsonify
+import logging
+import auth
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+@app.route('/login', methods=['POST'])
+def handle_login():
+    # Add CORS headers
+    response = request.get_json()
+    if not response:
+        return jsonify({"success": False, "message": "Invalid JSON"}), 400
+
+    username = response.get('username')
+    password = response.get('password')
+
+    # Input validation
+    if not username or not password:
+        return jsonify({
+            "success": False,
+            "message": "Username and password required"
+        }), 400
+
+    if auth.authenticate(username, password):
+        token = generate_jwt(username)
+        logging.info(f"Successful login for user: {username}")
+        return jsonify({
+            "success": True,
+            "message": "Login successful",
+            "token": token
+        })
+    else:
+        logging.warning(f"Failed login attempt for user: {username}")
+        return jsonify({
+            "success": False,
+            "message": "Invalid credentials"
+        }), 401
+
+def generate_jwt(username):
+    # Generate JWT token
+    return "jwt_token_placeholder"`
+}
+
+// 创建代码版本 ZIP 文件
+originalZipRaw = zip.CompressRaw(originalCode)~
+secureZipRaw = zip.CompressRaw(secureCode)~
+
+originalZipPath = file.Join(tmpDir, "original-code.zip")
+secureZipPath = file.Join(tmpDir, "secure-code.zip")
+
+file.Save(originalZipPath, originalZipRaw)~
+file.Save(secureZipPath, secureZipRaw)~
+
+defer func() {
+    file.Remove(originalZipPath)
+    file.Remove(secureZipPath)
+}()
+
+// 安全审计：比较代码版本
+println("执行安全代码审计...")
+securityAudit = []
+
+_, err = diff.DiffZIPFile(originalZipPath, secureZipPath, func(commit, change, patch) {
+    if patch == nil {
+        return
+    }
+
+    patchStr = patch.String()
+
+    // 检查安全改进
+    if patchStr.Contains("bcrypt") {
+        securityAudit = append(securityAudit, "✓ 改进: 使用 bcrypt 替代 MD5")
+    }
+    if patchStr.Contains("rate limit") || patchStr.Contains("check_rate_limit") {
+        securityAudit = append(securityAudit, "✓ 改进: 添加速率限制")
+    }
+    if patchStr.Contains("get_json") {
+        securityAudit = append(securityAudit, "✓ 改进: 使用 JSON API")
+    }
+    if patchStr.Contains("Input validation") {
+        securityAudit = append(securityAudit, "✓ 改进: 添加输入验证")
+    }
+    if patchStr.Contains("logging.info") || patchStr.Contains("logging.warning") {
+        securityAudit = append(securityAudit, "✓ 改进: 添加审计日志")
+    }
+    if patchStr.Contains("redis") {
+        securityAudit = append(securityAudit, "✓ 改进: 使用 Redis 缓存")
+    }
+})
+die(err)
+
+println("安全审计结果:")
+for improvement in securityAudit {
+    println("  ", improvement)
+}
+
+assert len(securityAudit) > 0, "should detect security improvements"
+println("代码版本安全审计: 通过")
+
+// =============================================================================
+// 5. 部署包验证场景
+// 部署验证 包完整性 版本一致性 发布管理
+// 关键词: 部署验证, 包完整性, 版本一致性, 发布管理
+// =============================================================================
+println("\n5. 部署包验证场景")
+
+// 创建预期的部署包
+expectedDeployment = {
+    "bin/app": "binary_content_v2.0.0",
+    "config/app.yaml": `version: 2.0.0
+environment: production
+features:
+  - authentication
+  - logging
+  - monitoring`,
+    "scripts/start.sh": `#!/bin/bash
+export APP_ENV=production
+export LOG_LEVEL=info
+./bin/app`,
+    "VERSION": "2.0.0",
+    "CHANGELOG.md": `# Changelog
+
+## [2.0.0] - 2023-10-27
+### Added
+- New authentication system
+- Improved logging
+- Monitoring support
+
+## [1.0.0] - 2023-10-01
+### Added
+- Initial release`
+}
+
+// 创建实际的部署包（可能有差异）
+actualDeployment = {
+    "bin/app": "binary_content_v2.0.1",  // 版本不匹配
+    "config/app.yaml": `version: 2.0.1
+environment: production
+features:
+  - authentication
+  - logging
+  - monitoring
+  - experimental_feature`,  // 多了实验性功能
+    "scripts/start.sh": `#!/bin/bash
+export APP_ENV=production
+export LOG_LEVEL=debug
+export DEBUG_MODE=true
+./bin/app`,
+    "VERSION": "2.0.1",  // 版本不匹配
+    "CHANGELOG.md": `# Changelog
+
+## [2.0.1] - 2023-10-27
+### Added
+- Experimental feature
+- Debug mode support
+
+## [2.0.0] - 2023-10-27
+### Added
+- New authentication system
+- Improved logging
+- Monitoring support
+
+## [1.0.0] - 2023-10-01
+### Added
+- Initial release`
+}
+
+// 创建部署包 ZIP 文件
+expectedZipRaw = zip.CompressRaw(expectedDeployment)~
+actualZipRaw = zip.CompressRaw(actualDeployment)~
+
+expectedZipPath = file.Join(tmpDir, "expected-deployment.zip")
+actualZipPath = file.Join(tmpDir, "actual-deployment.zip")
+
+file.Save(expectedZipPath, expectedZipRaw)~
+file.Save(actualZipPath, actualZipRaw)~
+
+defer func() {
+    file.Remove(expectedZipPath)
+    file.Remove(actualZipPath)
+}()
+
+// 部署包验证
+println("执行部署包验证...")
+deploymentIssues = []
+
+_, err = diff.DiffZIPFile(expectedZipPath, actualZipPath, func(commit, change, patch) {
+    if patch == nil {
+        return
+    }
+    
+    patchStr = patch.String()
+    
+    // 检查版本不一致
+    if patchStr.Contains("2.0.0") && patchStr.Contains("2.0.1") {
+        deploymentIssues = append(deploymentIssues, "⚠️  版本不一致: 期望 2.0.0, 实际 2.0.1")
+    }
+    
+    // 检查配置差异
+    if patchStr.Contains("experimental_feature") {
+        deploymentIssues = append(deploymentIssues, "⚠️  意外功能: 包含实验性功能")
+    }
+    
+    if patchStr.Contains("DEBUG_MODE=true") {
+        deploymentIssues = append(deploymentIssues, "⚠️  配置问题: 生产环境启用了调试模式")
+    }
+})
+die(err)
+
+println("部署验证结果:")
+if len(deploymentIssues) > 0 {
+    for issue in deploymentIssues {
+        println("  ", issue)
+    }
+} else {
+    println("  ✓ 部署包验证通过")
+}
+
+assert len(deploymentIssues) > 0, "should detect deployment issues"
+println("部署包验证场景: 通过")
+
+// =============================================================================
+// 6. 错误处理和边界测试
+// 异常处理 边界条件 错误恢复 健壮性测试
+// 关键词: 异常处理, 边界测试, 错误恢复, 健壮性
+// =============================================================================
+println("\n6. 错误处理和边界测试")
+
+// 测试不存在的文件
+_, err = diff.DiffZIPFile("/non/existent/file1.zip", "/non/existent/file2.zip")
+assert err != nil, "should return error for non-existent files"
+println("不存在文件错误处理: 通过")
+
+// 测试空 ZIP 文件
+emptyZip1 = zip.CompressRaw({"empty.txt": ""})~
+emptyZip2 = zip.CompressRaw({"empty.txt": "", "dummy.txt": "dummy"})~
+
+emptyZipPath1 = file.Join(tmpDir, "empty1.zip")
+emptyZipPath2 = file.Join(tmpDir, "empty2.zip")
+
+file.Save(emptyZipPath1, emptyZip1)~
+file.Save(emptyZipPath2, emptyZip2)~
+
+defer func() {
+    file.Remove(emptyZipPath1)
+    file.Remove(emptyZipPath2)
+}()
+
+// 比较空 ZIP 文件
+emptyDiff, err = diff.DiffZIPFile(emptyZipPath1, emptyZipPath2)
+die(err)
+println("空 ZIP 文件处理: 通过")
+
+// =============================================================================
+// 7. 性能和大文件测试
+// 性能测试 大文件处理 内存管理 效率优化
+// 关键词: 性能测试, 大文件, 内存管理, 效率优化
+// =============================================================================
+println("\n7. 性能和大文件测试")
+
+// 创建包含多个文件的大 ZIP 包
+largeZipFiles1 = {}
+largeZipFiles2 = {}
+
+for i in 20 {
+    filename = sprintf("data/file_%03d.txt", i)
+    content1 = sprintf("Content for file %d\nLine 2\nLine 3", i)
+    content2 = sprintf("Modified content for file %d\nLine 2 modified\nLine 3\nLine 4", i)
+    
+    largeZipFiles1[filename] = content1
+    largeZipFiles2[filename] = content2
+}
+
+// 创建大 ZIP 文件
+largeZip1Raw = zip.CompressRaw(largeZipFiles1)~
+largeZip2Raw = zip.CompressRaw(largeZipFiles2)~
+
+largeZipPath1 = file.Join(tmpDir, "large1.zip")
+largeZipPath2 = file.Join(tmpDir, "large2.zip")
+
+file.Save(largeZipPath1, largeZip1Raw)~
+file.Save(largeZipPath2, largeZip2Raw)~
+
+defer func() {
+    file.Remove(largeZipPath1)
+    file.Remove(largeZipPath2)
+}()
+
+// 性能测试
+println("执行大文件性能测试...")
+startTime = time.Now()
+largeDiff, err = diff.DiffZIPFile(largeZipPath1, largeZipPath2)
+endTime = time.Now()
+duration = endTime.Sub(startTime)
+
+die(err)
+assert largeDiff != "", "large ZIP diff should work"
+println("大文件处理耗时:", duration)
+println("性能和大文件测试: 通过")
+
+// =============================================================================
+// 8. 实用工具函数
+// 工具函数 辅助方法 实用示例 功能扩展
+// 关键词: 工具函数, 辅助方法, 功能扩展, 实用示例
+// =============================================================================
+println("\n8. 实用工具函数")
+
+// 创建 ZIP 文件差异分析器
+analyzeZipDiff = func(zipPath1, zipPath2) {
+    result = {
+        "files_added": [],
+        "files_modified": [],
+        "files_deleted": [],
+        "total_changes": 0
+    }
+    
+    _, err = diff.DiffZIPFile(zipPath1, zipPath2, func(commit, change, patch) {
+        if patch == nil {
+            return
+        }
+        
+        patchStr = patch.String()
+        result["total_changes"]++
+        
+        if patchStr.Contains("new file mode") {
+            lines = str.Split(patchStr, "\n")
+            for line in lines {
+                if str.HasPrefix(line, "+++ b/") {
+                    filename = str.TrimPrefix(line, "+++ b/")
+                    result["files_added"] = append(result["files_added"], filename)
+                    break
+                }
+            }
+        } else if patchStr.Contains("deleted file mode") {
+            lines = str.Split(patchStr, "\n")
+            for line in lines {
+                if str.HasPrefix(line, "--- a/") {
+                    filename = str.TrimPrefix(line, "--- a/")
+                    result["files_deleted"] = append(result["files_deleted"], filename)
+                    break
+                }
+            }
+        } else {
+            lines = str.Split(patchStr, "\n")
+            for line in lines {
+                if str.HasPrefix(line, "+++ b/") {
+                    filename = str.TrimPrefix(line, "+++ b/")
+                    result["files_modified"] = append(result["files_modified"], filename)
+                    break
+                }
+            }
+        }
+    })
+    
+    if err != nil {
+        result["error"] = err.Error()
+    }
+    
+    return result
+}
+
+// 测试分析器
+analysis = analyzeZipDiff(zip1Path, zip2Path)
+assert analysis["total_changes"] > 0, "should detect changes"
+println("差异分析结果:")
+println("  总变更数:", analysis["total_changes"])
+println("  新增文件:", analysis["files_added"])
+println("  修改文件:", analysis["files_modified"])
+println("  删除文件:", analysis["files_deleted"])
+
+println("实用工具函数: 通过")
+
+println("\n所有 diff.DiffZIPFile 功能测试完成!")
+println("diff-zip-practice.yak: 测试通过!")

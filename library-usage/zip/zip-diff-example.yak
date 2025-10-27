@@ -1,0 +1,68 @@
+// =============================================================================
+// ZIP 文件差异比较示例 - 使用 diff.DiffZIPFile
+// 演示如何比较两个 ZIP 文件的差异，适用于版本控制、配置管理等场景
+// =============================================================================
+
+println("ZIP 文件差异比较示例")
+
+// 创建测试数据 - 版本1
+version1 = {
+    "config.json": `{"version": "1.0", "port": 8080}`,
+    "src/main.go": `package main
+func main() {
+    println("Hello v1")
+}`,
+    "README.md": "# Version 1.0"
+}
+
+// 创建测试数据 - 版本2  
+version2 = {
+    "config.json": `{"version": "2.0", "port": 9090, "ssl": true}`,
+    "src/main.go": `package main
+func main() {
+    println("Hello v2")
+    startServer()
+}`,
+    "src/server.go": `package main
+func startServer() {
+    println("Server starting...")
+}`,
+    "README.md": "# Version 2.0\nAdded server functionality"
+}
+
+// 使用 zip.CompressRaw 创建 ZIP 文件
+zip1Raw = zip.CompressRaw(version1)~
+zip2Raw = zip.CompressRaw(version2)~
+
+// 保存到临时文件
+tmpDir = os.TempDir()
+zip1Path = file.Join(tmpDir, "v1.zip")  
+zip2Path = file.Join(tmpDir, "v2.zip")
+
+file.Save(zip1Path, zip1Raw)~
+file.Save(zip2Path, zip2Raw)~
+
+// 清理函数
+defer func() {
+    file.Remove(zip1Path)
+    file.Remove(zip2Path)
+}()
+
+println("\n=== 方法1: 获取完整差异字符串 ===")
+diffResult, err = diff.DiffZIPFile(zip1Path, zip2Path)
+die(err)
+println(diffResult)
+
+println("\n=== 方法2: 使用回调函数处理每个变更 ===")
+changeCount = 0
+_, err = diff.DiffZIPFile(zip1Path, zip2Path, func(commit, change, patch) {
+    if patch == nil {
+        return
+    }
+    changeCount++
+    println("变更", changeCount, ":", change.String())
+})
+die(err)
+
+println("\n总共检测到", changeCount, "个文件变更")
+println("ZIP 差异比较完成!")
