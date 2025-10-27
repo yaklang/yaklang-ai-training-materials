@@ -1,0 +1,377 @@
+/*
+Yaklang bin (二进制数据处理) 库实践
+
+bin库用于读取和解析二进制数据流，提供了丰富的类型描述符来解析各种格式的二进制数据。
+在逆向工程、协议分析、文件格式解析等场景中非常有用。
+
+关键词: 二进制解析, 数据结构, 类型描述符, 字节流处理
+关键词: bin.Read, bin.toUint, bin.toStruct, bin.toList
+*/
+
+// 测试基础整数类型解析
+// 关键词: bin.Read, 整数解析, 基础类型
+func testBasicIntegerTypes() {
+    log.info("测试基础整数类型解析")
+    
+    // 构造测试数据: 1个字节(0x12) + 2字节(0x1234) + 4字节(0x12345678)
+    // 关键词: 整数类型, 多字节数据
+    testData = []byte{
+        0x12,                       // uint8
+        0x12, 0x34,                 // uint16 (big-endian: 0x1234)
+        0x12, 0x34, 0x56, 0x78,     // uint32 (big-endian: 0x12345678)
+    }
+    
+    // 解析为三个整数字段
+    // 关键词: bin.toUint8, bin.toUint16, bin.toUint32
+    results = bin.Read(testData,
+        bin.toUint8("byte1"),
+        bin.toUint16("short1"),
+        bin.toUint32("int1")
+    )~
+    
+    assert len(results) == 3, "应该解析出3个字段"
+    
+    // 验证 uint8 解析
+    byte1 = results[0].AsUint8()
+    assert byte1 == 0x12, f"uint8应该是0x12，实际是${byte1}"
+    log.info(f"uint8解析成功: 0x${codec.EncodeToHex(byte1)}")
+    
+    // 验证 uint16 解析
+    short1 = results[1].AsUint16()
+    assert short1 == 0x1234, f"uint16应该是0x1234，实际是0x${codec.EncodeToHex(short1)}"
+    log.info(f"uint16解析成功: 0x${codec.EncodeToHex(short1)}")
+    
+    // 验证 uint32 解析
+    int1 = results[2].AsUint32()
+    assert int1 == 0x12345678, f"uint32应该是0x12345678，实际是0x${codec.EncodeToHex(int1)}"
+    log.info(f"uint32解析成功: 0x${codec.EncodeToHex(int1)}")
+}
+
+// 测试结构体解析
+// 关键词: bin.toStruct, 结构体描述符, 字段组合
+func testStructParsing() {
+    log.info("测试结构体解析")
+    
+    // 构造一个简单的文件头结构
+    // Magic(4字节) + Version(2字节) + Flags(1字节)
+    // 关键词: 文件头解析, 结构化数据
+    headerData = []byte{
+        0x89, 0x50, 0x4E, 0x47,     // Magic: PNG signature
+        0x00, 0x01,                 // Version: 1
+        0xFF,                       // Flags: 0xFF
+    }
+    
+    // 使用结构体描述符解析
+    // 关键词: bin.toStruct, 嵌套字段解析
+    results = bin.Read(headerData,
+        bin.toStruct(
+            bin.toUint32("magic"),
+            bin.toUint16("version"),
+            bin.toUint8("flags")
+        )
+    )~
+    
+    assert len(results) == 1, "toStruct应该返回1个结构体对象"
+    
+    // 获取结构体字段
+    struct1 = results[0].Result
+    assert len(struct1) == 3, "结构体应该有3个字段"
+    
+    // 验证各个字段
+    magic = struct1[0].AsUint32()
+    assert magic == 0x89504E47, f"magic应该是PNG签名"
+    log.info("PNG magic解析成功")
+    
+    version = struct1[1].AsUint16()
+    assert version == 0x0001, "version应该是1"
+    log.info(f"版本号: ${version}")
+    
+    flags = struct1[2].AsUint8()
+    assert flags == 0xFF, "flags应该是0xFF"
+    log.info(f"标志位: 0x${codec.EncodeToHex(flags)}")
+}
+
+// 测试字节数组解析
+// 关键词: bin.toBytes, 字节数组, 固定长度
+func testBytesArray() {
+    log.info("测试字节数组解析")
+    
+    // 构造测试数据
+    testData = []byte{
+        0x01, 0x02, 0x03, 0x04, 0x05,   // 5字节数组
+        0xAA, 0xBB,                      // 2字节整数
+    }
+    
+    // 解析固定长度字节数组
+    // 关键词: bin.toBytes, 固定长度读取
+    results = bin.Read(testData,
+        bin.toBytes("data", 5),         // 读取5字节
+        bin.toUint16("value")           // 读取2字节整数
+    )~
+    
+    assert len(results) == 2, "应该解析2个字段"
+    
+    // 验证字节数组
+    dataBytes = results[0].GetBytes()
+    assert len(dataBytes) == 5, "字节数组应该是5字节"
+    assert dataBytes[0] == 0x01, "第一个字节应该是0x01"
+    assert dataBytes[4] == 0x05, "第五个字节应该是0x05"
+    log.info(f"字节数组解析成功: ${codec.EncodeToHex(dataBytes)}")
+    
+    // 验证后续整数
+    value = results[1].AsUint16()
+    assert value == 0xAABB, "整数应该是0xAABB"
+    log.info(f"后续整数: 0x${codec.EncodeToHex(value)}")
+}
+
+// 测试多个字段连续解析
+// 关键词: 连续解析, 多字段
+func testMultipleFields() {
+    log.info("测试多个字段连续解析")
+    
+    // 构造测试数据: 3个uint16整数
+    testData = []byte{
+        0x00, 0x01,     // 第1个uint16: 1
+        0x00, 0x02,     // 第2个uint16: 2
+        0x00, 0x03,     // 第3个uint16: 3
+    }
+    
+    // 连续解析多个字段
+    // 关键词: 多字段解析, 顺序读取
+    results = bin.Read(testData,
+        bin.toUint16("item1"),
+        bin.toUint16("item2"),
+        bin.toUint16("item3")
+    )~
+    
+    assert len(results) == 3, "应该解析3个字段"
+    
+    // 验证各个元素
+    item1 = results[0].AsUint16()
+    assert item1 == 0x0001, "第1个字段应该是1"
+    
+    item2 = results[1].AsUint16()
+    assert item2 == 0x0002, "第2个字段应该是2"
+    
+    item3 = results[2].AsUint16()
+    assert item3 == 0x0003, "第3个字段应该是3"
+    
+    log.info(f"多字段解析成功: [${item1}, ${item2}, ${item3}]")
+}
+
+// 测试Java Class文件头解析
+// 关键词: Java Class, 文件格式, 实际应用
+func testJavaClassHeader() {
+    log.info("测试Java Class文件头解析")
+    
+    // Java class文件头格式:
+    // magic(4字节): 0xCAFEBABE
+    // minor_version(2字节)
+    // major_version(2字节)
+    // constant_pool_count(2字节)
+    
+    // 构造一个Java 8的class文件头
+    // 关键词: Java Class文件, CAFEBABE魔数
+    classHeader = []byte{
+        0xCA, 0xFE, 0xBA, 0xBE,     // magic: CAFEBABE
+        0x00, 0x00,                 // minor_version: 0
+        0x00, 0x34,                 // major_version: 52 (Java 8)
+        0x00, 0x1F,                 // constant_pool_count: 31
+    }
+    
+    // 解析Java class文件头
+    // 关键词: Java文件头解析, class格式
+    results = bin.Read(classHeader,
+        bin.toStruct(
+            bin.toUint32("magic"),
+            bin.toUint16("minorVersion"),
+            bin.toUint16("majorVersion"),
+            bin.toUint16("constPoolCount")
+        )
+    )~
+    
+    assert len(results) == 1, "应该返回1个结构体"
+    
+    // 获取结构体字段
+    classInfo = results[0].Result
+    
+    // 验证魔数
+    magic = classInfo[0].AsUint32()
+    assert magic == 0xCAFEBABE, "应该是有效的Java class文件"
+    log.info("Java class文件魔数验证成功")
+    
+    // 获取版本信息
+    minorVersion = classInfo[1].AsUint16()
+    majorVersion = classInfo[2].AsUint16()
+    
+    // Java版本计算: 主版本号 - 44
+    javaVersion = majorVersion - 44
+    assert javaVersion == 8, f"应该是Java 8，实际是Java ${javaVersion}"
+    log.info(f"Java版本: ${javaVersion} (major: ${majorVersion}, minor: ${minorVersion})")
+    
+    // 获取常量池大小
+    constPoolCount = classInfo[3].AsUint16()
+    assert constPoolCount == 31, "常量池计数应该是31"
+    log.info(f"常量池条目数: ${constPoolCount - 1}")
+}
+
+// 测试网络协议解析
+// 关键词: 协议解析, TCP包头, 网络数据
+func testNetworkProtocol() {
+    log.info("测试网络协议解析")
+    
+    // 构造一个简化的TCP包头
+    // 源端口(2字节) + 目标端口(2字节) + 序列号(4字节) + 确认号(4字节)
+    // 关键词: TCP协议, 包头解析
+    tcpHeader = []byte{
+        0x1F, 0x90,                 // 源端口: 8080
+        0x00, 0x50,                 // 目标端口: 80
+        0x00, 0x00, 0x00, 0x01,     // 序列号: 1
+        0x00, 0x00, 0x00, 0x02,     // 确认号: 2
+    }
+    
+    // 解析TCP包头
+    // 关键词: TCP包头结构, 端口号
+    results = bin.Read(tcpHeader,
+        bin.toStruct(
+            bin.toUint16("srcPort"),
+            bin.toUint16("dstPort"),
+            bin.toUint32("seqNum"),
+            bin.toUint32("ackNum")
+        )
+    )~
+    
+    tcpInfo = results[0].Result
+    
+    // 验证端口号
+    srcPort = tcpInfo[0].AsUint16()
+    assert srcPort == 8080, "源端口应该是8080"
+    
+    dstPort = tcpInfo[1].AsUint16()
+    assert dstPort == 80, "目标端口应该是80"
+    
+    log.info(f"TCP连接: ${srcPort} -> ${dstPort}")
+    
+    // 验证序列号
+    seqNum = tcpInfo[2].AsUint32()
+    assert seqNum == 1, "序列号应该是1"
+    
+    ackNum = tcpInfo[3].AsUint32()
+    assert ackNum == 2, "确认号应该是2"
+    
+    log.info(f"序列号: ${seqNum}, 确认号: ${ackNum}")
+}
+
+// 测试复杂嵌套结构
+// 关键词: 嵌套结构, 复杂数据, 多层解析
+func testNestedStructure() {
+    log.info("测试复杂嵌套结构")
+    
+    // 构造一个包含嵌套结构的数据
+    // 外层: Type(1字节) + Length(2字节) + Data(嵌套结构)
+    // 内层: ID(2字节) + Value(4字节)
+    // 关键词: 嵌套结构解析, TLV格式
+    nestedData = []byte{
+        0x01,                       // Type: 1
+        0x00, 0x06,                 // Length: 6 (内层数据长度)
+        0x00, 0x0A,                 // ID: 10
+        0x00, 0x00, 0x00, 0x64,     // Value: 100
+    }
+    
+    // 解析嵌套结构
+    // 关键词: 嵌套toStruct, 多层数据结构
+    results = bin.Read(nestedData,
+        bin.toStruct(
+            bin.toUint8("type"),
+            bin.toUint16("length"),
+            bin.toStruct(
+                bin.toUint16("id"),
+                bin.toUint32("value")
+            )
+        )
+    )~
+    
+    outerStruct = results[0].Result
+    
+    // 验证外层字段
+    msgType = outerStruct[0].AsUint8()
+    assert msgType == 0x01, "类型应该是1"
+    
+    length = outerStruct[1].AsUint16()
+    assert length == 6, "长度应该是6"
+    
+    log.info(f"外层: Type=${msgType}, Length=${length}")
+    
+    // 验证内层字段
+    innerStruct = outerStruct[2].Result
+    id = innerStruct[0].AsUint16()
+    assert id == 10, "ID应该是10"
+    
+    value = innerStruct[1].AsUint32()
+    assert value == 100, "Value应该是100"
+    
+    log.info(f"内层: ID=${id}, Value=${value}")
+}
+
+// 测试Find功能
+// 关键词: bin.Find, 字段查找, 标识符搜索
+func testFindResult() {
+    log.info("测试Find结果查找功能")
+    
+    // 构造带标识符的数据
+    testData = []byte{
+        0x12, 0x34,                 // field1: 0x1234
+        0x56, 0x78,                 // field2: 0x5678
+        0xAB, 0xCD,                 // field3: 0xABCD
+    }
+    
+    // 解析并命名字段
+    // 关键词: 字段标识符, 命名字段
+    results = bin.Read(testData,
+        bin.toUint16("field1"),
+        bin.toUint16("field2"),
+        bin.toUint16("field3")
+    )~
+    
+    // 使用Find查找特定字段
+    // 关键词: bin.Find, 按名称查找
+    field2 = bin.Find(results, "field2")
+    assert field2 != nil, "应该找到field2"
+    
+    value = field2.AsUint16()
+    assert value == 0x5678, "field2的值应该是0x5678"
+    
+    log.info(f"通过Find找到field2: 0x${codec.EncodeToHex(value)}")
+    
+    // 测试查找不存在的字段
+    notExist = bin.Find(results, "notExist")
+    assert notExist == nil, "不存在的字段应该返回nil"
+}
+
+// 执行所有二进制解析测试
+func main() {
+    log.info("开始Yaklang bin库功能测试")
+    
+    // 基础类型测试
+    testBasicIntegerTypes()
+    testBytesArray()
+    
+    // 结构化数据测试
+    testStructParsing()
+    testMultipleFields()
+    testNestedStructure()
+    
+    // 实际应用场景测试
+    testJavaClassHeader()
+    testNetworkProtocol()
+    
+    // 辅助功能测试
+    testFindResult()
+    
+    log.info("bin库功能测试完成")
+    log.info("bin库提供了强大的二进制数据解析能力，适用于文件格式分析、协议解析、逆向工程等场景")
+}
+
+// 执行主函数
+main()
+

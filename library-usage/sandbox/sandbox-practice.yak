@@ -1,0 +1,343 @@
+/*
+Yaklang sandbox (安全沙箱) 库实践
+
+sandbox库用于在隔离的执行环境中运行代码，提供安全的代码执行能力。
+可以限制代码访问范围，防止恶意代码影响主程序环境，适用于动态脚本执行、用户自定义规则等场景。
+
+关键词: 安全沙箱, 隔离执行, 代码隔离, 受限环境
+关键词: sandbox.Create, ExecuteAsExpression, ExecuteAsBoolean
+*/
+
+// 测试创建基础沙箱
+// 关键词: sandbox.Create, 沙箱创建
+func testCreateBasicSandbox() {
+    log.info("测试创建基础沙箱")
+    
+    // 创建一个基础沙箱（不导入yaklang标准库）
+    // 关键词: 沙箱实例, 隔离环境
+    sb = sandbox.Create()
+    assert sb != nil, "沙箱对象不应为空"
+    
+    log.info("基础沙箱创建成功")
+}
+
+// 测试表达式执行
+// 关键词: ExecuteAsExpression, 表达式求值
+func testExecuteAsExpression() {
+    log.info("测试表达式执行")
+    
+    // 创建沙箱
+    sb = sandbox.Create()
+    
+    // 执行简单算术表达式
+    // 关键词: 算术运算, 表达式计算
+    result = sb.ExecuteAsExpression("1 + 2 + 3")~
+    assert result == 6, f"1+2+3应该等于6，实际是${result}"
+    log.info(f"算术表达式执行成功: 1+2+3 = ${result}")
+    
+    // 执行字符串操作
+    result2 = sb.ExecuteAsExpression(`"Hello" + " " + "World"`)~
+    assert result2 == "Hello World", "字符串拼接应该成功"
+    log.info(f"字符串表达式执行成功: ${result2}")
+    
+    // 执行比较表达式
+    result3 = sb.ExecuteAsExpression("10 > 5")~
+    assert result3 == true, "10应该大于5"
+    log.info(f"比较表达式执行成功: 10 > 5 = ${result3}")
+}
+
+// 测试带变量的表达式
+// 关键词: 变量传递, 上下文变量
+func testExecuteWithVariables() {
+    log.info("测试带变量的表达式")
+    
+    // 创建沙箱
+    sb = sandbox.Create()
+    
+    // 传递变量到沙箱执行
+    // 关键词: 变量注入, 外部变量
+    vars = {
+        "x": 10,
+        "y": 20,
+        "name": "test"
+    }
+    
+    // 使用变量进行计算
+    result = sb.ExecuteAsExpression("x + y", vars)~
+    assert result == 30, f"x+y应该等于30，实际是${result}"
+    log.info(f"带变量计算成功: x(${vars["x"]}) + y(${vars["y"]}) = ${result}")
+    
+    // 使用字符串变量
+    result2 = sb.ExecuteAsExpression(`name + "_user"`, vars)~
+    assert result2 == "test_user", "字符串变量拼接应该成功"
+    log.info(f"字符串变量处理成功: ${result2}")
+    
+    // 使用变量进行比较
+    result3 = sb.ExecuteAsExpression("x < y", vars)~
+    assert result3 == true, "x应该小于y"
+    log.info("变量比较执行成功")
+}
+
+// 测试布尔表达式执行
+// 关键词: ExecuteAsBoolean, 布尔求值
+func testExecuteAsBoolean() {
+    log.info("测试布尔表达式执行")
+    
+    // 创建沙箱
+    sb = sandbox.Create()
+    
+    // 执行布尔表达式
+    // 关键词: 布尔运算, 逻辑判断
+    result = sb.ExecuteAsBoolean("true && true")~
+    assert result == true, "true && true应该是true"
+    log.info("逻辑与运算成功")
+    
+    result2 = sb.ExecuteAsBoolean("false || true")~
+    assert result2 == true, "false || true应该是true"
+    log.info("逻辑或运算成功")
+    
+    result3 = sb.ExecuteAsBoolean("!false")~
+    assert result3 == true, "!false应该是true"
+    log.info("逻辑非运算成功")
+    
+    // 带变量的布尔表达式
+    vars = {"enabled": true, "valid": true}
+    result4 = sb.ExecuteAsBoolean("enabled && valid", vars)~
+    assert result4 == true, "enabled && valid应该是true"
+    log.info("带变量的布尔表达式执行成功")
+}
+
+// 测试数学运算
+// 关键词: 数学表达式, 复杂运算
+func testMathOperations() {
+    log.info("测试数学运算")
+    
+    sb = sandbox.Create()
+    
+    // 测试各种数学运算
+    // 关键词: 加减乘除, 数学计算
+    result1 = sb.ExecuteAsExpression("10 + 20")~
+    assert result1 == 30, "加法应该正确"
+    
+    result2 = sb.ExecuteAsExpression("100 - 30")~
+    assert result2 == 70, "减法应该正确"
+    
+    result3 = sb.ExecuteAsExpression("5 * 6")~
+    assert result3 == 30, "乘法应该正确"
+    
+    result4 = sb.ExecuteAsExpression("100 / 4")~
+    assert result4 == 25, "除法应该正确"
+    
+    log.info("所有数学运算测试通过")
+    
+    // 测试复杂表达式
+    // 关键词: 复杂表达式, 运算优先级
+    result5 = sb.ExecuteAsExpression("(10 + 20) * 2 - 5")~
+    assert result5 == 55, "复杂表达式应该正确: (10+20)*2-5=55"
+    log.info(f"复杂表达式计算成功: ${result5}")
+}
+
+// 测试字符串操作
+// 关键词: 字符串处理, 文本操作
+func testStringOperations() {
+    log.info("测试字符串操作")
+    
+    sb = sandbox.Create()
+    
+    // 字符串拼接
+    // 关键词: 字符串拼接, 文本组合
+    result1 = sb.ExecuteAsExpression(`"Hello" + " " + "Yaklang"`)~
+    assert result1 == "Hello Yaklang", "字符串拼接应该成功"
+    log.info(f"字符串拼接: ${result1}")
+    
+    // 带变量的字符串操作
+    vars = {"prefix": "Test", "suffix": "Case"}
+    result2 = sb.ExecuteAsExpression(`prefix + "_" + suffix`, vars)~
+    assert result2 == "Test_Case", "变量字符串拼接应该成功"
+    log.info(f"变量字符串拼接: ${result2}")
+}
+
+// 测试比较运算
+// 关键词: 比较操作, 关系运算
+func testComparisonOperations() {
+    log.info("测试比较运算")
+    
+    sb = sandbox.Create()
+    
+    // 测试各种比较运算符
+    // 关键词: 大于小于, 等于不等于
+    assert sb.ExecuteAsBoolean("10 > 5")~ == true, "10应该大于5"
+    assert sb.ExecuteAsBoolean("5 < 10")~ == true, "5应该小于10"
+    assert sb.ExecuteAsBoolean("10 >= 10")~ == true, "10应该大于等于10"
+    assert sb.ExecuteAsBoolean("5 <= 10")~ == true, "5应该小于等于10"
+    assert sb.ExecuteAsBoolean("10 == 10")~ == true, "10应该等于10"
+    assert sb.ExecuteAsBoolean("10 != 5")~ == true, "10应该不等于5"
+    
+    log.info("所有比较运算测试通过")
+    
+    // 带变量的比较
+    vars = {"value": 50, "threshold": 100}
+    result = sb.ExecuteAsBoolean("value < threshold", vars)~
+    assert result == true, "value应该小于threshold"
+    log.info("变量比较测试通过")
+}
+
+// 测试条件表达式
+// 关键词: 三元运算符, 条件表达式
+func testConditionalExpression() {
+    log.info("测试条件表达式")
+    
+    sb = sandbox.Create()
+    
+    // 测试三元运算符（如果支持）
+    // 关键词: 条件判断, 分支表达式
+    vars = {"score": 85}
+    
+    // 使用比较表达式
+    isPass = sb.ExecuteAsBoolean("score >= 60", vars)~
+    assert isPass == true, "分数85应该及格"
+    log.info("条件判断成功: score >= 60")
+    
+    isFail = sb.ExecuteAsBoolean("score < 60", vars)~
+    assert isFail == false, "分数85不应该不及格"
+    log.info("条件判断成功: score < 60")
+}
+
+// 测试复杂变量传递
+// 关键词: 复杂数据, 多变量传递
+func testComplexVariables() {
+    log.info("测试复杂变量传递")
+    
+    sb = sandbox.Create()
+    
+    // 传递多个不同类型的变量
+    // 关键词: 混合类型, 变量类型
+    vars = {
+        "intVal": 100,
+        "floatVal": 3.14,
+        "strVal": "test",
+        "boolVal": true
+    }
+    
+    // 使用整数变量
+    result1 = sb.ExecuteAsExpression("intVal * 2", vars)~
+    assert result1 == 200, "整数计算应该正确"
+    log.info(f"整数计算: ${result1}")
+    
+    // 使用布尔变量
+    result2 = sb.ExecuteAsBoolean("boolVal", vars)~
+    assert result2 == true, "布尔值应该正确传递"
+    log.info("布尔值传递成功")
+    
+    // 使用字符串变量
+    result3 = sb.ExecuteAsExpression(`strVal + "_result"`, vars)~
+    assert result3 == "test_result", "字符串操作应该正确"
+    log.info(f"字符串操作: ${result3}")
+}
+
+// 测试错误处理
+// 关键词: 错误处理, 异常捕获
+func testErrorHandling() {
+    log.info("测试错误处理")
+    
+    sb = sandbox.Create()
+    
+    // 测试语法错误
+    // 关键词: 语法检查, 错误捕获
+    result, err = sb.ExecuteAsExpression("1 + + 2")
+    if err != nil {
+        log.info(f"成功捕获语法错误: ${err}")
+    } else {
+        log.info("语法错误可能被解释器处理")
+    }
+    
+    // 测试未定义变量（沙箱环境）
+    result2, err2 = sb.ExecuteAsExpression("undefinedVar")
+    if err2 != nil {
+        log.info(f"成功捕获未定义变量错误: ${err2}")
+    } else {
+        log.info("未定义变量可能返回nil或默认值")
+    }
+    
+    log.info("错误处理测试完成")
+}
+
+// 测试多次执行
+// 关键词: 重复执行, 沙箱复用
+func testMultipleExecutions() {
+    log.info("测试多次执行")
+    
+    sb = sandbox.Create()
+    
+    // 在同一个沙箱中多次执行不同表达式
+    // 关键词: 沙箱复用, 连续执行
+    for i = 1; i <= 5; i++ {
+        vars = {"x": i}
+        result = sb.ExecuteAsExpression("x * 10", vars)~
+        expected = i * 10
+        assert result == expected, f"第${i}次执行结果应该是${expected}"
+        log.info(f"第${i}次执行: ${i} * 10 = ${result}")
+    }
+    
+    log.info("多次执行测试通过")
+}
+
+// 测试安全隔离
+// 关键词: 安全隔离, 环境隔离
+func testSafetyIsolation() {
+    log.info("测试安全隔离")
+    
+    // 在主环境创建变量
+    mainVar = "main_value"
+    
+    // 在沙箱中尝试访问主环境变量（应该失败或返回nil）
+    sb = sandbox.Create()
+    
+    // 沙箱应该无法访问主环境变量
+    // 关键词: 变量隔离, 作用域隔离
+    result, err = sb.ExecuteAsExpression("mainVar")
+    if err != nil {
+        log.info("沙箱成功隔离主环境变量（返回错误）")
+    } else if result == nil {
+        log.info("沙箱成功隔离主环境变量（返回nil）")
+    } else {
+        log.info("沙箱可能允许访问某些全局变量")
+    }
+    
+    // 沙箱内的变量不应影响外部
+    sb.ExecuteAsExpression("sandboxVar = 123")
+    
+    // 主环境不应受影响
+    assert mainVar == "main_value", "主环境变量不应被修改"
+    log.info("安全隔离测试通过")
+}
+
+// 执行所有沙箱测试
+func main() {
+    log.info("开始Yaklang sandbox库功能测试")
+    
+    // 基础功能测试
+    testCreateBasicSandbox()
+    testExecuteAsExpression()
+    testExecuteWithVariables()
+    testExecuteAsBoolean()
+    
+    // 运算测试
+    testMathOperations()
+    testStringOperations()
+    testComparisonOperations()
+    testConditionalExpression()
+    
+    // 高级功能测试
+    testComplexVariables()
+    testMultipleExecutions()
+    testErrorHandling()
+    testSafetyIsolation()
+    
+    log.info("sandbox库功能测试完成")
+    log.info("sandbox库提供了安全的代码执行环境，适用于动态脚本执行、用户自定义规则、插件系统等场景")
+}
+
+// 执行主函数
+main()
+

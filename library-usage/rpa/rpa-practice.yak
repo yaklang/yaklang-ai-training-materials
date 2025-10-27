@@ -1,0 +1,183 @@
+/*
+Yaklang rpa (RPA自动化) 库实践
+
+rpa库提供浏览器自动化功能，支持Web爬取、暴力破解等场景。
+主要用于自动化测试、漏洞扫描和数据抓取。
+
+关键词: RPA, 浏览器自动化, Web爬取, 暴力破解, 自动化测试
+关键词: rpa.Start, rpa.Bruteforce, rpa.depth, rpa.proxy, rpa.timeout
+*/
+
+// 测试Start函数存在性
+// 关键词: rpa.Start, Web爬取
+func testStartFunction() {
+    log.info("测试Start函数")
+    
+    assert rpa.Start != undefined, "Start函数应存在"
+    assert typeof(rpa.Start) == "function", "Start应为函数类型"
+    
+    log.info("Start函数存在性验证成功")
+}
+
+// 测试Bruteforce函数存在性
+// 关键词: rpa.Bruteforce, 暴力破解
+func testBruteforceFunction() {
+    log.info("测试Bruteforce函数")
+    
+    assert rpa.Bruteforce != undefined, "Bruteforce函数应存在"
+    assert typeof(rpa.Bruteforce) == "function", "Bruteforce应为函数类型"
+    
+    log.info("Bruteforce函数存在性验证成功")
+}
+
+// 测试爬取配置选项
+// 关键词: depth, proxy, headers, timeout
+func testCrawlerOptions() {
+    log.info("测试爬取配置选项")
+    
+    assert rpa.depth != undefined, "depth选项应存在"
+    assert typeof(rpa.depth) == "function", "depth应为函数类型"
+    log.info("  ✓ depth选项存在 - 扫描深度配置")
+    
+    assert rpa.proxy != undefined, "proxy选项应存在"
+    assert typeof(rpa.proxy) == "function", "proxy应为函数类型"
+    log.info("  ✓ proxy选项存在 - 代理地址配置")
+    
+    assert rpa.headers != undefined, "headers选项应存在"
+    assert typeof(rpa.headers) == "function", "headers应为函数类型"
+    log.info("  ✓ headers选项存在 - 请求头配置")
+    
+    assert rpa.timeout != undefined, "timeout选项应存在"
+    assert typeof(rpa.timeout) == "function", "timeout应为函数类型"
+    log.info("  ✓ timeout选项存在 - 单链接超时配置")
+    
+    assert rpa.maxUrl != undefined, "maxUrl选项应存在"
+    assert typeof(rpa.maxUrl) == "function", "maxUrl应为函数类型"
+    log.info("  ✓ maxUrl选项存在 - URL总数限制")
+    
+    log.info("爬取配置选项验证成功")
+}
+
+// 测试域名过滤选项
+// 关键词: whiteDomain, blackDomain, strictUrl
+func testDomainFilterOptions() {
+    log.info("测试域名过滤选项")
+    
+    assert rpa.whiteDomain != undefined, "whiteDomain选项应存在"
+    assert typeof(rpa.whiteDomain) == "function", "whiteDomain应为函数类型"
+    log.info("  ✓ whiteDomain选项存在 - 白名单配置")
+    
+    assert rpa.blackDomain != undefined, "blackDomain选项应存在"
+    assert typeof(rpa.blackDomain) == "function", "blackDomain应为函数类型"
+    log.info("  ✓ blackDomain选项存在 - 黑名单配置")
+    
+    assert rpa.strictUrl != undefined, "strictUrl选项应存在"
+    assert typeof(rpa.strictUrl) == "function", "strictUrl应为函数类型"
+    log.info("  ✓ strictUrl选项存在 - URL风险检测")
+    
+    log.info("域名过滤选项验证成功")
+}
+
+// 测试暴力破解配置选项
+// 关键词: bruteUsername, brutePassword, bruteUserElement
+func testBruteForceOptions() {
+    log.info("测试暴力破解配置选项")
+    
+    assert rpa.bruteUsername != undefined, "bruteUsername选项应存在"
+    assert typeof(rpa.bruteUsername) == "function", "bruteUsername应为函数类型"
+    log.info("  ✓ bruteUsername选项存在 - 用户名列表配置")
+    
+    assert rpa.brutePassword != undefined, "brutePassword选项应存在"
+    assert typeof(rpa.brutePassword) == "function", "brutePassword应为函数类型"
+    log.info("  ✓ brutePassword选项存在 - 密码列表配置")
+    
+    assert rpa.bruteUserElement != undefined, "bruteUserElement选项应存在"
+    assert typeof(rpa.bruteUserElement) == "function", "bruteUserElement应为函数类型"
+    log.info("  ✓ bruteUserElement选项存在 - 用户名元素选择器")
+    
+    assert rpa.brutePassElement != undefined, "brutePassElement选项应存在"
+    assert typeof(rpa.brutePassElement) == "function", "brutePassElement应为函数类型"
+    log.info("  ✓ brutePassElement选项存在 - 密码元素选择器")
+    
+    assert rpa.bruteButtonElement != undefined, "bruteButtonElement选项应存在"
+    assert typeof(rpa.bruteButtonElement) == "function", "bruteButtonElement应为函数类型"
+    log.info("  ✓ bruteButtonElement选项存在 - 提交按钮选择器")
+    
+    log.info("暴力破解配置选项验证成功")
+}
+
+// 测试暴力破解辅助方法
+// 关键词: click, select, input
+func testBruteForceHelpers() {
+    log.info("测试暴力破解辅助方法")
+    
+    assert rpa.click != undefined, "click方法应存在"
+    assert typeof(rpa.click) == "function", "click应为函数类型"
+    log.info("  ✓ click方法存在 - 点击操作")
+    
+    assert rpa.select != undefined, "select方法应存在"
+    assert typeof(rpa.select) == "function", "select应为函数类型"
+    log.info("  ✓ select方法存在 - 选择操作")
+    
+    assert rpa.input != undefined, "input方法应存在"
+    assert typeof(rpa.input) == "function", "input应为函数类型"
+    log.info("  ✓ input方法存在 - 输入操作")
+    
+    log.info("暴力破解辅助方法验证成功")
+}
+
+// 模拟使用场景
+// 关键词: 使用场景, Web爬取, 暴力破解
+func testUsageScenarios() {
+    log.info("模拟使用场景")
+    
+    // 场景1: Web爬取
+    // 关键词: Web爬取, 深度扫描
+    log.info("场景1: Web爬取")
+    log.info("  示例: rpa.Start(\"http://example.com\", rpa.depth(3), rpa.maxUrl(100))")
+    log.info("  功能: 对目标网站进行深度为3的爬取，最多获取100个URL")
+    
+    // 场景2: HTTP暴力破解
+    // 关键词: 暴力破解, 登录测试
+    log.info("场景2: HTTP暴力破解")
+    log.info("  示例: rpa.Bruteforce(\"http://example.com/login\",")
+    log.info("    rpa.bruteUsername([\"admin\", \"root\"]),")
+    log.info("    rpa.brutePassword([\"123456\", \"password\"]),")
+    log.info("    rpa.bruteUserElement(\"#username\"),")
+    log.info("    rpa.brutePassElement(\"#password\"))")
+    log.info("  功能: 对登录页面进行用户名密码暴力破解")
+    
+    // 场景3: 带验证码的暴力破解
+    // 关键词: 验证码破解, 复杂场景
+    log.info("场景3: 带验证码的暴力破解")
+    log.info("  示例: rpa.Bruteforce(url,")
+    log.info("    rpa.bruteUsername(users),")
+    log.info("    rpa.brutePassword(passwords),")
+    log.info("    rpa.bruteCaptchaElement(\"#captcha\"))")
+    log.info("  功能: 处理带验证码的登录页面暴力破解")
+    
+    log.info("使用场景模拟完成")
+}
+
+func main() {
+    log.info("开始Yaklang rpa库功能测试")
+    
+    // 基础函数测试
+    testStartFunction()
+    testBruteforceFunction()
+    
+    // 配置选项测试
+    testCrawlerOptions()
+    testDomainFilterOptions()
+    testBruteForceOptions()
+    testBruteForceHelpers()
+    
+    // 场景测试
+    testUsageScenarios()
+    
+    log.info("rpa库功能测试完成")
+    log.info("rpa库提供了Web爬取和暴力破解能力，适用于自动化测试和渗透测试场景")
+}
+
+// 执行主函数
+main()

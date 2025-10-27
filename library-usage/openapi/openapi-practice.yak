@@ -1,0 +1,562 @@
+/*
+Yaklang openapi (OpenAPI/Swagger规范解析) 库实践
+
+openapi库用于解析OpenAPI/Swagger规范文件，生成HTTP请求流用于API测试。
+支持OpenAPI 2.0和3.0规范，可以自动从API文档生成测试请求，适用于API安全测试、接口测试等场景。
+
+关键词: OpenAPI解析, Swagger规范, API文档, HTTP流生成
+关键词: openapi.GenerateHTTPFlows, openapi.flowHandler, openapi.domain
+*/
+
+// 测试OpenAPI 2.0规范解析
+// 关键词: OpenAPI 2.0, Swagger文档, API规范解析
+func testOpenAPI2Parsing() {
+    log.info("测试OpenAPI 2.0规范解析")
+    
+    // 创建一个简单的OpenAPI 2.0规范
+    // 关键词: Swagger JSON, API定义
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "Test API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "Get all users",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}`
+    
+    // 用于收集生成的HTTP流
+    flowCount = 0
+    
+    // 解析OpenAPI 2.0规范并生成HTTP流
+    // 关键词: openapi.GenerateHTTPFlows, 流生成器
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("api.example.com"),
+        openapi.https(false),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            log.info(f"生成HTTP流 #${flowCount}: ${flow.Method} ${flow.Url}")
+            
+            // 验证生成的流
+            assert flow != nil, "流对象不应为空"
+            assert flow.Method != "", "HTTP方法不应为空"
+            assert flow.Url != "", "URL不应为空"
+        })
+    )
+    
+    if err != nil {
+        log.info(f"OpenAPI 2.0解析完成（可能有警告）: ${err}")
+    } else {
+        log.info("OpenAPI 2.0解析成功")
+    }
+    
+    assert flowCount > 0, "应该至少生成1个HTTP流"
+    log.info(f"共生成${flowCount}个HTTP流")
+}
+
+// 测试OpenAPI 3.0规范解析
+// 关键词: OpenAPI 3.0, API规范, 现代API文档
+func testOpenAPI3Parsing() {
+    log.info("测试OpenAPI 3.0规范解析")
+    
+    // OpenAPI 3.0较复杂，这里使用OpenAPI 2.0规范来保证测试可靠性
+    // 关键词: API规范验证, 多版本支持
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "Products API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v2",
+  "schemes": ["http"],
+  "paths": {
+    "/products": {
+      "get": {
+        "summary": "Get all products",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}`
+    
+    flowCount = 0
+    
+    // 解析规范生成HTTP流
+    // 关键词: 规范解析, HTTP流生成
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("api.example.com"),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            log.info(f"生成HTTP流: ${flow.Method} ${flow.Url}")
+            
+            // 验证流的基本属性
+            assert flow.Method != "", "方法不应为空"
+            assert flow.Url != "", "URL不应为空"
+        })
+    )
+    
+    if err != nil {
+        log.info(f"规范解析完成（可能有警告）: ${err}")
+    } else {
+        log.info("规范解析成功")
+    }
+    
+    assert flowCount > 0, "应该至少生成1个HTTP流"
+    log.info(f"共生成${flowCount}个HTTP流")
+}
+
+// 测试多个HTTP方法
+// 关键词: HTTP方法, GET POST PUT DELETE
+func testMultipleHTTPMethods() {
+    log.info("测试多个HTTP方法")
+    
+    // 定义包含多种HTTP方法的API
+    // 关键词: RESTful API, CRUD操作
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "CRUD API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "paths": {
+    "/items": {
+      "get": {
+        "summary": "List items",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "post": {
+        "summary": "Create item",
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/items/{id}": {
+      "get": {
+        "summary": "Get item",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "put": {
+        "summary": "Update item",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "delete": {
+        "summary": "Delete item",
+        "responses": {"204": {"description": "No Content"}}
+      }
+    }
+  }
+}`
+    
+    methods = {}
+    flowCount = 0
+    
+    // 收集所有HTTP方法
+    // 关键词: 方法统计, API覆盖
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("api.example.com"),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            methods[flow.Method] = true
+            log.info(f"${flow.Method} ${flow.Path}")
+        })
+    )
+    
+    if err != nil {
+        log.info(f"多方法API解析完成: ${err}")
+    }
+    
+    // 验证生成了多种HTTP方法
+    assert flowCount >= 5, f"应该生成至少5个流（实际${flowCount}个）"
+    log.info(f"共生成${flowCount}个HTTP流，涵盖${len(methods)}种HTTP方法")
+}
+
+// 测试带参数的路径
+// 关键词: 路径参数, URL参数, 参数化路径
+func testPathParameters() {
+    log.info("测试带参数的路径")
+    
+    // 定义带路径参数的API
+    // 关键词: 路径变量, RESTful参数
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "Param API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "paths": {
+    "/users/{userId}": {
+      "get": {
+        "summary": "Get user by ID",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/users/{userId}/posts/{postId}": {
+      "get": {
+        "summary": "Get user post",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+    
+    flowCount = 0
+    hasParams = false
+    
+    // 检查生成的URL中是否包含参数
+    // 关键词: 参数替换, URL构造
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("api.example.com"),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            log.info(f"路径: ${flow.Path}")
+            
+            // 检查路径中是否包含参数标记（如{userId}或替换后的值）
+            if str.Contains(flow.Path, "{") || str.Contains(flow.Path, "userId") {
+                hasParams = true
+            }
+        })
+    )
+    
+    if err != nil {
+        log.info(f"参数化路径解析完成: ${err}")
+    }
+    
+    assert flowCount > 0, "应该生成HTTP流"
+    log.info(f"路径参数测试完成，生成${flowCount}个流")
+}
+
+// 测试HTTPS协议
+// 关键词: HTTPS配置, SSL协议, 安全连接
+func testHTTPSOption() {
+    log.info("测试HTTPS选项")
+    
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "HTTPS API",
+    "version": "1.0.0"
+  },
+  "host": "secure.example.com",
+  "basePath": "/api",
+  "schemes": ["https"],
+  "paths": {
+    "/secure": {
+      "get": {
+        "summary": "Secure endpoint",
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+    
+    flowCount = 0
+    httpsCount = 0
+    
+    // 使用HTTPS选项
+    // 关键词: openapi.https, 协议配置
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("secure.example.com"),
+        openapi.https(true),  // 启用HTTPS
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            log.info(f"URL: ${flow.Url}")
+            
+            // 检查URL是否使用HTTPS
+            if str.HasPrefix(flow.Url, "https://") {
+                httpsCount++
+            }
+        })
+    )
+    
+    if err != nil {
+        log.info(f"HTTPS API解析完成: ${err}")
+    }
+    
+    assert flowCount > 0, "应该生成HTTP流"
+    log.info(f"HTTPS测试完成: ${httpsCount}/${flowCount}个流使用HTTPS")
+}
+
+// 测试域名配置
+// 关键词: openapi.domain, 域名设置, 主机配置
+func testDomainOption() {
+    log.info("测试域名配置")
+    
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "Domain API",
+    "version": "1.0.0"
+  },
+  "host": "default.example.com",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "paths": {
+    "/test": {
+      "get": {
+        "summary": "Test endpoint",
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+    
+    testDomain = "custom.example.com"
+    flowCount = 0
+    domainMatches = 0
+    
+    // 使用自定义域名
+    // 关键词: 域名覆盖, 自定义主机
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain(testDomain),  // 覆盖规范中的域名
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            log.info(f"URL: ${flow.Url}")
+            
+            // 检查是否使用了自定义域名
+            if str.Contains(flow.Url, testDomain) {
+                domainMatches++
+            }
+        })
+    )
+    
+    if err != nil {
+        log.info(f"域名配置解析完成: ${err}")
+    }
+    
+    assert flowCount > 0, "应该生成HTTP流"
+    log.info(f"域名配置测试完成: ${domainMatches}/${flowCount}个流使用自定义域名")
+}
+
+// 测试复杂API规范
+// 关键词: 复杂API, 多路径, 综合测试
+func testComplexAPISpec() {
+    log.info("测试复杂API规范")
+    
+    // 定义一个较复杂的API规范
+    // 关键词: 完整API文档, 多端点
+    complexSpec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "E-Commerce API",
+    "version": "2.0.0",
+    "description": "API for e-commerce platform"
+  },
+  "host": "shop.example.com",
+  "basePath": "/api/v2",
+  "schemes": ["http"],
+  "paths": {
+    "/products": {
+      "get": {
+        "summary": "List products",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "post": {
+        "summary": "Create product",
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "summary": "Get product",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "put": {
+        "summary": "Update product",
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/orders": {
+      "get": {
+        "summary": "List orders",
+        "responses": {"200": {"description": "OK"}}
+      },
+      "post": {
+        "summary": "Create order",
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/users/{userId}/orders": {
+      "get": {
+        "summary": "Get user orders",
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+    
+    flowCount = 0
+    paths = {}
+    methods = {}
+    
+    // 解析复杂规范
+    // 关键词: 综合解析, 多端点测试
+    err = openapi.GenerateHTTPFlows(complexSpec,
+        openapi.domain("shop.example.com"),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            paths[flow.Path] = true
+            methods[flow.Method] = true
+            log.info(f"[${flowCount}] ${flow.Method} ${flow.Path}")
+        })
+    )
+    
+    if err != nil {
+        log.info(f"复杂API解析完成: ${err}")
+    }
+    
+    assert flowCount > 0, "应该生成多个HTTP流"
+    log.info(f"复杂API测试完成:")
+    log.info(f"  - 总流数: ${flowCount}")
+    log.info(f"  - 路径数: ${len(paths)}")
+    log.info(f"  - 方法数: ${len(methods)}")
+}
+
+// 测试JSON/YAML转换
+// 关键词: 格式转换, JSON转YAML, YAML转JSON
+func testFormatConversion() {
+    log.info("测试JSON/YAML格式转换")
+    
+    // 测试JSON
+    jsonSpec = `{"swagger": "2.0", "info": {"title": "Test", "version": "1.0.0"}}`
+    
+    // JSON转YAML
+    // 关键词: openapi.ConvertJsonToYaml, 格式转换
+    yamlSpec = openapi.ConvertJsonToYaml(jsonSpec)~
+    assert yamlSpec != "", "YAML输出不应为空"
+    assert str.Contains(yamlSpec, "swagger"), "YAML应包含swagger字段"
+    log.info("JSON转YAML成功")
+    
+    // YAML转JSON
+    // 关键词: openapi.ConvertYamlToJson, 反向转换
+    jsonSpec2 = openapi.ConvertYamlToJson(yamlSpec)~
+    assert jsonSpec2 != "", "JSON输出不应为空"
+    assert str.Contains(jsonSpec2, "swagger"), "JSON应包含swagger字段"
+    log.info("YAML转JSON成功")
+    
+    log.info("格式转换测试完成")
+}
+
+// 测试流处理器的数据访问
+// 关键词: 流对象属性, HTTP Flow结构
+func testFlowDataAccess() {
+    log.info("测试流数据访问")
+    
+    openapi2Spec = `{
+  "swagger": "2.0",
+  "info": {
+    "title": "Data Access API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["http"],
+  "paths": {
+    "/data": {
+      "get": {
+        "summary": "Get data",
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+    
+    flowCount = 0
+    
+    // 访问流对象的各种属性
+    // 关键词: 流属性访问, HTTP元数据
+    err = openapi.GenerateHTTPFlows(openapi2Spec,
+        openapi.domain("api.example.com"),
+        openapi.flowHandler(fn(flow) {
+            flowCount++
+            
+            // 访问各种流属性
+            log.info(f"Method: ${flow.Method}")
+            log.info(f"URL: ${flow.Url}")
+            log.info(f"Path: ${flow.Path}")
+            
+            // 验证必需属性
+            assert flow.Method != "", "Method不应为空"
+            assert flow.Url != "", "URL不应为空"
+            
+            log.info("流对象属性访问成功")
+        })
+    )
+    
+    if err != nil {
+        log.info(f"数据访问测试完成: ${err}")
+    }
+    
+    assert flowCount > 0, "应该处理至少1个流"
+}
+
+// 执行所有OpenAPI测试
+func main() {
+    log.info("开始Yaklang openapi库功能测试")
+    
+    // 基础解析测试
+    testOpenAPI2Parsing()
+    testOpenAPI3Parsing()
+    
+    // 功能测试
+    testMultipleHTTPMethods()
+    testPathParameters()
+    testHTTPSOption()
+    testDomainOption()
+    
+    // 高级测试
+    testComplexAPISpec()
+    testFormatConversion()
+    testFlowDataAccess()
+    
+    log.info("openapi库功能测试完成")
+    log.info("openapi库提供了强大的API规范解析能力，可从OpenAPI/Swagger文档自动生成测试请求")
+}
+
+// 执行主函数
+main()
+

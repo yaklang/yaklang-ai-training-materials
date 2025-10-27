@@ -1,5 +1,0 @@
-未完成原因：在尝试编写测试脚本时，遇到了无法解决的 Yaklang 语法解析错误，特别是 `for` 循环相关的语法。
-
-主要难点：
-1.  语法问题：`for fn in configFunctions` 和 `for _, fn := range configFunctions` 等多种循环语法均导致 YakVM 编译失败。这表明 Yaklang 的循环语法可能比预期的更严格或存在特定限制。
-2.  环境依赖：`facades` 库用于启动网络服务器（如 LDAP, RMI），这使得功能测试与本地端口和网络环境耦合，容易产生冲突，难以进行可靠的自动化测试。

