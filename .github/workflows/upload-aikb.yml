@@ -345,16 +345,12 @@ jobs:
           echo "  Timestamp: $TIMESTAMP_URL"
           echo ""
       
-      - name: Upload artifacts (for debugging)
+      - name: Upload diff package artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aikb-files
-          path: |
-            yaklang-aikb.zip
-            yaklang-aikb.updated_at.txt
-            diff-fs.zip
-            diff-fs.md
+          name: diff-fs
+          path: diff-fs.zip
           retention-days: 7
       
       - name: Summary
@@ -367,11 +363,21 @@ jobs:
           echo "### 📦 Files" >> $GITHUB_STEP_SUMMARY
           echo "- \`yaklang-aikb.zip\` - Knowledge base archive" >> $GITHUB_STEP_SUMMARY
           echo "- \`yaklang-aikb.updated_at.txt\` - Upload timestamp" >> $GITHUB_STEP_SUMMARY
+          echo "- \`diff-fs.zip\` - Diff package (available in artifacts)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Access URLs" >> $GITHUB_STEP_SUMMARY
           echo "- ZIP: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 添加差异报告内容
+          if [ -f diff-fs.md ]; then
+            echo "### 📋 Diff Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat diff-fs.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "### 📊 Build Info" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY

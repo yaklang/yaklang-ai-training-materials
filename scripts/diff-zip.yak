@@ -215,5 +215,6 @@ if len(changedScripts) > 0 || len(addedScripts) > 0 {
 
 // 总是返回成功退出码，避免CI失败
 // CI可以通过检查生成的文件来判断是否有变更
-log.info("Script execution completed successfully")
+log.info("Script execution completed successfully!")
+
 os.Exit(0)
