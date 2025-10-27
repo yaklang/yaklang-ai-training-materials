@@ -40,10 +40,10 @@ jobs:
           echo "Actor: ${{ github.actor }}"
           echo "============================================"
       
-      - name: Download Yaklang Engine (v1.4.4-beta6)
+      - name: Download Yaklang Engine (v1.4.4-alpha1027)
         run: |
-          echo "=== Downloading Yaklang Engine v1.4.4-beta6 ==="
-          YAK_VERSION="1.4.4-beta6"
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1027 ==="
+          YAK_VERSION="1.4.4-alpha1027"
           YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
           
           echo "Downloading from: $YAK_URL"
@@ -75,7 +75,17 @@ jobs:
       - name: Generate AIKB ZIP file
         run: |
           echo "=== Generating AIKB ZIP file ==="
-          
+
+          # 下载现有的 yaklang-aikb.zip 并保存为 yaklang-aikb-old.zip
+          echo "Downloading existing yaklang-aikb.zip..."
+          OLD_ZIP_URL="https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip"
+          if curl -s -o yaklang-aikb-old.zip "$OLD_ZIP_URL"; then
+            echo "✓ Existing ZIP downloaded successfully"
+            ls -lh yaklang-aikb-old.zip
+          else
+            echo "⚠️  Failed to download existing ZIP (may not exist yet)"
+          fi
+
           # 运行 merge-in-one-text.yak 生成 ZIP
           echo "Running merge-in-one-text.yak..."
           ./yak scripts/merge-in-one-text.yak --output yaklang-aikb.zip
@@ -108,10 +118,87 @@ jobs:
           echo "=== ZIP Statistics ==="
           echo "Files in ZIP: $FILE_COUNT"
           echo "ZIP size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
-          
+
+          # 对比新旧 ZIP 文件
+          echo ""
+          echo "=== ZIP File Comparison ==="
+
+          if [ -f yaklang-aikb-old.zip ]; then
+            # 统计旧文件
+            OLD_FILE_COUNT=$(unzip -l yaklang-aikb-old.zip | tail -1 | awk '{print $2}')
+            OLD_FILE_SIZE=$(stat -c%s yaklang-aikb-old.zip 2>/dev/null || stat -f%z yaklang-aikb-old.zip)
+
+            echo "Previous ZIP (old):"
+            echo "  Files: $OLD_FILE_COUNT"
+            echo "  Size: $OLD_FILE_SIZE bytes ($(echo "scale=2; $OLD_FILE_SIZE/1024/1024" | bc) MB)"
+
+            echo ""
+            echo "New ZIP (current):"
+            echo "  Files: $FILE_COUNT"
+            echo "  Size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
+
+            echo ""
+            echo "Changes:"
+            FILE_DIFF=$((FILE_COUNT - OLD_FILE_COUNT))
+            SIZE_DIFF=$((FILE_SIZE - OLD_FILE_SIZE))
+
+            if [ $FILE_DIFF -gt 0 ]; then
+              echo "  Files: +$FILE_DIFF"
+            elif [ $FILE_DIFF -lt 0 ]; then
+              echo "  Files: $FILE_DIFF"
+            else
+              echo "  Files: No change"
+            fi
+
+            if [ $SIZE_DIFF -gt 0 ]; then
+              echo "  Size: +$SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
+            elif [ $SIZE_DIFF -lt 0 ]; then
+              echo "  Size: $SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
+            else
+              echo "  Size: No change"
+            fi
+          else
+            echo "No previous ZIP file found for comparison"
+          fi
+
           echo ""
           echo "✓ AIKB ZIP file generated successfully"
-      
+
+      - name: Generate diff report and package
+        if: always()
+        run: |
+          echo "=== Generating ZIP diff report and package ==="
+          
+          if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
+            echo "Running diff-zip.yak to compare ZIP files and create diff package..."
+            ./yak scripts/diff-zip.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
+            
+            if [ -f diff-fs.zip ] && [ -f diff-fs.md ]; then
+              echo "✓ Diff package and report generated successfully"
+              echo ""
+              echo "=== Diff package info ==="
+              ls -lh diff-fs.zip
+              echo ""
+              echo "=== Diff package contents ==="
+              unzip -l diff-fs.zip | head -20
+              echo ""
+              echo "=== Report content ==="
+              cat diff-fs.md
+            else
+              echo "⚠️  Failed to generate diff package or report"
+            fi
+          else
+            echo "⚠️  Cannot generate diff report - missing old or new ZIP file"
+            echo "# AIKB ZIP 差异报告" > diff-fs.md
+            echo "" >> diff-fs.md
+            echo "**状态**: 无法生成差异报告 - 缺少比较文件" >> diff-fs.md
+            echo "**时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> diff-fs.md
+            
+            # 创建空的差异包
+            echo "Creating empty diff package..."
+            ./yak -c 'emptyZip = zip.CompressRaw({}); file.Save("diff-fs.zip", emptyZip)'
+          fi
+
       - name: Create upload timestamp file
         run: |
           echo "=== Creating timestamp file ==="
@@ -266,6 +353,8 @@ jobs:
           path: |
             yaklang-aikb.zip
             yaklang-aikb.updated_at.txt
+            diff-fs.zip
+            diff-fs.md
           retention-days: 7
       
       - name: Summary

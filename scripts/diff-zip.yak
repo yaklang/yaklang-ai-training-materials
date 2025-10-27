@@ -1,0 +1,219 @@
+#!/usr/bin/env yak
+
+__DESC__ = "Compare two ZIP files, generate diff report and create diff ZIP package"
+
+yakit.AutoInitYakit()
+
+oldZipPath = cli.String("old", cli.setRequired(true), cli.setHelp("Path to the old ZIP file"))
+newZipPath = cli.String("new", cli.setRequired(true), cli.setHelp("Path to the new ZIP file"))
+outputPath = cli.String("output", cli.setDefault("diff-fs.zip"), cli.setHelp("Output diff ZIP file path"))
+
+cli.check()
+
+if oldZipPath == "" || newZipPath == "" {
+    die("Both --old and --new parameters are required")
+}
+
+if !file.IsExisted(oldZipPath) {
+    die(sprintf("Old ZIP file does not exist: %s", oldZipPath))
+}
+
+if !file.IsExisted(newZipPath) {
+    die(sprintf("New ZIP file does not exist: %s", newZipPath))
+}
+
+// 获取ZIP文件中的所有文件列表和内容
+getZipFilesWithContent = func(zipPath) {
+    files = make(map[string]string)
+    err = zip.Recursive(zipPath, func(isDir, pathName, info) {
+        if !isDir {
+            try {
+                content = zip.ExtractFile(zipPath, pathName)~
+                files[pathName] = string(content)
+            } catch extractErr {
+                log.error("Failed to extract file %s: %v", pathName, extractErr)
+            }
+        }
+    })
+    if err != nil {
+        log.error("Failed to scan ZIP file: %v", err)
+    }
+    return files
+}
+
+// 获取文件内容的哈希值
+getContentHash = func(content) {
+    return codec.Sha256(content)
+}
+
+log.info("Analyzing ZIP files...")
+log.info("Old: %s", oldZipPath)
+log.info("New: %s", newZipPath)
+
+// 获取所有文件及其内容
+oldFilesContent = getZipFilesWithContent(oldZipPath)
+newFilesContent = getZipFilesWithContent(newZipPath)
+
+log.info("Old ZIP contains %d files", len(oldFilesContent))
+log.info("New ZIP contains %d files", len(newFilesContent))
+
+// 收集需要处理的文件（变更的和新增的）
+diffFiles = make(map[string]string)
+allDiffFiles = []
+changedScripts = []
+addedScripts = []
+deletedScripts = []
+
+// 直接分析并收集差异文件
+for filePath, newContent in newFilesContent {
+    if filePath != nil && newContent != nil {
+        oldContent = oldFilesContent[filePath]
+        if oldContent != nil {
+            // 文件存在于旧版本中，检查是否有变更
+            if getContentHash(oldContent) != getContentHash(newContent) {
+                diffFiles[filePath] = newContent
+                allDiffFiles = append(allDiffFiles, filePath)
+                if str.HasSuffix(filePath, ".yak") {
+                    changedScripts = append(changedScripts, filePath)
+                }
+                log.info("Detected changed file: %s", filePath)
+            }
+        } else {
+            // 文件不存在于旧版本中，是新增文件
+            diffFiles[filePath] = newContent
+            allDiffFiles = append(allDiffFiles, filePath)
+            if str.HasSuffix(filePath, ".yak") {
+                addedScripts = append(addedScripts, filePath)
+            }
+            log.info("Detected added file: %s", filePath)
+        }
+    } else {
+        log.error("Invalid file entry: filePath=%v, content=%v", filePath, newContent != nil)
+    }
+}
+
+// 找出删除的脚本文件
+for filePath in oldFilesContent {
+    if newFilesContent[filePath] == nil && str.HasSuffix(filePath, ".yak") {
+        deletedScripts = append(deletedScripts, filePath)
+    }
+}
+
+log.info("Script files: %d changed, %d added, %d deleted", len(changedScripts), len(addedScripts), len(deletedScripts))
+log.info("Total diff files: %d", len(diffFiles))
+
+// 生成差异ZIP文件
+if len(diffFiles) > 0 {
+    log.info("Creating diff ZIP with %d files...", len(diffFiles))
+    
+    try {
+        diffZipBytes = zip.CompressRaw(diffFiles)~
+        err = file.Save(outputPath, diffZipBytes)
+        if err != nil {
+            log.error("Failed to save diff ZIP: %v", err)
+            die(sprintf("Failed to save diff ZIP to %s", outputPath))
+        }
+        
+        log.info("Diff ZIP created successfully: %s (%d bytes)", outputPath, len(diffZipBytes))
+    } catch compressErr {
+        log.error("Failed to compress diff files: %v", compressErr)
+        die(sprintf("Failed to create diff ZIP: %v", compressErr))
+    }
+} else {
+    log.info("No changes detected, creating empty diff ZIP...")
+    emptyZip = zip.CompressRaw({})~
+    file.Save(outputPath, emptyZip)
+}
+
+// 生成Markdown报告
+reportPath = str.Replace(outputPath, ".zip", ".md", 1)
+report = sprintf("# AIKB ZIP 差异报告\n\n")
+report += sprintf("**比较时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+report += sprintf("**旧文件**: %s\n", oldZipPath)
+report += sprintf("**新文件**: %s\n", newZipPath)
+report += sprintf("**差异包**: %s\n\n", outputPath)
+
+if len(changedScripts) > 0 {
+    report += "## 如下文件发生变更（需要重构索引）：\n\n"
+    for i, file := range changedScripts {
+        report += sprintf("%d. %s\n", i+1, file)
+    }
+    report += "\n"
+} else {
+    report += "## 无脚本文件发生变更\n\n"
+}
+
+if len(addedScripts) > 0 {
+    report += "## 新增脚本文件：\n\n"
+    for i, file := range addedScripts {
+        report += sprintf("%d. %s\n", i+1, file)
+    }
+    report += "\n"
+} else {
+    report += "## 无新增脚本文件\n\n"
+}
+
+if len(deletedScripts) > 0 {
+    report += "## 删除的脚本文件：\n\n"
+    for i, file := range deletedScripts {
+        report += sprintf("%d. %s\n", i+1, file)
+    }
+    report += "\n"
+}
+
+// 添加所有变更文件的详细信息
+if len(allDiffFiles) > 0 {
+    report += "## 差异包包含的所有文件：\n\n"
+    for i, file := range allDiffFiles {
+        status := "新增"
+        // 检查是否在变更的脚本文件中
+        isChanged := false
+        for _, changedScript := range changedScripts {
+            if changedScript == file {
+                isChanged = true
+                break
+            }
+        }
+        if isChanged {
+            status = "变更"
+        }
+        report += sprintf("%d. %s (%s)\n", i+1, file, status)
+    }
+    report += "\n"
+}
+
+// 添加统计信息
+report += "## 统计信息\n\n"
+report += sprintf("- 总文件数（新ZIP）: %d\n", len(newFilesContent))
+report += sprintf("- 变更的脚本文件: %d\n", len(changedScripts))
+report += sprintf("- 新增的脚本文件: %d\n", len(addedScripts))
+report += sprintf("- 删除的脚本文件: %d\n", len(deletedScripts))
+report += sprintf("- 差异包文件总数: %d\n", len(diffFiles))
+
+// 保存报告
+err = file.Save(reportPath, report)
+if err != nil {
+    log.error("Failed to write report: %v", err)
+    die(sprintf("Failed to write report to %s", reportPath))
+}
+
+log.info("Report generated successfully: %s", reportPath)
+
+// 打印报告到控制台
+println(report)
+
+// 输出处理结果摘要
+if len(changedScripts) > 0 || len(addedScripts) > 0 {
+    log.info("Changes detected: %d changed scripts, %d added scripts", len(changedScripts), len(addedScripts))
+    log.info("Diff ZIP created: %s", outputPath)
+    log.info("Report created: %s", reportPath)
+} else {
+    log.info("No script changes detected")
+    log.info("Empty diff ZIP created: %s", outputPath)
+    log.info("Report created: %s", reportPath)
+}
+
+// 总是返回成功退出码，避免CI失败
+// CI可以通过检查生成的文件来判断是否有变更
+log.info("Script execution completed successfully")
+os.Exit(0)
