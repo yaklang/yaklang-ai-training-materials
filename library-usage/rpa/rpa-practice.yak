@@ -1,0 +1,28 @@
+// RPA库核心功能测试 - Web自动化和暴力破解
+// 关键词: rpa, Web自动化, 暴力破解, 浏览器模拟
+
+// RPA库基础功能验证
+assert rpa.Start != undefined, "Start函数应存在"
+assert rpa.Bruteforce != undefined, "Bruteforce函数应存在"
+assert rpa.depth != undefined, "depth函数应存在"
+assert rpa.proxy != undefined, "proxy函数应存在"
+assert rpa.headers != undefined, "headers函数应存在"
+assert rpa.strictUrl != undefined, "strictUrl函数应存在"
+assert rpa.maxUrl != undefined, "maxUrl函数应存在"
+assert rpa.whiteDomain != undefined, "whiteDomain函数应存在"
+assert rpa.blackDomain != undefined, "blackDomain函数应存在"
+assert rpa.timeout != undefined, "timeout函数应存在"
+assert rpa.bruteUserPassPath != undefined, "bruteUserPassPath函数应存在"
+assert rpa.bruteUsername != undefined, "bruteUsername函数应存在"
+assert rpa.brutePassword != undefined, "brutePassword函数应存在"
+assert rpa.bruteUserElement != undefined, "bruteUserElement函数应存在"
+assert rpa.brutePassElement != undefined, "brutePassElement函数应存在"
+assert rpa.bruteCaptchaElement != undefined, "bruteCaptchaElement函数应存在"
+assert rpa.bruteButtonElement != undefined, "bruteButtonElement函数应存在"
+assert rpa.click != undefined, "click函数应存在"
+assert rpa.select != undefined, "select函数应存在"
+assert rpa.input != undefined, "input函数应存在"
+
+// RPA库核心功能验证完成
+// 注意：由于rpa库需要浏览器环境，功能性测试受限。
+// 本测试仅验证库函数在Yaklang中的存在性和基本类型。

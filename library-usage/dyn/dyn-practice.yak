@@ -1,0 +1,47 @@
+// Dyn库核心功能测试 - 动态代码执行和函数调用
+// 关键词: 动态执行, Eval, Import, IsYakFunc, 代码注入
+
+// Dyn库基础功能验证
+assert dyn.Eval != undefined, "Eval函数应存在"
+assert dyn.Import != undefined, "Import函数应存在"
+assert dyn.IsYakFunc != undefined, "IsYakFunc函数应存在"
+
+// 1. dyn.Eval - 基本代码执行测试
+err = dyn.Eval(`
+    testVar = 10
+    assert testVar == 10, "Eval中的变量应正确设置"
+`)
+assert err == nil, "基本代码执行应成功"
+
+// 2. dyn.Eval - 验证独立上下文
+err = dyn.Eval(`
+    outerVar = 20
+`)
+assert err == nil, "Eval设置外部变量应成功"
+// 验证在当前上下文中是否能访问Eval中定义的变量
+// 注意：dyn.Eval在独立上下文中执行，不应影响当前上下文
+assert typeof(outerVar) == nil, "Eval不应污染当前上下文"
+
+// 3. dyn.Eval - 表达式求值
+// dyn.Eval主要用于执行语句，返回值是error，不直接返回表达式结果
+err = dyn.Eval(`1 + 1`)
+assert err == nil, "表达式求值应成功执行"
+
+// 4. dyn.Eval - 错误处理
+err = dyn.Eval(`invalid syntax`)
+assert err != nil, "无效语法应返回错误"
+
+err = dyn.Eval(`assert 1 == 2, "assertion failed"`)
+assert err != nil, "断言失败应返回错误"
+
+// 5. dyn.IsYakFunc - 函数判断测试
+assert dyn.IsYakFunc(func() {}) == true, "匿名函数应被识别为Yak函数"
+assert dyn.IsYakFunc(str.Contains) == true, "内置库函数应被识别为Yak函数"
+assert dyn.IsYakFunc(123) == false, "整数不应被识别为Yak函数"
+assert dyn.IsYakFunc("hello") == false, "字符串不应被识别为Yak函数"
+assert dyn.IsYakFunc({}) == false, "空map不应被识别为Yak函数"
+
+// 6. dyn.Import - 跳过功能测试，只验证函数存在
+assert dyn.Import != undefined, "Import函数应存在"
+
+// Dyn库核心功能验证完成

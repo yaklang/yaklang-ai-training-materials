@@ -1,0 +1,37 @@
+// Hook库核心功能测试 - 钩子函数和插件调用
+// 关键词: 钩子函数, 插件系统, 函数调用, 动态加载
+
+// Hook库基础功能验证
+assert hook.CallYakitPluginFunc != undefined, "CallYakitPluginFunc函数应存在"
+assert hook.LoadYakitPlugin != undefined, "LoadYakitPlugin函数应存在"
+
+// 1. 基本函数存在性验证
+assert typeof(hook.CallYakitPluginFunc) == "function", "CallYakitPluginFunc应为函数类型"
+assert typeof(hook.LoadYakitPlugin) == "function", "LoadYakitPlugin应为函数类型"
+
+// 2. 参数类型和数量验证（概念性）
+// 由于无法在没有插件环境的情况下实际调用，我们只验证函数定义
+
+// CallYakitPluginFunc 预计需要2个字符串参数
+// LoadYakitPlugin 预计需要一个管理器对象、一个字符串和可变字符串参数
+
+// 3. 模拟调用场景（仅为演示，不会实际执行）
+// 假设有一个名为 "my-plugin" 的插件，其中有一个函数 "myFunc"
+pluginName = "my-plugin"
+funcName = "myFunc"
+
+// 模拟调用
+// _, err = hook.CallYakitPluginFunc(pluginName, funcName)
+// assert err != nil, "在没有插件环境的情况下调用应返回错误"
+
+// 4. 函数签名验证
+// 验证函数是否可以被赋值给变量
+callFunc = hook.CallYakitPluginFunc
+loadFunc = hook.LoadYakitPlugin
+
+assert dyn.IsYakFunc(callFunc) == true, "CallYakitPluginFunc应为可调用的Yak函数"
+assert dyn.IsYakFunc(loadFunc) == true, "LoadYakitPlugin应为可调用的Yak函数"
+
+// Hook库核心功能验证完成
+// 注意：由于hook库与Yakit插件系统强耦合，功能性测试需要在集成环境中进行。
+// 本测试仅验证库函数在Yaklang中的存在性和基本类型。
