@@ -118,49 +118,7 @@ jobs:
           echo "=== ZIP Statistics ==="
           echo "Files in ZIP: $FILE_COUNT"
           echo "ZIP size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
-
-          # 对比新旧 ZIP 文件
-          echo ""
-          echo "=== ZIP File Comparison ==="
-
-          if [ -f yaklang-aikb-old.zip ]; then
-            # 统计旧文件
-            OLD_FILE_COUNT=$(unzip -l yaklang-aikb-old.zip | tail -1 | awk '{print $2}')
-            OLD_FILE_SIZE=$(stat -c%s yaklang-aikb-old.zip 2>/dev/null || stat -f%z yaklang-aikb-old.zip)
-
-            echo "Previous ZIP (old):"
-            echo "  Files: $OLD_FILE_COUNT"
-            echo "  Size: $OLD_FILE_SIZE bytes ($(echo "scale=2; $OLD_FILE_SIZE/1024/1024" | bc) MB)"
-
-            echo ""
-            echo "New ZIP (current):"
-            echo "  Files: $FILE_COUNT"
-            echo "  Size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
-
-            echo ""
-            echo "Changes:"
-            FILE_DIFF=$((FILE_COUNT - OLD_FILE_COUNT))
-            SIZE_DIFF=$((FILE_SIZE - OLD_FILE_SIZE))
-
-            if [ $FILE_DIFF -gt 0 ]; then
-              echo "  Files: +$FILE_DIFF"
-            elif [ $FILE_DIFF -lt 0 ]; then
-              echo "  Files: $FILE_DIFF"
-            else
-              echo "  Files: No change"
-            fi
-
-            if [ $SIZE_DIFF -gt 0 ]; then
-              echo "  Size: +$SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
-            elif [ $SIZE_DIFF -lt 0 ]; then
-              echo "  Size: $SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
-            else
-              echo "  Size: No change"
-            fi
-          else
-            echo "No previous ZIP file found for comparison"
-          fi
-
+          
           echo ""
           echo "✓ AIKB ZIP file generated successfully"
 
@@ -170,8 +128,9 @@ jobs:
           echo "=== Generating ZIP diff report and package ==="
           
           if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
-            echo "Running diff-zip.yak to compare ZIP files and create diff package..."
-            ./yak scripts/diff-zip.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
+            # 使用 diff-zip-v2.yak 进行对比和生成差异包
+            echo "Running diff-zip-v2.yak to compare ZIP files and create diff package..."
+            ./yak scripts/diff-zip-v2.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
             
             if [ -f diff-fs.zip ] && [ -f diff-fs.md ]; then
               echo "✓ Diff package and report generated successfully"

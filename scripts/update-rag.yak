@@ -1,0 +1,559 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// RAG 增量更新工具 - Update RAG with Diff ZIP
+// 功能: 读取差异 ZIP 包，更新 RAG 知识库，支持使用 embedding 服务
+// 用途: 增量更新 RAG 索引、自动化知识库更新、CI/CD 集成
+//
+// 核心技术栈:
+// - rag.Import/Export: RAG 导入导出
+// - rag.GetCollection: 获取 RAG 集合
+// - zip.Recursive/ExtractFile: ZIP 文件处理
+// - twofa.GetUTCCode: TOTP 验证
+// - poc.HTTP: HTTP 请求
+//
+// 使用示例:
+// yak scripts/update-rag.yak --rag-file /path/to/old.rag --diff-zip diff-fs.zip --output /path/to/new.rag --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret
+//
+// 应用场景: RAG 增量更新、知识库同步、自动化索引更新
+// 关键词: rag-update diff-update embedding-client incremental-update
+// 搜索标签: #rag #embedding #incremental-update #knowledge-base
+// =============================================================================
+
+__DESC__ = "Update RAG knowledge base with diff ZIP file"
+
+yakit.AutoInitYakit()
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，配置 RAG 文件、差异包、embedding 服务等
+// =============================================================================
+
+// RAG 文件路径（要导入的原始 RAG 文件，可选）
+ragFilePath = cli.String(
+    "rag-file",
+    cli.setVerboseName("旧RAG路径"),
+    cli.setDefault(""),
+    cli.setHelp("Path to the RAG export file (.rag), if not specified, a new RAG will be created")
+)
+
+// 差异 ZIP 文件路径
+diffZipPath = cli.String(
+    "diff-zip",
+    cli.setVerboseName("ZIP路径"),
+    cli.setRequired(true),
+    cli.setHelp("Path to the diff ZIP file")
+)
+
+// 输出 RAG 文件路径
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setRequired(true),
+    cli.setHelp("Output RAG export file path")
+)
+
+ragCollectionName = "yaklang-aikb"
+
+// Embedding 服务器地址
+embeddingHost = cli.String(
+    "embedding-host",
+    cli.setDefault("127.0.0.1"),
+    cli.setHelp("Embedding server address")
+)
+
+// Embedding 服务器端口
+embeddingPort = cli.Int(
+    "embedding-port",
+    cli.setDefault(9099),
+    cli.setHelp("Embedding server port")
+)
+
+// TOTP 密钥（可选，如果 embedding 服务需要验证）
+totpSecret = cli.String(
+    "totp-secret",
+    cli.setDefault(""),
+    cli.setHelp("TOTP secret for embedding service authentication (optional)")
+)
+
+// 超时时间（秒）
+timeout = cli.Int(
+    "timeout",
+    cli.setDefault(30),
+    cli.setHelp("HTTP request timeout in seconds")
+)
+
+cli.check()
+
+// =============================================================================
+// 参数验证模块
+// =============================================================================
+
+if diffZipPath == "" || outputRagPath == "" {
+    die("Required parameters: --diff-zip, --output")
+}
+
+if ragFilePath != "" && !file.IsExisted(ragFilePath) {
+    die(sprintf("RAG file does not exist: %s", ragFilePath))
+}
+
+if !file.IsExisted(diffZipPath) {
+    die(sprintf("Diff ZIP file does not exist: %s", diffZipPath))
+}
+
+log.info("=== RAG Update Configuration ===")
+if ragFilePath != "" {
+    log.info("RAG File: %s (import existing)", ragFilePath)
+} else {
+    log.info("RAG File: Not specified (create new)")
+}
+log.info("Diff ZIP: %s", diffZipPath)
+log.info("Output: %s", outputRagPath)
+log.info("Collection: %s", ragCollectionName)
+log.info("Embedding Server: %s:%d", embeddingHost, embeddingPort)
+if totpSecret != "" {
+    log.info("TOTP Auth: Enabled")
+} else {
+    log.info("TOTP Auth: Disabled")
+}
+
+// =============================================================================
+// Embedding 处理函数定义
+// 功能: 封装 embedding 请求逻辑，支持 TOTP 验证
+// =============================================================================
+
+// 用于本地开发环境
+dev_env_embeddingHandle = (text) => {
+    if text == "" {
+        log.error("Empty text for embedding")
+        return nil
+    }
+    
+    log.info("Generating embedding for text (length: %d)", len(text))
+
+    data = {"input": text,"encoding_format":"float"}
+    reqPacket = `POST /embeddings HTTP/1.1
+Content-Type: application/json
+Host: 127.0.0.1:11435
+
+%v` % json.dumps(data)
+    rsp,req,err = poc.HTTP(reqPacket, poc.timeout(30))
+    if err {
+        log.error("Failed to send embedding request: %v", err)
+        return nil
+    }
+
+    body = poc.GetHTTPPacketBody(rsp)
+    try {
+        res = json.loads(body)[0]['embedding'][0]
+        return res
+    } catch err {
+        println(body)
+        log.error("Parse embedding data failed: %v" % err)
+        return nil
+    }
+    
+}
+
+prod_env_embeddingHandle = func(text) {
+    if text == "" {
+        log.error("Empty text for embedding")
+        return nil
+    }
+    
+    log.info("Generating embedding for text (length: %d)", len(text))
+    
+    // 如果配置了 TOTP，生成验证码
+    totpCode = ""
+    if totpSecret != "" {
+        totpCode = twofa.GetUTCCode(totpSecret)
+        log.info("Generated TOTP code: %s", totpCode)
+    }
+    
+    // 构建请求体
+    requestBody = json.dumps({
+        "input": text,
+        "model": "embedding",
+    })
+    
+    // 构建 HTTP 请求
+    httpRequest = sprintf(`POST /embeddings HTTP/1.1
+Host: %s
+Content-Type: application/json`, embeddingHost)
+    
+    // 如果有 TOTP，添加验证头
+    if totpCode != "" {
+        httpRequest = sprintf(`%s
+X-TOTP-Code: %s`, httpRequest, totpCode)
+    }
+    
+    httpRequest = sprintf(`%s
+Content-Length: %d
+
+%s`, httpRequest, len(requestBody), requestBody)
+    
+    // 发送请求
+    try {
+        rsp, _, err = poc.HTTP(
+            httpRequest,
+            poc.host(embeddingHost),
+            poc.port(embeddingPort),
+            poc.timeout(timeout),
+        )
+        
+        if err != nil {
+            log.error("Failed to send embedding request: %v", err)
+            return nil
+        }
+        
+        // 获取状态码
+        statusCode = poc.GetStatusCodeFromResponse(rsp)
+        
+        if statusCode != 200 {
+            log.error("Embedding request failed with status code: %d", statusCode)
+            _, body = poc.Split(rsp)
+            log.error("Response body: %s", string(body))
+            return nil
+        }
+        
+        // 解析响应
+        _, body = poc.Split(rsp)
+        responseData = json.loads(body)
+        
+        if responseData["data"] == nil || len(responseData["data"]) == 0 {
+            log.error("No embedding data in response")
+            return nil
+        }
+        
+        embeddingData = responseData["data"][0]
+        embedding = embeddingData["embedding"]
+        
+        log.info("Embedding generated successfully (dimension: %d)", len(embedding))
+        return embedding
+        
+    } catch embeddingErr {
+        log.error("Failed to generate embedding: %v", embeddingErr)
+        return nil
+    }
+}
+
+embeddingHandle = prod_env_embeddingHandle
+
+// =============================================================================
+// RAG 导入/创建模块
+// 功能: 如果指定了 RAG 文件则导入，否则创建新的 RAG 集合
+// =============================================================================
+
+// 移除现有集合
+rag.DeleteCollection(ragCollectionName)
+
+if ragFilePath != "" {
+    log.info("=== Step 1: Importing RAG file ===")
+    
+    try {
+        err = rag.Import(ragFilePath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.error("Failed to import RAG file: %v", err)
+            die(sprintf("Failed to import RAG file: %v", err))
+        }
+        
+        log.info("✓ RAG file imported successfully: %s", ragCollectionName)
+        
+    } catch importErr {
+        log.error("Failed to import RAG file: %v", importErr)
+        die(sprintf("Failed to import RAG file: %v", importErr))
+    }
+} else {
+    log.info("=== Step 1: Creating new RAG collection ===")
+    log.info("No RAG file specified, will create a new collection: %s", ragCollectionName)
+}
+
+// =============================================================================
+// 加载 RAG Collection
+// 功能: 使用 embedding 处理函数加载或创建 RAG 集合
+// =============================================================================
+
+log.info("")
+log.info("=== Step 2: Loading RAG collection ===")
+
+ragSystem, err = rag.GetCollection(ragCollectionName, rag.embeddingHandle(embeddingHandle))
+if err != nil {
+    log.error("Failed to load RAG collection: %v", err)
+    die(sprintf("Failed to load RAG collection: %v", err))
+}
+
+if ragFilePath != "" {
+    log.info("✓ RAG collection loaded successfully: %s", ragCollectionName)
+} else {
+    log.info("✓ New RAG collection created successfully: %s", ragCollectionName)
+}
+
+// 获取旧 RAG 的文档数量
+oldDocCount = 0
+oldDocCount, err = ragSystem.CountDocuments()
+if err != nil {
+    log.error("Failed to get old document count: %v", err)
+    oldDocCount = 0
+} else {
+    log.info("Old RAG document count: %d", oldDocCount)
+}
+// =============================================================================
+// 读取差异 ZIP 文件
+// 功能: 解析差异 ZIP，提取所有文件内容
+// =============================================================================
+
+log.info("")
+log.info("=== Step 3: Reading diff ZIP file ===")
+
+diffFiles = make(map[string]string)
+fileCount = 0
+
+err = zip.Recursive(diffZipPath, func(isDir, pathName, info) {
+    if isDir {
+        return
+    }
+    if str.HasPrefix(pathName, "__MACOSX/") {
+        return
+    }
+    if info.Name() == ".DS_Store" {
+        return
+    }
+    try {
+        content = zip.ExtractFile(diffZipPath, pathName)~
+        diffFiles[pathName] = string(content)
+        fileCount++
+        log.info("Extracted file: %s (size: %d bytes)", pathName, len(content))
+    } catch extractErr {
+        log.error("Failed to extract file %s: %v", pathName, extractErr)
+    }
+})
+
+if err != nil {
+    log.error("Failed to read diff ZIP file: %v", err)
+    die(sprintf("Failed to read diff ZIP file: %v", err))
+}
+
+log.info("✓ Diff ZIP processed: %d files extracted", fileCount)
+
+// 检查是否有文件需要处理
+if len(diffFiles) == 0 {
+    log.info("⚠️  No files in diff ZIP, no updates needed")
+    log.info("Exporting RAG file without changes...")
+    
+    // 直接导出原 RAG
+    try {
+        err = rag.Export(ragCollectionName, outputRagPath)
+        if err != nil {
+            log.error("Failed to export RAG: %v", err)
+            die(sprintf("Failed to export RAG: %v", err))
+        }
+        
+        log.info("✓ RAG file exported: %s", outputRagPath)
+        log.info("Script execution completed successfully (no changes)")
+        os.Exit(0)
+        
+    } catch exportErr {
+        log.error("Failed to export RAG: %v", exportErr)
+        die(sprintf("Failed to export RAG: %v", exportErr))
+    }
+}
+
+// =============================================================================
+// 添加文件到 RAG
+// 功能: 遍历差异文件，添加到 RAG 集合中
+// =============================================================================
+
+log.info("")
+log.info("=== Step 4: Adding files to RAG ===")
+
+successCount = 0
+failedCount = 0
+failedFiles = []
+
+for filePath, content := range diffFiles {
+    if content == "" {
+        log.warn("Skipping empty file: %s", filePath)
+        continue
+    }
+    
+    log.info("Adding file to RAG: %s (size: %d bytes)", filePath, len(content))
+    
+    try {
+        ragSystem.Add(filePath, content)
+        successCount++
+        log.info("✓ Added: %s", filePath)
+    } catch addErr {
+        log.error("Failed to add file %s: %v", filePath, addErr)
+        failedCount++
+        failedFiles = append(failedFiles, filePath)
+    }
+}
+
+log.info("")
+log.info("=== Add Results ===")
+log.info("Success: %d files", successCount)
+log.info("Failed: %d files", failedCount)
+
+if failedCount > 0 {
+    log.warn("Failed files:")
+    for i, filePath := range failedFiles {
+        log.warn("  %d. %s", i+1, filePath)
+    }
+}
+
+// 获取新 RAG 的文档数量
+newDocCount = 0
+newDocCount, err = ragSystem.CountDocuments()
+if err != nil {
+    log.error("Failed to get new document count: %v", err)
+    newDocCount = 0
+} else {
+    log.info("New RAG document count: %d", newDocCount)
+    log.info("Document count increased: %d", newDocCount - oldDocCount)
+}
+
+// =============================================================================
+// 导出 RAG 文件
+// 功能: 将更新后的 RAG 集合导出到文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 5: Exporting RAG file ===")
+
+try {
+    err = rag.Export(ragCollectionName, outputRagPath)
+    if err != nil {
+        log.error("Failed to export RAG: %v", err)
+        die(sprintf("Failed to export RAG to %s", outputRagPath))
+    }
+    
+    // 验证导出的文件
+    if !file.IsExisted(outputRagPath) {
+        log.error("Export succeeded but file does not exist: %s", outputRagPath)
+        die("Failed to verify exported RAG file")
+    }
+    
+    // 获取文件大小
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    
+    log.info("✓ RAG file exported successfully: %s", outputRagPath)
+    log.info("  File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
+    
+} catch exportErr {
+    log.error("Failed to export RAG: %v", exportErr)
+    die(sprintf("Failed to export RAG: %v", exportErr))
+}
+
+// =============================================================================
+// 生成更新报告
+// 功能: 生成 Markdown 格式的更新报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 6: Generating update report ===")
+
+reportPath = str.Replace(outputRagPath, ".rag", ".update-report.md", 1)
+
+report = sprintf("# RAG 更新报告\n\n")
+report += sprintf("**更新时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+if ragFilePath != "" {
+    report += sprintf("**原始 RAG**: %s (导入)\n", ragFilePath)
+} else {
+    report += sprintf("**原始 RAG**: 无（新建）\n")
+}
+report += sprintf("**差异包**: %s\n", diffZipPath)
+report += sprintf("**输出 RAG**: %s\n", outputRagPath)
+report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+
+report += "## 文档数量统计\n\n"
+report += sprintf("- 旧 RAG 文档数量: %d\n", oldDocCount)
+report += sprintf("- 新 RAG 文档数量: %d\n", newDocCount)
+report += sprintf("- 文档增量: %d\n\n", newDocCount - oldDocCount)
+
+report += "## 处理统计\n\n"
+report += sprintf("- 差异文件总数: %d\n", len(diffFiles))
+report += sprintf("- 成功添加: %d\n", successCount)
+report += sprintf("- 添加失败: %d\n\n", failedCount)
+
+if successCount > 0 {
+    report += "## 成功添加的文件\n\n"
+    idx = 1
+    for filePath, _ := range diffFiles {
+        // 检查是否在失败列表中
+        isFailed := false
+        for _, failedFile := range failedFiles {
+            if failedFile == filePath {
+                isFailed = true
+                break
+            }
+        }
+        
+        if !isFailed {
+            report += sprintf("%d. %s\n", idx, filePath)
+            idx++
+        }
+    }
+    report += "\n"
+}
+
+if failedCount > 0 {
+    report += "## 添加失败的文件\n\n"
+    for i, filePath := range failedFiles {
+        report += sprintf("%d. %s\n", i+1, filePath)
+    }
+    report += "\n"
+}
+
+report += "## Embedding 配置\n\n"
+report += sprintf("- 服务器: %s:%d\n", embeddingHost, embeddingPort)
+if totpSecret != "" {
+    report += "- TOTP 认证: 启用\n"
+} else {
+    report += "- TOTP 认证: 禁用\n"
+}
+report += sprintf("- 超时时间: %d 秒\n\n", timeout)
+
+report += "## 输出文件信息\n\n"
+report += sprintf("- 文件路径: %s\n", outputRagPath)
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    report += sprintf("- 文件大小: %d bytes (%.2f MB)\n", fileSize, float64(fileSize)/1024/1024)
+}
+
+// 保存报告
+err = file.Save(reportPath, report)
+if err != nil {
+    log.warn("Failed to write report: %v", err)
+} else {
+    log.info("✓ Update report generated: %s", reportPath)
+}
+
+// 打印报告到控制台
+println("")
+println(report)
+
+// =============================================================================
+// 总结输出
+// =============================================================================
+
+log.info("")
+log.info("=== Update Summary ===")
+log.info("✓ RAG update completed successfully")
+log.info("  - Old document count: %d", oldDocCount)
+log.info("  - New document count: %d", newDocCount)
+log.info("  - Document increased: %d", newDocCount - oldDocCount)
+log.info("  - Processed: %d files", len(diffFiles))
+log.info("  - Success: %d files", successCount)
+log.info("  - Failed: %d files", failedCount)
+log.info("  - Output: %s", outputRagPath)
+log.info("  - Report: %s", reportPath)
+
+if failedCount > 0 {
+    log.warn("⚠️  Some files failed to add, please check the report")
+    os.Exit(1)
+} else {
+    log.info("✓ All files processed successfully")
+    os.Exit(0)
+}
