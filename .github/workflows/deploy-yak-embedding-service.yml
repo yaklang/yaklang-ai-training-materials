@@ -132,23 +132,28 @@ jobs:
           
           # 上传启动脚本
           echo "Uploading start-yak-embedding-service.yak..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/start-yak-embedding-service.yak --upload-target /root/yaklang-ai-training-materials/scripts/start-yak-embedding-service.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/start-yak-embedding-service.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/start-yak-embedding-service.yak /root/yaklang-ai-training-materials/scripts/start-yak-embedding-service.yak"
           
           # 上传 systemd 安装脚本
           echo "Uploading install-yak-scripts-to-systemd.yak..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/install-yak-scripts-to-systemd.yak --upload-target /root/yaklang-ai-training-materials/scripts/install-yak-scripts-to-systemd.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/install-yak-scripts-to-systemd.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/install-yak-scripts-to-systemd.yak /root/yaklang-ai-training-materials/scripts/install-yak-scripts-to-systemd.yak"
           
           # 上传部署脚本
           echo "Uploading deploy-embedding.sh..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/deploy-embedding.sh --upload-target /root/yaklang-ai-training-materials/apps/embedding/deploy-embedding.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/deploy-embedding.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/deploy-embedding.sh /root/yaklang-ai-training-materials/apps/embedding/deploy-embedding.sh && chmod +x /root/yaklang-ai-training-materials/apps/embedding/deploy-embedding.sh"
           
           # 上传 SSL 证书安装脚本
           echo "Uploading install-certs.sh..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/install-certs.sh --upload-target /root/yaklang-ai-training-materials/apps/embedding/install-certs.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/install-certs.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/install-certs.sh /root/yaklang-ai-training-materials/apps/embedding/install-certs.sh && chmod +x /root/yaklang-ai-training-materials/apps/embedding/install-certs.sh"
           
           # 上传配置文件
           echo "Uploading configuration file..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/embedding-config.env --upload-target /root/yaklang-ai-training-materials/apps/embedding/.env
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/embedding-config.env
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/embedding-config.env /root/yaklang-ai-training-materials/apps/embedding/.env"
           
           # 验证文件上传
           echo "Verifying uploaded files..."
