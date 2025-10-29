@@ -1,0 +1,328 @@
+/*
+Yaklang xhtml 库实践 - HTML解析与操作
+
+xhtml库提供HTML文档解析、遍历、查找、比较、XPath生成等功能，
+是Web安全测试中处理HTML内容的重要工具。
+
+关键词: xhtml HTML解析, Walker遍历节点, Find查找节点, CompareHtml比较差异
+关键词: GenerateXPath路径生成, RandomUpperAndLower随机大小写, MatchBetween字符串匹配
+*/
+
+println("\n开始 Yaklang xhtml 库功能测试")
+println("================================\n")
+
+testHTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试页面</title>
+</head>
+<body>
+    <div id="header" class="container">
+        <h1>欢迎使用Yaklang</h1>
+        <p class="intro">这是一个安全测试工具</p>
+    </div>
+    <div id="content">
+        <a href="https://yaklang.io" onclick="alert('test')">官方网站</a>
+        <input type="text" name="username" value="admin">
+        <button onclick="submitForm()">提交</button>
+    </div>
+    <!-- 这是注释 -->
+    <script>function submitForm() { console.log('submit'); }</script>
+</body>
+</html>`
+
+println("=== 一、Walker遍历HTML节点 ===")
+
+// 关键词: Walker遍历HTML节点, 节点类型识别
+elementCount = 0
+textCount = 0
+commentCount = 0
+
+err = xhtml.Walker(testHTML, fn(node) {
+    if node.Type == 1 {  // ElementNode
+        elementCount++
+    } else if node.Type == 3 {  // TextNode
+        if len(str.TrimSpace(node.Data)) > 0 {
+            textCount++
+        }
+    } else if node.Type == 8 {  // CommentNode
+        commentCount++
+    }
+})
+
+assert err == nil, f"Walker失败: ${err}"
+assert elementCount > 0, "应该有元素节点"
+assert textCount > 0, "应该有文本节点"
+println(f"[✓] Walker遍历完成")
+println(f"  - 元素节点: ${elementCount} 个")
+println(f"  - 文本节点: ${textCount} 个")
+println(f"  - 注释节点: ${commentCount} 个")
+
+println("\n=== 二、Find查找节点 ===")
+
+// 关键词: Find查找节点, MatchNodeInfo节点信息, XPath定位
+matches1 = xhtml.Find(testHTML, "Yaklang")
+assert len(matches1) > 0, "应该找到包含Yaklang的节点"
+println(f"[✓] 查找'Yaklang': 找到 ${len(matches1)} 个匹配")
+
+for match in matches1 {
+    println(f"  - 节点: {match.TagName}, 类型: TEXT, XPath: ${match.Xpath}")
+    println(f"    匹配文本: ${match.MatchText}")
+    assert match.IsText(), "应该是文本节点"
+}
+
+// 关键词: Find查找属性值
+matches2 = xhtml.Find(testHTML, "admin")
+assert len(matches2) > 0, "应该找到admin"
+println(f"\n[✓] 查找'admin': 找到 ${len(matches2)} 个匹配")
+
+for match in matches2 {
+    if match.IsAttr() {
+        println(f"  - 节点: {match.TagName}, 类型: ATTR, XPath: ${match.Xpath}")
+        println(f"    属性: ${match.Key}=\"${match.Val}\"")
+    }
+}
+
+// 关键词: Find查找链接
+matches3 = xhtml.Find(testHTML, "yaklang.io")
+assert len(matches3) > 0, "应该找到链接"
+println(f"\n[✓] 查找'yaklang.io': 找到 ${len(matches3)} 个匹配")
+
+for match in matches3 {
+    println(f"  - 节点: {match.TagName}, XPath: ${match.Xpath}")
+    if match.IsAttr() {
+        println(f"    ${match.Key}=\"${match.Val}\"")
+    }
+}
+
+println("\n=== 三、CompareHtml比较差异 ===")
+
+// 关键词: CompareHtml比较HTML差异, DiffInfo差异信息
+originalHTML = `<html><body><div id="test">原始内容</div></body></html>`
+modifiedHTML = `<html><body><div id="test2">修改内容</div></body></html>`
+
+diffs, err = xhtml.CompareHtml(originalHTML, modifiedHTML)
+assert err == nil, f"比较HTML失败: ${err}"
+assert len(diffs) > 0, "应该有差异"
+println(f"[✓] 比较HTML差异: 发现 ${len(diffs)} 处差异")
+
+for diff in diffs {
+    println(f"  - XPath: ${diff.XpathPos}")
+    println(f"    类型: ${diff.Type}, 原因: ${diff.Reason}")
+    println(f"    原始: ${str.TrimSpace(diff.OriginRaw)}")
+    println(f"    修改: ${str.TrimSpace(diff.FuzzRaw)}")
+}
+
+// 关键词: CompareHtml属性差异检测
+html1 = `<html><body><a href="test.com">链接</a></body></html>`
+html2 = `<html><body><a href="evil.com">链接</a></body></html>`
+
+diffs2, err = xhtml.CompareHtml(html1, html2)
+assert err == nil, "比较失败"
+assert len(diffs2) > 0, "应该检测到href差异"
+println(f"\n[✓] 属性差异检测: 发现 ${len(diffs2)} 处差异")
+
+for diff in diffs2 {
+    println(f"  - ${diff.Reason}: ${diff.XpathPos}")
+}
+
+println("\n=== 四、GenerateXPath生成路径 ===")
+
+// 关键词: GenerateXPath生成XPath, 节点路径定位
+xpathCount = 0
+err = xhtml.Walker(testHTML, fn(node) {
+    if node.Data == "div" {  // div元素
+        xpath = xhtml.GenerateXPath(node)
+        println(f"  - div元素: ${xpath}")
+        xpathCount++
+    }
+})
+
+assert err == nil, "遍历失败"
+assert xpathCount > 0, "应该找到div元素"
+println(f"[✓] 生成XPath: 找到 ${xpathCount} 个div元素")
+
+// 关键词: GenerateXPath链接元素路径
+linkCount = 0
+err = xhtml.Walker(testHTML, fn(node) {
+    if node.Data == "a" {
+        xpath = xhtml.GenerateXPath(node)
+        println(f"\n[✓] 链接元素XPath: ${xpath}")
+        
+        // 检查属性
+        for attr in node.Attr {
+            if attr.Key == "href" {
+                println(f"  - href属性: ${attr.Val}")
+            }
+        }
+        linkCount++
+    }
+})
+
+assert err == nil, "遍历链接失败"
+assert linkCount > 0, "应该有链接元素"
+
+println("\n=== 五、RandomUpperAndLower随机大小写 ===")
+
+// 关键词: RandomUpperAndLower随机大小写, XSS绕过, WAF绕过
+testStr = "onclick"
+randomized1 = xhtml.RandomUpperAndLower(testStr)
+randomized2 = xhtml.RandomUpperAndLower(testStr)
+
+assert randomized1 != "", "随机化后不应为空"
+assert len(randomized1) == len(testStr), "长度应该相同"
+println(f"[✓] 随机大小写转换:")
+println(f"  - 原始: ${testStr}")
+println(f"  - 随机1: ${randomized1}")
+println(f"  - 随机2: ${randomized2}")
+
+// 关键词: RandomUpperAndLower标签绕过
+tagList = ["script", "iframe", "object", "embed"]
+println(f"\n[✓] 常见标签随机化:")
+
+for tag in tagList {
+    randomTag = xhtml.RandomUpperAndLower(tag)
+    println(f"  - ${tag} -> ${randomTag}")
+}
+
+println("\n=== 六、MatchBetween匹配字符串 ===")
+
+// 关键词: MatchBetween字符串匹配, 内容提取
+testContent = "Hello <div>这是内容</div> World"
+
+pos1, content1 = xhtml.MatchBetween(testContent, "<div>", "</div>", -1)
+assert pos1 > 0, "应该找到内容"
+assert content1 == "这是内容", f"内容应该是'这是内容', 实际是'${content1}'"
+println(f"[✓] 匹配<div>标签内容:")
+println(f"  - 位置: ${pos1}")
+println(f"  - 内容: ${content1}")
+
+// 关键词: MatchBetween限制长度
+pos2, content2 = xhtml.MatchBetween(testContent, "<div>", "</div>", 15)
+assert pos2 > 0, "应该找到内容"
+assert len(content2) <= 15, "内容长度应该不超过15字节"
+println(f"\n[✓] 限制长度匹配(最多15字节):")
+println(f"  - 位置: ${pos2}")
+println(f"  - 内容: ${content2} (${len(content2)}字节)")
+
+// 关键词: MatchBetween提取属性
+attrHTML = `<input value="secret123">`
+pos3, value = xhtml.MatchBetween(attrHTML, "value=\"", "\"", -1)
+assert value == "secret123", "应该提取到value值"
+println(f"\n[✓] 提取属性值:")
+println(f"  - 提取: value=\"${value}\"")
+
+// 关键词: MatchBetween长度限制说明
+// MatchBetween的n参数: 检查 i2-i1-1 <= n
+testShort = "abc<x>123</x>def"
+pos4, content4 = xhtml.MatchBetween(testShort, "<x>", "</x>", 3)
+// "123"长度为3, i2-i1=3, i2-i1-1=2, 2<=3为true
+assert pos4 > 0, "内容应该找到"
+assert content4 == "123", "应该得到123"
+println(f"\n[✓] 长度限制匹配(n=3):")
+println(f"  - 内容: ${content4}, 长度: ${len(content4)}")
+
+// 超过长度限制
+pos5, content5 = xhtml.MatchBetween(testShort, "<x>", "</x>", 1)
+// i2-i1-1=2, 2<=1为false, 返回-1
+assert pos5 == -1, "超限应该返回-1"
+assert content5 == "", "超限应该返回空"
+println(f"[✓] 超长度限制(n=1): 位置=${pos5}")
+
+// 查找不存在的标签
+pos6, content6 = xhtml.MatchBetween(testContent, "<notexist>", "</notexist>", -1)
+assert pos6 == -1, "不存在的标签应该返回-1"
+assert content6 == "", "不存在的标签应该返回空字符串"
+println(f"[✓] 查找不存在的标签: 位置=${pos6} (正确)")
+
+println("\n=== 七、综合应用场景 ===")
+
+// 关键词: xhtml综合应用, HTML安全分析, XSS检测
+xssHTML = `<html>
+<body>
+    <div onclick="alert(1)">点击</div>
+    <a href="javascript:alert(2)">链接</a>
+    <img src="x" onerror="alert(3)">
+    <input value="<script>alert(4)</script>">
+</body>
+</html>`
+
+println("[场景1] 查找所有onclick事件处理器")
+onclickMatches = xhtml.Find(xssHTML, "onclick")
+println(f"  找到 ${len(onclickMatches)} 个onclick事件")
+
+println("\n[场景2] 查找javascript:伪协议")
+jsMatches = xhtml.Find(xssHTML, "javascript:")
+println(f"  找到 ${len(jsMatches)} 个javascript:伪协议")
+
+println("\n[场景3] 查找onerror事件")
+onerrorMatches = xhtml.Find(xssHTML, "onerror")
+println(f"  找到 ${len(onerrorMatches)} 个onerror事件")
+
+println("\n[场景4] 遍历所有可能的XSS向量")
+xssCount = 0
+err = xhtml.Walker(xssHTML, fn(node) {
+    if len(node.Attr) > 0 {  // 有属性的节点
+        for attr in node.Attr {
+            // 检查事件处理器
+            if str.HasPrefix(attr.Key, "on") {
+                xssCount++
+                xpath = xhtml.GenerateXPath(node)
+                println(f"  [!] 事件处理器: ${xpath}/@${attr.Key}=\"${attr.Val}\"")
+            }
+            // 检查javascript:协议
+            if str.Contains(attr.Val, "javascript:") {
+                xssCount++
+                xpath = xhtml.GenerateXPath(node)
+                println(f"  [!] JS伪协议: ${xpath}/@${attr.Key}=\"${attr.Val}\"")
+            }
+            // 检查script标签
+            if str.Contains(attr.Val, "<script") {
+                xssCount++
+                xpath = xhtml.GenerateXPath(node)
+                println(f"  [!] Script注入: ${xpath}/@${attr.Key}")
+            }
+        }
+    }
+})
+
+assert err == nil, "遍历失败"
+println(f"\n[✓] 综合检测完成，发现 ${xssCount} 个潜在XSS向量")
+
+println("\n================================")
+println("xhtml 库功能测试完成")
+println("================================\n")
+
+println("测试总结:")
+println("  ✓ Walker遍历HTML节点")
+println("  ✓ Find查找匹配节点")
+println("  ✓ CompareHtml比较差异")
+println("  ✓ GenerateXPath生成路径")
+println("  ✓ RandomUpperAndLower随机大小写")
+println("  ✓ MatchBetween字符串匹配")
+println("  ✓ 综合安全分析场景")
+println("\nxhtml 库功能验证完成！\n")
+
+/*
+xhtml核心API:
+解析遍历: Walker(html,fn(node)) - 遍历所有节点并回调
+查找定位: Find(html,matchStr) - 查找匹配的节点，返回MatchNodeInfo数组
+比较分析: CompareHtml(html1,html2) - 比较两个HTML的差异，返回DiffInfo数组
+路径生成: GenerateXPath(node) - 为节点生成XPath路径
+大小写变换: RandomUpperAndLower(str) - 随机大小写转换，用于WAF绕过
+字符串匹配: MatchBetween(src,start,end,maxLen) - 提取两个标记之间的内容
+
+节点类型: 1-Element, 3-Text, 8-Comment, 10-Doctype
+MatchNodeInfo: TagName标签名, MatchText匹配文本, Xpath路径, IsText()/IsAttr()/IsCOMMENT()
+DiffInfo: XpathPos位置, Reason原因, Type类型, OriginRaw原始, FuzzRaw修改后
+
+应用场景:
+- HTML结构分析和遍历
+- XSS向量检测和定位
+- WAF绕过payload生成
+- 页面差异对比
+- DOM节点精确定位
+- 属性和内容提取
+*/
+

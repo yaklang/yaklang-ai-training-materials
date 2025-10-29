@@ -23,29 +23,25 @@ db, err = rag.NewTempRagDatabase()
 assert err == nil, f"创建数据库失败: ${err}"
 println("[✓] 临时数据库创建成功")
 
-println("\n=== 一、从原始文本构建知识库 ===")
+println("\n=== 一、文本知识库构建 ===")
 
+// 关键词: GetCollection创建集合, Add添加文档块
 collName1 = "text_knowledge_base"
-println(f"[演示] BuildCollectionFromRaw API用法:")
-println(f"  rag.BuildCollectionFromRaw(collectionName, textContent,")
-println(f"      rag.db(db), rag.chunkSize(50))")
-println("[!] 注意: 需要AI服务支持，会自动分块和向量化\n")
-
-// 关键词: GetCollection手动创建集合
 ragSys1, err = rag.GetCollection(collName1, rag.ragForceNew(true), rag.db(db))
 assert err == nil, f"创建集合失败: ${err}"
 
-// 关键词: Add手动添加文档块
 err = ragSys1.Add("chunk1", "Yaklang是一个专为网络安全设计的领域特定语言")
 assert err == nil, "添加文档失败"
 err = ragSys1.Add("chunk2", "RAG技术可以为AI系统提供外部知识支持")
 assert err == nil, "添加文档失败"
+err = ragSys1.Add("chunk3", "HNSW算法是高效的近似最近邻搜索算法")
+assert err == nil, "添加文档失败"
 
-println(f"[✓] 手动创建知识库并添加文档: ${collName1}")
+println(f"[✓] 创建知识库并添加3个文档: ${collName1}")
 
 results1, err = ragSys1.QueryWithPage("网络安全", 1, 3)
 assert err == nil && len(results1) > 0, "应该能搜索到相关文档"
-println(f"[✓] 知识库查询验证通过，返回 ${len(results1)} 个结果")
+println(f"[✓] 查询验证: 返回 ${len(results1)} 个结果")
 
 println("\n=== 二、从文件构建知识库 ===")
 
@@ -76,11 +72,7 @@ err = file.Save(tmpFile, fileContent)
 assert err == nil, f"创建测试文件失败: ${err}"
 println(f"[✓] 创建测试文件: ${tmpFile}")
 
-println(f"\n[演示] BuildCollectionFromFile API用法:")
-println(f"  rag.BuildCollectionFromFile(collectionName, filePath,")
-println(f"      rag.db(db), rag.chunkSize(100), rag.ragDescription('描述'))")
-println("[!] 注意: 需要AI服务支持，会自动解析文件并分块\n")
-
+// 关键词: 从文件内容创建知识库
 collName2 = "security_knowledge_from_file"
 ragSys2, err = rag.GetCollection(collName2, 
     rag.ragForceNew(true), 
@@ -97,7 +89,7 @@ assert err == nil, "添加文档失败"
 err = ragSys2.Add("security_chunk3", "模糊测试: 使用fuzz进行安全测试")
 assert err == nil, "添加文档失败"
 
-println(f"[✓] 手动创建集合并添加安全知识文档: ${collName2}")
+println(f"[✓] 创建安全知识集合并添加文档: ${collName2}")
 
 results2, err = ragSys2.QueryWithPage("端口扫描", 1, 3)
 assert err == nil && len(results2) > 0, "应该能找到端口扫描相关内容"
@@ -115,16 +107,8 @@ ragSys3, err = rag.GetCollection(collName3, rag.ragForceNew(true), rag.db(db))
 assert err == nil, "创建集合失败"
 println(f"[✓] 创建集合: ${collName3}")
 
-metadata1 = {"source": "manual", "category": "security", "importance": "high"}
-
-println("\n[演示] 全局文档操作API:")
-println("  rag.AddDocument(collectionName, docID, content, metadata, rag.db(db))")
-println("  rag.QueryDocuments(collectionName, query, limit, rag.db(db))")
-println("  rag.DeleteDocument(collectionName, docID, rag.db(db))")
-println("  rag.QueryDocumentsWithAISummary(collectionName, query, limit, rag.db(db))\n")
-
-// 直接使用ragSys3.Add代替全局函数（避免潜在的数据库锁问题）
-err = ragSys3.Add("global_doc1", "使用全局函数添加的安全测试文档")
+// 关键词: Add添加文档
+err = ragSys3.Add("global_doc1", "使用集合系统添加的安全测试文档")
 assert err == nil, "添加文档1失败"
 err = ragSys3.Add("global_doc2", "网络安全包括渗透测试、漏洞挖掘、安全审计等")
 assert err == nil, "添加文档2失败"
@@ -147,23 +131,7 @@ err = ragSys3.DeleteDocuments("global_doc1")
 assert err == nil, "删除文档失败"
 println("[✓] 删除文档: global_doc1")
 
-println("\n=== 四、分块大小说明 ===")
-
-println("[说明] 不同分块大小的影响:")
-println("  小分块（chunk=30）:")
-println("    - 优点: 精确匹配，结果更多")
-println("    - 缺点: 上下文不完整")
-println("    - 适用: 关键词检索、精确匹配")
-println("")
-println("  大分块（chunk=100）:")
-println("    - 优点: 保留完整上下文")
-println("    - 缺点: 结果相对较少")
-println("    - 适用: 语义理解、段落检索")
-println("")
-println("[API] rag.chunkSize(size) - 设置分块大小")
-println("[✓] 分块策略说明完成")
-
-println("\n=== 五、清理测试资源 ===")
+println("\n=== 四、清理测试资源 ===")
 
 err = file.Remove(tmpFile)
 if err == nil {
@@ -175,10 +143,10 @@ println("RAG 知识库构建测试完成")
 println("================================\n")
 
 println("测试总结:")
-println("  ✓ 从原始文本构建知识库")
-println("  ✓ 从文件构建知识库")
-println("  ✓ 全局文档添加和删除")
-println("  ✓ 分块大小策略说明")
+println("  ✓ 文本知识库构建")
+println("  ✓ 文件内容知识库")
+println("  ✓ 文档添加和删除")
+println("  ✓ 查询验证")
 println("\nRAG 知识库构建功能验证完成！\n")
 
 /*
