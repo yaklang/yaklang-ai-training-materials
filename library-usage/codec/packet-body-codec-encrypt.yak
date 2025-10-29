@@ -1,0 +1,335 @@
+/*
+Yaklang codec 库实践 - HTTP 数据包 Body 加密解密
+
+场景: 在安全测试中经常遇到 HTTP 请求/响应的 body 被加密的情况。
+本脚本演示如何使用 AES CBC 和国密 SM4 CBC 加密/解密 HTTP 数据包 body。
+
+关键词: codec加密解密, AES_CBC加密, SM4国密加密, HTTP_body加密, JSON加密
+关键词: packet加密修改, 对称加密, IV初始化向量, 加密参数提取, Base64编码
+*/
+
+println("\n开始 HTTP 数据包 Body 加密/解密测试")
+println("================================================\n")
+
+println("=== 一、AES CBC 加密/解密场景 ===")
+
+// 关键词: AES密钥生成, IV生成, 16字节密钥
+aesKey = "1234567890abcdef"  // 16字节密钥 (AES-128)
+aesIV = "abcdef1234567890"   // 16字节IV
+
+originalBody = `{"username":"admin","password":"secret123","action":"login"}`
+println(f"[原始数据]")
+println(f"  Body: ${originalBody}")
+println(f"  密钥: ${aesKey}")
+println(f"  IV: ${aesIV}\n")
+
+// 关键词: AESCBCEncrypt加密, PKCS7Padding填充
+encrypted, err = codec.AESCBCEncrypt(aesKey, originalBody, aesIV)
+assert err == nil, f"AES加密失败: ${err}"
+println(f"[✓] AES CBC 加密成功")
+println(f"  密文(Hex): ${codec.EncodeToHex(encrypted)}")
+println(f"  密文(Base64): ${codec.EncodeBase64(encrypted)}\n")
+
+// 关键词: HTTP请求加密body构造, JSON加密报文
+encryptedPacket = {
+    "encrypted": codec.EncodeToHex(encrypted),
+    "iv": codec.EncodeToHex(aesIV),
+    "algorithm": "AES-CBC-128"
+}
+encryptedJSON = json.dumps(encryptedPacket)
+println(f"[加密后的HTTP Body]")
+println(f"  ${encryptedJSON}\n")
+
+// 关键词: JSON解析, 加密参数提取
+parsedData = json.loads(encryptedJSON)
+
+// 关键词: Hex解码, Base64解码, 密文还原
+encryptedBytes, err = codec.DecodeHex(parsedData["encrypted"])
+assert err == nil, "解码密文失败"
+ivBytes, err = codec.DecodeHex(parsedData["iv"])
+assert err == nil, "解码IV失败"
+
+// 关键词: AESCBCDecrypt解密, PKCS7UnPadding去填充
+decrypted, err = codec.AESCBCDecrypt(aesKey, encryptedBytes, ivBytes)
+assert err == nil, f"AES解密失败: ${err}"
+
+decryptedStr = string(decrypted)
+assert decryptedStr == originalBody, "解密结果与原文不一致"
+println(f"[✓] AES CBC 解密成功")
+println(f"  解密后: ${decryptedStr}\n")
+
+println("=== 二、国密 SM4 CBC 加密/解密场景 ===")
+
+// 关键词: SM4密钥生成, 国密算法, 16字节密钥
+sm4Key = "sm4key1234567890"  // 16字节密钥
+sm4IV = "sm4iv12345678901"   // 16字节IV
+
+sm4OriginalBody = `{"userId":"10001","amount":"1000.00","currency":"CNY"}`
+println(f"[原始数据]")
+println(f"  Body: ${sm4OriginalBody}")
+println(f"  密钥: ${sm4Key}")
+println(f"  IV: ${sm4IV}\n")
+
+// 关键词: Sm4CBCEncrypt国密加密, PKCS7Padding
+sm4Encrypted, err = codec.Sm4CBCEncrypt(sm4Key, sm4OriginalBody, sm4IV)
+assert err == nil, f"SM4加密失败: ${err}"
+println(f"[✓] SM4 CBC 加密成功")
+println(f"  密文(Hex): ${codec.EncodeToHex(sm4Encrypted)}")
+println(f"  密文(Base64): ${codec.EncodeBase64(sm4Encrypted)}\n")
+
+// 关键词: 国密加密报文构造
+sm4EncryptedPacket = {
+    "encrypted": codec.EncodeToHex(sm4Encrypted),
+    "iv": codec.EncodeToHex(sm4IV),
+    "algorithm": "SM4-CBC"
+}
+sm4EncryptedJSON = json.dumps(sm4EncryptedPacket)
+println(f"[加密后的HTTP Body]")
+println(f"  ${sm4EncryptedJSON}\n")
+
+// 关键词: 国密解密参数提取
+sm4ParsedData = json.loads(sm4EncryptedJSON)
+
+sm4EncryptedBytes, err = codec.DecodeHex(sm4ParsedData["encrypted"])
+assert err == nil, "解码密文失败"
+sm4IVBytes, err = codec.DecodeHex(sm4ParsedData["iv"])
+assert err == nil, "解码IV失败"
+
+// 关键词: Sm4CBCDecrypt国密解密
+sm4Decrypted, err = codec.Sm4CBCDecrypt(sm4Key, sm4EncryptedBytes, sm4IVBytes)
+assert err == nil, f"SM4解密失败: ${err}"
+
+sm4DecryptedStr = string(sm4Decrypted)
+assert sm4DecryptedStr == sm4OriginalBody, "解密结果与原文不一致"
+println(f"[✓] SM4 CBC 解密成功")
+println(f"  解密后: ${sm4DecryptedStr}\n")
+
+println("=== 三、完整 HTTP 请求加密示例 ===")
+
+// 关键词: HTTP请求构造, Content-Type设置
+rawRequest = `POST /api/user/login HTTP/1.1
+Host: example.com
+Content-Type: application/json
+User-Agent: YakTest/1.0
+
+{"username":"testuser","password":"testpass123","remember":true}`
+
+println(f"[原始HTTP请求]")
+println(rawRequest)
+println("")
+
+// 关键词: HTTP请求解析, body提取
+bodyBytes = poc.GetHTTPPacketBody(rawRequest)
+bodyStr = string(bodyBytes)
+
+// 关键词: HTTP_body加密处理
+aesKey2 = "mykey1234567890!"
+aesIV2 = "myiv123456789012"
+
+encryptedBody, err = codec.AESCBCEncrypt(aesKey2, bodyStr, aesIV2)
+assert err == nil, "加密body失败"
+
+// 关键词: 加密body替换, HTTP请求重构
+newBodyData = {
+    "encrypted": codec.EncodeBase64(encryptedBody),
+    "iv": codec.EncodeBase64(aesIV2),
+    "algo": "AES-128-CBC"
+}
+newBodyJSON = json.dumps(newBodyData)
+
+// 关键词: poc.ReplaceBody替换body, HTTP请求修改
+modifiedReq = poc.ReplaceBody(rawRequest, newBodyJSON, false)
+
+println(f"[✓] 加密后的HTTP请求")
+println(string(modifiedReq))
+println("")
+
+println("=== 四、完整 HTTP 响应解密示例 ===")
+
+// 关键词: HTTP响应加密, 服务端返回加密数据
+encryptedResponse = `HTTP/1.1 200 OK
+Content-Type: application/json
+Server: Nginx/1.18.0
+
+{"encrypted":"` + codec.EncodeBase64(encryptedBody) + `","iv":"` + codec.EncodeBase64(aesIV2) + `","algo":"AES-128-CBC"}`
+
+println(f"[收到加密HTTP响应]")
+println(encryptedResponse)
+println("")
+
+// 关键词: HTTP响应解析
+respBodyBytes = poc.GetHTTPPacketBody(encryptedResponse)
+
+// 关键词: 响应body解密
+respBodyJSON = json.loads(string(respBodyBytes))
+
+encData, err = codec.DecodeBase64(respBodyJSON["encrypted"])
+assert err == nil, "解码密文失败"
+ivData, err = codec.DecodeBase64(respBodyJSON["iv"])
+assert err == nil, "解码IV失败"
+
+// 关键词: 响应数据解密验证
+decryptedResp, err = codec.AESCBCDecrypt(aesKey2, encData, ivData)
+assert err == nil, "解密响应失败"
+
+println(f"[✓] 解密后的响应数据")
+println(f"  ${string(decryptedResp)}\n")
+
+println("=== 五、多种编码方式对比 ===")
+
+testData = `{"test":"data"}`
+testKey = "key1234567890abc"
+testIV = "iv12345678901234"
+
+enc, _ = codec.AESCBCEncrypt(testKey, testData, testIV)
+
+println(f"[密文编码方式对比]")
+println(f"  原文: ${testData}")
+println(f"  Hex编码: ${codec.EncodeToHex(enc)}")
+println(f"  Base64编码: ${codec.EncodeBase64(enc)}")
+println(f"  Base64URL编码: ${codec.EncodeBase64Url(enc)}\n")
+
+// 关键词: Base64解码验证, Hex解码验证
+hexDec, _ = codec.DecodeHex(codec.EncodeToHex(enc))
+b64Dec, _ = codec.DecodeBase64(codec.EncodeBase64(enc))
+b64urlDec, _ = codec.DecodeBase64Url(codec.EncodeBase64Url(enc))
+
+dec1, _ = codec.AESCBCDecrypt(testKey, hexDec, testIV)
+dec2, _ = codec.AESCBCDecrypt(testKey, b64Dec, testIV)
+dec3, _ = codec.AESCBCDecrypt(testKey, b64urlDec, testIV)
+
+assert string(dec1) == testData, "Hex解码后解密失败"
+assert string(dec2) == testData, "Base64解码后解密失败"
+assert string(dec3) == testData, "Base64URL解码后解密失败"
+println(f"[✓] 所有编码方式解密验证通过")
+
+println("\n=== 六、实战场景: 修改加密请求参数 ===")
+
+// 关键词: 加密请求修改, 参数篡改, 中间人攻击模拟
+realKey = "realkey123456789"
+realIV = "realiv1234567890"
+
+realEncReq = `POST /api/payment HTTP/1.1
+Host: bank.example.com
+Content-Type: application/json
+
+{"encrypted":"` + codec.EncodeBase64(codec.AESCBCEncrypt(realKey, `{"amount":100,"to":"account123"}`, realIV)) + `","iv":"` + codec.EncodeBase64(realIV) + `"}`
+
+println(f"[原始加密请求]")
+println(realEncReq)
+println("")
+
+// 关键词: 加密请求解析修改
+reqBody = poc.GetHTTPPacketBody(realEncReq)
+reqJSON = json.loads(string(reqBody))
+
+// 解密原始数据
+encBytes, _ = codec.DecodeBase64(reqJSON["encrypted"])
+ivBytes2, _ = codec.DecodeBase64(reqJSON["iv"])
+originalData, _ = codec.AESCBCDecrypt(realKey, encBytes, ivBytes2)
+
+println(f"[解密得到原始数据]")
+println(f"  ${string(originalData)}")
+
+// 关键词: 修改业务参数, 金额篡改
+parsedPayload = json.loads(string(originalData))
+println(f"\n[修改参数]")
+println(f"  原金额: ${parsedPayload['amount']}")
+
+// 修改金额
+parsedPayload["amount"] = 1
+modifiedPayload = json.dumps(parsedPayload)
+println(f"  新金额: ${parsedPayload['amount']}")
+println(f"  修改后JSON: ${modifiedPayload}")
+
+// 关键词: 重新加密, 加密数据替换
+reEncrypted, _ = codec.AESCBCEncrypt(realKey, modifiedPayload, realIV)
+newReqBody = {
+    "encrypted": codec.EncodeBase64(reEncrypted),
+    "iv": codec.EncodeBase64(realIV)
+}
+newReqBodyJSON = json.dumps(newReqBody)
+
+// 关键词: HTTP请求body替换
+modifiedRequest = poc.ReplaceBody(realEncReq, newReqBodyJSON, false)
+
+println(f"\n[✓] 修改后的加密请求")
+println(string(modifiedRequest))
+
+// 关键词: 修改验证, 解密验证篡改
+verifyBody = poc.GetHTTPPacketBody(modifiedRequest)
+verifyJSON = json.loads(string(verifyBody))
+verifyEnc, _ = codec.DecodeBase64(verifyJSON["encrypted"])
+verifyIV, _ = codec.DecodeBase64(verifyJSON["iv"])
+verifyDec, _ = codec.AESCBCDecrypt(realKey, verifyEnc, verifyIV)
+verifyPayload = json.loads(string(verifyDec))
+
+println(f"\n[验证篡改结果]")
+println(f"  解密验证: ${string(verifyDec)}")
+assert verifyPayload["amount"] == 1, "金额修改失败"
+println(f"  [✓] 金额已成功修改为: ${verifyPayload['amount']}\n")
+
+println("================================================")
+println("HTTP 数据包 Body 加密/解密测试完成")
+println("================================================\n")
+
+println("测试总结:")
+println("  ✓ AES CBC 加密/解密")
+println("  ✓ 国密 SM4 CBC 加密/解密")
+println("  ✓ HTTP 请求 body 加密")
+println("  ✓ HTTP 响应 body 解密")
+println("  ✓ 多种编码方式 (Hex/Base64/Base64URL)")
+println("  ✓ 实战: 修改加密请求参数")
+println("\nHTTP Body 加密/解密功能验证完成！\n")
+
+/*
+HTTP Body 加密/解密核心API:
+
+AES加密:
+- AESCBCEncrypt(key,data,iv) - AES CBC模式加密，自动PKCS7填充
+- AESCBCDecrypt(key,data,iv) - AES CBC模式解密，自动去填充
+- 密钥长度: 16/24/32字节 (AES-128/192/256)
+- IV长度: 16字节
+- 别名: AESEncrypt, AESDecrypt
+
+SM4国密加密:
+- Sm4CBCEncrypt(key,data,iv) - SM4 CBC模式加密，自动PKCS7填充
+- Sm4CBCDecrypt(key,data,iv) - SM4 CBC模式解密，自动去填充
+- 密钥长度: 16字节
+- IV长度: 16字节
+- 别名: Sm4Encrypt, Sm4Decrypt, Sm4CBCEncryptWithPKCSPadding, Sm4CBCDecryptWithPKCSPadding
+
+编码转换:
+- EncodeToHex(data) - 转Hex字符串
+- DecodeHex(hexStr) - Hex解码
+- EncodeBase64(data) - 转Base64字符串
+- DecodeBase64(b64Str) - Base64解码
+- EncodeBase64Url(data) - 转Base64URL字符串
+- DecodeBase64Url(b64urlStr) - Base64URL解码
+
+HTTP处理:
+- poc.GetHTTPPacketBody(packet) - 提取HTTP请求/响应body
+- poc.ReplaceBody(packet,newBody,chunked) - 替换body
+- poc.GetHTTPPacketHeader(packet,key) - 获取header
+- poc.GetHTTPPacketCookie(packet,key) - 获取cookie
+
+JSON处理:
+- json.dumps(obj) - 对象转JSON字符串
+- json.loads(jsonStr) - JSON字符串转对象
+
+应用场景:
+1. API接口加密通信: 敏感数据传输加密
+2. 数据签名验证: 防篡改校验
+3. 中间人攻击测试: 解密-修改-重加密
+4. 加密流量分析: 抓包解密分析
+5. 国密合规: SM4算法符合国密标准
+6. 参数篡改测试: 业务逻辑漏洞测试
+
+注意事项:
+1. 密钥和IV要保密，不要硬编码在生产代码
+2. CBC模式需要随机IV，避免重放攻击
+3. 加密不等于签名，需要额外的MAC保证完整性
+4. 国密算法用于符合国家密码管理局要求的场景
+5. 测试环境可用固定key/iv，生产必须动态生成
+*/
+
