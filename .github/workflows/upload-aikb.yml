@@ -15,6 +15,15 @@ on:
   
   # 允许手动触发
   workflow_dispatch:
+    inputs:
+      update_mode:
+        description: 'Update mode: incremental (default) or full'
+        required: false
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
 
 # 确保同一时间只运行一个上传任务
 concurrency:
@@ -41,6 +50,18 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
           echo "Actor: ${{ github.actor }}"
+          
+          # 显示更新模式（手动触发时）
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
+            if [ -z "$UPDATE_MODE" ]; then
+              UPDATE_MODE="incremental"
+            fi
+            echo "Update Mode: $UPDATE_MODE"
+          else
+            echo "Update Mode: incremental (auto)"
+          fi
+          
           echo "============================================"
       
       - name: Download Yaklang Engine (v1.4.4-alpha1029)
@@ -126,9 +147,10 @@ jobs:
           echo "✓ AIKB ZIP file generated successfully"
 
       - name: Generate diff report and package
-        if: always()
+        if: always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.update_mode != 'full')
         run: |
           echo "=== Generating ZIP diff report and package ==="
+          echo "Update mode: incremental"
           
           if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
             # 使用 diff-zip-v2.yak 进行对比和生成差异包
@@ -170,11 +192,39 @@ jobs:
         run: |
           echo "=== Updating RAG knowledge base ==="
           
-          # 检查是否有差异包
-          if [ ! -f diff-fs.zip ]; then
-            echo "⚠️  No diff package found, skipping RAG update"
-            exit 0
+          # 确定更新模式和使用的 ZIP 文件
+          UPDATE_MODE="incremental"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
+            if [ -z "$UPDATE_MODE" ]; then
+              UPDATE_MODE="incremental"
+            fi
           fi
+          
+          echo "Update mode: $UPDATE_MODE"
+          
+          # 根据更新模式选择 ZIP 文件
+          if [ "$UPDATE_MODE" = "full" ]; then
+            echo "Full update mode: using yaklang-aikb.zip"
+            DIFF_ZIP="yaklang-aikb.zip"
+            
+            if [ ! -f "$DIFF_ZIP" ]; then
+              echo "ERROR: yaklang-aikb.zip not found for full update"
+              exit 1
+            fi
+          else
+            echo "Incremental update mode: using diff-fs.zip"
+            DIFF_ZIP="diff-fs.zip"
+            
+            # 检查是否有差异包
+            if [ ! -f "$DIFF_ZIP" ]; then
+              echo "⚠️  No diff package found, skipping RAG update"
+              exit 0
+            fi
+          fi
+          
+          echo "Using ZIP file: $DIFF_ZIP"
+          ls -lh "$DIFF_ZIP"
           
           echo "=== Checking required environment variables ==="
           
@@ -238,9 +288,10 @@ jobs:
           # 运行 update-rag.yak（使用环境变量 TARGET_DIRS）
           echo ""
           echo "=== Running update-rag.yak ==="
+          echo "Using diff-zip: $DIFF_ZIP"
           ./yak scripts/update-rag.yak \
             --rag-file-dir rag-files \
-            --diff-zip diff-fs.zip \
+            --diff-zip "$DIFF_ZIP" \
             --embedding-host "$EMBEDDING_HOST" \
             --embedding-port "$EMBEDDING_PORT" \
             --totp-secret "$TOTP_SECRET" \
@@ -661,4 +712,15 @@ jobs:
           echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- Target Directories: \`$TARGET_DIRS\`" >> $GITHUB_STEP_SUMMARY
+          
+          # 显示更新模式
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
+            if [ -z "$UPDATE_MODE" ]; then
+              UPDATE_MODE="incremental"
+            fi
+            echo "- Update Mode: \`$UPDATE_MODE\` (manual trigger)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Update Mode: \`incremental\` (auto trigger)" >> $GITHUB_STEP_SUMMARY
+          fi
 
