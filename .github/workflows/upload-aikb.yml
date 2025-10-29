@@ -15,23 +15,11 @@ on:
   
   # 允许手动触发
   workflow_dispatch:
-    inputs:
-      update_mode:
-        description: 'Update mode: incremental (default) or full'
-        required: false
-        default: 'incremental'
-        type: choice
-        options:
-          - incremental
-          - full
 
 # 确保同一时间只运行一个上传任务
 concurrency:
   group: upload-aikb
   cancel-in-progress: false
-
-env:
-  TARGET_DIRS: "practice"
 
 jobs:
   build-and-upload:
@@ -50,18 +38,7 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
           echo "Actor: ${{ github.actor }}"
-          
-          # 显示更新模式（手动触发时）
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
-            if [ -z "$UPDATE_MODE" ]; then
-              UPDATE_MODE="incremental"
-            fi
-            echo "Update Mode: $UPDATE_MODE"
-          else
-            echo "Update Mode: incremental (auto)"
-          fi
-          
+          echo "Update Mode: incremental"
           echo "============================================"
       
       - name: Download Yaklang Engine (v1.4.4-alpha1029)
@@ -147,7 +124,7 @@ jobs:
           echo "✓ AIKB ZIP file generated successfully"
 
       - name: Generate diff report and package
-        if: always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.update_mode != 'full')
+        if: always()
         run: |
           echo "=== Generating ZIP diff report and package ==="
           echo "Update mode: incremental"
@@ -191,39 +168,18 @@ jobs:
           TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
         run: |
           echo "=== Updating RAG knowledge base ==="
+          echo "Update mode: incremental"
           
-          # 确定更新模式和使用的 ZIP 文件
-          UPDATE_MODE="incremental"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
-            if [ -z "$UPDATE_MODE" ]; then
-              UPDATE_MODE="incremental"
-            fi
+          # 使用差异包进行增量更新
+          DIFF_ZIP="diff-fs.zip"
+          
+          # 检查是否有差异包
+          if [ ! -f "$DIFF_ZIP" ]; then
+            echo "⚠️  No diff package found, skipping RAG update"
+            exit 0
           fi
           
-          echo "Update mode: $UPDATE_MODE"
-          
-          # 根据更新模式选择 ZIP 文件
-          if [ "$UPDATE_MODE" = "full" ]; then
-            echo "Full update mode: using yaklang-aikb.zip"
-            DIFF_ZIP="yaklang-aikb.zip"
-            
-            if [ ! -f "$DIFF_ZIP" ]; then
-              echo "ERROR: yaklang-aikb.zip not found for full update"
-              exit 1
-            fi
-          else
-            echo "Incremental update mode: using diff-fs.zip"
-            DIFF_ZIP="diff-fs.zip"
-            
-            # 检查是否有差异包
-            if [ ! -f "$DIFF_ZIP" ]; then
-              echo "⚠️  No diff package found, skipping RAG update"
-              exit 0
-            fi
-          fi
-          
-          echo "Using ZIP file: $DIFF_ZIP"
+          echo "Using diff ZIP file: $DIFF_ZIP"
           ls -lh "$DIFF_ZIP"
           
           echo "=== Checking required environment variables ==="
@@ -246,56 +202,54 @@ jobs:
             exit 1
           fi
           
-          if [ -z "$TARGET_DIRS" ]; then
-            echo "ERROR: TARGET_DIRS environment variable is not set"
-            exit 1
-          fi
-          
           echo "✓ All required environment variables are set"
           echo "EMBEDDING_HOST: $EMBEDDING_HOST"
           echo "EMBEDDING_PORT: $EMBEDDING_PORT"
           echo "TOTP_SECRET: [REDACTED]"
-          echo "TARGET_DIRS: $TARGET_DIRS"
           
-          # 创建 RAG 文件目录
-          mkdir -p rag-files
-          echo "✓ Created rag-files directory"
-          
-          # 下载每个目录的旧 RAG 文件（如果存在）
+          # 下载旧的 RAG 文件（如果存在）
           echo ""
-          echo "=== Downloading existing RAG files ==="
-          IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-          for dir in "${DIRS[@]}"; do
-            # 去除可能的空格
-            dir=$(echo "$dir" | xargs)
-            
-            # 从 OSS 下载 {dir}.rag 文件
-            RAG_URL="https://oss-qn.yaklang.com/ai-knowledge-base/rag/${dir}.rag"
-            DOWNLOADED_FILE="rag-files/${dir}.rag"
-            OLD_RAG_FILE="rag-files/${dir}_old.rag"
-            
-            echo "Trying to download: $RAG_URL"
-            if curl -f -s -o "$DOWNLOADED_FILE" "$RAG_URL"; then
-              # 下载成功后重命名为 _old.rag
-              mv "$DOWNLOADED_FILE" "$OLD_RAG_FILE"
-              echo "✓ Downloaded and renamed RAG file for $dir"
-              ls -lh "$OLD_RAG_FILE"
-            else
-              echo "⚠️  No existing RAG file for $dir, will create new one"
-            fi
-          done
+          echo "=== Downloading existing RAG file ==="
+          RAG_URL="https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.rag"
+          OLD_RAG_FILE="yaklang-aikb_old.rag"
+          NEW_RAG_FILE="yaklang-aikb_new.rag"
           
-          # 运行 update-rag.yak（使用环境变量 TARGET_DIRS）
+          echo "Trying to download: $RAG_URL"
+          RAG_FILE_ARG=""
+          if curl -f -s -o "$OLD_RAG_FILE" "$RAG_URL"; then
+            echo "✓ Downloaded existing RAG file"
+            ls -lh "$OLD_RAG_FILE"
+            RAG_FILE_ARG="--rag-file $OLD_RAG_FILE"
+          else
+            echo "⚠️  No existing RAG file found, will create new one"
+          fi
+          
+          # 运行 update-rag.yak
           echo ""
           echo "=== Running update-rag.yak ==="
           echo "Using diff-zip: $DIFF_ZIP"
-          ./yak scripts/update-rag.yak \
-            --rag-file-dir rag-files \
-            --diff-zip "$DIFF_ZIP" \
-            --embedding-host "$EMBEDDING_HOST" \
-            --embedding-port "$EMBEDDING_PORT" \
-            --totp-secret "$TOTP_SECRET" \
-            --timeout 60
+          echo "Output file: $NEW_RAG_FILE"
+          
+          if [ -n "$RAG_FILE_ARG" ]; then
+            echo "Using existing RAG file: $OLD_RAG_FILE"
+            ./yak scripts/update-rag.yak \
+              $RAG_FILE_ARG \
+              --diff-zip "$DIFF_ZIP" \
+              --output "$NEW_RAG_FILE" \
+              --embedding-host "$EMBEDDING_HOST" \
+              --embedding-port "$EMBEDDING_PORT" \
+              --totp-secret "$TOTP_SECRET" \
+              --timeout 60
+          else
+            echo "Creating new RAG (no existing file)"
+            ./yak scripts/update-rag.yak \
+              --diff-zip "$DIFF_ZIP" \
+              --output "$NEW_RAG_FILE" \
+              --embedding-host "$EMBEDDING_HOST" \
+              --embedding-port "$EMBEDDING_PORT" \
+              --totp-secret "$TOTP_SECRET" \
+              --timeout 60
+          fi
           
           if [ $? -ne 0 ]; then
             echo "ERROR: Failed to update RAG"
@@ -304,48 +258,26 @@ jobs:
           
           # 验证生成的文件
           echo ""
-          echo "=== Verifying generated RAG files ==="
-          RAG_FILES_GENERATED=0
-          for dir in "${DIRS[@]}"; do
-            dir=$(echo "$dir" | xargs)
-            NEW_RAG_FILE="rag-files/${dir}_new.rag"
-            
-            if [ -f "$NEW_RAG_FILE" ]; then
-              echo "✓ RAG file generated for $dir"
-              ls -lh "$NEW_RAG_FILE"
-              RAG_FILES_GENERATED=$((RAG_FILES_GENERATED + 1))
-            else
-              echo "⚠️  RAG file not generated for $dir"
-            fi
-          done
+          echo "=== Verifying generated RAG file ==="
           
-          # 显示汇总报告
-          if [ -f rag-files/update-summary.md ]; then
-            echo ""
-            echo "=== Update Summary Report ==="
-            cat rag-files/update-summary.md
+          if [ -f "$NEW_RAG_FILE" ]; then
+            echo "✓ RAG file generated"
+            ls -lh "$NEW_RAG_FILE"
+          else
+            echo "ERROR: RAG file not generated"
+            exit 1
           fi
           
-          # 显示各目录的详细报告
-          for dir in "${DIRS[@]}"; do
-            dir=$(echo "$dir" | xargs)
-            REPORT_FILE="rag-files/${dir}_update-report.md"
-            if [ -f "$REPORT_FILE" ]; then
-              echo ""
-              echo "=== Update Report for $dir ==="
-              cat "$REPORT_FILE"
-            fi
-          done
-          
-          if [ $RAG_FILES_GENERATED -eq 0 ]; then
+          # 显示更新报告
+          REPORT_FILE="yaklang-aikb_new.update-report.md"
+          if [ -f "$REPORT_FILE" ]; then
             echo ""
-            echo "ERROR: No RAG files were generated"
-            exit 1
+            echo "=== Update Report ==="
+            cat "$REPORT_FILE"
           fi
           
           echo ""
           echo "✓ RAG update completed successfully"
-          echo "  Generated $RAG_FILES_GENERATED RAG file(s)"
 
       - name: Create upload timestamp file
         run: |
@@ -422,68 +354,50 @@ jobs:
           
           echo "✓ yaklang-aikb.updated_at.txt uploaded successfully"
           
-          # 上传 RAG 文件（每个目录的 RAG 文件）
+          # 上传 RAG 文件
           echo ""
-          echo "=== Uploading RAG files ==="
+          echo "=== Uploading RAG file ==="
           
-          if [ -z "$TARGET_DIRS" ]; then
-            echo "⚠️  TARGET_DIRS not set, skipping RAG upload"
+          NEW_RAG_FILE="yaklang-aikb_new.rag"
+          
+          if [ -f "$NEW_RAG_FILE" ]; then
+            echo "Uploading RAG file..."
+            echo "  Source: $NEW_RAG_FILE"
+            echo "  Target: /ai-knowledge-base/rag/yaklang-aikb.rag"
+            
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 10 \
+              -f "$NEW_RAG_FILE:/ai-knowledge-base/rag/yaklang-aikb.rag"
+            
+            if [ $? -ne 0 ]; then
+              echo "ERROR: Failed to upload RAG file"
+              exit 1
+            fi
+            
+            echo "✓ RAG file uploaded successfully"
           else
-            IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-            RAG_UPLOADED=0
-            
-            for dir in "${DIRS[@]}"; do
-              dir=$(echo "$dir" | xargs)
-              NEW_RAG_FILE="rag-files/${dir}_new.rag"
-              UPLOAD_RAG_FILE="rag-files/${dir}.rag"
-              
-              if [ -f "$NEW_RAG_FILE" ]; then
-                # 将 _new.rag 重命名为 .rag 用于上传
-                cp "$NEW_RAG_FILE" "$UPLOAD_RAG_FILE"
-                
-                echo ""
-                echo "Uploading RAG file for $dir..."
-                echo "  Source: $NEW_RAG_FILE"
-                echo "  Target: /ai-knowledge-base/rag/${dir}.rag"
-                
-                ./yak upload-oss \
-                  -b "$BUCKET" \
-                  --endpoint "$ENDPOINT" \
-                  -ak "$OSS_KEY_ID" \
-                  -sk "$OSS_KEY_SECRET" \
-                  -t 10 \
-                  -f "$UPLOAD_RAG_FILE:/ai-knowledge-base/rag/${dir}.rag"
-                
-                if [ $? -ne 0 ]; then
-                  echo "ERROR: Failed to upload RAG file for $dir"
-                  exit 1
-                fi
-                
-                echo "✓ RAG file for $dir uploaded successfully"
-                RAG_UPLOADED=$((RAG_UPLOADED + 1))
-              else
-                echo "⚠️  RAG file not found for $dir, skipping"
-              fi
-            done
-            
-            echo ""
-            echo "✓ Uploaded $RAG_UPLOADED RAG file(s)"
+            echo "⚠️  RAG file not found, skipping upload"
           fi
           
-          # 上传汇总报告（如果存在）
-          if [ -f rag-files/update-summary.md ]; then
+          # 上传更新报告（如果存在）
+          REPORT_FILE="yaklang-aikb_new.update-report.md"
+          if [ -f "$REPORT_FILE" ]; then
             echo ""
-            echo "Uploading RAG update summary report..."
+            echo "Uploading RAG update report..."
             ./yak upload-oss \
               -b "$BUCKET" \
               --endpoint "$ENDPOINT" \
               -ak "$OSS_KEY_ID" \
               -sk "$OSS_KEY_SECRET" \
               -t 5 \
-              -f "rag-files/update-summary.md:/ai-knowledge-base/rag/update-summary.md"
+              -f "$REPORT_FILE:/ai-knowledge-base/rag/yaklang-aikb.update-report.md"
             
             if [ $? -eq 0 ]; then
-              echo "✓ Update summary report uploaded successfully"
+              echo "✓ Update report uploaded successfully"
             fi
           fi
           
@@ -548,48 +462,27 @@ jobs:
           
           echo "✓ yaklang-aikb.updated_at.txt verified successfully"
           
-          # 验证 RAG 文件（仅验证实际生成和上传的文件）
-          if [ -n "$TARGET_DIRS" ]; then
-            echo ""
-            echo "=== Verifying RAG files ==="
-            IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-            RAG_VERIFIED=0
-            RAG_TO_VERIFY=0
+          # 验证 RAG 文件
+          echo ""
+          echo "=== Verifying RAG file ==="
+          
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            RAG_URL="${BASE_URL}/rag/yaklang-aikb.rag"
             
-            for dir in "${DIRS[@]}"; do
-              dir=$(echo "$dir" | xargs)
-              
-              # 只验证实际生成的 RAG 文件
-              if [ ! -f "rag-files/${dir}_new.rag" ]; then
-                echo "⚠️  Skipping verification for $dir (RAG file was not generated)"
-                continue
-              fi
-              
-              RAG_TO_VERIFY=$((RAG_TO_VERIFY + 1))
-              RAG_URL="${BASE_URL}/rag/${dir}.rag"
-              
-              echo ""
-              echo "Verifying RAG file for $dir..."
-              echo "URL: $RAG_URL"
-              HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_URL")
-              
-              if [ "$HTTP_CODE" = "200" ]; then
-                CONTENT_LENGTH=$(curl -I -s "$RAG_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
-                echo "HTTP Status: $HTTP_CODE"
-                echo "Content-Length: $CONTENT_LENGTH bytes"
-                echo "✓ RAG file for $dir verified successfully"
-                RAG_VERIFIED=$((RAG_VERIFIED + 1))
-              else
-                echo "❌ RAG file for $dir verification failed (HTTP $HTTP_CODE)"
-              fi
-            done
+            echo "Verifying RAG file..."
+            echo "URL: $RAG_URL"
+            HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_URL")
             
-            echo ""
-            if [ $RAG_TO_VERIFY -eq 0 ]; then
-              echo "ℹ️  No RAG files to verify (none were generated)"
+            if [ "$HTTP_CODE" = "200" ]; then
+              CONTENT_LENGTH=$(curl -I -s "$RAG_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+              echo "HTTP Status: $HTTP_CODE"
+              echo "Content-Length: $CONTENT_LENGTH bytes"
+              echo "✓ RAG file verified successfully"
             else
-              echo "✓ Verified $RAG_VERIFIED out of $RAG_TO_VERIFY RAG file(s)"
+              echo "❌ RAG file verification failed (HTTP $HTTP_CODE)"
             fi
+          else
+            echo "ℹ️  No RAG file to verify (was not generated)"
           fi
           
           echo ""
@@ -601,17 +494,11 @@ jobs:
           echo "  ZIP: $ZIP_URL"
           echo "  Timestamp: $TIMESTAMP_URL"
           
-          if [ -n "$TARGET_DIRS" ]; then
+          # 显示 RAG 文件 URL
+          if [ -f "yaklang-aikb_new.rag" ]; then
             echo ""
-            echo "RAG files (successfully uploaded):"
-            IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-            for dir in "${DIRS[@]}"; do
-              dir=$(echo "$dir" | xargs)
-              # 只显示实际生成和上传的 RAG 文件
-              if [ -f "rag-files/${dir}_new.rag" ]; then
-                echo "  - $dir: ${BASE_URL}/rag/${dir}.rag"
-              fi
-            done
+            echo "RAG file (successfully uploaded):"
+            echo "  - ${BASE_URL}/rag/yaklang-aikb.rag"
           fi
           
           echo ""
@@ -636,29 +523,9 @@ jobs:
           echo "- \`yaklang-aikb.updated_at.txt\` - Upload timestamp" >> $GITHUB_STEP_SUMMARY
           echo "- \`diff-fs.zip\` - Diff package (available in artifacts)" >> $GITHUB_STEP_SUMMARY
           
-          # 列出所有 RAG 文件（仅列出实际生成的）
-          if [ -n "$TARGET_DIRS" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-            RAG_COUNT=0
-            for dir in "${DIRS[@]}"; do
-              dir=$(echo "$dir" | xargs)
-              if [ -f "rag-files/${dir}_new.rag" ]; then
-                RAG_COUNT=$((RAG_COUNT + 1))
-              fi
-            done
-            
-            if [ $RAG_COUNT -gt 0 ]; then
-              echo "**RAG Files Generated ($RAG_COUNT):**" >> $GITHUB_STEP_SUMMARY
-              for dir in "${DIRS[@]}"; do
-                dir=$(echo "$dir" | xargs)
-                if [ -f "rag-files/${dir}_new.rag" ]; then
-                  echo "- \`${dir}.rag\` - RAG knowledge base for $dir" >> $GITHUB_STEP_SUMMARY
-                fi
-              done
-            else
-              echo "**RAG Files:** None generated" >> $GITHUB_STEP_SUMMARY
-            fi
+          # 列出 RAG 文件
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            echo "- \`yaklang-aikb.rag\` - RAG knowledge base" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -666,27 +533,9 @@ jobs:
           echo "- ZIP: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
           
-          # 列出所有 RAG 文件的 URL（仅列出实际生成的）
-          if [ -n "$TARGET_DIRS" ]; then
-            IFS=',' read -ra DIRS <<< "$TARGET_DIRS"
-            RAG_COUNT=0
-            for dir in "${DIRS[@]}"; do
-              dir=$(echo "$dir" | xargs)
-              if [ -f "rag-files/${dir}_new.rag" ]; then
-                RAG_COUNT=$((RAG_COUNT + 1))
-              fi
-            done
-            
-            if [ $RAG_COUNT -gt 0 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "**RAG Files:**" >> $GITHUB_STEP_SUMMARY
-              for dir in "${DIRS[@]}"; do
-                dir=$(echo "$dir" | xargs)
-                if [ -f "rag-files/${dir}_new.rag" ]; then
-                  echo "- $dir: https://oss-qn.yaklang.com/ai-knowledge-base/rag/${dir}.rag" >> $GITHUB_STEP_SUMMARY
-                fi
-              done
-            fi
+          # 列出 RAG 文件的 URL
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            echo "- RAG: https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.rag" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -699,11 +548,11 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
-          # 添加 RAG 更新汇总报告
-          if [ -f rag-files/update-summary.md ]; then
-            echo "### 🧠 RAG Update Summary" >> $GITHUB_STEP_SUMMARY
+          # 添加 RAG 更新报告
+          if [ -f yaklang-aikb_new.update-report.md ]; then
+            echo "### 🧠 RAG Update Report" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            cat rag-files/update-summary.md >> $GITHUB_STEP_SUMMARY
+            cat yaklang-aikb_new.update-report.md >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
@@ -711,16 +560,5 @@ jobs:
           echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Target Directories: \`$TARGET_DIRS\`" >> $GITHUB_STEP_SUMMARY
-          
-          # 显示更新模式
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            UPDATE_MODE="${{ github.event.inputs.update_mode }}"
-            if [ -z "$UPDATE_MODE" ]; then
-              UPDATE_MODE="incremental"
-            fi
-            echo "- Update Mode: \`$UPDATE_MODE\` (manual trigger)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- Update Mode: \`incremental\` (auto trigger)" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "- Update Mode: \`incremental\`" >> $GITHUB_STEP_SUMMARY
 

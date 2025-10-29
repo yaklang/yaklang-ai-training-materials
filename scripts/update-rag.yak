@@ -13,12 +13,7 @@
 // - poc.HTTP: HTTP 请求
 //
 // 使用示例:
-// 方式1: 命令行参数
-// yak scripts/update-rag.yak --rag-file-dir /tmp --target-dirs scripts,apps --diff-zip diff-fs.zip --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret
-//
-// 方式2: 环境变量
-// export TARGET_DIRS="scripts,apps"
-// yak scripts/update-rag.yak --rag-file-dir /tmp --diff-zip diff-fs.zip --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret
+// yak scripts/update-rag.yak --rag-file /path/to/old.rag --diff-zip diff-fs.zip --output /path/to/new.rag --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret
 //
 // 应用场景: RAG 增量更新、知识库同步、自动化索引更新
 // 关键词: rag-update diff-update embedding-client incremental-update
@@ -34,20 +29,12 @@ yakit.AutoInitYakit()
 // 功能: 定义脚本的命令行参数，配置 RAG 文件、差异包、embedding 服务等
 // =============================================================================
 
-// RAG 文件目录（用于读取和保存 RAG 文件）
-ragFileDir = cli.String(
-    "rag-file-dir",
-    cli.setVerboseName("RAG文件目录"),
-    cli.setRequired(true),
-    cli.setHelp("Directory for RAG files, will read {dir}_old.rag and generate {dir}_new.rag")
-)
-
-// 目标目录列表（逗号分隔）
-targetDirs = cli.String(
-    "target-dirs",
-    cli.setVerboseName("目标目录"),
+// RAG 文件路径（要导入的原始 RAG 文件，可选）
+ragFilePath = cli.String(
+    "rag-file",
+    cli.setVerboseName("旧RAG路径"),
     cli.setDefault(""),
-    cli.setHelp("Target directories to process, comma-separated (e.g., scripts,apps). Can also be set via TARGET_DIRS environment variable.")
+    cli.setHelp("Path to the RAG export file (.rag), if not specified, a new RAG will be created")
 )
 
 // 差异 ZIP 文件路径
@@ -58,7 +45,15 @@ diffZipPath = cli.String(
     cli.setHelp("Path to the diff ZIP file")
 )
 
-ragCollectionNamePrefix = "yaklang-aikb"
+// 输出 RAG 文件路径
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setRequired(true),
+    cli.setHelp("Output RAG export file path")
+)
+
+ragCollectionName = "yaklang-aikb"
 
 // Embedding 服务器地址
 embeddingHost = cli.String(
@@ -94,55 +89,27 @@ cli.check()
 // 参数验证模块
 // =============================================================================
 
-// 从环境变量读取目标目录（如果未通过命令行参数指定）
-if targetDirs == "" {
-    envTargetDirs = os.Getenv("TARGET_DIRS")
-    if envTargetDirs != "" {
-        targetDirs = envTargetDirs
-        log.info("Using target directories from environment variable: %s", targetDirs)
-    }
+if diffZipPath == "" || outputRagPath == "" {
+    die("Required parameters: --diff-zip, --output")
 }
 
-if diffZipPath == "" || ragFileDir == "" || targetDirs == "" {
-    die("Required parameters: --diff-zip, --rag-file-dir, --target-dirs (or TARGET_DIRS env var)")
+if ragFilePath != "" && !file.IsExisted(ragFilePath) {
+    die(sprintf("RAG file does not exist: %s", ragFilePath))
 }
 
 if !file.IsExisted(diffZipPath) {
     die(sprintf("Diff ZIP file does not exist: %s", diffZipPath))
 }
 
-if !file.IsExisted(ragFileDir) {
-    die(sprintf("RAG file directory does not exist: %s", ragFileDir))
-}
-
-// 解析目标目录列表
-targetDirList = str.Split(targetDirs, ",")
-if len(targetDirList) == 0 {
-    die("No target directories specified")
-}
-
-// 去除空格
-for i, dir := range targetDirList {
-    targetDirList[i] = str.TrimSpace(dir)
-}
-
-// 过滤空字符串
-filteredDirList = []
-for _, dir := range targetDirList {
-    if dir != "" {
-        filteredDirList = append(filteredDirList, dir)
-    }
-}
-targetDirList = filteredDirList
-
-if len(targetDirList) == 0 {
-    die("No valid target directories after filtering")
-}
-
 log.info("=== RAG Update Configuration ===")
-log.info("RAG File Dir: %s", ragFileDir)
-log.info("Target Dirs: %v", targetDirList)
+if ragFilePath != "" {
+    log.info("RAG File: %s (import existing)", ragFilePath)
+} else {
+    log.info("RAG File: Not specified (create new)")
+}
 log.info("Diff ZIP: %s", diffZipPath)
+log.info("Output: %s", outputRagPath)
+log.info("Collection: %s", ragCollectionName)
 log.info("Embedding Server: %s:%d", embeddingHost, embeddingPort)
 if totpSecret != "" {
     log.info("TOTP Auth: Enabled")
@@ -161,7 +128,7 @@ dev_env_embeddingHandle = (text) => {
         log.error("Empty text for embedding")
         return nil
     }
-    
+
     log.info("Generating embedding for text (length: %d)", len(text))
 
     data = {"input": text,"encoding_format":"float"}
@@ -185,7 +152,7 @@ Host: 127.0.0.1:11435
         log.error("Parse embedding data failed: %v" % err)
         return nil
     }
-    
+
 }
 
 prod_env_embeddingHandle = func(text) {
@@ -193,38 +160,38 @@ prod_env_embeddingHandle = func(text) {
         log.error("Empty text for embedding")
         return nil
     }
-    
+
     log.info("Generating embedding for text (length: %d)", len(text))
-    
+
     // 如果配置了 TOTP，生成验证码
     totpCode = ""
     if totpSecret != "" {
         totpCode = twofa.GetUTCCode(totpSecret)
         log.info("Generated TOTP code: %s", totpCode)
     }
-    
+
     // 构建请求体
     requestBody = json.dumps({
         "input": text,
         "model": "embedding",
     })
-    
+
     // 构建 HTTP 请求
     httpRequest = sprintf(`POST /embeddings HTTP/1.1
 Host: %s
 Content-Type: application/json`, embeddingHost)
-    
+
     // 如果有 TOTP，添加验证头
     if totpCode != "" {
         httpRequest = sprintf(`%s
 X-TOTP-Code: %s`, httpRequest, totpCode)
     }
-    
+
     httpRequest = sprintf(`%s
 Content-Length: %d
 
 %s`, httpRequest, len(requestBody), requestBody)
-    
+
     // 发送请求
     try {
         rsp, _, err = poc.HTTP(
@@ -233,37 +200,37 @@ Content-Length: %d
             poc.port(embeddingPort),
             poc.timeout(timeout),
         )
-        
+
         if err != nil {
             log.error("Failed to send embedding request: %v", err)
             return nil
         }
-        
+
         // 获取状态码
         statusCode = poc.GetStatusCodeFromResponse(rsp)
-        
+
         if statusCode != 200 {
             log.error("Embedding request failed with status code: %d", statusCode)
             _, body = poc.Split(rsp)
             log.error("Response body: %s", string(body))
             return nil
         }
-        
+
         // 解析响应
         _, body = poc.Split(rsp)
         responseData = json.loads(body)
-        
+
         if responseData["data"] == nil || len(responseData["data"]) == 0 {
             log.error("No embedding data in response")
             return nil
         }
-        
+
         embeddingData = responseData["data"][0]
         embedding = embeddingData["embedding"]
-        
+
         log.info("Embedding generated successfully (dimension: %d)", len(embedding))
         return embedding
-        
+
     } catch embeddingErr {
         log.error("Failed to generate embedding: %v", embeddingErr)
         return nil
@@ -273,20 +240,73 @@ Content-Length: %d
 embeddingHandle = prod_env_embeddingHandle
 
 // =============================================================================
-// 读取差异 ZIP 文件
-// 功能: 解析差异 ZIP，提取所有文件内容，按目录分组
+// RAG 导入/创建模块
+// 功能: 如果指定了 RAG 文件则导入，否则创建新的 RAG 集合
+// =============================================================================
+
+// 移除现有集合
+rag.DeleteCollection(ragCollectionName)
+
+if ragFilePath != "" {
+    log.info("=== Step 1: Importing RAG file ===")
+
+    try {
+        err = rag.Import(ragFilePath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.error("Failed to import RAG file: %v", err)
+            die(sprintf("Failed to import RAG file: %v", err))
+        }
+
+        log.info("✓ RAG file imported successfully: %s", ragCollectionName)
+
+    } catch importErr {
+        log.error("Failed to import RAG file: %v", importErr)
+        die(sprintf("Failed to import RAG file: %v", importErr))
+    }
+} else {
+    log.info("=== Step 1: Creating new RAG collection ===")
+    log.info("No RAG file specified, will create a new collection: %s", ragCollectionName)
+}
+
+// =============================================================================
+// 加载 RAG Collection
+// 功能: 使用 embedding 处理函数加载或创建 RAG 集合
 // =============================================================================
 
 log.info("")
-log.info("=== Step 1: Reading diff ZIP file ===")
+log.info("=== Step 2: Loading RAG collection ===")
 
-// 按目录分组存储文件
-diffFilesByDir = make(map[string]map[string]string)
-for _, dir := range targetDirList {
-    diffFilesByDir[dir] = make(map[string]string)
+ragSystem, err = rag.GetCollection(ragCollectionName, rag.embeddingHandle(embeddingHandle))
+if err != nil {
+    log.error("Failed to load RAG collection: %v", err)
+    die(sprintf("Failed to load RAG collection: %v", err))
 }
 
-totalFileCount = 0
+if ragFilePath != "" {
+    log.info("✓ RAG collection loaded successfully: %s", ragCollectionName)
+} else {
+    log.info("✓ New RAG collection created successfully: %s", ragCollectionName)
+}
+
+// 获取旧 RAG 的文档数量
+oldDocCount = 0
+oldDocCount, err = ragSystem.CountDocuments()
+if err != nil {
+    log.error("Failed to get old document count: %v", err)
+    oldDocCount = 0
+} else {
+    log.info("Old RAG document count: %d", oldDocCount)
+}
+// =============================================================================
+// 读取差异 ZIP 文件
+// 功能: 解析差异 ZIP，提取所有文件内容
+// =============================================================================
+
+log.info("")
+log.info("=== Step 3: Reading diff ZIP file ===")
+
+diffFiles = make(map[string]string)
+fileCount = 0
 
 err = zip.Recursive(diffZipPath, func(isDir, pathName, info) {
     if isDir {
@@ -298,20 +318,13 @@ err = zip.Recursive(diffZipPath, func(isDir, pathName, info) {
     if info.Name() == ".DS_Store" {
         return
     }
-    
-    // 检查文件是否属于目标目录
-    for _, targetDir := range targetDirList {
-        if str.HasPrefix(pathName, targetDir + "/") || str.HasPrefix(pathName, targetDir) {
-            try {
-                content = zip.ExtractFile(diffZipPath, pathName)~
-                diffFilesByDir[targetDir][pathName] = string(content)
-                totalFileCount++
-                log.info("Extracted file [%s]: %s (size: %d bytes)", targetDir, pathName, len(content))
-            } catch extractErr {
-                log.error("Failed to extract file %s: %v", pathName, extractErr)
-            }
-            break
-        }
+    try {
+        content = zip.ExtractFile(diffZipPath, pathName)~
+        diffFiles[pathName] = string(content)
+        fileCount++
+        log.info("Extracted file: %s (size: %d bytes)", pathName, len(content))
+    } catch extractErr {
+        log.error("Failed to extract file %s: %v", pathName, extractErr)
     }
 })
 
@@ -320,377 +333,206 @@ if err != nil {
     die(sprintf("Failed to read diff ZIP file: %v", err))
 }
 
-log.info("✓ Diff ZIP processed: %d files extracted", totalFileCount)
+log.info("✓ Diff ZIP processed: %d files extracted", fileCount)
 
-// 显示每个目录的文件数量
-for _, dir := range targetDirList {
-    log.info("  - %s: %d files", dir, len(diffFilesByDir[dir]))
-}
+// 检查是否有文件需要处理
+if len(diffFiles) == 0 {
+    log.info("⚠️  No files in diff ZIP, no updates needed")
+    log.info("Exporting RAG file without changes...")
 
-// =============================================================================
-// 处理每个目录的 RAG 更新
-// =============================================================================
-
-// 用于存储所有目录的处理结果
-dirResults = make(map[string]map[string]any)
-allReports = []
-
-for _, targetDir := range targetDirList {
-    log.info("")
-    log.info("=" * 80)
-    log.info("Processing directory: %s", targetDir)
-    log.info("=" * 80)
-    
-    // 构造文件路径
-    oldRagPath = sprintf("%s/%s_old.rag", ragFileDir, targetDir)
-    newRagPath = sprintf("%s/%s_new.rag", ragFileDir, targetDir)
-    ragCollectionName = sprintf("%s-%s", ragCollectionNamePrefix, targetDir)
-    
-    // 获取该目录的文件
-    dirFiles = diffFilesByDir[targetDir]
-    
-    if len(dirFiles) == 0 {
-        continue
-    }
-
-    // 初始化结果
-    dirResult = {
-        "targetDir": targetDir,
-        "oldRagPath": oldRagPath,
-        "newRagPath": newRagPath,
-        "collectionName": ragCollectionName,
-        "oldDocCount": 0,
-        "newDocCount": 0,
-        "fileCount": len(dirFiles),
-        "successCount": 0,
-        "failedCount": 0,
-        "failedFiles": [],
-        "successFiles": [],
-    }
-    
-    // 移除现有集合
-    rag.DeleteCollection(ragCollectionName)
-    
-    // 导入或创建 RAG
-    if file.IsExisted(oldRagPath) {
-        log.info("=== Step 2.%s: Importing RAG file ===", targetDir)
-        log.info("Importing: %s", oldRagPath)
-        
-        try {
-            err = rag.Import(oldRagPath, rag.importName(ragCollectionName))
-            if err != nil {
-                log.error("Failed to import RAG file: %v", err)
-                dirResult["error"] = sprintf("Failed to import: %v", err)
-                dirResults[targetDir] = dirResult
-                continue
-            }
-            
-            log.info("✓ RAG file imported successfully: %s", ragCollectionName)
-            
-        } catch importErr {
-            log.error("Failed to import RAG file: %v", importErr)
-            dirResult["error"] = sprintf("Failed to import: %v", importErr)
-            dirResults[targetDir] = dirResult
-            continue
-        }
-    } else {
-        log.info("=== Step 2.%s: Creating new RAG collection ===", targetDir)
-        log.info("No old RAG file found, will create new: %s", oldRagPath)
-    }
-    
-    // 加载 RAG Collection
-    log.info("")
-    log.info("=== Step 3.%s: Loading RAG collection ===", targetDir)
-    
-    ragSystem, err = rag.GetCollection(ragCollectionName, rag.embeddingHandle(embeddingHandle))
-    if err != nil {
-        log.error("Failed to load RAG collection: %v", err)
-        dirResult["error"] = sprintf("Failed to load collection: %v", err)
-        dirResults[targetDir] = dirResult
-        continue
-    }
-    
-    log.info("✓ RAG collection loaded: %s", ragCollectionName)
-    
-    // 获取旧文档数量
-    oldDocCount = 0
-    oldDocCount, err = ragSystem.CountDocuments()
-    if err != nil {
-        log.error("Failed to get old document count: %v", err)
-        oldDocCount = 0
-    } else {
-        log.info("Old RAG document count: %d", oldDocCount)
-    }
-    dirResult["oldDocCount"] = oldDocCount
-    
-    // 添加文件到 RAG
-    log.info("")
-    log.info("=== Step 4.%s: Adding files to RAG ===", targetDir)
-    
-    successCount = 0
-    failedCount = 0
-    failedFiles = []
-    successFiles = []
-    
-    for filePath, content := range dirFiles {
-        if content == "" {
-            log.warn("Skipping empty file: %s", filePath)
-            continue
-        }
-        
-        log.info("Adding file to RAG: %s (size: %d bytes)", filePath, len(content))
-        
-        try {
-            ragSystem.Add(filePath, content)~
-            successCount++
-            successFiles = append(successFiles, filePath)
-            log.info("✓ Added: %s", filePath)
-        } catch addErr {
-            log.error("Failed to add file %s: %v", filePath, addErr)
-            failedCount++
-            failedFiles = append(failedFiles, filePath)
-        }
-    }
-    
-    log.info("")
-    log.info("=== Add Results for %s ===", targetDir)
-    log.info("Success: %d files", successCount)
-    log.info("Failed: %d files", failedCount)
-    
-    dirResult["successCount"] = successCount
-    dirResult["failedCount"] = failedCount
-    dirResult["failedFiles"] = failedFiles
-    dirResult["successFiles"] = successFiles
-    
-    if failedCount > 0 {
-        log.warn("Failed files:")
-        for i, filePath := range failedFiles {
-            log.warn("  %d. %s", i+1, filePath)
-        }
-    }
-    
-    // 获取新文档数量
-    newDocCount = 0
-    newDocCount, err = ragSystem.CountDocuments()
-    if err != nil {
-        log.error("Failed to get new document count: %v", err)
-        newDocCount = 0
-    } else {
-        log.info("New RAG document count: %d", newDocCount)
-        log.info("Document count increased: %d", newDocCount - oldDocCount)
-    }
-    dirResult["newDocCount"] = newDocCount
-    
-    // 导出 RAG 文件
-    log.info("")
-    log.info("=== Step 5.%s: Exporting RAG file ===", targetDir)
-    
+    // 直接导出原 RAG
     try {
-        err = rag.Export(ragCollectionName, newRagPath)
+        err = rag.Export(ragCollectionName, outputRagPath)
         if err != nil {
             log.error("Failed to export RAG: %v", err)
-            dirResult["error"] = sprintf("Failed to export: %v", err)
-            dirResults[targetDir] = dirResult
-            continue
+            die(sprintf("Failed to export RAG: %v", err))
         }
-        
-        // 验证导出的文件
-        if !file.IsExisted(newRagPath) {
-            log.error("Export succeeded but file does not exist: %s", newRagPath)
-            dirResult["error"] = "Failed to verify exported file"
-            dirResults[targetDir] = dirResult
-            continue
-        }
-        
-        // 获取文件大小
-        fileInfo = file.Stat(newRagPath)~
-        fileSize = fileInfo.Size()
-        dirResult["fileSize"] = fileSize
-        
-        log.info("✓ RAG file exported successfully: %s", newRagPath)
-        log.info("  File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
-        
+
+        log.info("✓ RAG file exported: %s", outputRagPath)
+        log.info("Script execution completed successfully (no changes)")
+        os.Exit(0)
+
     } catch exportErr {
         log.error("Failed to export RAG: %v", exportErr)
-        dirResult["error"] = sprintf("Failed to export: %v", exportErr)
-        dirResults[targetDir] = dirResult
-        continue
+        die(sprintf("Failed to export RAG: %v", exportErr))
     }
-    
-    // 保存该目录的结果
-    dirResults[targetDir] = dirResult
-    
-    log.info("✓ Directory %s processed successfully", targetDir)
 }
 
 // =============================================================================
-// 生成汇总报告
-// 功能: 生成所有目录的 Markdown 格式更新报告
+// 添加文件到 RAG
+// 功能: 遍历差异文件，添加到 RAG 集合中
 // =============================================================================
 
 log.info("")
-log.info("=== Step 6: Generating update reports ===")
+log.info("=== Step 4: Adding files to RAG ===")
 
-summaryReportPath = sprintf("%s/update-summary.md", ragFileDir)
+successCount = 0
+failedCount = 0
+failedFiles = []
 
-summaryReport = sprintf("# RAG 批量更新汇总报告\n\n")
-summaryReport += sprintf("**更新时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
-summaryReport += sprintf("**RAG 文件目录**: %s\n", ragFileDir)
-summaryReport += sprintf("**差异包**: %s\n", diffZipPath)
-summaryReport += sprintf("**目标目录**: %s\n\n", targetDirs)
-
-summaryReport += "## Embedding 配置\n\n"
-summaryReport += sprintf("- 服务器: %s:%d\n", embeddingHost, embeddingPort)
-if totpSecret != "" {
-    summaryReport += "- TOTP 认证: 启用\n"
-} else {
-    summaryReport += "- TOTP 认证: 禁用\n"
-}
-summaryReport += sprintf("- 超时时间: %d 秒\n\n", timeout)
-
-summaryReport += "## 处理汇总\n\n"
-
-totalSuccess = 0
-totalFailed = 0
-totalOldDocs = 0
-totalNewDocs = 0
-
-for _, dir := range targetDirList {
-    result = dirResults[dir]
-    if result == nil {
+for filePath, content := range diffFiles {
+    if content == "" {
+        log.warn("Skipping empty file: %s", filePath)
         continue
     }
-    
-    totalSuccess += result["successCount"]
-    totalFailed += result["failedCount"]
-    totalOldDocs += result["oldDocCount"]
-    totalNewDocs += result["newDocCount"]
+
+    log.info("Adding file to RAG: %s (size: %d bytes)", filePath, len(content))
+
+    try {
+        ragSystem.Add(filePath, content)
+        successCount++
+        log.info("✓ Added: %s", filePath)
+    } catch addErr {
+        log.error("Failed to add file %s: %v", filePath, addErr)
+        failedCount++
+        failedFiles = append(failedFiles, filePath)
+    }
 }
 
-summaryReport += sprintf("- 处理目录总数: %d\n", len(targetDirList))
-summaryReport += sprintf("- 总文件数: %d\n", totalFileCount)
-summaryReport += sprintf("- 成功添加: %d\n", totalSuccess)
-summaryReport += sprintf("- 添加失败: %d\n", totalFailed)
-summaryReport += sprintf("- 旧文档总数: %d\n", totalOldDocs)
-summaryReport += sprintf("- 新文档总数: %d\n", totalNewDocs)
-summaryReport += sprintf("- 文档增量: %d\n\n", totalNewDocs - totalOldDocs)
+log.info("")
+log.info("=== Add Results ===")
+log.info("Success: %d files", successCount)
+log.info("Failed: %d files", failedCount)
 
-summaryReport += "## 各目录详情\n\n"
-
-for _, dir := range targetDirList {
-    result = dirResults[dir]
-    if result == nil {
-        summaryReport += sprintf("### %s\n\n", dir)
-        summaryReport += "- 状态: ❌ 未处理\n\n"
-        continue
+if failedCount > 0 {
+    log.warn("Failed files:")
+    for i, filePath := range failedFiles {
+        log.warn("  %d. %s", i+1, filePath)
     }
-    
-    summaryReport += sprintf("### %s\n\n", dir)
-    
-    if result["error"] != nil {
-        summaryReport += sprintf("- 状态: ❌ 失败\n")
-        summaryReport += sprintf("- 错误: %s\n\n", result["error"])
-        continue
-    }
-    
-    summaryReport += sprintf("- 状态: ✅ 成功\n")
-    summaryReport += sprintf("- 旧 RAG: `%s`\n", result["oldRagPath"])
-    summaryReport += sprintf("- 新 RAG: `%s`\n", result["newRagPath"])
-    summaryReport += sprintf("- 集合名称: `%s`\n", result["collectionName"])
-    summaryReport += sprintf("- 文件数: %d\n", result["fileCount"])
-    summaryReport += sprintf("- 成功: %d\n", result["successCount"])
-    summaryReport += sprintf("- 失败: %d\n", result["failedCount"])
-    summaryReport += sprintf("- 旧文档数: %d\n", result["oldDocCount"])
-    summaryReport += sprintf("- 新文档数: %d\n", result["newDocCount"])
-    summaryReport += sprintf("- 文档增量: %d\n", result["newDocCount"] - result["oldDocCount"])
-    
-    if result["fileSize"] != nil {
-        summaryReport += sprintf("- 文件大小: %d bytes (%.2f MB)\n", result["fileSize"], float64(result["fileSize"])/1024/1024)
-    }
-    
-    summaryReport += "\n"
 }
 
-// 保存汇总报告
-err = file.Save(summaryReportPath, summaryReport)
+// 获取新 RAG 的文档数量
+newDocCount = 0
+newDocCount, err = ragSystem.CountDocuments()
 if err != nil {
-    log.warn("Failed to write summary report: %v", err)
+    log.error("Failed to get new document count: %v", err)
+    newDocCount = 0
 } else {
-    log.info("✓ Summary report generated: %s", summaryReportPath)
+    log.info("New RAG document count: %d", newDocCount)
+    log.info("Document count increased: %d", newDocCount - oldDocCount)
 }
 
-// 为每个目录生成详细报告
-for _, dir := range targetDirList {
-    result = dirResults[dir]
-    if result == nil || result["error"] != nil {
-        continue
-    }
-    
-    reportPath = sprintf("%s/%s_update-report.md", ragFileDir, dir)
-    
-    report = sprintf("# RAG 更新报告 - %s\n\n", dir)
-    report += sprintf("**更新时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
-    report += sprintf("**目录**: %s\n", dir)
-    report += sprintf("**原始 RAG**: %s\n", result["oldRagPath"])
-    report += sprintf("**输出 RAG**: %s\n", result["newRagPath"])
-    report += sprintf("**集合名称**: %s\n", result["collectionName"])
-    report += sprintf("**差异包**: %s\n\n", diffZipPath)
-    
-    report += "## 文档数量统计\n\n"
-    report += sprintf("- 旧 RAG 文档数量: %d\n", result["oldDocCount"])
-    report += sprintf("- 新 RAG 文档数量: %d\n", result["newDocCount"])
-    report += sprintf("- 文档增量: %d\n\n", result["newDocCount"] - result["oldDocCount"])
-    
-    report += "## 处理统计\n\n"
-    report += sprintf("- 差异文件总数: %d\n", result["fileCount"])
-    report += sprintf("- 成功添加: %d\n", result["successCount"])
-    report += sprintf("- 添加失败: %d\n\n", result["failedCount"])
-    
-    if result["successCount"] > 0 {
-        report += "## 成功添加的文件\n\n"
-        successFiles = result["successFiles"]
-        for i, filePath := range successFiles {
-            report += sprintf("%d. %s\n", i+1, filePath)
-        }
-        report += "\n"
-    }
-    
-    if result["failedCount"] > 0 {
-        report += "## 添加失败的文件\n\n"
-        failedFiles = result["failedFiles"]
-        for i, filePath := range failedFiles {
-            report += sprintf("%d. %s\n", i+1, filePath)
-        }
-        report += "\n"
-    }
-    
-    report += "## Embedding 配置\n\n"
-    report += sprintf("- 服务器: %s:%d\n", embeddingHost, embeddingPort)
-    if totpSecret != "" {
-        report += "- TOTP 认证: 启用\n"
-    } else {
-        report += "- TOTP 认证: 禁用\n"
-    }
-    report += sprintf("- 超时时间: %d 秒\n\n", timeout)
-    
-    report += "## 输出文件信息\n\n"
-    report += sprintf("- 文件路径: %s\n", result["newRagPath"])
-    if result["fileSize"] != nil {
-        report += sprintf("- 文件大小: %d bytes (%.2f MB)\n", result["fileSize"], float64(result["fileSize"])/1024/1024)
-    }
-    
-    // 保存报告
-    err = file.Save(reportPath, report)
+// =============================================================================
+// 导出 RAG 文件
+// 功能: 将更新后的 RAG 集合导出到文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 5: Exporting RAG file ===")
+
+try {
+    err = rag.Export(ragCollectionName, outputRagPath)
     if err != nil {
-        log.warn("Failed to write report for %s: %v", dir, err)
-    } else {
-        log.info("✓ Report generated for %s: %s", dir, reportPath)
+        log.error("Failed to export RAG: %v", err)
+        die(sprintf("Failed to export RAG to %s", outputRagPath))
     }
+
+    // 验证导出的文件
+    if !file.IsExisted(outputRagPath) {
+        log.error("Export succeeded but file does not exist: %s", outputRagPath)
+        die("Failed to verify exported RAG file")
+    }
+
+    // 获取文件大小
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+
+    log.info("✓ RAG file exported successfully: %s", outputRagPath)
+    log.info("  File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
+
+} catch exportErr {
+    log.error("Failed to export RAG: %v", exportErr)
+    die(sprintf("Failed to export RAG: %v", exportErr))
 }
 
-// 打印汇总报告到控制台
+// =============================================================================
+// 生成更新报告
+// 功能: 生成 Markdown 格式的更新报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 6: Generating update report ===")
+
+reportPath = str.Replace(outputRagPath, ".rag", ".update-report.md", 1)
+
+report = sprintf("# RAG 更新报告\n\n")
+report += sprintf("**更新时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+if ragFilePath != "" {
+    report += sprintf("**原始 RAG**: %s (导入)\n", ragFilePath)
+} else {
+    report += sprintf("**原始 RAG**: 无（新建）\n")
+}
+report += sprintf("**差异包**: %s\n", diffZipPath)
+report += sprintf("**输出 RAG**: %s\n", outputRagPath)
+report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+
+report += "## 文档数量统计\n\n"
+report += sprintf("- 旧 RAG 文档数量: %d\n", oldDocCount)
+report += sprintf("- 新 RAG 文档数量: %d\n", newDocCount)
+report += sprintf("- 文档增量: %d\n\n", newDocCount - oldDocCount)
+
+report += "## 处理统计\n\n"
+report += sprintf("- 差异文件总数: %d\n", len(diffFiles))
+report += sprintf("- 成功添加: %d\n", successCount)
+report += sprintf("- 添加失败: %d\n\n", failedCount)
+
+if successCount > 0 {
+    report += "## 成功添加的文件\n\n"
+    idx = 1
+    for filePath, _ := range diffFiles {
+        // 检查是否在失败列表中
+        isFailed := false
+        for _, failedFile := range failedFiles {
+            if failedFile == filePath {
+                isFailed = true
+                break
+            }
+        }
+
+        if !isFailed {
+            report += sprintf("%d. %s\n", idx, filePath)
+            idx++
+        }
+    }
+    report += "\n"
+}
+
+if failedCount > 0 {
+    report += "## 添加失败的文件\n\n"
+    for i, filePath := range failedFiles {
+        report += sprintf("%d. %s\n", i+1, filePath)
+    }
+    report += "\n"
+}
+
+report += "## Embedding 配置\n\n"
+report += sprintf("- 服务器: %s:%d\n", embeddingHost, embeddingPort)
+if totpSecret != "" {
+    report += "- TOTP 认证: 启用\n"
+} else {
+    report += "- TOTP 认证: 禁用\n"
+}
+report += sprintf("- 超时时间: %d 秒\n\n", timeout)
+
+report += "## 输出文件信息\n\n"
+report += sprintf("- 文件路径: %s\n", outputRagPath)
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    report += sprintf("- 文件大小: %d bytes (%.2f MB)\n", fileSize, float64(fileSize)/1024/1024)
+}
+
+// 保存报告
+err = file.Save(reportPath, report)
+if err != nil {
+    log.warn("Failed to write report: %v", err)
+} else {
+    log.info("✓ Update report generated: %s", reportPath)
+}
+
+// 打印报告到控制台
 println("")
-println(summaryReport)
+println(report)
 
 // =============================================================================
 // 总结输出
@@ -698,29 +540,20 @@ println(summaryReport)
 
 log.info("")
 log.info("=== Update Summary ===")
-log.info("✓ RAG batch update completed")
-log.info("  - Directories processed: %d", len(targetDirList))
-log.info("  - Total files: %d", totalFileCount)
-log.info("  - Total success: %d", totalSuccess)
-log.info("  - Total failed: %d", totalFailed)
-log.info("  - Old document count: %d", totalOldDocs)
-log.info("  - New document count: %d", totalNewDocs)
-log.info("  - Document increased: %d", totalNewDocs - totalOldDocs)
-log.info("  - Summary report: %s", summaryReportPath)
+log.info("✓ RAG update completed successfully")
+log.info("  - Old document count: %d", oldDocCount)
+log.info("  - New document count: %d", newDocCount)
+log.info("  - Document increased: %d", newDocCount - oldDocCount)
+log.info("  - Processed: %d files", len(diffFiles))
+log.info("  - Success: %d files", successCount)
+log.info("  - Failed: %d files", failedCount)
+log.info("  - Output: %s", outputRagPath)
+log.info("  - Report: %s", reportPath)
 
-hasError = false
-for _, dir := range targetDirList {
-    result = dirResults[dir]
-    if result == nil || result["error"] != nil || result["failedCount"] > 0 {
-        hasError = true
-        break
-    }
-}
-
-if hasError {
-    log.warn("⚠️  Some directories or files failed, please check the reports")
+if failedCount > 0 {
+    log.warn("⚠️  Some files failed to add, please check the report")
     os.Exit(1)
 } else {
-    log.info("✓ All directories and files processed successfully")
+    log.info("✓ All files processed successfully")
     os.Exit(0)
 }
