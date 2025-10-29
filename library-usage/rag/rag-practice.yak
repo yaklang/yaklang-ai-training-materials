@@ -1,0 +1,191 @@
+/*
+Yaklang RAG 库实践 - 完整增删改查与高级功能
+
+关键词: RAG完整实践CRUD, 向量检索QueryWithPage, 文档管理Add/Delete, 语义搜索
+关键词: HNSW索引配置, 余弦距离CosineDistance, 元数据管理docMetadata, 集合管理
+*/
+
+println("\n开始 Yaklang RAG 库功能测试")
+println("================================\n")
+
+// 关键词: NewTempRagDatabase临时数据库创建
+db, err = rag.NewTempRagDatabase()
+assert err == nil, f"创建临时数据库失败: ${err}"
+println("[✓] 临时数据库创建成功")
+
+println("\n=== 一、RAG集合创建测试 ===")
+
+// 关键词: GetCollection集合创建, ragForceNew强制新建, ragDescription描述设置
+collName = "security_knowledge_base"
+ragSys, err = rag.GetCollection(collName,
+    rag.ragForceNew(true),
+    rag.ragDescription("安全知识库测试集合"),
+    rag.db(db)
+)
+assert err == nil, f"创建集合失败: ${err}"
+assert ragSys != nil, "RAG系统实例不应为空"
+println(f"[✓] RAG集合 '${collName}' 创建成功")
+
+println("\n=== 二、文档添加测试 ===")
+
+// 关键词: Add文档添加, docMetadata单个元数据, docRawMetadata批量元数据
+err = ragSys.Add("doc_yaklang", "Yaklang是一个专为安全测试设计的领域特定语言DSL",
+    rag.docMetadata("category", "language"),
+    rag.docMetadata("type", "intro")
+)
+assert err == nil, f"添加文档1失败: ${err}"
+println("[✓] 添加文档: doc_yaklang")
+
+err = ragSys.Add("doc_rag", "RAG技术结合了检索和生成，为大语言模型提供外部知识支持",
+    rag.docMetadata("category", "ai"),
+    rag.docMetadata("type", "tech")
+)
+assert err == nil, f"添加文档2失败: ${err}"
+println("[✓] 添加文档: doc_rag")
+
+err = ragSys.Add("doc_vector", "向量检索使用语义相似度匹配查找相关文档",
+    rag.docMetadata("category", "search"),
+    rag.docMetadata("type", "tech")
+)
+assert err == nil, f"添加文档3失败: ${err}"
+println("[✓] 添加文档: doc_vector")
+
+metadata = {
+    "author": "security_team",
+    "version": "1.0",
+    "tags": "security,vulnerability,scan",
+    "created": "2025-10-29",
+    "importance": "high"
+}
+err = ragSys.Add("doc_security", "安全漏洞扫描是网络安全的重要环节，能够发现系统中的潜在风险",
+    rag.docRawMetadata(metadata)
+)
+assert err == nil, f"添加带元数据的文档失败: ${err}"
+println("[✓] 添加文档: doc_security (含完整元数据)")
+
+println(f"\n[✓] 总计成功添加 4 个文档")
+
+println("\n=== 三、文档查询测试 ===")
+
+// 关键词: QueryWithPage语义搜索分页查询, SearchResult结果相似度分数
+results1, err = ragSys.QueryWithPage("安全测试语言", 1, 5)
+assert err == nil, f"查询失败: ${err}"
+assert len(results1) > 0, "查询应该返回结果"
+println(f"\n[查询1] 搜索'安全测试语言'返回 ${len(results1)} 个结果")
+
+for idx = 0; idx < len(results1) && idx < 3; idx++ {
+    result = results1[idx]
+    println(f"  [${idx+1}] ID: ${result.Document.ID}, Score: ${result.Score}")
+}
+
+results2, err = ragSys.QueryWithPage("人工智能知识检索", 1, 5)
+assert err == nil, f"查询2失败: ${err}"
+assert len(results2) > 0, "查询应该返回结果"
+println(f"\n[查询2] 搜索'人工智能知识检索'返回 ${len(results2)} 个结果")
+
+for idx = 0; idx < len(results2) && idx < 3; idx++ {
+    result = results2[idx]
+    println(f"  [${idx+1}] ID: ${result.Document.ID}, Score: ${result.Score}")
+}
+
+results3, err = ragSys.QueryWithPage("网络安全漏洞扫描", 1, 5)
+assert err == nil, f"查询3失败: ${err}"
+assert len(results3) > 0, "查询应该返回结果"
+println(f"\n[查询3] 搜索'网络安全漏洞扫描'返回 ${len(results3)} 个结果")
+
+for idx = 0; idx < len(results3) && idx < 3; idx++ {
+    result = results3[idx]
+    println(f"  [${idx+1}] ID: ${result.Document.ID}, Score: ${result.Score}")
+}
+
+println("\n[✓] 所有查询都返回了有效结果")
+
+println("\n=== 四、文档更新测试 ===")
+
+// 关键词: DeleteDocuments删除文档, Add重新添加实现更新
+err = ragSys.DeleteDocuments("doc_yaklang")
+assert err == nil, "删除旧文档失败"
+
+err = ragSys.Add("doc_yaklang", "Yaklang是专为网络安全测试和渗透测试设计的DSL语言，支持多种安全测试场景",
+    rag.docMetadata("category", "language"),
+    rag.docMetadata("type", "intro"),
+    rag.docMetadata("updated", "true")
+)
+assert err == nil, f"更新文档失败: ${err}"
+println("[✓] 文档 doc_yaklang 已更新")
+
+resultsUpdated, err = ragSys.QueryWithPage("网络安全渗透测试", 1, 3)
+assert err == nil, "更新后查询失败"
+assert len(resultsUpdated) > 0, "更新后应能搜索到结果"
+println(f"[✓] 更新后搜索'网络安全渗透测试'返回 ${len(resultsUpdated)} 个结果")
+
+println("\n=== 五、文档删除测试 ===")
+
+err = ragSys.Add("doc_temp1", "这是临时文档一，用于测试删除功能")
+assert err == nil, "添加临时文档1失败"
+
+err = ragSys.Add("doc_temp2", "这是临时文档二，也用于测试删除")
+assert err == nil, "添加临时文档2失败"
+
+println("[✓] 添加了2个临时文档")
+
+// 关键词: DeleteDocuments删除文档向量移除
+err = ragSys.DeleteDocuments("doc_temp1")
+assert err == nil, "删除临时文档1失败"
+println("[✓] 删除文档: doc_temp1")
+
+err = ragSys.DeleteDocuments("doc_temp2")
+assert err == nil, "删除临时文档2失败"
+println("[✓] 删除文档: doc_temp2")
+
+println("\n[✓] 文档删除功能测试通过")
+
+println("\n=== 六、RAG高级功能测试 ===")
+
+// 关键词: ragHNSWParameters索引参数配置, ragCosineDistance余弦距离, ragModelDimension向量维度
+db2, err = rag.NewTempRagDatabase()
+assert err == nil, "创建数据库2失败"
+
+collName2 = "advanced_rag_test"
+ragSys2, err = rag.GetCollection(collName2,
+    rag.ragForceNew(true),
+    rag.ragDescription("高级配置测试集合"),
+    rag.ragHNSWParameters(16, 0.25, 20, 200),
+    rag.ragCosineDistance(),
+    rag.db(db2)
+)
+assert err == nil, f"创建高级集合失败: ${err}"
+println("[✓] 创建高级HNSW配置集合")
+
+err = ragSys2.Add("adv_doc1", "HNSW算法是一种高效的近似最近邻搜索算法")
+assert err == nil, "添加高级文档失败"
+
+err = ragSys2.Add("adv_doc2", "余弦相似度是衡量向量相似度的常用方法")
+assert err == nil, "添加高级文档2失败"
+
+advResults, err = ragSys2.QueryWithPage("向量搜索算法", 1, 5)
+assert err == nil, "高级集合查询失败"
+assert len(advResults) > 0, "高级集合查询应返回结果"
+println(f"[✓] HNSW集合搜索返回 ${len(advResults)} 个结果")
+
+println("\n================================")
+println("所有RAG功能测试通过")
+println("================================\n")
+
+println("测试总结:")
+println("  ✓ 增加: 成功添加6个文档")
+println("  ✓ 查询: 所有查询都返回有效结果")
+println("  ✓ 更新: 文档更新功能正常")
+println("  ✓ 删除: 文档删除功能正常")
+println("  ✓ 高级: HNSW配置和搜索正常")
+println("\nRAG库核心功能验证完成！\n")
+
+/*
+RAG完整CRUD操作:
+增: Add(id,content,opts) - ragSys.Add("doc1","内容",docMetadata("k","v"))
+查: QueryWithPage(query,page,limit) - ragSys.QueryWithPage("查询",1,10)
+改: DeleteDocuments(id)+Add(id,newContent) - 先删后增
+删: DeleteDocuments(id) - ragSys.DeleteDocuments("doc1")
+配置: ragHNSWParameters(m,ml,efSearch,efConstruct), ragCosineDistance(), ragModelDimension(dim)
+元数据: docMetadata(key,value)单个, docRawMetadata(map)批量
+*/

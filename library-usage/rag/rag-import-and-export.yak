@@ -1,0 +1,250 @@
+/*
+Yaklang RAG 导入导出实践 - 知识库备份迁移与集合管理
+
+关键词: RAG导入导出Export/Import, 知识库备份恢复, 二进制格式, 进度监控progressHandler
+关键词: 覆盖导入importOverwrite, HNSW索引noHNSWGraph, 集合管理ListCollection/DeleteCollection
+关键词: HasCollection存在性检查, GetCollectionInfo集合信息, 数据迁移集合复制
+*/
+
+println("\n开始 RAG 导入导出功能测试")
+println("================================\n")
+
+println("=== 一、准备测试环境 ===")
+
+//关键词: NewTempRagDatabase临时数据库
+db, err = rag.NewTempRagDatabase()
+assert err == nil, f"创建数据库失败: ${err}"
+println("[✓] 临时数据库创建成功")
+
+// 关键词: GetCollection创建源集合, ragHNSWParameters参数, ragCosineDistance余弦距离
+sourceCollName = "source_collection"
+sourceSys, err = rag.GetCollection(sourceCollName,
+    rag.ragForceNew(true),
+    rag.ragDescription("导出测试源集合"),
+    rag.ragHNSWParameters(16, 0.25, 20, 200),
+    rag.ragCosineDistance(),
+    rag.db(db)
+)
+assert err == nil, f"创建源集合失败: ${err}"
+println(f"[✓] 创建源集合: ${sourceCollName}")
+
+// 关键词: Add添加文档, docRawMetadata批量元数据
+testDocs = [
+    {"id": "doc_security_1", "content": "网络安全是保护计算机系统和网络免受攻击的重要措施", "meta": {"category": "security", "priority": "high"}},
+    {"id": "doc_security_2", "content": "渗透测试是模拟黑客攻击发现系统漏洞的方法", "meta": {"category": "security", "priority": "high"}},
+    {"id": "doc_pentest_1", "content": "端口扫描用于发现目标系统开放的服务端口", "meta": {"category": "pentest", "priority": "medium"}},
+    {"id": "doc_pentest_2", "content": "漏洞扫描可以自动化检测系统中的安全隐患", "meta": {"category": "pentest", "priority": "medium"}},
+    {"id": "doc_rag_1", "content": "RAG技术结合检索和生成提升AI系统能力", "meta": {"category": "ai", "priority": "medium"}},
+    {"id": "doc_rag_2", "content": "向量检索通过语义相似度匹配查找相关文档", "meta": {"category": "ai", "priority": "medium"}},
+    {"id": "doc_hnsw_1", "content": "HNSW是一种高效的近似最近邻搜索算法", "meta": {"category": "algorithm", "priority": "low"}},
+    {"id": "doc_hnsw_2", "content": "分层导航小世界图提供了快速的向量检索能力", "meta": {"category": "algorithm", "priority": "low"}}
+]
+
+for doc in testDocs {
+    err = sourceSys.Add(doc["id"], doc["content"], rag.docRawMetadata(doc["meta"]))
+    assert err == nil, f"添加文档${doc['id']}失败: ${err}"
+}
+println(f"[✓] 添加了 ${len(testDocs)} 个测试文档")
+
+results, err = sourceSys.QueryWithPage("网络安全", 1, 3)
+assert err == nil && len(results) > 0, "源集合应该有数据"
+println(f"[✓] 源集合验证: 查询返回 ${len(results)} 个结果")
+
+println("\n=== 二、基础导出功能 ===")
+
+exportFile = "/tmp/rag_export_basic.bin"
+exportProgress = 0
+
+// 关键词: Export导出集合, progressHandler进度回调函数
+progressCallback = fn(percent, message, msgType) {
+    if percent == 0 || percent >= 20 && percent < 25 || percent >= 80 && percent < 85 || percent == 100 {
+        println(f"  [导出 ${sprintf('%.0f', percent)}%] ${message}")
+        exportProgress = percent
+    }
+}
+
+println(f"开始导出集合到文件: ${exportFile}")
+err = rag.Export(sourceCollName, exportFile, rag.db(db), rag.progressHandler(progressCallback))
+assert err == nil, f"导出失败: ${err}"
+assert exportProgress == 100, "导出应该完成到100%"
+println(f"[✓] 集合导出成功")
+
+fileExists = file.IsExisted(exportFile)
+assert fileExists, "导出文件应该存在"
+
+fileInfo, err = file.Stat(exportFile)
+assert err == nil, "获取文件信息失败"
+fileSize = fileInfo.Size()
+assert fileSize > 0, "导出文件不应为空"
+println(f"[✓] 导出文件验证: 大小 ${fileSize} 字节")
+
+println("\n=== 三、基础导入功能 ===")
+
+// 关键词: Import导入集合, importName指定名称
+importCollName = "imported_collection"
+println(f"开始导入到新集合: ${importCollName}")
+
+importProgress = 0
+importCallback = fn(percent, message, msgType) {
+    if percent == 0 || percent >= 20 && percent < 25 || percent >= 80 && percent < 85 || percent == 100 {
+        println(f"  [导入 ${sprintf('%.0f', percent)}%] ${message}")
+        importProgress = percent
+    }
+}
+
+err = rag.Import(exportFile, rag.db(db), rag.importName(importCollName), rag.progressHandler(importCallback))
+assert err == nil, f"导入失败: ${err}"
+assert importProgress == 100, "导入应该完成到100%"
+println(f"[✓] 集合导入成功: ${importCollName}")
+
+importedSys, err = rag.GetCollection(importCollName, rag.db(db))
+assert err == nil, "获取导入集合失败"
+
+importResults1, err = importedSys.QueryWithPage("网络安全", 1, 3)
+assert err == nil && len(importResults1) > 0, "导入集合应该有查询结果"
+println(f"[✓] 查询验证1: '网络安全' 返回 ${len(importResults1)} 个结果")
+
+importResults2, err = importedSys.QueryWithPage("RAG技术", 1, 3)
+assert err == nil && len(importResults2) > 0, "应该能查到RAG相关内容"
+println(f"[✓] 查询验证2: 'RAG技术' 返回 ${len(importResults2)} 个结果")
+
+importResults3, err = importedSys.QueryWithPage("HNSW算法", 1, 3)
+assert err == nil && len(importResults3) > 0, "应该能查到HNSW相关内容"
+println(f"[✓] 查询验证3: 'HNSW算法' 返回 ${len(importResults3)} 个结果")
+
+println("\n=== 四、覆盖导入测试 ===")
+
+// 关键词: HasCollection检查集合存在性
+exists = rag.HasCollection(importCollName, rag.db(db))
+assert exists == true, "导入的集合应该存在"
+println(f"[✓] 确认集合存在: ${importCollName}")
+
+// 关键词: importOverwrite覆盖导入
+println(f"测试覆盖导入到: ${importCollName}")
+overwriteProgress = 0
+err = rag.Import(exportFile, rag.db(db), rag.importName(importCollName), rag.importOverwrite(true),
+    rag.progressHandler(fn(percent, msg, msgType) {
+        if percent == 100 {
+            println(f"  [覆盖 100%] ${msg}")
+            overwriteProgress = 100
+        }
+    })
+)
+assert err == nil, f"覆盖导入失败: ${err}"
+assert overwriteProgress == 100, "覆盖导入应该完成"
+println("[✓] 覆盖导入成功")
+
+overwriteSys, err = rag.GetCollection(importCollName, rag.db(db))
+assert err == nil, "获取覆盖后集合失败"
+
+overwriteResults, err = overwriteSys.QueryWithPage("网络安全", 1, 3)
+assert err == nil && len(overwriteResults) > 0, "覆盖后应该仍有数据"
+println(f"[✓] 覆盖后验证: 查询返回 ${len(overwriteResults)} 个结果")
+
+println("\n=== 五、集合管理功能 ===")
+
+// 关键词: ListCollection列出所有集合
+collections = rag.ListCollection(rag.db(db))
+assert len(collections) >= 2, "应该至少有2个集合"
+println(f"[✓] 列出所有集合，共 ${len(collections)} 个:")
+for i, name in collections {
+    if i < 5 {
+        println(f"  ${i+1}. ${name}")
+    }
+}
+
+sourceExists = rag.HasCollection(sourceCollName, rag.db(db))
+assert sourceExists == true, "源集合应该存在"
+println(f"[✓] 集合存在性检查: ${sourceCollName} = ${sourceExists}")
+
+importExists = rag.HasCollection(importCollName, rag.db(db))
+assert importExists == true, "导入集合应该存在"
+println(f"[✓] 集合存在性检查: ${importCollName} = ${importExists}")
+
+// 关键词: GetCollectionInfo获取集合详细信息元数据
+sourceInfo, err = rag.GetCollectionInfo(sourceCollName, rag.db(db))
+assert err == nil && sourceInfo != nil, "集合信息不应为空"
+println(f"[✓] 源集合信息:")
+println(f"  - 名称: ${sourceInfo.Name}")
+println(f"  - 描述: ${sourceInfo.Description}")
+println(f"  - 维度: ${sourceInfo.Dimension}")
+println(f"  - 距离函数: ${sourceInfo.DistanceFuncType}")
+println(f"  - HNSW参数: M=${sourceInfo.M}, EfSearch=${sourceInfo.EfSearch}")
+
+println("\n=== 六、不同导出选项测试 ===")
+
+// 关键词: noHNSWGraph不包含HNSW索引轻量导出
+exportNoHNSW = "/tmp/rag_export_no_hnsw.bin"
+println("测试导出（不含HNSW索引）...")
+err = rag.Export(sourceCollName, exportNoHNSW, rag.db(db), rag.noHNSWGraph(true),
+    rag.progressHandler(fn(percent, msg, msgType) {
+        if percent == 100 {
+            println(f"  [100%] ${msg}")
+        }
+    })
+)
+assert err == nil, "导出（不含HNSW）失败"
+
+noHNSWInfo, err = file.Stat(exportNoHNSW)
+assert err == nil, "获取文件信息失败"
+noHNSWSize = noHNSWInfo.Size()
+println(f"[✓] 导出完成（不含HNSW）: ${noHNSWSize} 字节")
+println(f"  - 完整导出: ${fileSize} 字节")
+println(f"  - 不含HNSW: ${noHNSWSize} 字节")
+
+println("\n=== 七、集合删除功能 ===")
+
+tempCollName = "temp_test_collection"
+tempSys, err = rag.GetCollection(tempCollName, rag.ragForceNew(true), rag.ragDescription("临时测试集合"), rag.db(db))
+assert err == nil, "创建临时集合失败"
+err = tempSys.Add("temp_doc", "临时文档内容")
+assert err == nil, "添加临时文档失败"
+println(f"[✓] 创建临时集合: ${tempCollName}")
+
+tempExists = rag.HasCollection(tempCollName, rag.db(db))
+assert tempExists == true, "临时集合应该存在"
+println("[✓] 验证临时集合存在")
+
+// 关键词: DeleteCollection删除集合
+err = rag.DeleteCollection(tempCollName, rag.db(db))
+assert err == nil, f"删除集合失败: ${err}"
+println(f"[✓] 删除集合: ${tempCollName}")
+
+tempExists = rag.HasCollection(tempCollName, rag.db(db))
+assert tempExists == false, "集合应该已被删除"
+println("[✓] 验证集合已删除")
+
+println("\n=== 八、清理测试资源 ===")
+
+filesToDelete = [exportFile, exportNoHNSW]
+for f in filesToDelete {
+    err = file.Remove(f)
+    if err == nil {
+        println(f"[✓] 删除文件: ${f}")
+    }
+}
+
+println("\n================================")
+println("RAG 导入导出功能测试完成")
+println("================================\n")
+
+println("测试总结:")
+println("  ✓ 准备测试环境和数据")
+println("  ✓ 基础导出功能（含进度监控）")
+println("  ✓ 基础导入功能（含进度监控）")
+println("  ✓ 覆盖导入功能")
+println("  ✓ 集合管理（列表、存在性检查、详细信息）")
+println("  ✓ 不同导出选项（不含HNSW索引）")
+println("  ✓ 集合删除功能")
+println("\nRAG 导入导出功能验证完成！\n")
+
+/*
+RAG导入导出核心API:
+导出: Export(collectionName,filePath,opts) - 备份到二进制文件
+导入: Import(filePath,opts) - 从文件恢复
+进度: progressHandler(fn) - 回调函数fn(percent,message,msgType)
+选项: noHNSWGraph不含索引, noMetadata不含元数据, noOriginInput不含原始输入, onlyPQCode仅PQ编码
+导入: importName指定名称, importOverwrite覆盖现有, documentHandler文档处理器
+集合: ListCollection列表, HasCollection存在性, GetCollectionInfo详情, DeleteCollection删除
+场景: 定期备份, 跨环境迁移, 灾难恢复, 集合复制
+*/
