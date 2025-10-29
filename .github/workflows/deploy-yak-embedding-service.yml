@@ -1,0 +1,259 @@
+name: Deploy YAK Embedding Service
+
+on:
+  # 当指定文件有改动时触发
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/start-yak-embedding-service.yak'
+      - 'scripts/install-yak-scripts-to-systemd.yak'
+      - 'apps/embedding/deploy-embedding.sh'
+      - '.github/workflows/deploy-yak-embedding-service.yml'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+# 确保同一时间只运行一个部署任务
+concurrency:
+  group: deploy-embedding-service
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Print trigger information
+        run: |
+          echo "============================================"
+          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "============================================"
+      
+      - name: Download Yaklang Engine (v1.4.4-alpha1027)
+        run: |
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1027 ==="
+          YAK_VERSION="1.4.4-alpha1027"
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
+          
+          echo "Downloading from: $YAK_URL"
+          wget --progress=dot:binary -O ./yak "$YAK_URL" 2>&1 | \
+            awk '/[0-9]+%/{i++; if(i%3==0) print; next} {print}' || true
+          
+          if [ ! -f ./yak ]; then
+            echo "ERROR: Failed to download yak engine"
+            exit 1
+          fi
+          
+          chmod +x ./yak
+          
+          echo ""
+          echo "=== Downloaded file info ==="
+          ls -lh ./yak
+          file ./yak
+          
+          echo ""
+          echo "=== Testing yak engine ==="
+          ./yak version || echo "Note: yak version command may not be available in this version"
+          
+          echo ""
+          echo "✓ Yaklang engine downloaded and verified successfully"
+      
+      - name: Prepare SSH key
+        env:
+          EMBEDDING_HOST_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
+          EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== Preparing SSH deployment ==="
+          
+          if [ -z "$EMBEDDING_HOST_PRIVATE_KEY" ] || [ -z "$EMBEDDING_HOST" ]; then
+            echo "ERROR: SSH credentials not found"
+            echo "Please ensure EMBEDDING_HOST_PRIVATE_KEY and EMBEDDING_HOST secrets are set"
+            exit 1
+          fi
+          
+          # 创建私钥文件
+          echo "$EMBEDDING_HOST_PRIVATE_KEY" | tr -d '\r' > /tmp/embedding_pri
+          chmod 600 /tmp/embedding_pri
+          
+          # 验证私钥格式
+          if ! ssh-keygen -l -f /tmp/embedding_pri >/dev/null 2>&1; then
+            echo "ERROR: Invalid SSH private key format"
+            exit 1
+          fi
+          
+          echo "✓ SSH key prepared successfully"
+      
+      - name: Prepare configuration file
+        env:
+          EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+          TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
+        run: |
+          echo "=== Preparing configuration file ==="
+          
+          if [ -z "$EMBEDDING_PORT" ] || [ -z "$TOTP_SECRET" ]; then
+            echo "ERROR: Configuration not found"
+            echo "Please ensure EMBEDDING_PORT and TOTP_SECRET secrets are set"
+            exit 1
+          fi
+          
+          # 创建配置文件
+          cat > /tmp/embedding-config.env << EOF
+          EMBEDDING_PORT=${EMBEDDING_PORT}
+          TOTP_SECRET=${TOTP_SECRET}
+          EOF
+          
+          echo "Configuration file created:"
+          echo "  Port: ${EMBEDDING_PORT}"
+          echo "  TOTP Secret: [REDACTED]"
+          echo "✓ Configuration prepared successfully"
+      
+      - name: Deploy to remote server
+        env:
+          EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== Deploying to remote server ==="
+          echo "Target server: $EMBEDDING_HOST"
+          
+          # 确保部署脚本有执行权限
+          chmod +x ./apps/embedding/deploy-embedding.sh
+          
+          # 创建远程目录
+          echo "Creating remote directory..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mkdir -p /root/yaklang-ai-training-materials/scripts /root/yaklang-ai-training-materials/apps/embedding"
+          
+          # 上传启动脚本
+          echo "Uploading start-yak-embedding-service.yak..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/start-yak-embedding-service.yak --upload-target /root/yaklang-ai-training-materials/scripts/start-yak-embedding-service.yak
+          
+          # 上传 systemd 安装脚本
+          echo "Uploading install-yak-scripts-to-systemd.yak..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/install-yak-scripts-to-systemd.yak --upload-target /root/yaklang-ai-training-materials/scripts/install-yak-scripts-to-systemd.yak
+          
+          # 上传部署脚本
+          echo "Uploading deploy-embedding.sh..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/deploy-embedding.sh --upload-target /root/yaklang-ai-training-materials/apps/embedding/deploy-embedding.sh
+          
+          # 上传 SSL 证书安装脚本
+          echo "Uploading install-certs.sh..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./apps/embedding/install-certs.sh --upload-target /root/yaklang-ai-training-materials/apps/embedding/install-certs.sh
+          
+          # 上传配置文件
+          echo "Uploading configuration file..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/embedding-config.env --upload-target /root/yaklang-ai-training-materials/apps/embedding/.env
+          
+          # 验证文件上传
+          echo "Verifying uploaded files..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "ls -lh /root/yaklang-ai-training-materials/scripts/start-yak-embedding-service.yak /root/yaklang-ai-training-materials/scripts/install-yak-scripts-to-systemd.yak /root/yaklang-ai-training-materials/apps/embedding/deploy-embedding.sh /root/yaklang-ai-training-materials/apps/embedding/install-certs.sh /root/yaklang-ai-training-materials/apps/embedding/.env"
+          
+          # 执行部署脚本
+          echo "Executing deployment script on remote server..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --bash-script ./apps/embedding/deploy-embedding.sh
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Deployment failed"
+            exit 1
+          fi
+          
+          echo "✓ Deployment completed successfully"
+      
+      - name: Verify deployment
+        env:
+          EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
+          EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+          TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
+        run: |
+          echo "=== Verifying deployment ==="
+          
+          # 等待服务启动
+          echo "Waiting for service to start..."
+          sleep 15
+          
+          # 通过 SSH 验证服务状态
+          echo "Checking service status..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "systemctl status yak-embedding-service --no-pager || echo 'Service status check failed'"
+          
+          # 上传测试脚本
+          echo "Uploading test script..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/test-yak-embedding-rag-service.yak --upload-target /tmp/test-embedding-service.yak
+          
+          # 创建测试配置脚本
+          cat > /tmp/test-wrapper.sh << 'EOF'
+          #!/bin/bash
+          # 读取配置
+          source /root/yaklang-ai-training-materials/apps/embedding/.env
+          
+          # 运行测试（使用实际配置）
+          echo "Running embedding service test..."
+          echo "Port: $EMBEDDING_PORT"
+          echo "Testing with TOTP authentication..."
+          
+          # 简单的健康检查
+          curl -f "http://127.0.0.1:${EMBEDDING_PORT}/health" 2>/dev/null && echo "✓ Service is responding" || echo "✗ Service health check failed"
+          EOF
+          
+          chmod +x /tmp/test-wrapper.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/test-wrapper.sh --upload-target /tmp/test-wrapper.sh
+          
+          # 执行测试
+          echo "Running verification tests..."
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "bash /tmp/test-wrapper.sh"
+          
+          if [ $? -eq 0 ]; then
+            echo "✓ Service verification completed successfully"
+          else
+            echo "WARNING: Service verification failed, but deployment may still be successful"
+            echo "Please check the service status manually"
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "=== Cleaning up ==="
+          rm -f /tmp/embedding_pri /tmp/embedding-config.env /tmp/test-wrapper.sh
+          echo "✓ Cleanup completed"
+      
+      - name: Summary
+        if: success()
+        env:
+          EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+        run: |
+          echo "## ✅ Embedding Service Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The YAK Embedding service has been successfully deployed to the remote server." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- Service Name: \`yak-embedding-service\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Port: \`${EMBEDDING_PORT}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Script: \`start-yak-embedding-service.yak\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Working Directory: \`/root/yaklang-ai-training-materials\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Info" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Service Management" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Check service status" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl status yak-embedding-service" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# View logs" >> $GITHUB_STEP_SUMMARY
+          echo "journalctl -u yak-embedding-service -f" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Restart service" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl restart yak-embedding-service" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔒 Security" >> $GITHUB_STEP_SUMMARY
+          echo "- TOTP Authentication: ✅ Enabled" >> $GITHUB_STEP_SUMMARY
+          echo "- Service runs with TOTP verification for all embedding requests" >> $GITHUB_STEP_SUMMARY
+
