@@ -43,10 +43,10 @@ jobs:
           echo "Actor: ${{ github.actor }}"
           echo "============================================"
       
-      - name: Download Yaklang Engine (v1.4.4-alpha1027)
+      - name: Download Yaklang Engine (v1.4.4-alpha1029)
         run: |
-          echo "=== Downloading Yaklang Engine v1.4.4-alpha1027 ==="
-          YAK_VERSION="1.4.4-alpha1027"
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1029 ==="
+          YAK_VERSION="1.4.4-alpha1029"
           YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
           
           echo "Downloading from: $YAK_URL"
