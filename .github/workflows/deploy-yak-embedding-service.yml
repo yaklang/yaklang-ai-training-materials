@@ -188,7 +188,8 @@ jobs:
           
           # 上传测试脚本
           echo "Uploading test script..."
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/test-yak-embedding-rag-service.yak --upload-target /tmp/test-embedding-service.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file ./scripts/test-yak-embedding-rag-service.yak
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/test-yak-embedding-rag-service.yak /tmp/test-embedding-service.yak"
           
           # 创建测试配置脚本
           cat > /tmp/test-wrapper.sh << 'EOF'
@@ -206,7 +207,8 @@ jobs:
           EOF
           
           chmod +x /tmp/test-wrapper.sh
-          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/test-wrapper.sh --upload-target /tmp/test-wrapper.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --upload-file /tmp/test-wrapper.sh
+          ./yak ssh -H "$EMBEDDING_HOST" -i /tmp/embedding_pri --command "mv ~/test-wrapper.sh /tmp/test-wrapper.sh && chmod +x /tmp/test-wrapper.sh"
           
           # 执行测试
           echo "Running verification tests..."
