@@ -379,7 +379,24 @@ for filePath, content := range diffFiles {
     log.info("Adding file to RAG: %s (size: %d bytes)", filePath, len(content))
 
     try {
-        ragSystem.Add(filePath, content)
+        if str.HasSuffix(filePath, ".yak") {
+            tempFileName,err := file.TempFileName("temp-*.yak")
+            if err {
+                die("create temp file failed: %v" % err)
+            }
+            entries,err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName)
+            if err {
+                die("add yak file %v to rag error: %v" % err)
+            }
+            for entry in entries{
+                _ = entry
+            }
+        } else {
+            err = ragSystem.Add(filePath, content)
+            if err {
+                die("add text file %v to rag error: %v" % err)
+            }
+        }
         successCount++
         log.info("✓ Added: %s", filePath)
     } catch addErr {
