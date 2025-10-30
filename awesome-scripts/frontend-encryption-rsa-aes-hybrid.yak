@@ -18,21 +18,21 @@ println("=== 一、模拟前端加密流程 ===\n")
 
 // 关键词: RSA密钥对生成, 2048位密钥
 println("[1] 生成 RSA 密钥对")
-rsaPriv, rsaPub, err = rsa.GenerateRSAKeyPair(2048)
+rsaPub, rsaPriv, err = tls.GenerateRSA2048KeyPair()
 assert err == nil, f"生成RSA密钥对失败: ${err}"
 println(f"  RSA私钥长度: ${len(rsaPriv)} 字节")
 println(f"  RSA公钥长度: ${len(rsaPub)} 字节")
 
 // 关键词: AES密钥随机生成, 16字节密钥
 println("\n[2] 前端生成随机 AES 密钥和 IV")
-aesKey = randn(16)  // 随机16字节AES密钥
-aesIV = randn(16)   // 随机16字节IV
+aesKey = codec.RandBytes(16)  // 随机16字节AES密钥
+aesIV = codec.RandBytes(16)   // 随机16字节IV
 println(f"  AES密钥(Hex): ${codec.EncodeToHex(aesKey)}")
 println(f"  AES IV(Hex): ${codec.EncodeToHex(aesIV)}")
 
 // 关键词: RSA公钥加密, PKCS1填充
 println("\n[3] 用 RSA 公钥加密 AES 密钥")
-encryptedAESKey, err = rsa.EncryptPKCS1v15(rsaPub, aesKey)
+encryptedAESKey, err = codec.RSAEncryptWithPKCS1v15(rsaPub, aesKey)
 assert err == nil, f"RSA加密失败: ${err}"
 println(f"  加密后长度: ${len(encryptedAESKey)} 字节")
 println(f"  Base64: ${codec.EncodeBase64(encryptedAESKey)[:60]}...")
@@ -43,7 +43,7 @@ businessData = {
     "username": "admin",
     "password": "P@ssw0rd123",
     "timestamp": time.Now().Unix(),
-    "nonce": randn(8)
+    "nonce": codec.EncodeToHex(codec.RandBytes(8))
 }
 jsonData = json.dumps(businessData)
 println(f"  原始数据: ${jsonData}")
@@ -62,7 +62,11 @@ frontendRequest = {
     "iv": codec.EncodeBase64(aesIV)
 }
 requestJSON = json.dumps(frontendRequest)
-println(f"  加密请求体:\n{requestJSON[:200]}...")
+if len(requestJSON) > 200 {
+    println(f"  加密请求体:\n${requestJSON[:200]}...")
+} else {
+    println(f"  加密请求体:\n${requestJSON}")
+}
 
 println("\n=== 二、模拟后端解密流程 ===\n")
 
@@ -70,23 +74,26 @@ println("\n=== 二、模拟后端解密流程 ===\n")
 println("[1] 后端接收加密请求")
 receivedData = json.loads(requestJSON)
 println("  解析字段:")
-println(f"    - encryptedKey: {len(receivedData['encryptedKey'])} 字符")
-println(f"    - encryptedData: {len(receivedData['encryptedData'])} 字符")
-println(f"    - iv: {len(receivedData['iv'])} 字符")
+println(f"    - encryptedKey: ${len(receivedData['encryptedKey'])} 字符")
+println(f"    - encryptedData: ${len(receivedData['encryptedData'])} 字符")
+println(f"    - iv: ${len(receivedData['iv'])} 字符")
 
 // 关键词: Base64解码
 println("\n[2] Base64 解码")
-encKeyBytes = codec.DecodeBase64(receivedData["encryptedKey"])
-encDataBytes = codec.DecodeBase64(receivedData["encryptedData"])
-ivBytes = codec.DecodeBase64(receivedData["iv"])
-assert len(encKeyBytes) > 0, "解码encryptedKey失败"
-assert len(encDataBytes) > 0, "解码encryptedData失败"
-assert len(ivBytes) == 16, "IV长度错误"
+encKeyBytes, err = codec.DecodeBase64(receivedData["encryptedKey"])
+assert err == nil, "解码encryptedKey失败"
+encDataBytes, err = codec.DecodeBase64(receivedData["encryptedData"])
+assert err == nil, "解码encryptedData失败"
+ivBytes, err = codec.DecodeBase64(receivedData["iv"])
+assert err == nil, "解码IV失败"
+assert len(encKeyBytes) > 0, "encryptedKey为空"
+assert len(encDataBytes) > 0, "encryptedData为空"
+assert len(ivBytes) == 16, f"IV长度错误: ${len(ivBytes)}"
 println("  [✓] Base64解码成功")
 
 // 关键词: RSA私钥解密, 密钥恢复
 println("\n[3] 用 RSA 私钥解密 AES 密钥")
-decryptedAESKey, err = rsa.DecryptPKCS1v15(rsaPriv, encKeyBytes)
+decryptedAESKey, err = codec.RSADecryptWithPKCS1v15(rsaPriv, encKeyBytes)
 assert err == nil, f"RSA解密失败: ${err}"
 assert len(decryptedAESKey) == 16, "解密的AES密钥长度错误"
 println(f"  解密的AES密钥(Hex): ${codec.EncodeToHex(decryptedAESKey)}")
@@ -121,10 +128,10 @@ println("\n=== 三、攻击场景: 修改加密数据 ===\n")
 println("[场景] 中间人拦截请求，修改业务参数")
 
 // 解密原始数据
-interceptedKey = codec.DecodeBase64(receivedData["encryptedKey"])
-decKey, _ = rsa.DecryptPKCS1v15(rsaPriv, interceptedKey)
-interceptedData = codec.DecodeBase64(receivedData["encryptedData"])
-interceptedIV = codec.DecodeBase64(receivedData["iv"])
+interceptedKey, _ = codec.DecodeBase64(receivedData["encryptedKey"])
+decKey, _ = codec.RSADecryptWithPKCS1v15(rsaPriv, interceptedKey)
+interceptedData, _ = codec.DecodeBase64(receivedData["encryptedData"])
+interceptedIV, _ = codec.DecodeBase64(receivedData["iv"])
 originalData, _ = codec.AESCBCDecrypt(decKey, interceptedData, interceptedIV)
 
 println(f"  原始数据: ${string(originalData)}")
@@ -135,7 +142,7 @@ modifiedBusiness = json.loads(string(originalData))
 modifiedBusiness["username"] = "attacker"
 modifiedBusiness["isAdmin"] = true  // 添加管理员权限
 modifiedBusiness["timestamp"] = time.Now().Unix()  // 更新时间戳
-println(f"  修改后: username={modifiedBusiness['username']}, isAdmin={modifiedBusiness['isAdmin']}")
+println(f"  修改后: username=${modifiedBusiness['username']}, isAdmin=${modifiedBusiness['isAdmin']}")
 
 // 关键词: 重新加密, 攻击payload构造
 println("\n  重新加密修改后的数据:")
@@ -150,10 +157,10 @@ maliciousRequest = {
 println(f"  [✓] 恶意请求构造完成")
 
 // 验证恶意请求
-verifyKey = codec.DecodeBase64(maliciousRequest["encryptedKey"])
-verifyDecKey, _ = rsa.DecryptPKCS1v15(rsaPriv, verifyKey)
-verifyData = codec.DecodeBase64(maliciousRequest["encryptedData"])
-verifyIV = codec.DecodeBase64(maliciousRequest["iv"])
+verifyKey, _ = codec.DecodeBase64(maliciousRequest["encryptedKey"])
+verifyDecKey, _ = codec.RSADecryptWithPKCS1v15(rsaPriv, verifyKey)
+verifyData, _ = codec.DecodeBase64(maliciousRequest["encryptedData"])
+verifyIV, _ = codec.DecodeBase64(maliciousRequest["iv"])
 verifyResult, _ = codec.AESCBCDecrypt(verifyDecKey, verifyData, verifyIV)
 verifyJSON = json.loads(string(verifyResult))
 
@@ -201,9 +208,9 @@ println("")
 核心 API 总结:
 
 RSA 非对称加密:
-- rsa.GenerateRSAKeyPair(bits) - 生成RSA密钥对
-- rsa.EncryptPKCS1v15(publicKey, data) - RSA加密
-- rsa.DecryptPKCS1v15(privateKey, ciphertext) - RSA解密
+- tls.GenerateRSA2048KeyPair() - 生成RSA密钥对(2048位)
+- codec.RSAEncryptWithPKCS1v15(publicKey, data) - RSA加密
+- codec.RSADecryptWithPKCS1v15(privateKey, ciphertext) - RSA解密
 
 AES 对称加密:
 - codec.AESCBCEncrypt(key, data, iv) - AES CBC加密
@@ -215,7 +222,7 @@ AES 对称加密:
 - codec.EncodeToHex(data) - Hex编码
 
 工具函数:
-- randn(length) - 生成随机字节
+- codec.RandBytes(length) - 生成随机字节
 - time.Now().Unix() - 获取时间戳
 - json.dumps(obj) - JSON序列化
 - json.loads(str) - JSON反序列化

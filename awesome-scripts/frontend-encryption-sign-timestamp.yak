@@ -8,6 +8,24 @@
 关键词: 重放攻击, 签名伪造, 参数排序, 盐值salt, JavaScript逆向
 */
 
+// 关键词: 字符串数组排序函数
+sortStringArray = fn(arr) {
+    result = []
+    for item in arr {
+        result = append(result, item)
+    }
+    for i = 0; i < len(result); i++ {
+        for j = i + 1; j < len(result); j++ {
+            if result[i] > result[j] {
+                temp = result[i]
+                result[i] = result[j]
+                result[j] = temp
+            }
+        }
+    }
+    return result
+}
+
 println("\n=== 前端签名验证与时间戳防护实战 ===\n")
 
 println("=== 一、常见签名算法分析 ===\n")
@@ -28,7 +46,7 @@ for k, v in params {
 // 关键词: 时间戳生成, Unix时间戳
 println("\n[2] 添加时间戳和随机数")
 timestamp = string(time.Now().Unix())
-nonce = codec.EncodeToHex(randn(8))
+nonce = codec.EncodeToHex(codec.RandBytes(8))
 params["timestamp"] = timestamp
 params["nonce"] = nonce
 println(f"  timestamp: ${timestamp}")
@@ -43,7 +61,17 @@ keys = []
 for k in params {
     keys = append(keys, k)
 }
-keys = str.Sort(keys)
+
+// 简单排序实现
+for i = 0; i < len(keys); i++ {
+    for j = i + 1; j < len(keys); j++ {
+        if keys[i] > keys[j] {
+            temp = keys[i]
+            keys[i] = keys[j]
+            keys[j] = temp
+        }
+    }
+}
 
 println("  排序后的key:")
 for k in keys {
@@ -53,11 +81,13 @@ for k in keys {
 // 关键词: 参数拼接, 签名字符串构造
 println("\n[4] 方案A: 参数拼接签名 (k1=v1&k2=v2)")
 signStr = ""
-for i, k in keys {
-    if i > 0 {
+idx = 0
+for k in keys {
+    if idx > 0 {
         signStr += "&"
     }
     signStr += f"${k}=${params[k]}"
+    idx++
 }
 println(f"  拼接字符串: ${signStr}")
 
@@ -76,7 +106,7 @@ println(f"  加盐MD5签名: ${saltedMd5}")
 
 // 关键词: HMAC签名, 消息认证码
 println("\n[7] HMAC-SHA256 签名")
-hmacSign = codec.HmacSHA256(secretKey, signStr)
+hmacSign = codec.HmacSha256(secretKey, signStr)
 hmacHex = codec.EncodeToHex(hmacSign)
 println(f"  HMAC-SHA256: ${hmacHex}")
 
@@ -121,14 +151,16 @@ for k in receivedParams {
         serverKeys = append(serverKeys, k)
     }
 }
-serverKeys = str.Sort(serverKeys)
+serverKeys = sortStringArray(serverKeys)
 
 serverSignStr = ""
-for i, k in serverKeys {
-    if i > 0 {
+idx2 = 0
+for k in serverKeys {
+    if idx2 > 0 {
         serverSignStr += "&"
     }
     serverSignStr += f"${k}=${receivedParams[k]}"
+    idx2++
 }
 serverSignStr += "&key=" + secretKey
 serverSign = codec.Md5(serverSignStr)
@@ -152,7 +184,7 @@ attackParams = {
     "amount": "1",  // 篡改金额
     "to_account": "attacker_account",  // 篡改收款账户
     "timestamp": string(time.Now().Unix()),
-    "nonce": codec.EncodeToHex(randn(8))
+    "nonce": codec.EncodeToHex(codec.RandBytes(8))
 }
 
 println("  篡改参数:")
@@ -163,13 +195,15 @@ println(f"    to_account: account123 -> ${attackParams['to_account']}")
 println("\n  假设已获取密钥: ${secretKey}")
 println("  重新计算签名:")
 
-attackKeys = str.Sort(["username", "action", "amount", "to_account", "timestamp", "nonce"])
+attackKeys = sortStringArray(["username", "action", "amount", "to_account", "timestamp", "nonce"])
 attackSignStr = ""
-for i, k in attackKeys {
-    if i > 0 {
+idx3 = 0
+for k in attackKeys {
+    if idx3 > 0 {
         attackSignStr += "&"
     }
     attackSignStr += f"${k}=${attackParams[k]}"
+    idx3++
 }
 attackSignStr += "&key=" + secretKey
 attackSign = codec.Md5(attackSignStr)
@@ -190,17 +224,19 @@ originalRequest = {
     "action": "withdraw",
     "amount": "100",
     "timestamp": string(time.Now().Unix()),
-    "nonce": codec.EncodeToHex(randn(8))
+    "nonce": codec.EncodeToHex(codec.RandBytes(8))
 }
 
 // 生成签名
-replayKeys = str.Sort(["username", "action", "amount", "timestamp", "nonce"])
+replayKeys = sortStringArray(["username", "action", "amount", "timestamp", "nonce"])
 replaySignStr = ""
-for i, k in replayKeys {
-    if i > 0 {
+idx4 = 0
+for k in replayKeys {
+    if idx4 > 0 {
         replaySignStr += "&"
     }
     replaySignStr += f"${k}=${originalRequest[k]}"
+    idx4++
 }
 replaySignStr += "&key=" + secretKey
 originalSign = codec.Md5(replaySignStr)
@@ -234,7 +270,7 @@ println("")
 
 usedNonces = {}  // 模拟已使用的nonce集合
 
-testNonce = codec.EncodeToHex(randn(16))
+testNonce = codec.EncodeToHex(codec.RandBytes(16))
 println(f"  示例 nonce: ${testNonce}")
 
 // 第一次请求
@@ -286,7 +322,7 @@ secureParams = {
 
 // 1. 添加时间戳和nonce
 secureTimestamp = string(time.Now().Unix())
-secureNonce = codec.EncodeToHex(randn(16))
+secureNonce = codec.EncodeToHex(codec.RandBytes(16))
 secureParams["timestamp"] = secureTimestamp
 secureParams["nonce"] = secureNonce
 
@@ -300,19 +336,21 @@ secureKeys = []
 for k in secureParams {
     secureKeys = append(secureKeys, k)
 }
-secureKeys = str.Sort(secureKeys)
+secureKeys = sortStringArray(secureKeys)
 
 // 3. 使用 HMAC-SHA256
 secureSignStr = ""
-for i, k in secureKeys {
-    if i > 0 {
+idx5 = 0
+for k in secureKeys {
+    if idx5 > 0 {
         secureSignStr += "&"
     }
     secureSignStr += f"${k}=${secureParams[k]}"
+    idx5++
 }
 
 secureSecret = "SecureKey" + string(time.Now().Format("20060102"))  // 每日轮换
-secureHmac = codec.HmacSHA256(secureSecret, secureSignStr)
+secureHmac = codec.HmacSha256(secureSecret, secureSignStr)
 secureSign = codec.EncodeBase64(secureHmac)
 
 println(f"\n2. HMAC-SHA256 签名: ${secureSign[:40]}...")
@@ -344,8 +382,8 @@ println("")
 - codec.Sha256(data) - SHA256哈希
 
 HMAC签名:
-- codec.HmacSHA1(key, data) - HMAC-SHA1
-- codec.HmacSHA256(key, data) - HMAC-SHA256
+- codec.HmacSha1(key, data) - HMAC-SHA1
+- codec.HmacSha256(key, data) - HMAC-SHA256
 - codec.HmacMD5(key, data) - HMAC-MD5
 
 编码工具:
@@ -353,9 +391,9 @@ HMAC签名:
 - codec.EncodeBase64(data) - Base64编码
 
 工具函数:
-- str.Sort(array) - 字符串数组排序
+- sortStringArray(array) - 字符串数组排序
 - time.Now().Unix() - 时间戳
-- randn(length) - 随机字节
+- codec.RandBytes(length) - 随机字节
 
 签名流程:
 1. 收集业务参数
