@@ -218,7 +218,7 @@ go fn {
     // 记录请求
     log.info("Received request: %s %s from %s", req.Method, req.URL.Path, req.RemoteAddr)
     
-    if req.URL.Path != "/" {
+    if req.URL.Path == "/" {
         rsp.WriteHeader(200)
         rsp.Write(b`{"message": "Hello, World! Hello Yak!"}`)
         return
