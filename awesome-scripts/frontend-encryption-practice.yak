@@ -1,0 +1,190 @@
+/*
+前端加密实战 - AES加密与签名验证
+
+关键词: 前端加密, AES对称加密, MD5签名, 签名验证, timestamp防重放
+关键词: 加密参数篡改, HTTP加密请求, 动态密钥, 加密绕过测试
+*/
+
+println("\n=== 前端加密实战演示 ===\n")
+
+println("=== 一、AES对称加密场景 ===\n")
+
+// 关键词: AES固定密钥, CBC模式, PKCS7填充
+aesKey = "1234567890abcdef"  // 16字节密钥
+aesIV = "abcdef1234567890"   // 16字节IV
+
+originalData = `{"username":"admin","password":"123456"}`
+println(f"[1] 原始数据: ${originalData}")
+
+// 关键词: codec.AESCBCEncrypt加密
+encrypted, err = codec.AESCBCEncrypt(aesKey, originalData, aesIV)
+assert err == nil, "加密失败"
+encryptedHex = codec.EncodeToHex(encrypted)
+println(f"[2] AES加密结果(Hex): ${encryptedHex}")
+
+// 关键词: codec.AESCBCDecrypt解密
+decrypted, err = codec.AESCBCDecrypt(aesKey, encrypted, aesIV)
+assert err == nil, "解密失败"
+println(f"[3] AES解密结果: ${string(decrypted)}")
+assert string(decrypted) == originalData, "解密结果应该与原文一致"
+println("[✓] AES对称加密验证通过\n")
+
+println("=== 二、动态密钥AES加密场景 ===\n")
+
+// 关键词: 动态AES密钥, 随机IV, randb随机字节
+println("[模拟场景] 每次请求使用动态AES密钥")
+
+dynamicKey = str.RandStr(16)  // 生成16字节随机密钥
+dynamicIV = str.RandStr(16)   // 生成16字节随机IV
+println(f"[1] 动态AES密钥: ${dynamicKey}")
+println(f"[2] 动态IV: ${dynamicIV}")
+
+bizData = `{"user":"admin","action":"transfer","amount":1000}`
+println(f"[3] 业务数据: ${bizData}")
+
+dynEncrypted, err = codec.AESCBCEncrypt(dynamicKey, bizData, dynamicIV)
+assert err == nil, "动态密钥加密失败"
+dynEncryptedB64 = codec.EncodeBase64(dynEncrypted)
+println(f"[4] AES加密结果(Base64): ${dynEncryptedB64[:50]}...")
+
+// 构造加密请求（密钥和IV在实际场景中应该通过安全通道传递）
+encRequest = `POST /api/transfer HTTP/1.1
+Host: bank.example.com
+Content-Type: application/json
+
+{"encryptedData":"${dynEncryptedB64}","key":"${codec.EncodeBase64(dynamicKey)}","iv":"${codec.EncodeBase64(dynamicIV)}"}`
+
+println(f"\n[5] 加密HTTP请求:\n${str.Split(encRequest, '\n\n')[0]}")
+
+// 服务端解密
+dynDecrypted, err = codec.AESCBCDecrypt(dynamicKey, dynEncrypted, dynamicIV)
+assert err == nil, "解密失败"
+println(f"[6] 解密结果: ${string(dynDecrypted)}")
+assert string(dynDecrypted) == bizData, "解密结果应该一致"
+
+println("[✓] 动态密钥AES加密验证通过\n")
+
+println("=== 三、签名验证场景 ===\n")
+
+// 关键词: MD5签名, timestamp时间戳, sign签名字段
+println("[模拟场景] 带签名验证的API请求")
+
+timestamp = f"${time.Now().Unix()}"
+username = "admin"
+action = "login"
+secretKey = "my_secret_key_123"
+
+// 构造待签名字符串
+signStr = f"action=${action}&timestamp=${timestamp}&username=${username}&key=${secretKey}"
+println(f"[1] 待签名字符串: ${signStr}")
+
+// 关键词: codec.Md5签名计算
+sign = codec.Md5(signStr)
+println(f"[2] MD5签名: ${sign}")
+
+// 构造带签名的请求
+signedRequest = `POST /api/login HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+
+{"username":"${username}","action":"${action}","timestamp":"${timestamp}","sign":"${sign}"}`
+
+println(f"\n[3] 带签名的HTTP请求:\n${str.Split(signedRequest, '\n\n')[0]}")
+bodyJSON = str.Split(signedRequest, "\n\n")[1]
+println(f"    Body: ${bodyJSON}")
+
+// 服务端验证签名
+println("\n[4] 服务端验证签名:")
+receivedSign = sign
+verifyStr = f"action=${action}&timestamp=${timestamp}&username=${username}&key=${secretKey}"
+expectedSign = codec.Md5(verifyStr)
+println(f"    期望签名: ${expectedSign}")
+println(f"    接收签名: ${receivedSign}")
+assert receivedSign == expectedSign, "签名验证失败"
+println("    [✓] 签名验证通过")
+
+// 模拟签名篡改检测
+println("\n[5] 模拟参数篡改:")
+tamperedUsername = "hacker"
+tamperedSign = codec.Md5(f"action=${action}&timestamp=${timestamp}&username=${tamperedUsername}&key=${secretKey}")
+println(f"    篡改用户名为: ${tamperedUsername}")
+println(f"    重新计算签名: ${tamperedSign}")
+if tamperedSign != receivedSign {
+    println("    [✓] 检测到签名不匹配，篡改被发现")
+} else {
+    println("    [!] 签名匹配，篡改未被检测")
+}
+
+println("\n[✓] 签名验证场景测试完成\n")
+
+println("=== 五、timestamp防重放攻击 ===\n")
+
+// 关键词: 时间戳防重放, 请求有效期
+println("[场景] 使用timestamp防止请求重放")
+
+currentTime = time.Now().Unix()
+oldTimestamp = currentTime - 600  // 10分钟前
+validTimestamp = currentTime - 10  // 10秒前
+
+println(f"[1] 当前时间: ${currentTime}")
+println(f"[2] 过期时间戳: ${oldTimestamp} (10分钟前)")
+println(f"[3] 有效时间戳: ${validTimestamp} (10秒前)")
+
+// 验证时间戳有效性
+maxAge = 300  // 5分钟有效期
+println(f"\n[4] 设置请求有效期: ${maxAge}秒")
+
+if currentTime - oldTimestamp > maxAge {
+    println(f"    [✓] 过期请求被拒绝 (时间差: ${currentTime - oldTimestamp}秒)")
+} else {
+    println("    [!] 过期请求未被拦截")
+}
+
+if currentTime - validTimestamp <= maxAge {
+    println(f"    [✓] 有效请求通过 (时间差: ${currentTime - validTimestamp}秒)")
+} else {
+    println("    [!] 有效请求被误拦截")
+}
+
+println("\n[✓] timestamp防重放测试完成\n")
+
+println("=== 测试总结 ===\n")
+println("[✓] AES对称加密/解密")
+println("[✓] 动态密钥AES加密")
+println("[✓] MD5签名生成与验证")
+println("[✓] 参数篡改检测")
+println("[✓] timestamp防重放攻击")
+
+println("\n前端加密实战验证完成！\n")
+
+/*
+核心API:
+加密: codec.AESCBCEncrypt, codec.AESCBCDecrypt
+编码: codec.EncodeToHex, codec.EncodeBase64, codec.DecodeBase64
+签名: codec.Md5, codec.Sha256
+时间: time.Now().Unix()
+随机: str.RandStr(n), randb(n)
+
+AES加密流程:
+1. 生成或使用固定AES密钥(16/24/32字节)
+2. 生成或使用固定IV(16字节)
+3. 使用codec.AESCBCEncrypt加密数据
+4. 使用codec.EncodeBase64编码密文
+5. 发送{encryptedData, key, iv}或仅发送encryptedData(密钥预共享)
+6. 服务端解码并使用codec.AESCBCDecrypt解密
+
+签名验证流程:
+1. 构造待签名字符串(参数按字典序+secretKey)
+2. 计算codec.Md5或codec.Sha256签名
+3. 发送{data, sign, timestamp}
+4. 服务端验证签名和时间戳有效期
+5. 检测参数篡改
+
+安全建议:
+- 动态生成AES密钥和IV
+- 使用HTTPS传输密钥
+- 签名中包含timestamp防重放
+- 设置合理的时间戳有效期(如300秒)
+- 使用SHA256替代MD5提高安全性
+*/
+

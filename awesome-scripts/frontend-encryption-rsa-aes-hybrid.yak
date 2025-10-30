@@ -1,0 +1,238 @@
+/*
+前端加密分析 - RSA + AES 混合加密实战
+
+场景: 很多前端使用 RSA 加密 AES 密钥，再用 AES 加密数据的混合加密方案。
+本脚本演示如何分析、解密和重新加密这种常见的前端加密场景。
+
+关键词: 前端加密, RSA非对称加密, AES对称加密, 混合加密方案, 密钥交换
+关键词: 公钥加密, 私钥解密, 动态密钥生成, 加密参数分析, JavaScript逆向
+*/
+
+println("\n=== 前端 RSA + AES 混合加密实战 ===\n")
+
+println("场景说明:")
+println("  前端: 生成随机AES密钥 -> 用RSA公钥加密AES密钥 -> 用AES密钥加密数据")
+println("  后端: 用RSA私钥解密得到AES密钥 -> 用AES密钥解密数据\n")
+
+println("=== 一、模拟前端加密流程 ===\n")
+
+// 关键词: RSA密钥对生成, 2048位密钥
+println("[1] 生成 RSA 密钥对")
+rsaPriv, rsaPub, err = rsa.GenerateRSAKeyPair(2048)
+assert err == nil, f"生成RSA密钥对失败: ${err}"
+println(f"  RSA私钥长度: ${len(rsaPriv)} 字节")
+println(f"  RSA公钥长度: ${len(rsaPub)} 字节")
+
+// 关键词: AES密钥随机生成, 16字节密钥
+println("\n[2] 前端生成随机 AES 密钥和 IV")
+aesKey = randn(16)  // 随机16字节AES密钥
+aesIV = randn(16)   // 随机16字节IV
+println(f"  AES密钥(Hex): ${codec.EncodeToHex(aesKey)}")
+println(f"  AES IV(Hex): ${codec.EncodeToHex(aesIV)}")
+
+// 关键词: RSA公钥加密, PKCS1填充
+println("\n[3] 用 RSA 公钥加密 AES 密钥")
+encryptedAESKey, err = rsa.EncryptPKCS1v15(rsaPub, aesKey)
+assert err == nil, f"RSA加密失败: ${err}"
+println(f"  加密后长度: ${len(encryptedAESKey)} 字节")
+println(f"  Base64: ${codec.EncodeBase64(encryptedAESKey)[:60]}...")
+
+// 关键词: 业务数据, JSON格式
+println("\n[4] 准备业务数据")
+businessData = {
+    "username": "admin",
+    "password": "P@ssw0rd123",
+    "timestamp": time.Now().Unix(),
+    "nonce": randn(8)
+}
+jsonData = json.dumps(businessData)
+println(f"  原始数据: ${jsonData}")
+
+// 关键词: AES_CBC加密, 数据加密
+println("\n[5] 用 AES 加密业务数据")
+encryptedData, err = codec.AESCBCEncrypt(aesKey, jsonData, aesIV)
+assert err == nil, f"AES加密失败: ${err}"
+println(f"  密文(Base64): ${codec.EncodeBase64(encryptedData)[:60]}...")
+
+// 关键词: 前端加密报文构造
+println("\n[6] 构造前端加密请求")
+frontendRequest = {
+    "encryptedKey": codec.EncodeBase64(encryptedAESKey),
+    "encryptedData": codec.EncodeBase64(encryptedData),
+    "iv": codec.EncodeBase64(aesIV)
+}
+requestJSON = json.dumps(frontendRequest)
+println(f"  加密请求体:\n{requestJSON[:200]}...")
+
+println("\n=== 二、模拟后端解密流程 ===\n")
+
+// 关键词: 后端接收加密数据
+println("[1] 后端接收加密请求")
+receivedData = json.loads(requestJSON)
+println("  解析字段:")
+println(f"    - encryptedKey: {len(receivedData['encryptedKey'])} 字符")
+println(f"    - encryptedData: {len(receivedData['encryptedData'])} 字符")
+println(f"    - iv: {len(receivedData['iv'])} 字符")
+
+// 关键词: Base64解码
+println("\n[2] Base64 解码")
+encKeyBytes = codec.DecodeBase64(receivedData["encryptedKey"])
+encDataBytes = codec.DecodeBase64(receivedData["encryptedData"])
+ivBytes = codec.DecodeBase64(receivedData["iv"])
+assert len(encKeyBytes) > 0, "解码encryptedKey失败"
+assert len(encDataBytes) > 0, "解码encryptedData失败"
+assert len(ivBytes) == 16, "IV长度错误"
+println("  [✓] Base64解码成功")
+
+// 关键词: RSA私钥解密, 密钥恢复
+println("\n[3] 用 RSA 私钥解密 AES 密钥")
+decryptedAESKey, err = rsa.DecryptPKCS1v15(rsaPriv, encKeyBytes)
+assert err == nil, f"RSA解密失败: ${err}"
+assert len(decryptedAESKey) == 16, "解密的AES密钥长度错误"
+println(f"  解密的AES密钥(Hex): ${codec.EncodeToHex(decryptedAESKey)}")
+
+// 验证密钥一致性
+assert codec.EncodeToHex(decryptedAESKey) == codec.EncodeToHex(aesKey), "解密的密钥与原始密钥不一致"
+println("  [✓] 密钥恢复成功，与原始密钥一致")
+
+// 关键词: AES_CBC解密, 数据解密
+println("\n[4] 用 AES 密钥解密业务数据")
+decryptedData, err = codec.AESCBCDecrypt(decryptedAESKey, encDataBytes, ivBytes)
+assert err == nil, f"AES解密失败: ${err}"
+println(f"  解密数据: ${string(decryptedData)}")
+
+// 关键词: JSON解析, 业务数据提取
+println("\n[5] 解析业务数据")
+decryptedBusiness = json.loads(string(decryptedData))
+println("  业务字段:")
+println(f"    - username: ${decryptedBusiness['username']}")
+println(f"    - password: ${decryptedBusiness['password']}")
+println(f"    - timestamp: ${decryptedBusiness['timestamp']}")
+println(f"    - nonce: ${decryptedBusiness['nonce']}")
+
+// 验证数据完整性
+assert decryptedBusiness["username"] == businessData["username"], "用户名不一致"
+assert decryptedBusiness["password"] == businessData["password"], "密码不一致"
+println("  [✓] 数据完整性验证通过")
+
+println("\n=== 三、攻击场景: 修改加密数据 ===\n")
+
+// 关键词: 参数篡改, 中间人攻击
+println("[场景] 中间人拦截请求，修改业务参数")
+
+// 解密原始数据
+interceptedKey = codec.DecodeBase64(receivedData["encryptedKey"])
+decKey, _ = rsa.DecryptPKCS1v15(rsaPriv, interceptedKey)
+interceptedData = codec.DecodeBase64(receivedData["encryptedData"])
+interceptedIV = codec.DecodeBase64(receivedData["iv"])
+originalData, _ = codec.AESCBCDecrypt(decKey, interceptedData, interceptedIV)
+
+println(f"  原始数据: ${string(originalData)}")
+
+// 关键词: 业务逻辑篡改, 权限提升
+println("\n  修改业务逻辑:")
+modifiedBusiness = json.loads(string(originalData))
+modifiedBusiness["username"] = "attacker"
+modifiedBusiness["isAdmin"] = true  // 添加管理员权限
+modifiedBusiness["timestamp"] = time.Now().Unix()  // 更新时间戳
+println(f"  修改后: username={modifiedBusiness['username']}, isAdmin={modifiedBusiness['isAdmin']}")
+
+// 关键词: 重新加密, 攻击payload构造
+println("\n  重新加密修改后的数据:")
+modifiedJSON = json.dumps(modifiedBusiness)
+newEncData, _ = codec.AESCBCEncrypt(decKey, modifiedJSON, interceptedIV)
+
+maliciousRequest = {
+    "encryptedKey": receivedData["encryptedKey"],  // 复用原密钥
+    "encryptedData": codec.EncodeBase64(newEncData),
+    "iv": receivedData["iv"]  // 复用原IV
+}
+println(f"  [✓] 恶意请求构造完成")
+
+// 验证恶意请求
+verifyKey = codec.DecodeBase64(maliciousRequest["encryptedKey"])
+verifyDecKey, _ = rsa.DecryptPKCS1v15(rsaPriv, verifyKey)
+verifyData = codec.DecodeBase64(maliciousRequest["encryptedData"])
+verifyIV = codec.DecodeBase64(maliciousRequest["iv"])
+verifyResult, _ = codec.AESCBCDecrypt(verifyDecKey, verifyData, verifyIV)
+verifyJSON = json.loads(string(verifyResult))
+
+println(f"\n  验证篡改结果:")
+println(f"    username: ${verifyJSON['username']}")
+println(f"    isAdmin: ${verifyJSON['isAdmin']}")
+assert verifyJSON["username"] == "attacker", "用户名篡改失败"
+assert verifyJSON["isAdmin"] == true, "权限提升失败"
+println("  [✓] 参数篡改攻击成功")
+
+println("\n=== 四、防护建议 ===\n")
+
+println("1. 密钥管理:")
+println("   - 不要在前端硬编码 RSA 公钥")
+println("   - 每次会话使用不同的 AES 密钥")
+println("   - 密钥应该有过期时间")
+println("")
+println("2. 签名验证:")
+println("   - 对加密数据进行签名 (HMAC/RSA签名)")
+println("   - 验证时间戳，防止重放攻击")
+println("   - 验证 nonce，确保请求唯一性")
+println("")
+println("3. 传输安全:")
+println("   - 强制使用 HTTPS")
+println("   - 实施证书锁定 (Certificate Pinning)")
+println("   - 检测代理和中间人")
+println("")
+println("4. 业务逻辑:")
+println("   - 关键操作需要二次验证")
+println("   - 权限验证在后端进行")
+println("   - 记录操作日志，便于审计")
+
+println("\n=== 测试完成 ===\n")
+
+println("总结:")
+println("  ✓ RSA 密钥对生成和使用")
+println("  ✓ AES 密钥随机生成")
+println("  ✓ RSA 加密/解密 AES 密钥")
+println("  ✓ AES 加密/解密业务数据")
+println("  ✓ 混合加密完整流程")
+println("  ✓ 参数篡改攻击演示")
+println("")
+
+/*
+核心 API 总结:
+
+RSA 非对称加密:
+- rsa.GenerateRSAKeyPair(bits) - 生成RSA密钥对
+- rsa.EncryptPKCS1v15(publicKey, data) - RSA加密
+- rsa.DecryptPKCS1v15(privateKey, ciphertext) - RSA解密
+
+AES 对称加密:
+- codec.AESCBCEncrypt(key, data, iv) - AES CBC加密
+- codec.AESCBCDecrypt(key, ciphertext, iv) - AES CBC解密
+
+编码工具:
+- codec.EncodeBase64(data) - Base64编码
+- codec.DecodeBase64(str) - Base64解码
+- codec.EncodeToHex(data) - Hex编码
+
+工具函数:
+- randn(length) - 生成随机字节
+- time.Now().Unix() - 获取时间戳
+- json.dumps(obj) - JSON序列化
+- json.loads(str) - JSON反序列化
+
+混合加密流程:
+1. 前端生成随机AES密钥和IV
+2. 用RSA公钥加密AES密钥
+3. 用AES密钥加密业务数据
+4. 发送: {encryptedKey, encryptedData, iv}
+5. 后端用RSA私钥解密得到AES密钥
+6. 用AES密钥解密业务数据
+
+攻击场景:
+- 拦截加密请求
+- 解密业务数据
+- 修改参数（权限提升、金额篡改等）
+- 重新加密并发送
+- 绕过前端验证
+*/
+

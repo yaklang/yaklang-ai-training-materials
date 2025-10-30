@@ -1,0 +1,145 @@
+/*
+Yaklang XML解析与XPath实践 - 简化版
+
+关键词: XML解析, XPath查询, xpath.LoadHTMLDocument, xpath.QueryAll, xpath.Query
+关键词: xpath.InnerText, 节点遍历, 属性查询, XML文档处理
+*/
+
+println("\n=== Yaklang XML解析与XPath实践 ===\n")
+
+// 关键词: XML文档示例
+xmlContent = `<bookstore>
+  <book category="children">
+    <title lang="en">Harry Potter</title>
+    <author>J K. Rowling</author>
+    <year>2005</year>
+    <price>29.99</price>
+  </book>
+  <book category="web">
+    <title lang="cn">你好世界</title>
+    <author>Lang</author>
+    <year>2024</year>
+    <price>22.99</price>
+  </book>
+  <book category="security">
+    <title lang="en">Web Security</title>
+    <author>Security Expert</author>
+    <year>2023</year>
+    <price>39.99</price>
+  </book>
+</bookstore>`
+
+println("=== 一、XML文档解析 ===\n")
+
+// 关键词: xpath.LoadHTMLDocument解析XML
+doc, err = xpath.LoadHTMLDocument(xmlContent)
+assert err == nil, f"XML解析失败: ${err}"
+assert doc != nil, "文档对象不应为nil"
+println("[✓] XML文档解析成功\n")
+
+println("=== 二、XPath查询测试 ===\n")
+
+// 关键词: xpath.QueryAll查询所有匹配节点
+books, err = xpath.QueryAll(doc, "//book")
+assert err == nil && len(books) == 3, f"应该有3个book元素"
+println(f"[✓] 查询所有book元素: ${len(books)} 个")
+
+titles, err = xpath.QueryAll(doc, "//title")
+assert err == nil && len(titles) == 3, f"应该有3个title元素"
+println(f"[✓] 查询所有title元素: ${len(titles)} 个")
+
+// 关键词: XPath属性过滤, [@lang='en']语法
+enTitles, err = xpath.QueryAll(doc, "//title[@lang='en']")
+assert err == nil && len(enTitles) == 2, "应该有2个英文title"
+println(f"[✓] 查询lang='en'的title: ${len(enTitles)} 个")
+
+for node in enTitles {
+    text = xpath.InnerText(node)
+    println(f"    - ${text}")
+}
+
+// 关键词: 复杂XPath查询, book[@category='security']
+securityBooks, err = xpath.QueryAll(doc, "//book[@category='security']")
+assert err == nil && len(securityBooks) == 1, "应该有1个安全类书籍"
+println(f"\n[✓] 查询category='security'的book: ${len(securityBooks)} 个\n")
+
+println("=== 三、节点内容提取 ===\n")
+
+// 关键词: xpath.Query查询单个节点
+titleNode, err = xpath.Query(doc, "//book[1]/title")
+assert err == nil && titleNode != nil, "应该找到第一本书的标题"
+
+// 关键词: xpath.InnerText获取节点文本
+titleText = xpath.InnerText(titleNode)
+println(f"[✓] 第一本书标题: ${titleText}")
+
+authorNode, err = xpath.Query(doc, "//book[1]/author")
+assert err == nil && authorNode != nil, "应该找到作者"
+authorText = xpath.InnerText(authorNode)
+println(f"[✓] 作者: ${authorText}")
+
+priceNode, err = xpath.Query(doc, "//book[1]/price")
+assert err == nil && priceNode != nil, "应该找到价格"
+priceText = xpath.InnerText(priceNode)
+println(f"[✓] 价格: ${priceText}\n")
+
+println("=== 四、XPath路径定位 ===\n")
+
+// 关键词: XPath索引定位, //book[2]语法
+secondBook, err = xpath.Query(doc, "//book[2]")
+assert err == nil && secondBook != nil, "应该找到第二本书"
+println("[✓] 定位第二本书成功")
+
+secondTitle, err = xpath.Query(doc, "//book[2]/title")
+assert err == nil, "获取第二本书标题失败"
+secondTitleText = xpath.InnerText(secondTitle)
+println(f"    标题: ${secondTitleText}")
+
+secondAuthor, err = xpath.Query(doc, "//book[2]/author")
+assert err == nil, "获取作者失败"
+secondAuthorText = xpath.InnerText(secondAuthor)
+println(f"    作者: ${secondAuthorText}\n")
+
+println("=== 五、多条件XPath查询 ===\n")
+
+// 关键词: 多条件XPath, //book[@category='children']/title[@lang='en']
+childrenEnTitle, err = xpath.Query(doc, "//book[@category='children']/title[@lang='en']")
+assert err == nil && childrenEnTitle != nil, "应该找到儿童类英文标题"
+childrenEnText = xpath.InnerText(childrenEnTitle)
+println(f"[✓] 儿童类英文书籍: ${childrenEnText}\n")
+
+println("=== 六、遍历所有匹配节点 ===\n")
+
+// 关键词: 节点遍历, xpath.InnerText批量提取
+println("[✓] 遍历所有title元素:")
+for i, titleNode = range titles {
+    text = xpath.InnerText(titleNode)
+    println(f"    ${i+1}. ${text}")
+}
+
+println("\n=== 测试总结 ===\n")
+println("[✓] XML文档解析")
+println("[✓] XPath基础查询 (QueryAll/Query)")
+println("[✓] XPath属性过滤")
+println("[✓] 节点文本提取 (InnerText)")
+println("[✓] XPath索引定位")
+println("[✓] 多条件XPath查询")
+println("[✓] 节点遍历")
+
+println("\nXML解析与XPath查询功能验证完成！\n")
+
+/*
+核心API总结:
+- xpath.LoadHTMLDocument(xmlText) - 解析XML/HTML文档
+- xpath.QueryAll(doc, xpathExpr) - 查询所有匹配节点
+- xpath.Query(doc, xpathExpr) - 查询单个节点
+- xpath.InnerText(node) - 获取节点文本内容
+- xpath.SelectAttr(node, attrName) - 获取节点属性值
+
+XPath语法示例:
+- //book - 选择所有book元素
+- //book[1] - 选择第一个book
+- //book[@category='children'] - 选择特定属性的book
+- //book[1]/title - 选择第一个book的title子元素
+- //title[@lang='en'] - 选择lang属性为en的title
+*/
