@@ -145,7 +145,7 @@ func testAutoDictionary() {
     // 关键词: brute.autoDict, 自动加载默认字典
     autoDictInstance, err = brute.New(
         "ftp",
-        brute.autoDict(true),      // 自动加载字典
+        brute.autoDict(),          // 自动加载字典(不需要参数)
         brute.concurrent(1),
         brute.debug(true),
         brute.okToStop(true)

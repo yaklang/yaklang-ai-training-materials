@@ -1,0 +1,530 @@
+// =============================================================================
+// Brute Library AI Error Patterns and Fixes - Comprehensive Error Pattern Analysis
+// Function: Deep analysis of AI common errors when using brute library with pattern recognition
+// Purpose: Error pattern identification, root cause analysis, systematic fixes
+//
+// Core Error Patterns:
+// - Pattern 1: Method Name Fabrication - Creating non-existent SetXXX methods
+// - Pattern 2: Parameter Type Confusion - Missing spread operator for variadic params
+// - Pattern 3: Return Value Ignorance - Not handling multiple return values
+// - Pattern 4: Syntax Language Mixing - Using Go/Python syntax in Yaklang
+// - Pattern 5: API Assumption Without Verification - Assuming API exists without checking
+//
+// Keywords: error patterns, AI mistakes, brute library, pattern analysis, systematic fixes
+// Search Tags: #error-patterns #ai-analysis #brute-errors #root-cause #pattern-fix
+// AI Training: error pattern recognition, mistake categories, systematic debugging
+// =============================================================================
+
+println("=== Brute Library AI Error Patterns Analysis ===\n")
+
+// ==========================================
+// Pattern 1: Method Name Fabrication Pattern
+// Root Cause: AI assumes OOP-style setter methods exist
+// ==========================================
+println("=== Pattern 1: Method Name Fabrication ===")
+
+// Error Pattern Analysis
+// Keywords: fabrication pattern, method invention, API assumption
+println("Error Pattern: AI fabricates SetXXX style methods based on OOP patterns")
+println("Root Cause: Cross-language experience from Java/Python OOP")
+println("")
+
+// Common fabricated methods that DO NOT exist:
+// Keywords: non-existent methods, fabricated APIs, wrong methods
+fabricatedMethods = [
+    "brute.SetTarget()",
+    "brute.SetPort()",
+    "brute.SetUserList()",
+    "brute.SetPasswordList()",
+    "brute.SetConcurrency()",
+    "brute.SetTimeout()",
+    "brute.SetResultHandler()",
+    "brute.SetDebug()",
+]
+
+println("Commonly fabricated methods (ALL WRONG):")
+for method in fabricatedMethods {
+    println(f"  ❌ ${method}")
+}
+println("")
+
+// Correct Pattern: Option-based configuration
+// Keywords: option pattern, functional options, correct pattern
+println("Correct Pattern: Use option parameters in brute.New()")
+correctMethods = [
+    "brute.userList(...)",
+    "brute.passList(...)",
+    "brute.concurrent(n)",
+    "brute.concurrentTarget(n)",
+    "brute.minDelay(ms)",
+    "brute.maxDelay(ms)",
+    "brute.debug(bool)",
+    "brute.okToStop(bool)",
+    "brute.bruteHandler(func)",
+]
+
+println("Correct option methods:")
+for method in correctMethods {
+    println(f"  ✅ ${method}")
+}
+println("")
+
+// Pattern Recognition Test
+// Keywords: pattern test, verification, error detection
+testPatternRecognition = func() {
+    println("Pattern Recognition Test:")
+    
+    // Test 1: Can detect fabricated method
+    // Keywords: detection test, fabrication detection
+    testCode1 = "brute.SetUserList(users)"
+    isFabricated1 = str.Contains(testCode1, "brute.Set")
+    assert isFabricated1 == true, "should detect fabricated SetXXX method"
+    println(f"  ✅ Detected fabricated method in: ${testCode1}")
+    
+    // Test 2: Recognize correct pattern
+    // Keywords: correct pattern detection, validation
+    testCode2 = "brute.userList(users...)"
+    isFabricated2 = str.Contains(testCode2, "brute.Set")
+    assert isFabricated2 == false, "should recognize correct method"
+    println(f"  ✅ Recognized correct pattern in: ${testCode2}")
+}
+
+testPatternRecognition()
+println("")
+
+// ==========================================
+// Pattern 2: Parameter Type Confusion Pattern
+// Root Cause: Not understanding variadic parameters and spread operator
+// ==========================================
+println("=== Pattern 2: Parameter Type Confusion ===")
+
+// Error Pattern: Missing spread operator when passing slices
+// Keywords: spread operator, variadic parameters, parameter confusion
+println("Error Pattern: Passing slice directly instead of spreading elements")
+println("Root Cause: Unfamiliarity with variadic parameters and spread syntax")
+println("")
+
+// Wrong patterns that AI commonly produces:
+// Keywords: wrong parameter passing, missing spread
+wrongPatterns = [
+    "brute.userList(users)",           // Missing ...
+    "brute.passList(passwords)",       // Missing ...
+    "brute.userList([users])",         // Wrong: extra array wrapping
+    "brute.userList(*users)",          // Wrong: using * instead of ...
+]
+
+println("Wrong parameter passing patterns:")
+for pattern in wrongPatterns {
+    println(f"  ❌ ${pattern}")
+}
+println("")
+
+// Correct patterns:
+// Keywords: correct spread, variadic correct usage
+correctPatterns = [
+    "brute.userList(users...)",                    // Correct: spread slice
+    "brute.passList(passwords...)",                // Correct: spread slice
+    "brute.userList('root', 'admin', 'test')",    // Correct: direct variadic
+]
+
+println("Correct parameter passing patterns:")
+for pattern in correctPatterns {
+    println(f"  ✅ ${pattern}")
+}
+println("")
+
+// Demonstration with actual code
+// Keywords: spread operator demo, correct usage demo
+demoUsers = ["alice", "bob", "charlie"]
+demoPasswords = ["pass1", "pass2", "pass3"]
+
+println("Demonstration:")
+println(f"  Input slice: ${demoUsers}")
+println(f"  Correct usage: brute.userList(demoUsers...)")
+
+demoInstance, demoErr = brute.New(
+    "ssh",
+    brute.userList(demoUsers...),      // ✅ Correct with ...
+    brute.passList(demoPasswords...),  // ✅ Correct with ...
+    brute.debug(false)
+)
+die(demoErr)
+assert demoInstance != nil, "demo instance should work"
+println("  ✅ Successfully created instance with spread operator")
+println("")
+
+// ==========================================
+// Pattern 3: Return Value Ignorance Pattern
+// Root Cause: Not handling multiple return values properly
+// ==========================================
+println("=== Pattern 3: Return Value Ignorance ===")
+
+// Error Pattern: Ignoring error return values
+// Keywords: error ignorance, multiple returns, return value handling
+println("Error Pattern: Ignoring error return value from functions")
+println("Root Cause: Inexperience with error handling in dynamic languages")
+println("")
+
+// Wrong patterns:
+// Keywords: ignoring errors, single return, wrong error handling
+wrongErrorPatterns = [
+    "instance = brute.New(...)",           // Wrong: ignoring error
+    "content = file.ReadFile(path)",       // Wrong: ignoring error
+    "data = json.loads(str)",              // Wrong: ignoring error (if it returns error)
+]
+
+println("Wrong error handling patterns:")
+for pattern in wrongErrorPatterns {
+    println(f"  ❌ ${pattern}")
+}
+println("")
+
+// Correct patterns:
+// Keywords: correct error handling, die function, error check
+correctErrorPatterns = [
+    "instance, err = brute.New(...); die(err)",
+    "content, err = file.ReadFile(path); die(err)",
+    "instance, err = brute.New(...); if err != nil { ... }",
+]
+
+println("Correct error handling patterns:")
+for pattern in correctErrorPatterns {
+    println(f"  ✅ ${pattern}")
+}
+println("")
+
+// Demonstration of correct error handling
+// Keywords: error handling demo, die usage, error check demo
+println("Error handling demonstration:")
+
+// Method 1: Using die()
+// Keywords: die function, panic on error
+testInstance1, testErr1 = brute.New(
+    "ftp",
+    brute.userList("ftp"),
+    brute.passList("ftp"),
+    brute.debug(false)
+)
+die(testErr1)  // Will panic if error occurs
+println("  ✅ Method 1: Using die() - error handled")
+
+// Method 2: Explicit check
+// Keywords: explicit check, if statement, manual error handling
+testInstance2, testErr2 = brute.New(
+    "telnet",
+    brute.userList("admin"),
+    brute.passList("admin"),
+    brute.debug(false)
+)
+if testErr2 != nil && testErr2 != undefined {
+    println(f"  Error occurred: ${testErr2}")
+} else {
+    println("  ✅ Method 2: Explicit error check - no error")
+}
+println("")
+
+// ==========================================
+// Pattern 4: Syntax Language Mixing Pattern
+// Root Cause: Using syntax from other languages (Go, Python, Java)
+// ==========================================
+println("=== Pattern 4: Syntax Language Mixing ===")
+
+// Error Pattern: Using syntax from other languages
+// Keywords: syntax mixing, language confusion, cross-language errors
+println("Error Pattern: Mixing Go/Python/Java syntax into Yaklang code")
+println("Root Cause: AI trained on multiple languages applies wrong syntax rules")
+println("")
+
+// Common syntax mixing errors:
+// Keywords: syntax errors, language mixing, wrong syntax
+syntaxMixingErrors = [
+    ["Go-style", "var users []string", "users = []"],
+    ["Go-style", "users := []string{'root'}", "users = ['root']"],
+    ["Python-style", "user.get('name')", "user['name']"],
+    ["Java-style", "instance.setDebug(true)", "brute.debug(true)"],
+    ["Go-style", "for _, user := range users", "for user in users"],
+]
+
+println("Common syntax mixing errors:")
+for error in syntaxMixingErrors {
+    lang = error[0]
+    wrong = error[1]
+    correct = error[2]
+    println(f"  {lang}:")
+    println(f"    ❌ Wrong: ${wrong}")
+    println(f"    ✅ Correct: ${correct}")
+}
+println("")
+
+// Yaklang-specific syntax rules
+// Keywords: yaklang syntax, correct syntax, language rules
+println("Yaklang-specific syntax rules:")
+println("  1. No explicit type declarations in variable assignment")
+println("  2. Use = for assignment, not :=")
+println("  3. Use [...] for array literals, not {...}")
+println("  4. Use for item in array, not for _, item := range array")
+println("  5. Use spread operator ... for variadic parameters")
+println("  6. Function definition: funcName = func(...) { ... }")
+println("")
+
+// ==========================================
+// Pattern 5: API Assumption Without Verification
+// Root Cause: Assuming API exists without checking documentation
+// ==========================================
+println("=== Pattern 5: API Assumption Without Verification ===")
+
+// Error Pattern: Assuming API methods exist without verification
+// Keywords: API assumption, unverified API, fabricated API
+println("Error Pattern: Assuming API methods exist based on 'reasonable guessing'")
+println("Root Cause: Over-confidence in pattern matching without verification")
+println("")
+
+// Commonly assumed but non-existent APIs:
+// Keywords: non-existent API, wrong assumptions, fabricated functions
+assumedAPIs = [
+    ["brute.timeout()", "No timeout parameter - use minDelay/maxDelay"],
+    ["brute.SetResultHandler()", "Use brute.bruteHandler() option instead"],
+    ["brute.Start() with multiple params", "Start() only takes target address"],
+    ["brute.Stop()", "Use context cancellation or okToStop option"],
+    ["brute.GetResults()", "Results come through handler callback"],
+]
+
+println("Commonly assumed but non-existent APIs:")
+for api in assumedAPIs {
+    method = api[0]
+    solution = api[1]
+    println(f"  ❌ Assumed: ${method}")
+    println(f"     ✅ Reality: ${solution}")
+}
+println("")
+
+// Verification Strategy: How to check if API exists
+// Keywords: API verification, documentation check, code search
+println("API Verification Strategy:")
+println("  1. Search existing code: grep 'brute\\.' in codebase")
+println("  2. Check error messages from yak engine")
+println("  3. Test small code snippets first")
+println("  4. Look for similar patterns in example code")
+println("  5. Never assume - always verify")
+println("")
+
+// Demonstration: Verify brute library available methods
+// Keywords: method verification, available methods, API discovery
+println("Demonstration: Verify available brute methods")
+
+// Get available brute types
+// Keywords: available types, service types, type verification
+availableTypes = brute.GetAvailableBruteTypes()
+println(f"  ✅ brute.GetAvailableBruteTypes() exists - returns ${len(availableTypes)} types")
+
+// Get default dictionaries
+// Keywords: dictionary methods, default dictionaries
+sshUsers = brute.GetUsernameListFromBruteType("ssh")
+println(f"  ✅ brute.GetUsernameListFromBruteType() exists - returns ${len(sshUsers)} users")
+
+sshPasswords = brute.GetPasswordListFromBruteType("ssh")
+println(f"  ✅ brute.GetPasswordListFromBruteType() exists - returns ${len(sshPasswords)} passwords")
+
+println("")
+
+// ==========================================
+// Error Pattern Summary and Statistics
+// ==========================================
+println("=== Error Pattern Summary ===")
+
+// Define error categories with examples
+// Keywords: error categories, pattern summary, error classification
+errorCategories = {
+    "API_FABRICATION": {
+        "count": 7,
+        "examples": ["brute.SetTarget()", "brute.SetUserList()", "brute.timeout()"],
+        "fix": "Use brute.New() with option parameters",
+    },
+    "PARAMETER_CONFUSION": {
+        "count": 4,
+        "examples": ["brute.userList(users)", "missing spread operator"],
+        "fix": "Use spread operator: brute.userList(users...)",
+    },
+    "ERROR_IGNORANCE": {
+        "count": 3,
+        "examples": ["instance = brute.New(...)", "ignoring error return"],
+        "fix": "Handle errors: instance, err = brute.New(...); die(err)",
+    },
+    "SYNTAX_MIXING": {
+        "count": 5,
+        "examples": ["var users []string", "users := []"],
+        "fix": "Use Yaklang syntax: users = []",
+    },
+    "API_ASSUMPTION": {
+        "count": 5,
+        "examples": ["brute.timeout()", "brute.Stop()"],
+        "fix": "Verify API exists before using",
+    },
+}
+
+println("Error Pattern Categories:")
+totalErrors = 0
+for category, info in errorCategories {
+    println(f"\n${category}:")
+    println(f"  Frequency: ${info['count']} common mistakes")
+    println(f"  Examples: ${info['examples']}")
+    println(f"  Fix Strategy: ${info['fix']}")
+    totalErrors += info["count"]
+}
+
+println(f"\nTotal Common Error Patterns: ${totalErrors}")
+println("")
+
+// ==========================================
+// Pattern Detection Rules for AI
+// ==========================================
+println("=== Pattern Detection Rules for AI ===")
+
+// Define detection rules
+// Keywords: detection rules, pattern matching, error detection
+detectionRules = [
+    {
+        "rule": "If code contains 'brute.Set' → API fabrication error",
+        "action": "Replace with brute.New() option parameters",
+    },
+    {
+        "rule": "If passing slice without '...' → Parameter confusion error",
+        "action": "Add spread operator: sliceName...",
+    },
+    {
+        "rule": "If single return value from brute.New() → Error ignorance",
+        "action": "Use multiple returns: instance, err = brute.New(...); die(err)",
+    },
+    {
+        "rule": "If 'var x []type' or 'x := []type' → Syntax mixing",
+        "action": "Use simple assignment: x = []",
+    },
+    {
+        "rule": "If using uncommon method → API assumption",
+        "action": "Verify with grep 'brute\\.' or test code",
+    },
+]
+
+println("Detection Rules for AI Self-Correction:")
+ruleNum = 1
+for rule in detectionRules {
+    println(f"\nRule ${ruleNum}:")
+    println(f"  Pattern: ${rule['rule']}")
+    println(f"  Action: ${rule['action']}")
+    ruleNum++
+}
+println("")
+
+// ==========================================
+// Self-Test: Pattern Recognition Exercise
+// ==========================================
+println("=== Self-Test: Pattern Recognition ===")
+
+// Test cases for pattern recognition
+// Keywords: self-test, pattern recognition, error detection
+testCases = [
+    {
+        "code": "brute.SetTarget('192.168.1.1')",
+        "error_type": "API_FABRICATION",
+        "has_error": true,
+    },
+    {
+        "code": "brute.userList(users)",
+        "error_type": "PARAMETER_CONFUSION",
+        "has_error": true,
+    },
+    {
+        "code": "instance = brute.New('ssh')",
+        "error_type": "ERROR_IGNORANCE",
+        "has_error": true,
+    },
+    {
+        "code": "var users []string",
+        "error_type": "SYNTAX_MIXING",
+        "has_error": true,
+    },
+    {
+        "code": "instance, err = brute.New('ssh', brute.userList('root')...); die(err)",
+        "error_type": "NONE",
+        "has_error": false,
+    },
+]
+
+println("Pattern Recognition Test Cases:")
+passedTests = 0
+totalTests = len(testCases)
+
+testNum = 1
+for test in testCases {
+    code = test["code"]
+    expectedError = test["error_type"]
+    hasError = test["has_error"]
+    
+    // Detect error patterns
+    // Keywords: error detection, pattern matching
+    detectedError = "NONE"
+    
+    if str.Contains(code, "brute.Set") {
+        detectedError = "API_FABRICATION"
+    } else if str.Contains(code, "userList(") && !str.Contains(code, "...") && str.Contains(code, "users)") {
+        detectedError = "PARAMETER_CONFUSION"
+    } else if str.Contains(code, "= brute.New") && !str.Contains(code, ", err") {
+        detectedError = "ERROR_IGNORANCE"
+    } else if str.Contains(code, "var ") && str.Contains(code, "[]") {
+        detectedError = "SYNTAX_MIXING"
+    }
+    
+    isCorrect = (detectedError == expectedError)
+    
+    if isCorrect {
+        passedTests++
+        println(f"\n  Test ${testNum}: ✅ PASSED")
+    } else {
+        println(f"\n  Test ${testNum}: ❌ FAILED")
+    }
+    
+    println(f"    Code: ${code}")
+    println(f"    Expected: ${expectedError}")
+    println(f"    Detected: ${detectedError}")
+    
+    testNum++
+}
+
+println(f"\nTest Results: ${passedTests}/${totalTests} passed")
+assert passedTests == totalTests, f"all tests should pass, got ${passedTests}/${totalTests}"
+println("")
+
+// ==========================================
+// Best Practices Summary
+// ==========================================
+println("=== Best Practices Summary ===")
+
+bestPractices = [
+    "1. Never fabricate API methods - always verify first",
+    "2. Always use spread operator (...) when passing slices to variadic functions",
+    "3. Always handle error return values with die() or explicit check",
+    "4. Use Yaklang syntax, not Go/Python/Java syntax",
+    "5. When unsure about API, search codebase with grep",
+    "6. Test small code snippets before writing full implementation",
+    "7. Read error messages carefully - they contain solution hints",
+    "8. Use brute.GetAvailableBruteTypes() to verify service types",
+    "9. Never assume timeout/Stop/GetResults methods exist",
+    "10. Follow the option parameter pattern for brute.New()",
+]
+
+println("Top 10 Best Practices:")
+for practice in bestPractices {
+    println(f"  ✅ ${practice}")
+}
+println("")
+
+println("=== Brute Library AI Error Patterns Analysis Complete ===")
+println("")
+println("Key Takeaways:")
+println(f"  - ${len(errorCategories)} major error pattern categories identified")
+println(f"  - ${totalErrors} common mistakes documented")
+println(f"  - ${len(detectionRules)} detection rules for self-correction")
+println(f"  - ${len(bestPractices)} best practices to follow")
+println("")
+println("Remember: When in doubt, grep the codebase and test small snippets!")
+
