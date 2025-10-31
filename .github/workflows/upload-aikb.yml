@@ -79,7 +79,7 @@ jobs:
 
           # 下载现有的 yaklang-aikb.zip 并保存为 yaklang-aikb-old.zip
           echo "Downloading existing yaklang-aikb.zip..."
-          OLD_ZIP_URL="https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip"
+          OLD_ZIP_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.zip"
           if curl -s -o yaklang-aikb-old.zip "$OLD_ZIP_URL"; then
             echo "✓ Existing ZIP downloaded successfully"
             ls -lh yaklang-aikb-old.zip
@@ -234,7 +234,7 @@ jobs:
           # 下载旧的 RAG 文件（如果存在）
           echo ""
           echo "=== Downloading existing RAG file ==="
-          RAG_URL="https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.rag"
+          RAG_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.rag"
           OLD_RAG_FILE="yaklang-aikb_old.rag"
           NEW_RAG_FILE="yaklang-aikb_new.rag"
           
@@ -460,7 +460,7 @@ jobs:
         run: |
           echo "=== Verifying OSS uploads ==="
           
-          OSS_DOMAIN="oss-qn.yaklang.com"
+          OSS_DOMAIN="yaklang.oss-accelerate.aliyuncs.com"
           BASE_URL="https://${OSS_DOMAIN}/ai-knowledge-base"
           
           # 验证 ZIP 文件
@@ -582,12 +582,12 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Access URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- ZIP: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
-          echo "- Timestamp: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
+          echo "- ZIP: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
           
           # 列出 RAG 文件的 URL
           if [ -f "yaklang-aikb_new.rag" ]; then
-            echo "- RAG: https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.rag" >> $GITHUB_STEP_SUMMARY
+            echo "- RAG: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.rag" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -612,7 +612,7 @@ jobs:
           if [ -f yaklang-aikb_new.update-report.json ]; then
             echo "### 📊 RAG Update Report (JSON)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "JSON report available at: https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.update-report.json" >> $GITHUB_STEP_SUMMARY
+            echo "JSON report available at: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.update-report.json" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
             cat yaklang-aikb_new.update-report.json >> $GITHUB_STEP_SUMMARY
