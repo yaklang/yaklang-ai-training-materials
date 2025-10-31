@@ -13,7 +13,7 @@
 // - poc.HTTP: HTTP 请求
 //
 // 使用示例:
-// yak scripts/update-rag.yak --rag-file /path/to/old.rag --diff-zip diff-fs.zip --output /path/to/new.rag --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret
+// yak scripts/update-rag.yak --rag-file /path/to/old.rag --diff-zip diff-fs.zip --output /path/to/new.rag --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret --ai-api-key YOUR_KEY --ai-api-model MODEL_NAME --ai-api-domain api.example.com
 //
 // 应用场景: RAG 增量更新、知识库同步、自动化索引更新
 // 关键词: rag-update diff-update embedding-client incremental-update
@@ -83,6 +83,27 @@ timeout = cli.Int(
     cli.setHelp("HTTP request timeout in seconds")
 )
 
+// AI API Key
+AIAPIKey = cli.String(
+    "ai-api-key",
+    cli.setRequired(true),
+    cli.setHelp("AI API Key for AI service")
+)
+
+// AI API Model
+AIAPIModel = cli.String(
+    "ai-api-model",
+    cli.setRequired(true),
+    cli.setHelp("AI API Model for AI service")
+)
+
+// AI API Domain
+AIAPIDomain = cli.String(
+    "ai-api-domain",
+    cli.setRequired(true),
+    cli.setHelp("AI API Domain for AI service")
+)
+
 cli.check()
 
 // =============================================================================
@@ -116,6 +137,9 @@ if totpSecret != "" {
 } else {
     log.info("TOTP Auth: Disabled")
 }
+log.info("AI API Model: %s", AIAPIModel)
+log.info("AI API Domain: %s", AIAPIDomain)
+log.info("AI API Key: [REDACTED]")
 
 // =============================================================================
 // Embedding 处理函数定义
@@ -358,6 +382,8 @@ if len(diffFiles) == 0 {
     }
 }
 
+aibalanceService = ai.LoadAIService("aibalance",ai.apiKey(AIAPIKey),ai.model(AIAPIModel),ai.domain(AIAPIDomain))~
+
 // =============================================================================
 // 添加文件到 RAG
 // 功能: 遍历差异文件，添加到 RAG 集合中
@@ -384,7 +410,7 @@ for filePath, content := range diffFiles {
             if err {
                 die("create temp file failed: %v" % err)
             }
-            entries,err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName)
+            entries,err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName,rag.embeddingHandle(embeddingHandle),aiagent.aiCallback(aibalanceService))
             if err {
                 die("add yak file %v to rag error: %v" % err)
             }
