@@ -38,12 +38,13 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
           echo "Actor: ${{ github.actor }}"
+          echo "Update Mode: incremental"
           echo "============================================"
       
-      - name: Download Yaklang Engine (v1.4.4-alpha1027)
+      - name: Download Yaklang Engine (v1.4.4-alpha1031)
         run: |
-          echo "=== Downloading Yaklang Engine v1.4.4-alpha1027 ==="
-          YAK_VERSION="1.4.4-alpha1027"
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1031 ==="
+          YAK_VERSION="1.4.4-alpha1031"
           YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
           
           echo "Downloading from: $YAK_URL"
@@ -78,7 +79,7 @@ jobs:
 
           # 下载现有的 yaklang-aikb.zip 并保存为 yaklang-aikb-old.zip
           echo "Downloading existing yaklang-aikb.zip..."
-          OLD_ZIP_URL="https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip"
+          OLD_ZIP_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.zip"
           if curl -s -o yaklang-aikb-old.zip "$OLD_ZIP_URL"; then
             echo "✓ Existing ZIP downloaded successfully"
             ls -lh yaklang-aikb-old.zip
@@ -118,49 +119,7 @@ jobs:
           echo "=== ZIP Statistics ==="
           echo "Files in ZIP: $FILE_COUNT"
           echo "ZIP size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
-
-          # 对比新旧 ZIP 文件
-          echo ""
-          echo "=== ZIP File Comparison ==="
-
-          if [ -f yaklang-aikb-old.zip ]; then
-            # 统计旧文件
-            OLD_FILE_COUNT=$(unzip -l yaklang-aikb-old.zip | tail -1 | awk '{print $2}')
-            OLD_FILE_SIZE=$(stat -c%s yaklang-aikb-old.zip 2>/dev/null || stat -f%z yaklang-aikb-old.zip)
-
-            echo "Previous ZIP (old):"
-            echo "  Files: $OLD_FILE_COUNT"
-            echo "  Size: $OLD_FILE_SIZE bytes ($(echo "scale=2; $OLD_FILE_SIZE/1024/1024" | bc) MB)"
-
-            echo ""
-            echo "New ZIP (current):"
-            echo "  Files: $FILE_COUNT"
-            echo "  Size: $FILE_SIZE bytes ($(echo "scale=2; $FILE_SIZE/1024/1024" | bc) MB)"
-
-            echo ""
-            echo "Changes:"
-            FILE_DIFF=$((FILE_COUNT - OLD_FILE_COUNT))
-            SIZE_DIFF=$((FILE_SIZE - OLD_FILE_SIZE))
-
-            if [ $FILE_DIFF -gt 0 ]; then
-              echo "  Files: +$FILE_DIFF"
-            elif [ $FILE_DIFF -lt 0 ]; then
-              echo "  Files: $FILE_DIFF"
-            else
-              echo "  Files: No change"
-            fi
-
-            if [ $SIZE_DIFF -gt 0 ]; then
-              echo "  Size: +$SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
-            elif [ $SIZE_DIFF -lt 0 ]; then
-              echo "  Size: $SIZE_DIFF bytes ($(echo "scale=2; $SIZE_DIFF/1024/1024" | bc) MB)"
-            else
-              echo "  Size: No change"
-            fi
-          else
-            echo "No previous ZIP file found for comparison"
-          fi
-
+          
           echo ""
           echo "✓ AIKB ZIP file generated successfully"
 
@@ -168,10 +127,12 @@ jobs:
         if: always()
         run: |
           echo "=== Generating ZIP diff report and package ==="
+          echo "Update mode: incremental"
           
           if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
-            echo "Running diff-zip.yak to compare ZIP files and create diff package..."
-            ./yak scripts/diff-zip.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
+            # 使用 diff-zip-v2.yak 进行对比和生成差异包
+            echo "Running diff-zip-v2.yak to compare ZIP files and create diff package..."
+            ./yak scripts/diff-zip-v2.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
             
             if [ -f diff-fs.zip ] && [ -f diff-fs.md ]; then
               echo "✓ Diff package and report generated successfully"
@@ -198,6 +159,155 @@ jobs:
             echo "Creating empty diff package..."
             ./yak -c 'emptyZip = zip.CompressRaw({}); file.Save("diff-fs.zip", emptyZip)'
           fi
+
+      - name: Update RAG with diff package
+        if: success()
+        env:
+          EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
+          EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+          TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_API_MODEL: ${{ secrets.AI_API_MODEL }}
+          AI_API_DOMAIN: ${{ secrets.AI_API_DOMAIN }}
+        run: |
+          echo "=== Updating RAG knowledge base ==="
+          echo "Update mode: incremental"
+          
+          # 使用差异包进行增量更新
+          DIFF_ZIP="diff-fs.zip"
+          
+          # 检查是否有差异包
+          if [ ! -f "$DIFF_ZIP" ]; then
+            echo "⚠️  No diff package found, skipping RAG update"
+            exit 0
+          fi
+          
+          echo "Using diff ZIP file: $DIFF_ZIP"
+          ls -lh "$DIFF_ZIP"
+          
+          echo "=== Checking required environment variables ==="
+          
+          if [ -z "$EMBEDDING_HOST" ]; then
+            echo "ERROR: EMBEDDING_HOST environment variable is not set"
+            echo "Please ensure EMBEDDING_HOST secret is configured in repository settings"
+            exit 1
+          fi
+          
+          if [ -z "$EMBEDDING_PORT" ]; then
+            echo "ERROR: EMBEDDING_PORT environment variable is not set"
+            echo "Please ensure EMBEDDING_PORT secret is configured in repository settings"
+            exit 1
+          fi
+          
+          if [ -z "$TOTP_SECRET" ]; then
+            echo "ERROR: TOTP_SECRET environment variable is not set"
+            echo "Please ensure TOTP_SECRET secret is configured in repository settings"
+            exit 1
+          fi
+          
+          if [ -z "$AI_API_KEY" ]; then
+            echo "ERROR: AI_API_KEY environment variable is not set"
+            echo "Please ensure AI_API_KEY secret is configured in repository settings"
+            exit 1
+          fi
+          
+          if [ -z "$AI_API_MODEL" ]; then
+            echo "ERROR: AI_API_MODEL environment variable is not set"
+            echo "Please ensure AI_API_MODEL secret is configured in repository settings"
+            exit 1
+          fi
+          
+          if [ -z "$AI_API_DOMAIN" ]; then
+            echo "ERROR: AI_API_DOMAIN environment variable is not set"
+            echo "Please ensure AI_API_DOMAIN secret is configured in repository settings"
+            exit 1
+          fi
+          
+          echo "✓ All required environment variables are set"
+          echo "EMBEDDING_HOST: $EMBEDDING_HOST"
+          echo "EMBEDDING_PORT: $EMBEDDING_PORT"
+          echo "TOTP_SECRET: [REDACTED]"
+          echo "AI_API_KEY: [REDACTED]"
+          echo "AI_API_MODEL: $AI_API_MODEL"
+          echo "AI_API_DOMAIN: $AI_API_DOMAIN"
+          
+          # 下载旧的 RAG 文件（如果存在）
+          echo ""
+          echo "=== Downloading existing RAG file ==="
+          RAG_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.rag"
+          OLD_RAG_FILE="yaklang-aikb_old.rag"
+          NEW_RAG_FILE="yaklang-aikb_new.rag"
+          
+          echo "Trying to download: $RAG_URL"
+          RAG_FILE_ARG=""
+          if curl -f -s -o "$OLD_RAG_FILE" "$RAG_URL"; then
+            echo "✓ Downloaded existing RAG file"
+            ls -lh "$OLD_RAG_FILE"
+            RAG_FILE_ARG="--rag-file $OLD_RAG_FILE"
+          else
+            echo "⚠️  No existing RAG file found, will create new one"
+          fi
+          
+          # 运行 update-rag.yak
+          echo ""
+          echo "=== Running update-rag.yak ==="
+          echo "Using diff-zip: $DIFF_ZIP"
+          echo "Output file: $NEW_RAG_FILE"
+          
+          if [ -n "$RAG_FILE_ARG" ]; then
+            echo "Using existing RAG file: $OLD_RAG_FILE"
+            ./yak scripts/update-rag.yak \
+              $RAG_FILE_ARG \
+              --diff-zip "$DIFF_ZIP" \
+              --output "$NEW_RAG_FILE" \
+              --embedding-host "$EMBEDDING_HOST" \
+              --embedding-port "$EMBEDDING_PORT" \
+              --totp-secret "$TOTP_SECRET" \
+              --ai-api-key "$AI_API_KEY" \
+              --ai-api-model "$AI_API_MODEL" \
+              --ai-api-domain "$AI_API_DOMAIN" \
+              --timeout 60
+          else
+            echo "Creating new RAG (no existing file)"
+            ./yak scripts/update-rag.yak \
+              --diff-zip "$DIFF_ZIP" \
+              --output "$NEW_RAG_FILE" \
+              --embedding-host "$EMBEDDING_HOST" \
+              --embedding-port "$EMBEDDING_PORT" \
+              --totp-secret "$TOTP_SECRET" \
+              --ai-api-key "$AI_API_KEY" \
+              --ai-api-model "$AI_API_MODEL" \
+              --ai-api-domain "$AI_API_DOMAIN" \
+              --timeout 60
+          fi
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to update RAG"
+            exit 1
+          fi
+          
+          # 验证生成的文件
+          echo ""
+          echo "=== Verifying generated RAG file ==="
+          
+          if [ -f "$NEW_RAG_FILE" ]; then
+            echo "✓ RAG file generated"
+            ls -lh "$NEW_RAG_FILE"
+          else
+            echo "ERROR: RAG file not generated"
+            exit 1
+          fi
+          
+          # 显示更新报告
+          REPORT_FILE="yaklang-aikb_new.update-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo ""
+            echo "=== Update Report ==="
+            cat "$REPORT_FILE"
+          fi
+          
+          echo ""
+          echo "✓ RAG update completed successfully"
 
       - name: Create upload timestamp file
         run: |
@@ -274,6 +384,75 @@ jobs:
           
           echo "✓ yaklang-aikb.updated_at.txt uploaded successfully"
           
+          # 上传 RAG 文件
+          echo ""
+          echo "=== Uploading RAG file ==="
+          
+          NEW_RAG_FILE="yaklang-aikb_new.rag"
+          
+          if [ -f "$NEW_RAG_FILE" ]; then
+            echo "Uploading RAG file..."
+            echo "  Source: $NEW_RAG_FILE"
+            echo "  Target: /ai-knowledge-base/rag/yaklang-aikb.rag"
+            
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 10 \
+              -f "$NEW_RAG_FILE:/ai-knowledge-base/rag/yaklang-aikb.rag"
+            
+            if [ $? -ne 0 ]; then
+              echo "ERROR: Failed to upload RAG file"
+              exit 1
+            fi
+            
+            echo "✓ RAG file uploaded successfully"
+          else
+            echo "⚠️  RAG file not found, skipping upload"
+          fi
+          
+          # 上传更新报告（如果存在）
+          REPORT_FILE="yaklang-aikb_new.update-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo ""
+            echo "Uploading RAG update report (Markdown)..."
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 5 \
+              -f "$REPORT_FILE:/ai-knowledge-base/rag/yaklang-aikb.update-report.md"
+            
+            if [ $? -eq 0 ]; then
+              echo "✓ Update report (Markdown) uploaded successfully"
+            fi
+          fi
+          
+          # 上传 JSON 报告（如果存在）
+          JSON_REPORT_FILE="yaklang-aikb_new.update-report.json"
+          if [ -f "$JSON_REPORT_FILE" ]; then
+            echo ""
+            echo "Uploading RAG update report (JSON)..."
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 5 \
+              -f "$JSON_REPORT_FILE:/ai-knowledge-base/rag/yaklang-aikb.update-report.json"
+            
+            if [ $? -eq 0 ]; then
+              echo "✓ Update report (JSON) uploaded successfully"
+            else
+              echo "⚠️  Failed to upload JSON report"
+            fi
+          else
+            echo "⚠️  JSON report file not found, skipping upload"
+          fi
+          
           echo ""
           echo "✓ All files uploaded to OSS successfully"
       
@@ -281,7 +460,7 @@ jobs:
         run: |
           echo "=== Verifying OSS uploads ==="
           
-          OSS_DOMAIN="oss-qn.yaklang.com"
+          OSS_DOMAIN="yaklang.oss-accelerate.aliyuncs.com"
           BASE_URL="https://${OSS_DOMAIN}/ai-knowledge-base"
           
           # 验证 ZIP 文件
@@ -335,6 +514,29 @@ jobs:
           
           echo "✓ yaklang-aikb.updated_at.txt verified successfully"
           
+          # 验证 RAG 文件
+          echo ""
+          echo "=== Verifying RAG file ==="
+          
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            RAG_URL="${BASE_URL}/rag/yaklang-aikb.rag"
+            
+            echo "Verifying RAG file..."
+            echo "URL: $RAG_URL"
+            HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_URL")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              CONTENT_LENGTH=$(curl -I -s "$RAG_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+              echo "HTTP Status: $HTTP_CODE"
+              echo "Content-Length: $CONTENT_LENGTH bytes"
+              echo "✓ RAG file verified successfully"
+            else
+              echo "❌ RAG file verification failed (HTTP $HTTP_CODE)"
+            fi
+          else
+            echo "ℹ️  No RAG file to verify (was not generated)"
+          fi
+          
           echo ""
           echo "============================================"
           echo "✓ All verifications passed!"
@@ -343,6 +545,14 @@ jobs:
           echo "AIKB files are now available at:"
           echo "  ZIP: $ZIP_URL"
           echo "  Timestamp: $TIMESTAMP_URL"
+          
+          # 显示 RAG 文件 URL
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            echo ""
+            echo "RAG file (successfully uploaded):"
+            echo "  - ${BASE_URL}/rag/yaklang-aikb.rag"
+          fi
+          
           echo ""
       
       - name: Upload diff package artifact
@@ -364,10 +574,22 @@ jobs:
           echo "- \`yaklang-aikb.zip\` - Knowledge base archive" >> $GITHUB_STEP_SUMMARY
           echo "- \`yaklang-aikb.updated_at.txt\` - Upload timestamp" >> $GITHUB_STEP_SUMMARY
           echo "- \`diff-fs.zip\` - Diff package (available in artifacts)" >> $GITHUB_STEP_SUMMARY
+          
+          # 列出 RAG 文件
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            echo "- \`yaklang-aikb.rag\` - RAG knowledge base" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Access URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- ZIP: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
-          echo "- Timestamp: https://oss-qn.yaklang.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
+          echo "- ZIP: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.updated_at.txt" >> $GITHUB_STEP_SUMMARY
+          
+          # 列出 RAG 文件的 URL
+          if [ -f "yaklang-aikb_new.rag" ]; then
+            echo "- RAG: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.rag" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # 添加差异报告内容
@@ -378,8 +600,30 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
+          # 添加 RAG 更新报告
+          if [ -f yaklang-aikb_new.update-report.md ]; then
+            echo "### 🧠 RAG Update Report (Markdown)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat yaklang-aikb_new.update-report.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 添加 JSON 报告信息
+          if [ -f yaklang-aikb_new.update-report.json ]; then
+            echo "### 📊 RAG Update Report (JSON)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "JSON report available at: https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.update-report.json" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat yaklang-aikb_new.update-report.json >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "### 📊 Build Info" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Update Mode: \`incremental\`" >> $GITHUB_STEP_SUMMARY
 

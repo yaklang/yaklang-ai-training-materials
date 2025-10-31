@@ -172,6 +172,8 @@ if len(diffFiles) > 0 {
     }
 } else {
     log.info("No changes detected, creating empty diff ZIP...")
+    
+    // Current version of zip.CompressRaw function will error when compressing empty content
     emptyZip = zip.CompressRaw({})~
     file.Save(outputPath, emptyZip)
 }
