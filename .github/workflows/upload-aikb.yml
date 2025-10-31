@@ -417,7 +417,7 @@ jobs:
           REPORT_FILE="yaklang-aikb_new.update-report.md"
           if [ -f "$REPORT_FILE" ]; then
             echo ""
-            echo "Uploading RAG update report..."
+            echo "Uploading RAG update report (Markdown)..."
             ./yak upload-oss \
               -b "$BUCKET" \
               --endpoint "$ENDPOINT" \
@@ -427,8 +427,30 @@ jobs:
               -f "$REPORT_FILE:/ai-knowledge-base/rag/yaklang-aikb.update-report.md"
             
             if [ $? -eq 0 ]; then
-              echo "✓ Update report uploaded successfully"
+              echo "✓ Update report (Markdown) uploaded successfully"
             fi
+          fi
+          
+          # 上传 JSON 报告（如果存在）
+          JSON_REPORT_FILE="yaklang-aikb_new.update-report.json"
+          if [ -f "$JSON_REPORT_FILE" ]; then
+            echo ""
+            echo "Uploading RAG update report (JSON)..."
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 5 \
+              -f "$JSON_REPORT_FILE:/ai-knowledge-base/rag/yaklang-aikb.update-report.json"
+            
+            if [ $? -eq 0 ]; then
+              echo "✓ Update report (JSON) uploaded successfully"
+            else
+              echo "⚠️  Failed to upload JSON report"
+            fi
+          else
+            echo "⚠️  JSON report file not found, skipping upload"
           fi
           
           echo ""
@@ -580,9 +602,22 @@ jobs:
           
           # 添加 RAG 更新报告
           if [ -f yaklang-aikb_new.update-report.md ]; then
-            echo "### 🧠 RAG Update Report" >> $GITHUB_STEP_SUMMARY
+            echo "### 🧠 RAG Update Report (Markdown)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             cat yaklang-aikb_new.update-report.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 添加 JSON 报告信息
+          if [ -f yaklang-aikb_new.update-report.json ]; then
+            echo "### 📊 RAG Update Report (JSON)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "JSON report available at: https://oss-qn.yaklang.com/ai-knowledge-base/rag/yaklang-aikb.update-report.json" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat yaklang-aikb_new.update-report.json >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           

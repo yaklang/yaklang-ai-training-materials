@@ -410,6 +410,7 @@ for filePath, content := range diffFiles {
             if err {
                 die("create temp file failed: %v" % err)
             }
+            file.Save(tempFileName, content)~
             entries,err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName,rag.embeddingHandle(embeddingHandle),aiagent.aiCallback(aibalanceService))
             if err {
                 die("add yak file %v to rag error: %v" % err)
@@ -578,6 +579,87 @@ println("")
 println(report)
 
 // =============================================================================
+// 生成 JSON 报告
+// 功能: 生成机器可读的 JSON 格式更新报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 7: Generating JSON report ===")
+
+jsonReportPath = str.Replace(outputRagPath, ".rag", ".update-report.json", 1)
+
+// 获取输出文件信息
+outputFileSize = 0
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    outputFileSize = fileInfo.Size()
+}
+
+// 收集成功和失败的文件列表
+successFiles = []
+for filePath, _ := range diffFiles {
+    isFailed := false
+    for _, failedFile := range failedFiles {
+        if failedFile == filePath {
+            isFailed = true
+            break
+        }
+    }
+    if !isFailed {
+        successFiles = append(successFiles, filePath)
+    }
+}
+
+// 构建 JSON 数据结构
+jsonData = {
+    "update_time": time.Now().Format("2006-01-02 15:04:05"),
+    "update_timestamp": time.Now().Unix(),
+    "status": failedCount == 0 ? "success" : "partial_failure",
+    "config": {
+        "rag_file": ragFilePath,
+        "diff_zip": diffZipPath,
+        "output_rag": outputRagPath,
+        "collection_name": ragCollectionName,
+        "embedding_host": embeddingHost,
+        "embedding_port": embeddingPort,
+        "totp_enabled": totpSecret != "",
+        "timeout": timeout,
+        "ai_api_model": AIAPIModel,
+        "ai_api_domain": AIAPIDomain,
+    },
+    "statistics": {
+        "old_document_count": oldDocCount,
+        "new_document_count": newDocCount,
+        "document_increased": newDocCount - oldDocCount,
+        "diff_files_total": len(diffFiles),
+        "success_count": successCount,
+        "failed_count": failedCount,
+    },
+    "files": {
+        "success": successFiles,
+        "failed": failedFiles,
+    },
+    "output": {
+        "rag_file": outputRagPath,
+        "rag_file_size_bytes": outputFileSize,
+        "rag_file_size_mb": sprintf("%.2f", float64(outputFileSize)/1024/1024),
+        "markdown_report": reportPath,
+        "json_report": jsonReportPath,
+    },
+}
+
+// 转换为 JSON 字符串
+jsonString = json.dumps(jsonData)
+
+// 保存 JSON 报告
+err = file.Save(jsonReportPath, jsonString)
+if err != nil {
+    log.warn("Failed to write JSON report: %v", err)
+} else {
+    log.info("✓ JSON report generated: %s", jsonReportPath)
+}
+
+// =============================================================================
 // 总结输出
 // =============================================================================
 
@@ -592,6 +674,7 @@ log.info("  - Success: %d files", successCount)
 log.info("  - Failed: %d files", failedCount)
 log.info("  - Output: %s", outputRagPath)
 log.info("  - Report: %s", reportPath)
+log.info("  - JSON Report: %s", jsonReportPath)
 
 if failedCount > 0 {
     log.warn("⚠️  Some files failed to add, please check the report")
