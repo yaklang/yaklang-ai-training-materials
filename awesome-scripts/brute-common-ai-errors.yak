@@ -1,0 +1,597 @@
+// =============================================================================
+// AI使用Brute库常见错误修复指南 - 专门解决AI在使用brute库时的典型错误
+// Function: Demonstrate common mistakes when AI uses brute library and correct solutions
+// Purpose: API misuse prevention, syntax correction, error handling, brute library training
+//
+// Core Tech Stack:
+// - brute.New(): Create brute force instance
+// - brute.userList(): Set username list with spread operator
+// - brute.passList(): Set password list with spread operator
+// - brute.concurrent(): Set concurrency level
+// - brute.bruteHandler(): Custom brute force handler
+// - Error handling: Multiple return values, error checking
+//
+// Common AI Mistakes:
+// 1. API Method Fabrication - brute.SetTarget(), brute.SetPort(), brute.SetUserList()
+// 2. Incorrect Parameter Passing - Missing spread operator (...)
+// 3. Wrong Result Handler - brute.SetResultHandler() instead of brute.bruteHandler()
+// 4. Variable Declaration Errors - var users []string vs users := []
+// 5. Ignoring Error Returns - Not handling multiple return values
+// 6. Timeout Parameter Fabrication - brute.timeout() does not exist
+//
+// Keywords: brute library, AI errors, API misuse, syntax errors, error handling
+// Search Tags: #brute-errors #ai-mistakes #brute-api #error-handling #correct-usage
+// AI Search: brute library errors brute.New usage brute API methods error handling
+// AI Error Keywords: brute.SetTarget brute.SetUserList brute.timeout spread operator
+// AI Loop Search: yaklang brute library correct usage brute api methods error handling
+// Problem Solving: brute API verification parameter passing error handling multiple returns
+// =============================================================================
+
+println("=== AI Brute Library Common Errors Fix Guide ===")
+
+// ==========================================
+// Error 1: API Method Fabrication - SetXXX Style Methods
+// ==========================================
+// AI Error Search: brute.SetTarget brute.SetPort brute.SetUserList brute.SetPassword
+// AI Problem Search: brute API methods configuration style SetXXX methods
+println("\n=== Error 1: API Method Fabrication ===")
+
+// ❌ AI common wrong code (these methods do not exist!)
+/*
+Error Code Example:
+brute.SetTarget("192.168.1.1")
+brute.SetPort(22)
+brute.SetUserList(users)
+brute.SetPasswordList(passwords)
+brute.SetConcurrency(5)
+*/
+
+// ✅ Correct Method: Use option parameters in brute.New()
+println("✅ Correct Method: Configure via brute.New() options")
+
+// Prepare username and password lists
+// Keywords: username list, password list, dictionary preparation
+correctUsers = ["root", "admin", "test"]
+correctPasswords = ["123456", "admin", "password"]
+
+// Correct way: Use brute.New() with option parameters
+// Keywords: brute.New, option parameters, correct configuration
+correctInstance, err1 = brute.New(
+    "ssh",                                  // Service type (must match target)
+    brute.userList(correctUsers...),        // Username list (note the spread operator ...)
+    brute.passList(correctPasswords...),    // Password list (note the spread operator ...)
+    brute.concurrent(2),                    // Concurrency level
+    brute.debug(true)                       // Debug mode
+)
+
+// Must handle error return value
+// Keywords: error handling, multiple return values, error checking
+die(err1)
+assert correctInstance != nil, "brute instance should not be nil"
+println("✅ Created brute instance successfully with option parameters")
+
+// ==========================================
+// Error 2: Missing Spread Operator When Passing Slices
+// ==========================================
+// AI Error Search: brute.userList slice passing spread operator ... parameter expansion
+// AI Problem Search: parameter passing format slice expansion array unpacking
+println("\n=== Error 2: Missing Spread Operator ===")
+
+// ❌ AI common wrong code (missing spread operator)
+/*
+Error Code Example:
+users = ["root", "admin"]
+passwords = ["123456", "admin"]
+instance, err = brute.New(
+    "ssh",
+    brute.userList(users),      // ❌ Wrong: missing ...
+    brute.passList(passwords)   // ❌ Wrong: missing ...
+)
+*/
+
+// ✅ Correct Method: Use spread operator ... to expand slice
+println("✅ Correct Method: Use spread operator ...")
+
+testUsers = ["user1", "user2", "user3"]
+testPasswords = ["pass1", "pass2", "pass3"]
+
+// Correct way: Use ... to expand slice elements
+// Keywords: spread operator, parameter expansion, variadic parameters
+correctInstance2, err2 = brute.New(
+    "ftp",
+    brute.userList(testUsers...),       // ✅ Correct: use ... to expand slice
+    brute.passList(testPasswords...),   // ✅ Correct: use ... to expand slice
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err2)
+assert correctInstance2 != nil, "instance with spread operator should work"
+println("✅ Spread operator correctly used for parameter passing")
+
+// Alternative: Pass directly as variadic parameters
+// Keywords: variadic parameters, direct passing
+directInstance, err3 = brute.New(
+    "mysql",
+    brute.userList("root", "admin", "test"),        // Direct variadic parameters
+    brute.passList("123456", "admin", "password"),  // Direct variadic parameters
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err3)
+assert directInstance != nil, "direct parameter passing should work"
+println("✅ Direct variadic parameter passing also works")
+
+// ==========================================
+// Error 3: Result Handler Method Fabrication
+// ==========================================
+// AI Error Search: brute.SetResultHandler brute result handler callback function
+// AI Problem Search: result processing method handler configuration callback setup
+println("\n=== Error 3: Result Handler Method Fabrication ===")
+
+// ❌ AI common wrong code (SetResultHandler does not exist!)
+/*
+Error Code Example:
+handler = func(result) {
+    println(f"Result: ${result}")
+}
+brute.SetResultHandler(handler)  // ❌ Wrong: this method does not exist
+*/
+
+// ✅ Correct Method: Use brute.bruteHandler() option parameter
+println("✅ Correct Method: Use brute.bruteHandler() option")
+
+handlerCallCount = 0
+
+// Correct way: Pass handler function via brute.bruteHandler()
+// Keywords: brute.bruteHandler, callback function, custom handler
+handlerInstance, err4 = brute.New(
+    "redis",
+    brute.userList(""),
+    brute.passList("", "123456", "redis"),
+    brute.bruteHandler(func(target, username, password) {
+        // Custom brute force handler logic
+        // Keywords: handler callback, authentication logic, result processing
+        handlerCallCount++
+        println(f"Handler called: target=${target}, user=${username}, pass=${password}")
+        
+        // Return true for success, false for failure
+        if password == "redis" {
+            return true  // Simulate successful authentication
+        }
+        return false  // Simulate failed authentication
+    }),
+    brute.debug(true)
+)
+
+die(err4)
+assert handlerInstance != nil, "handler instance should be created"
+println("✅ Custom handler configured via brute.bruteHandler()")
+
+// ==========================================
+// Error 4: Variable Declaration Syntax Errors
+// ==========================================
+// AI Error Search: var declaration type annotation []string explicit type
+// AI Problem Search: variable declaration syntax Yaklang type declaration
+println("\n=== Error 4: Variable Declaration Syntax ===")
+
+// ❌ AI common wrong code (explicit type declaration not supported)
+/*
+Error Code Example:
+var users []string                  // ❌ Wrong: Yaklang does not need explicit types
+var passwords []string = []         // ❌ Wrong: unnecessary type annotation
+users := []string{"root", "admin"}  // ❌ Wrong: no type annotation needed
+*/
+
+// ✅ Correct Method: Use simple assignment without type annotations
+println("✅ Correct Method: Simple assignment without types")
+
+// Correct way 1: Direct assignment
+// Keywords: direct assignment, type inference, no type annotation
+correctUsers1 = ["root", "admin", "test"]
+correctPasswords1 = ["123456", "admin"]
+println(f"✅ Correct declaration: users=${correctUsers1}")
+
+// Correct way 2: Empty slice declaration
+// Keywords: empty slice, initialization
+correctUsers2 = []
+correctUsers2 = append(correctUsers2, "user1")
+correctUsers2 = append(correctUsers2, "user2")
+println(f"✅ Empty slice with append: users=${correctUsers2}")
+
+// Correct way 3: Use make() to create slice
+// Keywords: make function, slice creation
+correctUsers3 = make([]string, 0)
+correctUsers3 = append(correctUsers3, "admin")
+println(f"✅ Make slice: users=${correctUsers3}")
+
+// ==========================================
+// Error 5: Ignoring Multiple Return Values
+// ==========================================
+// AI Error Search: multiple return values error handling ignore error die()
+// AI Problem Search: error return value handling missing error check
+println("\n=== Error 5: Ignoring Error Returns ===")
+
+// ❌ AI common wrong code (ignoring error return value)
+/*
+Error Code Example:
+instance = brute.New("ssh", ...)  // ❌ Wrong: ignoring error return value
+// If creation fails, instance might be nil, causing panic later
+*/
+
+// ✅ Correct Method: Always handle error return values
+println("✅ Correct Method: Handle all return values")
+
+// Correct way 1: Use die() to handle errors
+// Keywords: die function, error handling, panic on error
+correctInstance5, err5 = brute.New(
+    "ssh",
+    brute.userList("root"),
+    brute.passList("password"),
+    brute.concurrent(1),
+    brute.debug(true)
+)
+die(err5)  // ✅ Correct: die() will panic if err is not nil
+assert correctInstance5 != nil, "instance should be created"
+println("✅ Using die() to handle errors")
+
+// Correct way 2: Explicit error checking
+// Keywords: error checking, if statement, error handling
+correctInstance6, err6 = brute.New(
+    "telnet",
+    brute.userList("admin"),
+    brute.passList("admin"),
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+if err6 != nil && err6 != undefined {
+    println(f"Error creating brute instance: ${err6}")
+    // Handle error appropriately
+} else {
+    println("✅ Explicit error checking passed")
+    assert correctInstance6 != nil, "instance should be valid"
+}
+
+// ==========================================
+// Error 6: Timeout Parameter Fabrication
+// ==========================================
+// AI Error Search: brute.timeout timeout parameter connection timeout
+// AI Problem Search: timeout configuration time limit request timeout
+println("\n=== Error 6: Timeout Parameter Fabrication ===")
+
+// ❌ AI common wrong code (brute.timeout does not exist!)
+/*
+Error Code Example:
+instance, err = brute.New(
+    "ssh",
+    brute.userList("root"),
+    brute.passList("password"),
+    brute.timeout(5)  // ❌ Wrong: this parameter does not exist
+)
+*/
+
+// ✅ Correct Method: Use minDelay and maxDelay to control timing
+println("✅ Correct Method: Use minDelay and maxDelay")
+
+// Correct way: Use minDelay and maxDelay for timing control
+// Keywords: minDelay, maxDelay, timing control, request interval
+correctInstance7, err7 = brute.New(
+    "smtp",
+    brute.userList("admin"),
+    brute.passList("password"),
+    brute.minDelay(100),   // ✅ Correct: minimum delay in milliseconds
+    brute.maxDelay(500),   // ✅ Correct: maximum delay in milliseconds
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err7)
+assert correctInstance7 != nil, "instance with delay should work"
+println("✅ Using minDelay and maxDelay for timing control")
+
+// ==========================================
+// Error 7: Service Type Mismatch
+// ==========================================
+// AI Error Search: brute service type mismatch target service protocol mismatch
+// AI Problem Search: service type error protocol mismatch brute type
+println("\n=== Error 7: Service Type Mismatch ===")
+
+// ❌ AI common wrong code (service type does not match target)
+/*
+Error Code Example:
+// Target is SSH service (port 22)
+instance, err = brute.New(
+    "ftp",  // ❌ Wrong: using FTP brute type for SSH service
+    brute.userList("root"),
+    brute.passList("password")
+)
+// This will fail or produce incorrect results
+*/
+
+// ✅ Correct Method: Service type must match target service
+println("✅ Correct Method: Match service type with target")
+
+// Example: For SSH service, use "ssh" type
+// Keywords: service type matching, protocol consistency
+sshInstance, err8 = brute.New(
+    "ssh",  // ✅ Correct: SSH service uses "ssh" type
+    brute.userList("root", "admin"),
+    brute.passList("123456", "admin"),
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err8)
+println("✅ SSH service correctly uses 'ssh' type")
+
+// Example: For FTP service, use "ftp" type
+ftpInstance, err9 = brute.New(
+    "ftp",  // ✅ Correct: FTP service uses "ftp" type
+    brute.userList("ftp", "anonymous"),
+    brute.passList("ftp", ""),
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err9)
+println("✅ FTP service correctly uses 'ftp' type")
+
+// Get available brute types to verify
+// Keywords: available types, service types, type validation
+availableTypes = brute.GetAvailableBruteTypes()
+println(f"Available brute types: ${len(availableTypes)} types")
+assert len(availableTypes) > 0, "should have available types"
+
+// ==========================================
+// Error 8: Duplicate Configuration Parameters
+// ==========================================
+// AI Error Search: duplicate parameters repeated configuration multiple same options
+// AI Problem Search: parameter duplication configuration error repeated options
+println("\n=== Error 8: Duplicate Configuration Parameters ===")
+
+// ❌ AI common wrong code (duplicate parameters)
+/*
+Error Code Example:
+instance, err = brute.New(
+    "ssh",
+    brute.concurrent(5),
+    brute.concurrent(10),  // ❌ Wrong: duplicate parameter (last one wins)
+    brute.debug(true),
+    brute.debug(false)     // ❌ Wrong: duplicate parameter (last one wins)
+)
+*/
+
+// ✅ Correct Method: Each parameter should appear only once
+println("✅ Correct Method: Configure each parameter only once")
+
+// Correct way: Each option appears only once
+// Keywords: unique parameters, no duplication, clear configuration
+noDuplicateInstance, err10 = brute.New(
+    "http_proxy",
+    brute.userList("admin", "user"),
+    brute.passList("admin", "password"),
+    brute.concurrent(5),      // ✅ Only set once
+    brute.debug(true),        // ✅ Only set once
+    brute.okToStop(true)      // ✅ Only set once
+)
+
+die(err10)
+assert noDuplicateInstance != nil, "no duplicate parameters should work"
+println("✅ Each parameter configured only once")
+
+// ==========================================
+// Error 9: Using Default Dictionaries
+// ==========================================
+// AI Error Search: default dictionary autoDict built-in dictionary
+// AI Problem Search: dictionary configuration auto dictionary default wordlist
+println("\n=== Error 9: Using Default Dictionaries ===")
+
+println("✅ Method: Use autoDict() to load default dictionaries")
+
+// Get default username dictionary for a service
+// Keywords: default dictionary, GetUsernameListFromBruteType
+defaultSSHUsers = brute.GetUsernameListFromBruteType("ssh")
+println(f"Default SSH usernames: ${len(defaultSSHUsers)} entries")
+assert len(defaultSSHUsers) > 0, "should have default usernames"
+
+// Get default password dictionary for a service
+// Keywords: default dictionary, GetPasswordListFromBruteType
+defaultSSHPasswords = brute.GetPasswordListFromBruteType("ssh")
+println(f"Default SSH passwords: ${len(defaultSSHPasswords)} entries")
+assert len(defaultSSHPasswords) > 0, "should have default passwords"
+
+// Method 1: Manually use default dictionaries
+// Keywords: manual dictionary, explicit dictionary
+manualDictInstance, err11 = brute.New(
+    "ssh",
+    brute.userList(defaultSSHUsers...),      // Use default dictionary
+    brute.passList(defaultSSHPasswords...),  // Use default dictionary
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err11)
+println("✅ Manually loaded default dictionaries")
+
+// Method 2: Use autoDict option (recommended)
+// Keywords: autoDict, automatic dictionary loading
+autoDictInstance, err12 = brute.New(
+    "mysql",
+    brute.autoDict(),  // ✅ Automatically load default dictionaries (no parameters)
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err12)
+assert autoDictInstance != nil, "autoDict instance should work"
+println("✅ Using autoDict() for automatic dictionary loading")
+
+// ==========================================
+// Error 10: Reading Dictionary from File
+// ==========================================
+// AI Error Search: file.ReadFile dictionary file error handling multiple returns
+// AI Problem Search: read dictionary from file file operations error handling
+println("\n=== Error 10: Reading Dictionary from File ===")
+
+// ❌ AI common wrong code (ignoring error return)
+/*
+Error Code Example:
+content = file.ReadFile("users.txt")  // ❌ Wrong: ignoring error return
+users = str.Split(string(content), "\n")
+*/
+
+// ✅ Correct Method: Handle error when reading file
+println("✅ Correct Method: Handle file reading errors")
+
+// Simulate reading dictionary from file (with error handling)
+// Keywords: file operations, error handling, dictionary loading
+loadDictionaryFromFile = func(filename) {
+    // Must handle both return values
+    // Keywords: multiple returns, error checking
+    content, err = file.ReadFile(filename)
+    if err != nil && err != undefined {
+        println(f"Warning: failed to read file ${filename}: ${err}")
+        return []  // Return empty slice on error
+    }
+    
+    // Convert bytes to string and split by newline
+    // Keywords: string conversion, split lines
+    contentStr = string(content)
+    lines = str.Split(contentStr, "\n")
+    
+    // Filter empty lines
+    // Keywords: filter, empty line removal
+    result = []
+    for line in lines {
+        trimmed = str.TrimSpace(line)
+        if trimmed != "" {
+            result = append(result, trimmed)
+        }
+    }
+    
+    return result
+}
+
+// Create brute instance with file-loaded dictionary
+// Note: Using default dictionaries here since file may not exist
+// Keywords: dictionary combination, fallback strategy
+customUsers = ["root", "admin", "test"]  // Fallback default
+customPasswords = ["123456", "admin", "password"]  // Fallback default
+
+// Try to load from file (will use defaults if file doesn't exist)
+fileUsers = loadDictionaryFromFile("/path/to/users.txt")
+if len(fileUsers) > 0 {
+    customUsers = fileUsers
+    println(f"Loaded ${len(fileUsers)} usernames from file")
+} else {
+    println("Using default username list")
+}
+
+fileDictInstance, err13 = brute.New(
+    "ssh",
+    brute.userList(customUsers...),
+    brute.passList(customPasswords...),
+    brute.concurrent(1),
+    brute.debug(true)
+)
+
+die(err13)
+println("✅ Dictionary loading with proper error handling")
+
+// ==========================================
+// Complete Correct Usage Example
+// ==========================================
+// AI Search: brute library complete example correct usage best practices
+println("\n=== Complete Correct Usage Example ===")
+
+// Complete example with all correct practices
+// Keywords: complete example, best practices, error handling
+completeExampleFunc = func() {
+    println("Complete brute force configuration example:")
+    
+    // Step 1: Prepare dictionaries
+    // Keywords: dictionary preparation, data preparation
+    users = ["root", "admin", "test"]
+    passwords = ["123456", "admin", "password", "test"]
+    
+    // Step 2: Create brute instance with all options
+    // Keywords: complete configuration, all options
+    instance, err = brute.New(
+        "ssh",                              // Service type
+        brute.userList(users...),           // Username list (with spread operator)
+        brute.passList(passwords...),       // Password list (with spread operator)
+        brute.concurrent(2),                // Concurrency per target
+        brute.concurrentTarget(5),          // Number of concurrent targets
+        brute.minDelay(100),                // Minimum delay (ms)
+        brute.maxDelay(500),                // Maximum delay (ms)
+        brute.okToStop(true),               // Stop on first success
+        brute.finishingThreshold(1),        // Finish when N successes found
+        brute.debug(false)                  // Enable debug output (set to false to reduce noise)
+    )
+    
+    // Step 3: Handle error
+    // Keywords: error handling, die function
+    die(err)
+    
+    // Step 4: Verify instance
+    // Keywords: validation, assertion
+    assert instance != nil, "instance should not be nil"
+    
+    println("✅ Complete brute instance created successfully")
+    
+    // Note: To actually run the brute force:
+    // result, err = instance.Start("192.168.1.100:22")
+    // die(err)
+}
+
+completeExampleFunc()
+
+// ==========================================
+// AI Error Prevention Checklist
+// ==========================================
+println("\n=== AI Error Prevention Checklist ===")
+println("✅ API Method Verification:")
+println("   - Use brute.New() with options, not SetXXX methods")
+println("   - Use brute.userList(), not SetUserList()")
+println("   - Use brute.passList(), not SetPasswordList()")
+println("")
+println("✅ Parameter Passing:")
+println("   - Use spread operator (...) when passing slices")
+println("   - Example: brute.userList(users...), not brute.userList(users)")
+println("")
+println("✅ Result Handler:")
+println("   - Use brute.bruteHandler(func), not SetResultHandler()")
+println("   - Handler function signature: func(target, username, password)")
+println("")
+println("✅ Variable Declaration:")
+println("   - Use: users = ['root', 'admin']")
+println("   - Don't use: var users []string")
+println("")
+println("✅ Error Handling:")
+println("   - Always handle multiple return values")
+println("   - Use die(err) or explicit if err != nil check")
+println("")
+println("✅ Timing Control:")
+println("   - Use brute.minDelay() and brute.maxDelay()")
+println("   - Don't fabricate brute.timeout()")
+println("")
+println("✅ Service Type:")
+println("   - Service type must match target service")
+println("   - Use brute.GetAvailableBruteTypes() to verify")
+println("")
+println("✅ Configuration:")
+println("   - Each parameter should be set only once")
+println("   - No duplicate options")
+
+println("\n=== Summary: Core Principles ===")
+println("1. Always use brute.New() with option parameters")
+println("2. Always use spread operator (...) for slice parameters")
+println("3. Always handle error return values with die() or if check")
+println("4. Never fabricate API methods - verify existence first")
+println("5. Match service type with target service")
+println("6. Use grep 'brute\\.' to find real usage examples")
+
+println("\n=== Brute Library Common Errors Guide Complete ===")
+
