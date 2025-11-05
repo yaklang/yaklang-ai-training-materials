@@ -262,6 +262,7 @@ Content-Length: %d
     }
 }
 
+
 prod_env_embeddingHandle_with_retry = func(text) {
     maxRetries = 3
     for i = 0; i < maxRetries; i++ {
@@ -483,7 +484,6 @@ if err != nil {
 
 log.info("")
 log.info("=== Step 5: Exporting RAG file ===")
-
 try {
     err = rag.Export(ragCollectionName, outputRagPath)
     if err != nil {
