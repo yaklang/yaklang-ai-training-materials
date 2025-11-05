@@ -7,7 +7,7 @@
 //
 // 核心技术栈:
 // - rag.Import/Export: RAG 导入导出
-// - rag.GetCollection: 获取 RAG 集合
+// - rag.Get: 获取 RAG 集合
 // - zip.Recursive/ExtractFile: ZIP 文件处理
 // - twofa.GetUTCCode: TOTP 验证
 // - poc.HTTP: HTTP 请求
@@ -278,11 +278,9 @@ if ragFilePath != "" {
         err = rag.Import(ragFilePath, rag.importName(ragCollectionName))
         if err != nil {
             log.error("Failed to import RAG file: %v", err)
-            die(sprintf("Failed to import RAG file: %v", err))
+        }else{
+            log.info("✓ RAG file imported successfully: %s", ragCollectionName)
         }
-
-        log.info("✓ RAG file imported successfully: %s", ragCollectionName)
-
     } catch importErr {
         log.error("Failed to import RAG file: %v", importErr)
         die(sprintf("Failed to import RAG file: %v", importErr))
@@ -300,7 +298,7 @@ if ragFilePath != "" {
 log.info("")
 log.info("=== Step 2: Loading RAG collection ===")
 
-ragSystem, err = rag.GetCollection(ragCollectionName, rag.embeddingHandle(embeddingHandle))
+ragSystem, err = rag.Get(ragCollectionName, rag.embeddingHandle(embeddingHandle))
 if err != nil {
     log.error("Failed to load RAG collection: %v", err)
     die(sprintf("Failed to load RAG collection: %v", err))
@@ -382,8 +380,6 @@ if len(diffFiles) == 0 {
     }
 }
 
-aibalanceService = ai.LoadAIService("aibalance",ai.apiKey(AIAPIKey),ai.model(AIAPIModel),ai.domain(AIAPIDomain))~
-
 // =============================================================================
 // 添加文件到 RAG
 // 功能: 遍历差异文件，添加到 RAG 集合中
@@ -411,12 +407,13 @@ for filePath, content := range diffFiles {
                 die("create temp file failed: %v" % err)
             }
             file.Save(tempFileName, content)~
-            entries,err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName,rag.embeddingHandle(embeddingHandle),aiagent.aiCallback(aibalanceService))
+            opts = [
+                rag.embeddingHandle(prod_env_embeddingHandle),
+                rag.aiServiceType("openai",ai.apiKey(AIAPIKey),ai.model(AIAPIModel),ai.domain(AIAPIDomain)),
+            ]
+            err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName, opts...)
             if err {
                 die("add yak file %v to rag error: %v" % err)
-            }
-            for entry in entries{
-                _ = entry
             }
         } else {
             err = ragSystem.Add(filePath, content)
