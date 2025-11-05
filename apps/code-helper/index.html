@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yaklang 编程助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a202c;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .tabs-container {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 0 40px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab {
+            padding: 16px 32px;
+            font-size: 1em;
+            font-weight: 600;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* RAG Tab Styles */
+        .rag-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            overflow-y: auto;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .search-section {
+            margin-bottom: 30px;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 1em;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 16px 32px;
+            font-size: 1em;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            flex: 1;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+            transform: translateX(4px);
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .result-content {
+            color: #4b5563;
+            line-height: 1.7;
+            font-size: 0.95em;
+        }
+
+        .result-meta {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 16px;
+            font-size: 0.85em;
+            color: #9ca3af;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Editor Tab Styles */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid #e5e7eb;
+        }
+
+        .editor-header {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            color: #4b5563;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .editor-btn {
+            padding: 8px 16px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #667eea;
+            background: white;
+            border: 1px solid #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        #monaco-editor {
+            flex: 1;
+            width: 100%;
+        }
+
+        .chat-section {
+            width: 450px;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 16px 20px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #1f2937;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .chat-input-box {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 0.95em;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            resize: none;
+            font-family: inherit;
+            max-height: 120px;
+            min-height: 44px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chat-send-btn {
+            padding: 12px 24px;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .chat-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9ca3af;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .chat-section {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tabs-container {
+                padding: 0 20px;
+            }
+
+            .tab {
+                padding: 12px 20px;
+            }
+
+            .rag-container {
+                padding: 20px;
+            }
+
+            .editor-container {
+                flex-direction: column;
+            }
+
+            .editor-section {
+                border-right: none;
+                border-bottom: 2px solid #e5e7eb;
+                height: 50%;
+            }
+
+            .chat-section {
+                width: 100%;
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs-container">
+            <button class="tab active" onclick="switchTab('rag')">
+                📚 文档查询
+            </button>
+            <button class="tab" onclick="switchTab('editor')">
+                💻 编程助手
+            </button>
+        </div>
+
+        <!-- RAG 文档查询 Tab -->
+        <div id="rag-tab" class="tab-content active">
+            <div class="rag-container">
+                <div class="search-section">
+                    <h2 style="font-size: 1.5em; margin-bottom: 16px; color: #1f2937;">
+                        搜索 Yaklang 文档
+                    </h2>
+                    <div class="search-box">
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            id="rag-search-input"
+                            placeholder="输入你想查询的问题，例如：如何使用 MITM 拦截 HTTP 请求？"
+                            onkeypress="handleSearchKeyPress(event)"
+                        >
+                        <button class="search-btn" onclick="searchRAG()">
+                            🔍 搜索
+                        </button>
+                    </div>
+                </div>
+
+                <div class="results-section" id="rag-results">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h3 style="font-size: 1.3em; margin-bottom: 8px;">开始搜索</h3>
+                        <p>在上方输入框中输入问题，获取 Yaklang 相关文档</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编程助手 Tab -->
+        <div id="editor-tab" class="tab-content">
+            <div class="editor-container">
+                <div class="editor-section">
+                    <div class="editor-header">
+                        <span>📝 代码编辑器</span>
+                        <div class="editor-actions">
+                            <button class="editor-btn" onclick="clearEditor()">清空</button>
+                            <button class="editor-btn" onclick="formatCode()">格式化</button>
+                            <button class="editor-btn" onclick="runCode()">▶ 运行</button>
+                        </div>
+                    </div>
+                    <div id="monaco-editor"></div>
+                </div>
+
+                <div class="chat-section">
+                    <div class="chat-header">
+                        🤖 AI 助手
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message assistant">
+                            <div class="message-avatar">AI</div>
+                            <div class="message-content">
+                                你好！我是 Yaklang 编程助手。我可以帮你：<br>
+                                • 解释代码<br>
+                                • 修复错误<br>
+                                • 优化代码<br>
+                                • 回答问题<br><br>
+                                有什么我可以帮助你的吗？
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <div class="chat-input-box">
+                            <textarea 
+                                class="chat-input" 
+                                id="chat-input"
+                                placeholder="输入消息..."
+                                rows="1"
+                                onkeypress="handleChatKeyPress(event)"
+                                oninput="autoResizeTextarea(this)"
+                            ></textarea>
+                            <button class="chat-send-btn" onclick="sendMessage()">
+                                发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    
+    <script>
+        let editor;
+        
+        // 初始化 Monaco Editor
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+        
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: `// 欢迎使用 Yaklang 编程助手
+// 在这里编写你的代码
+
+yaklang = cli.String("yaklang")
+println("Hello, Yaklang!")
+
+// 示例：发送 HTTP 请求
+rsp, err = http.Get("https://yaklang.com")
+if err != nil {
+    die(err)
+}
+println("Status Code:", rsp.StatusCode)
+`,
+                language: 'javascript', // 使用 JavaScript 语法高亮作为替代
+                theme: 'vs-light',
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                lineNumbers: 'on',
+                renderWhitespace: 'selection',
+                tabSize: 4,
+                insertSpaces: true,
+            });
+        });
+
+        // Tab 切换
+        function switchTab(tabName) {
+            // 更新 tab 按钮状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 更新 tab 内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            // 如果切换到编辑器，刷新布局
+            if (tabName === 'editor' && editor) {
+                setTimeout(() => editor.layout(), 100);
+            }
+        }
+
+        // RAG 搜索
+        async function searchRAG() {
+            const input = document.getElementById('rag-search-input');
+            const query = input.value.trim();
+            
+            if (!query) {
+                alert('请输入搜索内容');
+                return;
+            }
+
+            const resultsContainer = document.getElementById('rag-results');
+            const searchBtn = document.querySelector('.search-btn');
+            
+            // 显示加载状态
+            searchBtn.disabled = true;
+            searchBtn.textContent = '🔍 搜索中...';
+            resultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="loading-indicator">
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                    </div>
+                    <p style="margin-top: 20px;">正在搜索文档...</p>
+                </div>
+            `;
+
+            try {
+                // 调用后端 API
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // 检查返回数据
+                if (!data.success || !data.results || data.results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <h3 style="font-size: 1.3em; margin-bottom: 8px;">未找到相关结果</h3>
+                            <p>尝试使用不同的关键词进行搜索</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 渲染搜索结果
+                resultsContainer.innerHTML = data.results.map((result, index) => {
+                    // 截断内容以提高可读性
+                    const content = result.doc || '';
+                    const displayContent = content.length > 300 
+                        ? content.substring(0, 300) + '...' 
+                        : content;
+                    
+                    // 处理标题（如果标题太长也进行截断）
+                    const title = result.title || 'Untitled Document';
+                    const displayTitle = title.length > 100 
+                        ? title.substring(0, 100) + '...' 
+                        : title;
+                    
+                    const source = result.source || 'Unknown Source';
+                    const score = result.score || 0;
+                    const relevance = (score * 100).toFixed(0);
+                    
+                    return `
+                        <div class="result-card" style="animation-delay: ${index * 0.1}s">
+                            <div class="result-title">${escapeHtml(displayTitle)}</div>
+                            <div class="result-content">${escapeHtml(displayContent)}</div>
+                            <div class="result-meta">
+                                <span>📄 ${escapeHtml(source)}</span>
+                                <span>🎯 相关度: ${relevance}%</span>
+                                <span>📊 类型: ${result.type === 'knowledge_base' ? '知识库' : '文档'}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: #ef4444;">
+                            <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h3 style="font-size: 1.3em; margin-bottom: 8px; color: #ef4444;">搜索失败</h3>
+                        <p>${escapeHtml(error.message)}</p>
+                        <p style="margin-top: 8px; font-size: 0.9em; color: #9ca3af;">请检查服务是否正常运行</p>
+                    </div>
+                `;
+            } finally {
+                // 恢复按钮状态
+                searchBtn.disabled = false;
+                searchBtn.textContent = '🔍 搜索';
+            }
+        }
+
+        function handleSearchKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchRAG();
+            }
+        }
+
+        // 编辑器操作
+        function clearEditor() {
+            if (editor && confirm('确定要清空编辑器内容吗？')) {
+                editor.setValue('');
+            }
+        }
+
+        function formatCode() {
+            if (editor) {
+                editor.getAction('editor.action.formatDocument').run();
+            }
+        }
+
+        function runCode() {
+            if (!editor) return;
+            
+            const code = editor.getValue();
+            addMessage('user', `请帮我运行这段代码：\n\n${code}`);
+            
+            // 模拟 AI 响应
+            setTimeout(() => {
+                addMessage('assistant', '抱歉，当前环境无法直接运行 Yaklang 代码。但我可以帮你分析代码逻辑：\n\n这段代码的作用是发送一个 HTTP GET 请求到 yaklang.com，并打印状态码。代码结构清晰，错误处理得当。✅');
+            }, 1000);
+        }
+
+        // 聊天功能
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            input.style.height = '44px';
+            
+            // 模拟 AI 回复
+            setTimeout(() => {
+                const responses = [
+                    '我理解你的问题。在 Yaklang 中，你可以使用相应的库函数来实现这个功能。需要我提供具体的代码示例吗？',
+                    '这是一个很好的问题！让我为你详细解释一下...',
+                    '根据你的需求，我建议使用以下方法来解决这个问题：',
+                    '我注意到你的代码中可能存在一些可以优化的地方...',
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                addMessage('assistant', randomResponse);
+            }, 1000);
+        }
+
+        function addMessage(role, content) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = role === 'user' ? '你' : 'AI';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = '44px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初始化时自动调整编辑器大小
+        window.addEventListener('resize', () => {
+            if (editor) {
+                editor.layout();
+            }
+        });
+    </script>
+</body>
+</html>
+
