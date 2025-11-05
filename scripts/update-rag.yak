@@ -696,6 +696,7 @@ log.info("  - Output: %s", outputRagPath)
 log.info("  - Report: %s", reportPath)
 log.info("  - JSON Report: %s", jsonReportPath)
 
+
 if failedCount > 0 {
     log.warn("⚠️  Some files failed to add, please check the report")
     os.Exit(1)

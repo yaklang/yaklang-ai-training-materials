@@ -29,8 +29,24 @@ log.info("  Collection: %s", collectionName)
 log.info("  Top K: %d", topK)
 
 // 获取前端文件路径
-fronted = "/Users/z3/Code/go/yaklang-ai-training-materials/apps/code-helper/index.html"
-htmlContent = file.ReadFile(fronted)~
+possiblePaths = [
+    "apps/code-helper/index.html",
+    "index.html",
+    "./index.html"
+]
+
+var htmlContent
+htmlLoaded = false
+
+for htmlPath in possiblePaths {
+    content, readErr = file.ReadFile(htmlPath)
+    if readErr == nil {
+        htmlContent = content
+        htmlLoaded = true
+        log.info("HTML file loaded from: %s", htmlPath)
+        break
+    }
+}
 
 // 首页处理函数
 indexHandle = (rsp, req) => {
@@ -75,7 +91,12 @@ queryHandle = (rsp, req) => {
     log.info("Processing query: %s", query)
     
     // 获取 RAG 系统
-    ragSystem, err = rag.GetCollection(collectionName)
+    ragPath = file.Join(os.GetHomeDir(),"yakit-projects","projects","libs","yaklang-aikb.rag")
+    opst = []
+    if file.IsExisted(ragPath) {
+        opst.Append(rag.ragImportFile(ragPath))
+    }
+    ragSystem, err = rag.GetCollection(collectionName,opst...)
     if err != nil {
         log.error("Failed to get RAG collection: %v", err)
         rsp.WriteHeader(500)
@@ -150,9 +171,60 @@ addHandle = (route, handle) => {
     handles = append(handles, httpserver.routeHandler(route, handle))
 }
 
+// 更新处理函数
+updateHandle = (rsp, req) => {
+    log.info("Received update request from %s", req.RemoteAddr)
+
+    // 只接受 POST 请求
+    if req.Method != "POST" {
+        log.warn("Invalid method: %s", req.Method)
+        rsp.WriteHeader(405)
+        rsp.Write(b`{"error": {"message": "Method Not Allowed", "type": "invalid_request_error"}}`)
+        return
+    }
+
+    log.info("Installing yaklang-aikb-rag...")
+
+    // 执行安装
+    err = toolbox.Install("yaklang-aikb-rag")
+    if err != nil {
+        log.error("Failed to install yaklang-aikb-rag: %v", err)
+        rsp.WriteHeader(500)
+        rsp.Write(json.dumps({
+            "error": {
+                "message": sprintf("Failed to install yaklang-aikb-rag: %v", err),
+                "type": "install_error"
+            }
+        }))
+        return
+    }
+
+    log.info("Successfully installed yaklang-aikb-rag")
+
+    // 返回成功响应
+    rsp.Header().Set("Content-Type", "application/json")
+    rsp.WriteHeader(200)
+    rsp.Write(json.dumps({
+        "success": true,
+        "message": "yaklang-aikb-rag 更新完成"
+    }))
+}
+
 addHandle("/", indexHandle)
 addHandle("/index.html", indexHandle)
 addHandle("/query", queryHandle)
+addHandle("/update", updateHandle)
+
+// 首次启动时安装 yaklang-aikb-rag
+log.info("Installing yaklang-aikb-rag on first startup...")
+installErr = toolbox.Install("yaklang-aikb-rag")
+if installErr != nil {
+    log.warn("Failed to install yaklang-aikb-rag on startup: %v", installErr)
+    println(f"⚠️  Warning: Failed to install yaklang-aikb-rag: ${installErr}")
+} else {
+    log.info("Successfully installed yaklang-aikb-rag on startup")
+    println("✓ yaklang-aikb-rag installed successfully")
+}
 
 // 启动服务器
 log.info("Starting HTTP server on 0.0.0.0:%d", port)
@@ -160,5 +232,4 @@ println(f"\n✓ Code Helper service started on http://0.0.0.0:${port}")
 println(f"✓ Collection: ${collectionName}")
 println(f"✓ Top K: ${topK}")
 println("\nService is running. Press Ctrl+C to stop.")
-
 httpserver.Serve("0.0.0.0", port, handles...)
