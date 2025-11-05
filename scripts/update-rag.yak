@@ -222,6 +222,7 @@ Content-Length: %d
             httpRequest,
             poc.host(embeddingHost),
             poc.port(embeddingPort),
+            poc.https(true),
             poc.timeout(timeout),
         )
 
@@ -261,7 +262,29 @@ Content-Length: %d
     }
 }
 
-embeddingHandle = prod_env_embeddingHandle
+prod_env_embeddingHandle_with_retry = func(text) {
+    maxRetries = 3
+    for i = 0; i < maxRetries; i++ {
+        if i > 0 {
+            log.warn("Embedding retry attempt %d/%d", i+1, maxRetries)
+        }
+
+        result = prod_env_embeddingHandle(text)
+        if result != nil {
+            return result
+        }
+
+        if i < maxRetries - 1 {
+            log.warn("Embedding failed, retrying in 2 seconds...")
+            time.Sleep(2)
+        }
+    }
+
+    log.error("Embedding failed after %d attempts", maxRetries)
+    return nil
+}
+
+embeddingHandle = prod_env_embeddingHandle_with_retry
 
 // =============================================================================
 // RAG 导入/创建模块
@@ -617,12 +640,12 @@ jsonData = {
         "diff_zip": diffZipPath,
         "output_rag": outputRagPath,
         "collection_name": ragCollectionName,
-        "embedding_host": embeddingHost,
-        "embedding_port": embeddingPort,
+        "embedding_host": "***",
+        "embedding_port": "***",
         "totp_enabled": totpSecret != "",
         "timeout": timeout,
-        "ai_api_model": AIAPIModel,
-        "ai_api_domain": AIAPIDomain,
+        "ai_api_model": "***",
+        "ai_api_domain": "***",
     },
     "statistics": {
         "old_document_count": oldDocCount,

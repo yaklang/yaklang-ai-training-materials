@@ -142,6 +142,7 @@ Content-Length: ${len(requestBody)}
 ${requestBody}`,
     poc.host(host),
     poc.port(port),
+    poc.https(true),
     poc.timeout(30),
 )
 
