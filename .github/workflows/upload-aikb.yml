@@ -41,10 +41,10 @@ jobs:
           echo "Update Mode: incremental"
           echo "============================================"
       
-      - name: Download Yaklang Engine (v1.4.4-alpha1104a)
+      - name: Download Yaklang Engine (v1.4.4-alpha1105a)
         run: |
-          echo "=== Downloading Yaklang Engine v1.4.4-alpha1104a ==="
-          YAK_VERSION="1.4.4-alpha1104a"
+          echo "=== Downloading Yaklang Engine v1.4.4-alpha1105a ==="
+          YAK_VERSION="1.4.4-alpha1105a"
           YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
           
           echo "Downloading from: $YAK_URL"
