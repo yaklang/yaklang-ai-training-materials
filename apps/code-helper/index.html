@@ -504,15 +504,18 @@
                         搜索 Yaklang 文档
                     </h2>
                     <div class="search-box">
-                        <input 
-                            type="text" 
-                            class="search-input" 
+                        <input
+                            type="text"
+                            class="search-input"
                             id="rag-search-input"
                             placeholder="输入你想查询的问题，例如：如何使用 MITM 拦截 HTTP 请求？"
                             onkeypress="handleSearchKeyPress(event)"
                         >
                         <button class="search-btn" onclick="searchRAG()">
                             🔍 搜索
+                        </button>
+                        <button class="search-btn" onclick="updateRAG()" style="margin-left: 12px; background: linear-gradient(135deg, #10b981, #059669);">
+                            🔄 更新知识库
                         </button>
                     </div>
                 </div>
@@ -749,6 +752,43 @@ println("Status Code:", rsp.StatusCode)
         function handleSearchKeyPress(event) {
             if (event.key === 'Enter') {
                 searchRAG();
+            }
+        }
+
+        // 更新 RAG 知识库
+        async function updateRAG() {
+            const updateBtn = document.querySelector('.search-btn[onclick="updateRAG()"]');
+
+            // 显示加载状态
+            updateBtn.disabled = true;
+            updateBtn.textContent = '🔄 更新中...';
+
+            try {
+                // 调用后端更新 API
+                const response = await fetch('/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                // 显示成功消息
+                alert('✅ 更新成功：' + (data.message || '知识库已更新'));
+
+            } catch (error) {
+                console.error('Update error:', error);
+                alert('❌ 更新失败：' + error.message);
+            } finally {
+                // 恢复按钮状态
+                updateBtn.disabled = false;
+                updateBtn.textContent = '🔄 更新知识库';
             }
         }
 
