@@ -1,0 +1,164 @@
+// =============================================================================
+// Yaklang Code Helper Service - 编程助手服务
+// 功能: 启动一个本地编程助手服务，提供 RAG 文档查询和代码编辑功能
+// 用途: 智能文档查询、AI 编程助手、代码分析
+//
+// 核心技术栈:
+// - rag.GetCollection: 获取 RAG 系统集合进行文档查询
+// - httpserver.Serve: 启动 HTTP 服务器
+// - json.loads/json.dumps: JSON 数据处理
+//
+// 使用示例:
+// yak apps/code-helper/code-helper.yak --port 9091 --collection yaklang-docs
+//
+// 应用场景: 编程助手、文档查询、知识库检索
+// =============================================================================
+
+// CLI 参数配置
+port = cli.Int("port", cli.setDefault(9091), cli.setHelp("服务监听端口"))
+collectionName = cli.String("collection", cli.setDefault("yaklang-aikb"), cli.setHelp("RAG 集合名称"))
+topK = cli.Int("topk", cli.setDefault(5), cli.setHelp("返回结果数量"))
+
+// 验证参数
+cli.check()
+
+log.info("Starting Yaklang Code Helper Service...")
+log.info("Configuration:")
+log.info("  Port: %d", port)
+log.info("  Collection: %s", collectionName)
+log.info("  Top K: %d", topK)
+
+// 获取前端文件路径
+fronted = "/Users/z3/Code/go/yaklang-ai-training-materials/apps/code-helper/index.html"
+htmlContent = file.ReadFile(fronted)~
+
+// 首页处理函数
+indexHandle = (rsp, req) => {
+    log.info("Serving index.html to %s", req.RemoteAddr)
+    rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+    rsp.WriteHeader(200)
+    rsp.Write(htmlContent)
+}
+
+// RAG 查询处理函数
+queryHandle = (rsp, req) => {
+    log.info("Received query request from %s", req.RemoteAddr)
+    
+    // 只接受 POST 请求
+    if req.Method != "POST" {
+        log.warn("Invalid method: %s", req.Method)
+        rsp.WriteHeader(405)
+        rsp.Write(b`{"error": {"message": "Method Not Allowed", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    // 读取请求体
+    body, readErr = io.ReadAll(req.Body)
+    if readErr != nil {
+        log.error("Failed to read request body: %v", readErr)
+        rsp.WriteHeader(500)
+        rsp.Write(b`{"error": {"message": "Failed to read request body", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    // 解析请求数据
+    inputData = json.loads(body)
+    query = inputData["query"]
+    
+    if query == "" || query == undefined {
+        log.warn("Empty query from %s", req.RemoteAddr)
+        rsp.WriteHeader(400)
+        rsp.Write(b`{"error": {"message": "Query cannot be empty", "type": "invalid_request_error"}}`)
+        return
+    }
+    
+    log.info("Processing query: %s", query)
+    
+    // 获取 RAG 系统
+    ragSystem, err = rag.GetCollection(collectionName)
+    if err != nil {
+        log.error("Failed to get RAG collection: %v", err)
+        rsp.WriteHeader(500)
+        rsp.Write(json.dumps({
+            "error": {
+                "message": sprintf("Failed to get RAG collection: %v", err),
+                "type": "rag_error"
+            }
+        }))
+        return
+    }
+    
+    // 执行查询
+    results, queryErr = ragSystem.Query(query, topK, topK)
+    if queryErr != nil {
+        log.error("Failed to query RAG system: %v", queryErr)
+        rsp.WriteHeader(500)
+        rsp.Write(json.dumps({
+            "error": {
+                "message": sprintf("Failed to query RAG system: %v", queryErr),
+                "type": "query_error"
+            }
+        }))
+        return
+    }
+    
+    // 构建响应数据
+    rspData = []
+    for item in results {
+        docData = {}
+        
+        // 提取文档内容
+        if item.KnowledgeBaseEntry != nil {
+            docData = {
+                "doc": item.KnowledgeBaseEntry.KnowledgeDetails,
+                "title": item.KnowledgeBaseEntry.KnowledgeTitle,
+                "source": "知识库",
+                "score": item.Score,
+                "type": "knowledge_base"
+            }
+        } else if item.Document != nil {
+            docData = {
+                "doc": item.Document.Content,
+                "title": item.Document.Content,
+                "source": "向量库",
+                "score": item.Score,
+                "type": "document"
+            }
+        } else {
+            continue
+        }
+        
+        rspData = append(rspData, docData)
+    }
+    
+    log.info("Query completed, returning %d results", len(rspData))
+    
+    // 返回 JSON 响应
+    rsp.Header().Set("Content-Type", "application/json")
+    rsp.WriteHeader(200)
+    rsp.Write(json.dumps({
+        "success": true,
+        "query": query,
+        "total": len(rspData),
+        "results": rspData
+    }))
+}
+
+// 注册路由处理函数
+handles = []
+addHandle = (route, handle) => {
+    handles = append(handles, httpserver.routeHandler(route, handle))
+}
+
+addHandle("/", indexHandle)
+addHandle("/index.html", indexHandle)
+addHandle("/query", queryHandle)
+
+// 启动服务器
+log.info("Starting HTTP server on 0.0.0.0:%d", port)
+println(f"\n✓ Code Helper service started on http://0.0.0.0:${port}")
+println(f"✓ Collection: ${collectionName}")
+println(f"✓ Top K: ${topK}")
+println("\nService is running. Press Ctrl+C to stop.")
+
+httpserver.Serve("0.0.0.0", port, handles...)
