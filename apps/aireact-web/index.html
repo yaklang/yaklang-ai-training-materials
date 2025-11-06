@@ -490,6 +490,80 @@
             }
         }
 
+        /* AI 思考过程样式 */
+        .thinking-container {
+            background: rgba(255, 106, 0, 0.05);
+            border: 1px solid rgba(255, 106, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .thinking-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            cursor: pointer;
+            background: rgba(255, 106, 0, 0.08);
+            transition: background 0.2s ease;
+        }
+
+        .thinking-header:hover {
+            background: rgba(255, 106, 0, 0.12);
+        }
+
+        .thinking-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #ff6a00;
+        }
+
+        .thinking-toggle {
+            font-size: 12px;
+            transition: transform 0.2s ease;
+        }
+
+        .thinking-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .thinking-content {
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #666666;
+            font-family: 'Monaco', 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .thinking-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .thinking-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .thinking-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 106, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .thinking-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 106, 0, 0.5);
+        }
+
+        .thinking-content.collapsed {
+            display: none;
+        }
+
         .disclaimer {
             text-align: center;
             font-size: 12px;
@@ -1036,6 +1110,7 @@
         let isTyping = false;
         let ws = null;
         let currentAssistantMessage = '';
+        let currentThoughtContent = '';  // 当前 AI 思考内容
         let streamTimeout = null;
         let lastStreamTime = null;
         let aiConfig = {};  // AI 配置对象
@@ -1153,7 +1228,13 @@
             try {
                 const message = JSON.parse(data);
                 
-                if (message.type === 'stream-answer') {
+                if (message.type === 'stream-thought') {
+                    // 流式接收 AI 思考内容
+                    if (message.data && message.data.data) {
+                        currentThoughtContent += message.data.data;
+                        updateThoughtContent(currentThoughtContent);
+                    }
+                } else if (message.type === 'stream-answer') {
                     if (message.data && message.data.data) {
                         // 流式接收 AI 回复
                         currentAssistantMessage += message.data.data;
@@ -1203,6 +1284,70 @@
             }
         }
 
+        // 更新 AI 思考内容（流式更新）
+        function updateThoughtContent(content) {
+            const chatContainer = document.getElementById('chatContainer');
+            let thinkingContainer = document.getElementById('streamingThinking');
+            
+            if (!thinkingContainer) {
+                // 创建思考容器
+                thinkingContainer = document.createElement('div');
+                thinkingContainer.className = 'message-group assistant';
+                thinkingContainer.id = 'streamingThinking';
+                
+                const messageInner = document.createElement('div');
+                messageInner.className = 'message-group-inner';
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = 'AI';
+                
+                const contentWrapper = document.createElement('div');
+                contentWrapper.style.flex = '1';
+                
+                // 创建思考内容区域
+                const thinkingBox = document.createElement('div');
+                thinkingBox.className = 'thinking-container';
+                thinkingBox.innerHTML = `
+                    <div class="thinking-header" onclick="toggleThinking()">
+                        <div class="thinking-header-left">
+                            <span class="thinking-toggle">▼</span>
+                            <span>🤔 AI 思考过程</span>
+                        </div>
+                    </div>
+                    <div class="thinking-content" id="streamingThinkingContent"></div>
+                `;
+                
+                contentWrapper.appendChild(thinkingBox);
+                messageInner.appendChild(avatar);
+                messageInner.appendChild(contentWrapper);
+                thinkingContainer.appendChild(messageInner);
+                
+                chatContainer.appendChild(thinkingContainer);
+            }
+            
+            // 更新思考内容
+            const contentDiv = document.getElementById('streamingThinkingContent');
+            if (contentDiv) {
+                contentDiv.textContent = content;
+                // 自动滚动到内容底部
+                contentDiv.scrollTop = contentDiv.scrollHeight;
+            }
+            
+            scrollToBottom();
+        }
+
+        // 折叠/展开思考内容
+        function toggleThinking() {
+            const content = document.getElementById('streamingThinkingContent');
+            const toggle = document.querySelector('.thinking-toggle');
+            
+            if (content && toggle) {
+                content.classList.toggle('collapsed');
+                toggle.classList.toggle('collapsed');
+            }
+        }
+
         // 更新 AI 消息（流式更新）
         function updateAssistantMessage(content) {
             const chatContainer = document.getElementById('chatContainer');
@@ -1247,6 +1392,18 @@
 
         // 完成流式消息
         function finalizeStreamingMessage() {
+            // 处理思考内容
+            const streamingThinking = document.getElementById('streamingThinking');
+            if (streamingThinking) {
+                // 移除流式思考标记，使其成为永久消息
+                streamingThinking.id = '';
+                const thinkingContent = streamingThinking.querySelector('#streamingThinkingContent');
+                if (thinkingContent) {
+                    thinkingContent.id = '';
+                }
+            }
+            
+            // 处理回答消息
             const streamingMsg = document.getElementById('streamingMessage');
             if (streamingMsg && currentAssistantMessage) {
                 // 移除流式消息标记
@@ -1267,12 +1424,13 @@
                     contentWrapper.appendChild(actions);
                 }
                 
-                // 保存到对话历史
+                // 保存到对话历史（包含思考内容和回答）
                 const conversation = conversations.find(c => c.id === currentConversationId);
                 if (conversation) {
                     const message = { 
                         role: 'assistant', 
-                        content: currentAssistantMessage, 
+                        content: currentAssistantMessage,
+                        thought: currentThoughtContent || undefined,  // 保存思考内容
                         timestamp: new Date().toISOString() 
                     };
                     conversation.messages.push(message);
@@ -1280,6 +1438,7 @@
                 }
                 
                 currentAssistantMessage = '';
+                currentThoughtContent = '';
             }
         }
 
@@ -1380,6 +1539,26 @@
             const contentWrapper = document.createElement('div');
             contentWrapper.style.flex = '1';
 
+            // 如果是 assistant 消息且包含思考内容，先显示思考
+            if (message.role === 'assistant' && message.thought) {
+                const thinkingBox = document.createElement('div');
+                thinkingBox.className = 'thinking-container';
+                
+                // 生成唯一 ID 用于折叠功能
+                const thinkingId = 'thinking-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                
+                thinkingBox.innerHTML = `
+                    <div class="thinking-header" onclick="toggleThinkingById('${thinkingId}')">
+                        <div class="thinking-header-left">
+                            <span class="thinking-toggle" id="toggle-${thinkingId}">▼</span>
+                            <span>🤔 AI 思考过程</span>
+                        </div>
+                    </div>
+                    <div class="thinking-content" id="content-${thinkingId}">${escapeHtml(message.thought)}</div>
+                `;
+                contentWrapper.appendChild(thinkingBox);
+            }
+
             const content = document.createElement('div');
             content.className = 'message-content';
             content.innerHTML = formatMessage(message.content);
@@ -1401,6 +1580,24 @@
             messageGroup.appendChild(messageInner);
 
             return messageGroup;
+        }
+
+        // 根据 ID 折叠/展开思考内容
+        function toggleThinkingById(thinkingId) {
+            const content = document.getElementById('content-' + thinkingId);
+            const toggle = document.getElementById('toggle-' + thinkingId);
+            
+            if (content && toggle) {
+                content.classList.toggle('collapsed');
+                toggle.classList.toggle('collapsed');
+            }
+        }
+
+        // HTML 转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 格式化消息内容
@@ -1471,8 +1668,9 @@
             // 隐藏空状态
             document.getElementById('emptyState').style.display = 'none';
 
-            // 重置 AI 消息累积器
+            // 重置 AI 消息和思考内容累积器
             currentAssistantMessage = '';
+            currentThoughtContent = '';
 
             // 显示打字指示器
             showTypingIndicator();
