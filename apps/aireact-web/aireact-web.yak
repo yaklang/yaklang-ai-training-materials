@@ -1,0 +1,414 @@
+// =============================================================================
+// Yaklang AI React Web Service - AI 对话服务
+// 功能: 启动一个本地 AI 对话服务，提供 WebSocket 实时对话功能
+// 用途: AI 智能对话、知识问答、编程助手
+//
+// 核心技术栈:
+// - httpserver.Serve: 启动 HTTP 服务器
+// - httpserver.wsRouteHandler: WebSocket 路由处理
+// - ai.Chat: AI 对话接口（流式输出）
+// - json.loads/json.dumps: JSON 数据处理
+//
+// 使用示例:
+// yak apps/aireact-web/aireact-web.yak --port 9092
+//
+// 应用场景: AI 对话、智能问答、实时交互
+// =============================================================================
+
+// CLI 参数配置
+port = cli.Int("port", cli.setDefault(9092), cli.setHelp("服务监听端口"))
+
+// 验证参数
+cli.check()
+
+log.info("Starting Yaklang AI React Web Service...")
+log.info("Configuration:")
+log.info("  Port: %d", port)
+
+// 获取前端文件路径
+fronted = "/Users/z3/Code/go/yaklang-ai-training-materials/apps/aireact-web/index.html"
+log.info("Loading frontend file: %s", fronted)
+htmlContent = file.ReadFile(fronted)~
+if len(htmlContent) == 0 {
+    log.error("Failed to load frontend file or file is empty: %s", fronted)
+    die("Frontend file not found or empty")
+}
+log.info("Frontend file loaded successfully, size: %d bytes", len(htmlContent))
+
+// 首页处理函数
+indexHandle = (rsp, req) => {
+    log.info("Serving index.html to %s", req.RemoteAddr)
+    rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+    rsp.WriteHeader(200)
+    rsp.Write(htmlContent)
+}
+
+// WebSocket 聊天处理函数
+chatWSHandle = (conn) => {
+    clientAddr = conn.RemoteAddr().String()
+    log.info("New WebSocket connection from %s", clientAddr)
+    
+    defer func {
+        err = recover()
+        if err != nil {
+            log.error("WebSocket handler panic: %v", err)
+        }
+        conn.Close()
+        log.info("WebSocket connection closed for %s", clientAddr)
+    }
+    
+    // 发送欢迎消息
+    welcomeMsg = {
+        "type": "connected",
+        "data": {
+            "message": "WebSocket 连接成功"
+        }
+    }
+    conn.WriteMessage(1, json.dumps(welcomeMsg))
+    log.info("Welcome message sent to %s", clientAddr)
+    
+    // 等待接收初始化配置
+    var aiEngine
+    var engineConfig = {}
+    engineInitialized = false
+    // 持续处理消息
+    for {
+        // 读取客户端消息
+        typ, msg, err = conn.ReadMessage()
+        if err != nil {
+            log.error("Failed to read message from %s: %v", clientAddr, err)
+            break
+        }
+        
+        log.info("Received message from %s (type: %d): %s", clientAddr, typ, string(msg))
+        
+        // 解析消息
+        inputData = json.loads(msg)
+        if inputData == nil || inputData == undefined {
+            log.error("Failed to parse JSON message from %s: %s", clientAddr, string(msg))
+            errorMsg = {
+                "type": "error",
+                "data": {
+                    "message": "Invalid JSON format"
+                }
+            }
+            conn.WriteMessage(1, json.dumps(errorMsg))
+            continue
+        }
+        
+        messageType = inputData["type"]
+        log.debug("Message type from %s: %s", clientAddr, messageType)
+        
+        // 处理初始化配置
+        if messageType == "init_config" {
+            log.info("Received init config from %s", clientAddr)
+            configData = inputData["data"]
+            if configData == nil || configData == undefined {
+                log.warn("Empty config data from %s", clientAddr)
+            } else {
+                engineConfig = configData
+                log.info("Config stored for %s: %v", clientAddr, engineConfig)
+                
+                // 创建 AI 引擎选项
+                opts = []
+                
+                // 配置流式输出回调
+                opts = append(opts, aim.onStream((react, event, nodeid, data) => {
+                    if nodeid == "re-act-loop-answer-payload" {
+                        log.debug("Streaming data from node %s", nodeid)
+                        streamMsg = {
+                            "type": "stream-answer",
+                            "data": {
+                                "data": string(data)
+                            }
+                        }
+                        writeErr = conn.WriteMessage(1, json.dumps(streamMsg))
+                        if writeErr != nil {
+                            log.error("Failed to send stream message to %s: %v", clientAddr, writeErr)
+                        }
+                    }
+                }))
+                
+                // 配置超时
+                if engineConfig["timeout"] != nil && engineConfig["timeout"] != undefined {
+                    timeout = int(engineConfig["timeout"])
+                    if timeout > 0 {
+                        log.info("Setting timeout: %d seconds", timeout)
+                        opts = append(opts, aim.timeout(timeout))
+                    }
+                }
+                
+                // 配置最大迭代次数
+                if engineConfig["maxIteration"] != nil && engineConfig["maxIteration"] != undefined {
+                    maxIter = int(engineConfig["maxIteration"])
+                    if maxIter > 0 {
+                        log.info("Setting maxIteration: %d", maxIter)
+                        opts = append(opts, aim.maxIteration(maxIter))
+                    }
+                }
+                
+                // 配置会话 ID
+                if engineConfig["sessionID"] != nil && engineConfig["sessionID"] != undefined && engineConfig["sessionID"] != "" {
+                    sessionID = string(engineConfig["sessionID"])
+                    log.info("Setting sessionID: %s", sessionID)
+                    opts = append(opts, aim.sessionID(sessionID))
+                }
+                
+                // 配置工作目录
+                if engineConfig["workDir"] != nil && engineConfig["workDir"] != undefined && engineConfig["workDir"] != "" {
+                    workDir = string(engineConfig["workDir"])
+                    log.info("Setting workDir: %s", workDir)
+                    opts = append(opts, aim.workdir(workDir))
+                }
+                
+                // 配置语言
+                if engineConfig["language"] != nil && engineConfig["language"] != undefined && engineConfig["language"] != "" {
+                    language = string(engineConfig["language"])
+                    log.info("Setting language: %s", language)
+                    opts = append(opts, aim.language(language))
+                }
+                
+                // 配置工具使用
+                if engineConfig["disableToolUse"] == true {
+                    log.info("Disabling tool use")
+                    opts = append(opts, aim.disableToolUse(true))
+                }
+                
+                // 配置 MCP Servers
+                if engineConfig["disableMCPServers"] == true {
+                    log.info("Disabling MCP servers")
+                    opts = append(opts, aim.disableMCPServers(true))
+                }
+                
+                // 配置 AI 搜索工具
+                if engineConfig["enableAISearchTool"] == true {
+                    log.info("Enabling AI search tool")
+                    opts = append(opts, aim.enableAISearchTool(true))
+                }
+                
+                // 配置 Forge 搜索工具
+                if engineConfig["enableForgeSearchTool"] == true {
+                    log.info("Enabling Forge search tool")
+                    opts = append(opts, aim.enableForgeSearchTool(true))
+                }
+                
+                // 配置包含的工具
+                if engineConfig["includeToolNames"] != nil && engineConfig["includeToolNames"] != undefined {
+                    includeTools = engineConfig["includeToolNames"]
+                    if len(includeTools) > 0 {
+                        log.info("Setting includeToolNames: %v", includeTools)
+                        opts = append(opts, aim.includeToolNames(includeTools...))
+                    }
+                }
+                
+                // 配置排除的工具
+                if engineConfig["excludeToolNames"] != nil && engineConfig["excludeToolNames"] != undefined {
+                    excludeTools = engineConfig["excludeToolNames"]
+                    if len(excludeTools) > 0 {
+                        log.info("Setting excludeToolNames: %v", excludeTools)
+                        opts = append(opts, aim.excludeToolNames(excludeTools...))
+                    }
+                }
+                
+                // 配置关键词
+                if engineConfig["keywords"] != nil && engineConfig["keywords"] != undefined {
+                    keywords = engineConfig["keywords"]
+                    if len(keywords) > 0 {
+                        log.info("Setting keywords: %v", keywords)
+                        opts = append(opts, aim.keywords(keywords...))
+                    }
+                }
+                
+                // 配置用户交互
+                if engineConfig["allowUserInteract"] == true {
+                    log.info("Allowing user interact")
+                    opts = append(opts, aim.allowUserInteract(true))
+                    
+                    // 用户交互次数限制
+                    if engineConfig["userInteractLimit"] != nil && engineConfig["userInteractLimit"] != undefined {
+                        userInteractLimit = int(engineConfig["userInteractLimit"])
+                        if userInteractLimit > 0 {
+                            log.info("Setting userInteractLimit: %d", userInteractLimit)
+                            opts = append(opts, aim.userInteractLimit(userInteractLimit))
+                        }
+                    }
+                }
+                
+                // 配置 Timeline 内容大小限制
+                if engineConfig["timelineContentLimit"] != nil && engineConfig["timelineContentLimit"] != undefined {
+                    timelineLimit = int(engineConfig["timelineContentLimit"])
+                    if timelineLimit > 0 {
+                        log.info("Setting timelineContentLimit: %d", timelineLimit)
+                        opts = append(opts, aim.timelineContentLimit(timelineLimit))
+                    }
+                }
+                
+                // 配置调试模式
+                if engineConfig["debugMode"] == true {
+                    log.info("Enabling debug mode")
+                    opts = append(opts, aim.debugMode(true))
+                }
+                
+                // 配置审批模式
+                approvalMode = string(engineConfig["approvalMode"])
+                if approvalMode == "yolo" {
+                    log.info("Setting YOLO mode")
+                    opts = append(opts, aim.yoloMode())
+                } else if approvalMode == "manual" {
+                    log.info("Setting manual mode")
+                    opts = append(opts, aim.manualMode())
+                } else if approvalMode == "ai" {
+                    log.info("Setting AI review mode")
+                    opts = append(opts, aim.aiReviewMode())
+                }
+                
+                // 配置 AI 服务
+                aiApiKey = string(engineConfig["aiApiKey"])
+                aiDomain = string(engineConfig["aiDomain"])
+                aiModel = string(engineConfig["aiModel"])
+                
+                if aiApiKey != "" {
+                    log.info("Configuring AI service: domain=%s, model=%s", aiDomain, aiModel)
+                    aiOpts = []
+                    
+                    if aiApiKey != "" {
+                        aiOpts = append(aiOpts, ai.apiKey(aiApiKey))
+                    }
+                    if aiDomain != "" {
+                        aiOpts = append(aiOpts, ai.domain(aiDomain))
+                    }
+                    if aiModel != "" {
+                        aiOpts = append(aiOpts, ai.model(aiModel))
+                    }
+                    
+                    if len(aiOpts) > 0 {
+                        opts = append(opts, aim.aiConfig("openai", aiOpts...))
+                    }
+                }
+                
+                // 创建 AI 引擎
+                log.info("Creating AI Engine for %s with configured options", clientAddr)
+                aiEngine, err = aim.NewAIEngine(opts...)
+                if err != nil {
+                    log.error("Failed to create AI Engine for %s: %v", clientAddr, err)
+                    errorMsg = {
+                        "type": "error",
+                        "data": {
+                            "message": sprintf("Failed to initialize AI Engine: %v", err)
+                        }
+                    }
+                    conn.WriteMessage(1, json.dumps(errorMsg))
+                    continue
+                }
+                
+                engineInitialized = true
+                log.info("AI Engine initialized successfully for %s", clientAddr)
+                
+                // 发送初始化成功消息
+                successMsg = {
+                    "type": "init_success",
+                    "data": {
+                        "message": "AI Engine initialized successfully"
+                    }
+                }
+                conn.WriteMessage(1, json.dumps(successMsg))
+            }
+            continue
+        }
+        
+        // 处理不同类型的消息
+        if messageType == "free_input" {
+            // 检查引擎是否已初始化
+            if !engineInitialized || aiEngine == nil {
+                log.warn("AI Engine not initialized yet for %s", clientAddr)
+                errorMsg = {
+                    "type": "error",
+                    "data": {
+                        "message": "AI Engine not initialized. Please wait for initialization."
+                    }
+                }
+                conn.WriteMessage(1, json.dumps(errorMsg))
+                continue
+            }
+            // 获取用户输入
+            userInput = inputData["data"]["input"]
+            
+            if userInput == "" || userInput == undefined {
+                log.warn("Empty input from %s", clientAddr)
+                errorMsg = {
+                    "type": "error",
+                    "data": {
+                        "message": "Input cannot be empty"
+                    }
+                }
+                conn.WriteMessage(1, json.dumps(errorMsg))
+                continue
+            }
+            
+            log.info("Processing chat request from %s: %s", clientAddr, userInput)
+            
+            // 发送消息到 AI 引擎
+            log.debug("Sending message to AI Engine for %s", clientAddr)
+            err = aiEngine.SendMsg(userInput)
+            if err != nil {
+                log.error("Failed to send message to AI Engine for %s: %v", clientAddr, err)
+                errorMsg = {
+                    "type": "error",
+                    "data": {
+                        "message": sprintf("AI 处理失败: %v", err)
+                    }
+                }
+                conn.WriteMessage(1, json.dumps(errorMsg))
+                continue
+            }
+            
+            log.info("Message sent to AI Engine successfully for %s", clientAddr)
+            
+            // 发送完成信号
+            completeMsg = {
+                "type": "complete",
+                "data": {
+                    "message": "Response completed"
+                }
+            }
+            writeErr = conn.WriteMessage(1, json.dumps(completeMsg))
+            if writeErr != nil {
+                log.error("Failed to send complete message to %s: %v", clientAddr, writeErr)
+            } else {
+                log.info("Chat response completed for %s", clientAddr)
+            }
+        } else {
+            log.warn("Unknown message type: %s", messageType)
+            errorMsg = {
+                "type": "error",
+                "data": {
+                    "message": sprintf("Unknown message type: %s", messageType)
+                }
+            }
+            conn.WriteMessage(1, json.dumps(errorMsg))
+        }
+    }
+}
+
+// 注册路由处理函数
+handles = []
+addHandle = (route, handle) => {
+    handles = append(handles, httpserver.routeHandler(route, handle))
+}
+
+addHandle("/", indexHandle)
+addHandle("/index.html", indexHandle)
+
+// 添加 WebSocket 路由
+handles = append(handles, httpserver.wsRouteHandler("/re-act/chat", chatWSHandle))
+
+// 启动服务器
+log.info("Starting HTTP server on 0.0.0.0:%d", port)
+println(f"\n✓ AI React Web service started on http://0.0.0.0:${port}")
+println(f"✓ WebSocket endpoint: ws://0.0.0.0:${port}/re-act/chat")
+println(f"✓ Frontend: ${fronted}")
+println("\nService is running. Press Ctrl+C to stop.")
+log.info("Server started successfully, waiting for connections...")
+
+httpserver.Serve("0.0.0.0", port, handles...)
+
