@@ -26,9 +26,26 @@ log.info("Configuration:")
 log.info("  Port: %d", port)
 
 // 获取前端文件路径
-fronted = "/Users/z3/Code/go/yaklang-ai-training-materials/apps/aireact-web/index.html"
-log.info("Loading frontend file: %s", fronted)
-htmlContent = file.ReadFile(fronted)~
+// 获取前端文件路径
+possiblePaths = [
+    "apps/code-helper/index.html",
+    "index.html",
+    "./index.html"
+]
+
+var htmlContent
+htmlLoaded = false
+
+for htmlPath in possiblePaths {
+    content, readErr = file.ReadFile(htmlPath)
+    if readErr == nil {
+        htmlContent = content
+        htmlLoaded = true
+        log.info("HTML file loaded from: %s", htmlPath)
+        break
+    }
+}
+
 if len(htmlContent) == 0 {
     log.error("Failed to load frontend file or file is empty: %s", fronted)
     die("Frontend file not found or empty")
@@ -125,6 +142,19 @@ chatWSHandle = (conn) => {
                         writeErr = conn.WriteMessage(1, json.dumps(streamMsg))
                         if writeErr != nil {
                             log.error("Failed to send stream message to %s: %v", clientAddr, writeErr)
+                        }
+                    }
+                    if nodeid == "re-act-loop-thought" {
+                        log.debug("Streaming thought data from node %s", nodeid)
+                        streamMsg = {
+                            "type": "stream-thought",
+                            "data": {
+                                "data": string(data)
+                            }
+                        }
+                        writeErr = conn.WriteMessage(1, json.dumps(streamMsg))
+                        if writeErr != nil {
+                            log.error("Failed to send stream thought message to %s: %v", clientAddr, writeErr)
                         }
                     }
                 }))

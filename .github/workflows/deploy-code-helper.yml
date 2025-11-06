@@ -1,0 +1,34 @@
+name: Deploy Code Helper
+
+on:
+  # 当指定文件有改动时触发
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/code-helper/**'
+      - '.github/workflows/deploy-code-helper.yml'
+      - '.github/workflows/reusable-deploy-yak-app.yml'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+# 确保同一时间只运行一个部署任务
+concurrency:
+  group: deploy-code-helper
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/reusable-deploy-yak-app.yml
+    with:
+      app_name: code-helper
+      app_path: apps/code-helper
+      service_name: yak-code-helper
+      install_certs: false
+    secrets:
+      SSH_HOST: ${{ secrets.CODE_HELPER_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.CODE_HELPER_PRIVATE_KEY }}
+      APP_PORT: ${{ secrets.CODE_HELPER_PORT }}
+      APP_CONFIG: ${{ secrets.CODE_HELPER_CONFIG }}
+
