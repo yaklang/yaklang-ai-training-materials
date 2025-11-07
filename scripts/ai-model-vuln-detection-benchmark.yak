@@ -27,21 +27,9 @@ log.info("  Output File: %s", outputFile)
 aiConfigs = [
     {
         "provider": "aibalance",
-        "model": "glm4-free",
+        "model": "VESA-free",
         "domain": "",
-        "description": "GLM-4 Free Model"
-    },
-    {
-        "provider": "aibalance",
-        "model": "qwen3-max",
-        "domain": "",
-        "description": "Qwen-3 Max Model"
-    },
-    {
-        "provider": "aibalance",
-        "model": "kimi-k2",
-        "domain": "",
-        "description": "Kimi K2 Model"
+        "description": "VESA-free"
     },
 ]
 
@@ -66,6 +54,7 @@ for aiConfig in aiConfigs {
         "detected": false,
         "error": "",
         "runtimeId": "",
+        "riskCount": 0,
         "startTime": time.Now().Unix(),
         "endTime": 0,
         "duration": 0,
@@ -142,10 +131,37 @@ for aiConfig in aiConfigs {
     }))
     
     // 配置完成回调，检测漏洞
-    // 关键词: 完成回调, onFinished, 漏洞检测结果
+    // 关键词: 完成回调, onFinished, 漏洞检测结果, risk查询
     opts = append(opts, aim.onFinished(func(react) {
-        // TODO: 增加 AI Risk 工具，关联react runtime
-        result["detected"] = true
+        // 获取最后一个任务的 Runtime ID
+        // 关键词: react.GetLastTask, taskId获取
+        taskId = react.GetLastTask().GetId()
+        result["runtimeId"] = taskId
+        
+        log.info("Checking risks for runtime ID: %s", taskId)
+        
+        // 查询该任务生成的 Risk 信息
+        // 关键词: risk.YieldRiskByRuntimeId, 漏洞信息查询
+        var riskInfo
+        riskCount = 0
+        
+        for i in risk.YieldRiskByRuntimeId(taskId) {
+            riskInfo = i
+            riskCount++
+            log.info("Found risk #%d: %v", riskCount, riskInfo.TitleVerbose)
+        }
+        
+        // 如果找到 Risk 信息，说明检测到了漏洞
+        // 关键词: 漏洞判定, risk检测
+        if riskInfo != nil {
+            result["detected"] = true
+            result["riskCount"] = riskCount
+            log.info("Vulnerability detected! Total risks: %d", riskCount)
+        } else {
+            result["detected"] = false
+            result["riskCount"] = 0
+            log.info("No vulnerability detected")
+        }
     }))
     
     // 构造测试任务
@@ -178,6 +194,8 @@ for aiConfig in aiConfigs {
     log.info("Test completed for model %s", aiConfig["model"])
     log.info("  Success: %v", result["success"])
     log.info("  Detected: %v", result["detected"])
+    log.info("  Risk Count: %d", result["riskCount"])
+    log.info("  Runtime ID: %s", result["runtimeId"])
     log.info("  Duration: %d seconds", result["duration"])
     if result["error"] != "" {
         log.info("  Error: %s", result["error"])
@@ -202,9 +220,9 @@ println("")
 
 // 表头
 // 关键词: 表格输出, 结果展示
-printf("%-20s %-15s %-10s %-10s %-10s %-30s\n", 
-    "Model", "Provider", "Success", "Detected", "Duration(s)", "Error")
-println("-" * 80)
+printf("%-20s %-15s %-10s %-10s %-10s %-10s %-30s\n", 
+    "Model", "Provider", "Success", "Detected", "Risks", "Duration(s)", "Error")
+println("-" * 100)
 
 // 表格内容
 // 关键词: 结果遍历, 表格数据
@@ -224,23 +242,25 @@ for result in results {
         errorStr = errorStr[:25] + "..."
     }
     
-    printf("%-20s %-15s %-10s %-10s %-10d %-30s\n",
+    printf("%-20s %-15s %-10s %-10s %-10d %-10d %-30s\n",
         result["model"],
         result["provider"],
         successStr,
         detectedStr,
+        result["riskCount"],
         result["duration"],
         errorStr
     )
 }
 
-println("-" * 80)
+println("-" * 100)
 
 // 统计信息
 // 关键词: 统计分析, 成功率计算
 totalTests = len(results)
 successCount = 0
 detectedCount = 0
+totalRisks = 0
 
 for result in results {
     if result["success"] {
@@ -249,6 +269,7 @@ for result in results {
     if result["detected"] {
         detectedCount++
     }
+    totalRisks += result["riskCount"]
 }
 
 println("")
@@ -256,6 +277,7 @@ println("Summary:")
 printf("  Total Tests: %d\n", totalTests)
 printf("  Successful Tests: %d (%.1f%%)\n", successCount, float(successCount)/float(totalTests)*100)
 printf("  Detected SQL Injection: %d (%.1f%%)\n", detectedCount, float(totalTests > 0 ? detectedCount : 0)/float(totalTests > 0 ? totalTests : 1)*100)
+printf("  Total Risks Found: %d\n", totalRisks)
 println("=" * 80)
 
 // 保存到文件（如果指定）
@@ -277,6 +299,7 @@ if outputFile != "" {
             "totalTests": totalTests,
             "successCount": successCount,
             "detectedCount": detectedCount,
+            "totalRisks": totalRisks,
             "successRate": float(successCount)/float(totalTests)*100,
             "detectionRate": float(detectedCount)/float(totalTests)*100,
         }

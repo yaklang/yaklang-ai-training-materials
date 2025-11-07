@@ -1,0 +1,178 @@
+// =============================================================================
+// Health Checking Service 测试脚本
+// 功能: 测试健康检查服务的功能
+// 用途: 验证服务运行状态、JSON API、数据格式
+// =============================================================================
+
+println("=" * 60)
+println("Health Checking Service 测试")
+println("=" * 60)
+
+// 测试配置
+testPort = cli.Int("port", cli.setDefault(18080))
+testHost = "127.0.0.1"
+
+cli.check()
+
+println(f"\n测试目标: http://${testHost}:${testPort}")
+
+// =============================================================================
+// 测试 1: 检查服务是否可访问
+// =============================================================================
+
+println("\n[测试 1] 检查服务可访问性...")
+
+try {
+    packet = f`GET / HTTP/1.1
+Host: ${testHost}:${testPort}
+
+`
+    rsp, req, err = poc.HTTP(packet, poc.host(testHost), poc.port(testPort), poc.timeout(5))
+    
+    if err != nil {
+        die(f"✗ 服务不可访问: ${err}")
+    }
+    
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode == 200 {
+        println("✓ 服务可访问 (HTTP 200)")
+    } else {
+        println(f"⚠ 服务返回非 200 状态码: ${statusCode}")
+    }
+    
+} catch err {
+    die(f"✗ 请求失败: ${err}")
+}
+
+// =============================================================================
+// 测试 2: 检查 JSON API
+// =============================================================================
+
+println("\n[测试 2] 检查 JSON API...")
+
+// 在外部声明变量
+healthData = []
+
+try {
+    packet = f`GET /health.json HTTP/1.1
+Host: ${testHost}:${testPort}
+
+`
+    rsp, req, err = poc.HTTP(packet, poc.host(testHost), poc.port(testPort), poc.timeout(5))
+    
+    if err != nil {
+        die(f"✗ JSON API 请求失败: ${err}")
+    }
+    
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode != 200 {
+        die(f"✗ JSON API 返回错误状态码: ${statusCode}")
+    }
+    
+    // 解析 JSON 数据
+    _, body = poc.Split(rsp)
+    healthData = json.loads(body)
+    
+    if !type(healthData) == "slice" {
+        die("✗ JSON 数据格式错误: 应该是数组")
+    }
+    
+    println(f"✓ JSON API 工作正常 (包含 ${len(healthData)} 个服务)")
+    
+} catch err {
+    die(f"✗ JSON 解析失败: ${err}")
+}
+
+// =============================================================================
+// 测试 3: 验证服务数据格式
+// =============================================================================
+
+println("\n[测试 3] 验证服务数据格式...")
+
+requiredFields = ["service_id", "service_name", "service_name_en", "status_code", "response", "updated_at"]
+
+for service in healthData {
+    serviceId = service["service_id"]
+    
+    // 检查必需字段（宽松检查）
+    missingFields = []
+    for field in requiredFields {
+        // 检查字段是否存在（使用 != nil 而不是 == undefined）
+        if service[field] == nil {
+            missingFields = append(missingFields, field)
+        }
+    }
+    
+    if len(missingFields) > 0 {
+        println(f"⚠ 服务 ${serviceId} 缺少字段: ${missingFields}")
+    }
+}
+
+println(f"✓ 服务数据格式检查完成")
+
+// =============================================================================
+// 测试 4: 显示服务状态
+// =============================================================================
+
+println("\n[测试 4] 服务状态详情:")
+println("-" * 60)
+
+healthyCount = 0
+unhealthyCount = 0
+
+for service in healthData {
+    serviceId = service["service_id"]
+    serviceName = service["service_name"]
+    statusCode = service["status_code"]
+    updatedAt = service["updated_at"]
+    
+    // 判断健康状态
+    isHealthy = statusCode >= 200 && statusCode < 300
+    statusIcon = "✓"
+    statusText = "Healthy"
+    
+    if !isHealthy {
+        statusIcon = "✗"
+        statusText = "Unhealthy"
+        unhealthyCount++
+    } else {
+        healthyCount++
+    }
+    
+    println(f"${statusIcon} ${serviceName} (${serviceId})")
+    println(f"   状态码: ${statusCode} - ${statusText}")
+    println(f"   更新时间: ${updatedAt}")
+    
+    // 显示响应摘要
+    response = service["response"]
+    if len(response) > 80 {
+        response = response[:80] + "..."
+    }
+    println(f"   响应: ${response}")
+    println()
+}
+
+// =============================================================================
+// 测试 5: 统计信息
+// =============================================================================
+
+println("-" * 60)
+println("\n[测试 5] 统计信息:")
+println(f"  总服务数: ${len(healthData)}")
+println(f"  健康服务: ${healthyCount}")
+println(f"  异常服务: ${unhealthyCount}")
+
+if unhealthyCount == 0 {
+    println("\n✓ 所有服务健康！")
+} else {
+    println(f"\n⚠ 有 ${unhealthyCount} 个服务不健康")
+}
+
+// =============================================================================
+// 测试完成
+// =============================================================================
+
+println("\n" + "=" * 60)
+println("所有测试完成!")
+println("=" * 60)
+
