@@ -24,11 +24,17 @@ log.info("  Output File: %s", outputFile)
 
 // AI 模型配置列表
 // 关键词: AI配置, 模型列表, aibalance
+// provider: AI服务提供商（必选）
+// model: AI模型名称（必选）
+// domain: API服务域名（可选）
+// apikey: API密钥（可选）
+// description: 模型描述（用于日志输出）
 aiConfigs = [
     {
         "provider": "aibalance",
         "model": "VESA-free",
         "domain": "",
+        "apikey": "",
         "description": "VESA-free"
     },
 ]
@@ -73,7 +79,6 @@ for aiConfig in aiConfigs {
     }
     
     // 创建 AI 引擎选项
-    // 关键词: AI引擎配置, aim.NewAIEngine
     opts = []
     
     // 配置会话ID（随机生成避免干扰）
@@ -95,20 +100,29 @@ for aiConfig in aiConfigs {
     
     // 配置语言
     // 关键词: 语言设置
-    opts = append(opts, aim.language("zh-CN"))
+    opts = append(opts, aim.language("zh"))
     
     // 配置 AI 服务提供商
-    // 关键词: AI服务配置, aibalance
+    // 关键词: AI服务配置, aibalance, ai.model, ai.domain, ai.apiKey
+    aiOpts = []
+    
+    // model 是必选项
+    // 关键词: ai.model配置
+    aiOpts = append(aiOpts, ai.model(aiConfig["model"]))
+    
+    // domain 是可选项
+    // 关键词: ai.domain配置
     if aiConfig["domain"] != "" {
-        opts = append(opts, aim.aiConfig(aiConfig["provider"], 
-            ai.model(aiConfig["model"]),
-            ai.domain(aiConfig["domain"])
-        ))
-    } else {
-        opts = append(opts, aim.aiConfig(aiConfig["provider"], 
-            ai.model(aiConfig["model"])
-        ))
+        aiOpts = append(aiOpts, ai.domain(aiConfig["domain"]))
     }
+    
+    // apikey 是可选项
+    // 关键词: ai.apiKey配置
+    if aiConfig["apikey"] != "" {
+        aiOpts = append(aiOpts, ai.apiKey(aiConfig["apikey"]))
+    }
+    
+    opts = append(opts, aim.aiConfig(aiConfig["provider"], aiOpts...))
     
     // 禁用用户交互
     // 关键词: 禁用交互, 自动化测试
