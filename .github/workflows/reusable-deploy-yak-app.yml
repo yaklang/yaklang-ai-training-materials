@@ -265,6 +265,8 @@ jobs:
             if [ -f "$file" ]; then
               filename=$(basename "$file")
               echo "  Uploading: $filename"
+              # 先删除远程主目录下可能存在的同名文件
+              ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/$filename"
               ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file "$file"
               ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/$filename /root/yaklang-ai-training-materials/${APP_PATH}/$filename"
             fi
@@ -272,16 +274,19 @@ jobs:
           
           # 上传 systemd 安装脚本
           echo "Uploading install-yak-scripts-to-systemd.yak..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/install-yak-scripts-to-systemd.yak"
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file ./scripts/install-yak-scripts-to-systemd.yak
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/install-yak-scripts-to-systemd.yak /root/yaklang-ai-training-materials/scripts/install-yak-scripts-to-systemd.yak"
           
           # 上传配置文件
           echo "Uploading configuration file..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/app-config.env"
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file /tmp/app-config.env
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/app-config.env /root/yaklang-ai-training-materials/${APP_PATH}/.env"
           
           # 上传并执行部署脚本
           echo "Uploading deployment script..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/deploy-app.sh"
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file /tmp/deploy-app.sh
           ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/deploy-app.sh /tmp/deploy-app.sh && chmod +x /tmp/deploy-app.sh"
           
