@@ -2,13 +2,13 @@ name: Deploy AIReact Web
 
 on:
   # 当指定文件有改动时触发
-  push:
-    branches:
-      - main
-    paths:
-      - 'apps/aireact-web/**'
-      - '.github/workflows/deploy-aireact-web.yml'
-      - '.github/workflows/reusable-deploy-yak-app.yml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'apps/aireact-web/**'
+  #     - '.github/workflows/deploy-aireact-web.yml'
+  #     - '.github/workflows/reusable-deploy-yak-app.yml'
   
   # 允许手动触发
   workflow_dispatch:
