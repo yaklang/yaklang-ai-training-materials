@@ -27,8 +27,8 @@ jobs:
       service_name: yak-code-helper
       install_certs: false
     secrets:
-      SSH_HOST: ${{ secrets.CODE_HELPER_HOST }}
-      SSH_PRIVATE_KEY: ${{ secrets.CODE_HELPER_PRIVATE_KEY }}
-      APP_PORT: ${{ secrets.CODE_HELPER_PORT }}
-      APP_CONFIG: ${{ secrets.CODE_HELPER_CONFIG }}
+      SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
+      APP_PORT: ${{ secrets.EMBEDDING_PORT }}
+      APP_CONFIG: ${{ secrets.TOTP_SECRET }}
 

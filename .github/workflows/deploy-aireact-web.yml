@@ -27,8 +27,8 @@ jobs:
       service_name: yak-aireact-web
       install_certs: false
     secrets:
-      SSH_HOST: ${{ secrets.AIREACT_WEB_HOST }}
-      SSH_PRIVATE_KEY: ${{ secrets.AIREACT_WEB_PRIVATE_KEY }}
-      APP_PORT: ${{ secrets.AIREACT_WEB_PORT }}
-      APP_CONFIG: ${{ secrets.AIREACT_WEB_CONFIG }}
+      SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
+      APP_PORT: ${{ secrets.EMBEDDING_PORT }}
+      APP_CONFIG: ${{ secrets.TOTP_SECRET }}
 
