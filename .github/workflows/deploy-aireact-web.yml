@@ -28,6 +28,7 @@ jobs:
       SERVICE_NAME: yak-aireact-web
       WORK_DIR: /root/yaklang-ai-training-materials
       YAK_VERSION: 1.4.4-beta10
+      YAK_PATH: /usr/local/bin/yak-1.4.4-beta10
       APP_PORT: ${{ secrets.REACT_WEB_PORT }}
     
     steps:
@@ -204,6 +205,7 @@ jobs:
             --main-script \"${{ env.APP_PATH }}/${{ env.MAIN_SCRIPT }}\" \
             --work-dir \"${{ env.WORK_DIR }}\" \
             --yak-version \"${{ env.YAK_VERSION }}\" \
+            --yak-path \"${{ env.YAK_PATH }}\" \
             --config-file \"${{ env.APP_PATH }}/.env\" \
             --script-args \"--port \\\$APP_PORT --ai-domain \\\"\\\$AI_DOMAIN\\\" --ai-model \\\"\\\$AI_MODEL\\\" --ai-apikey \\\"\\\$AI_APIKEY\\\" --frontend \\\"${{ env.WORK_DIR }}/${{ env.APP_PATH }}/index.html\\\"\" \
             --verify-port \"${{ env.APP_PORT }}\" \
