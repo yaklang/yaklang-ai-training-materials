@@ -17,6 +17,10 @@
 
 // CLI 参数配置
 port = cli.Int("port", cli.setDefault(9092), cli.setHelp("服务监听端口"))
+aiDomain = cli.String("ai-domain", cli.setDefault(""), cli.setHelp("AI 服务域名（如：api.openai.com）"))
+aiModel = cli.String("ai-model", cli.setDefault(""), cli.setHelp("AI 模型名称（如：gpt-4o）"))
+aiApiKey = cli.String("ai-apikey", cli.setDefault(""), cli.setHelp("AI API 密钥"))
+frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端 HTML 文件路径（可选，默认自动查找）"))
 
 // 验证参数
 cli.check()
@@ -26,28 +30,42 @@ log.info("Configuration:")
 log.info("  Port: %d", port)
 
 // 获取前端文件路径
-// 获取前端文件路径
-possiblePaths = [
-    "apps/code-helper/index.html",
-    "index.html",
-    "./index.html"
-]
-
 var htmlContent
 htmlLoaded = false
 
-for htmlPath in possiblePaths {
-    content, readErr = file.ReadFile(htmlPath)
+// 优先使用指定的前端路径
+if frontendPath != "" {
+    content, readErr = file.ReadFile(frontendPath)
     if readErr == nil {
         htmlContent = content
         htmlLoaded = true
-        log.info("HTML file loaded from: %s", htmlPath)
-        break
+        log.info("HTML file loaded from specified path: %s", frontendPath)
+    } else {
+        log.warn("Failed to load HTML from specified path %s: %v, trying default paths...", frontendPath, readErr)
+    }
+}
+
+// 如果没有指定路径或加载失败，使用默认路径列表
+if !htmlLoaded {
+    possiblePaths = [
+        "apps/aireact-web/index.html",
+        "index.html",
+        "./index.html"
+    ]
+    
+    for htmlPath in possiblePaths {
+        content, readErr = file.ReadFile(htmlPath)
+        if readErr == nil {
+            htmlContent = content
+            htmlLoaded = true
+            log.info("HTML file loaded from: %s", htmlPath)
+            break
+        }
     }
 }
 
 if len(htmlContent) == 0 {
-    log.error("Failed to load frontend file or file is empty: %s", fronted)
+    log.error("Failed to load frontend file or file is empty")
     die("Frontend file not found or empty")
 }
 log.info("Frontend file loaded successfully, size: %d bytes", len(htmlContent))
@@ -293,17 +311,13 @@ chatWSHandle = (conn) => {
                 }
                 
                 // 配置 AI 服务
-                aiApiKey = string(engineConfig["aiApiKey"])
-                aiDomain = string(engineConfig["aiDomain"])
-                aiModel = string(engineConfig["aiModel"])
-                
+                // 仅使用 CLI 参数配置的 AI 服务，不从客户端读取配置
                 if aiApiKey != "" {
-                    log.info("Configuring AI service: domain=%s, model=%s", aiDomain, aiModel)
+                    log.info("Configuring AI service with custom configuration")
                     aiOpts = []
                     
-                    if aiApiKey != "" {
-                        aiOpts = append(aiOpts, ai.apiKey(aiApiKey))
-                    }
+                    aiOpts = append(aiOpts, ai.apiKey(aiApiKey))
+                    
                     if aiDomain != "" {
                         aiOpts = append(aiOpts, ai.domain(aiDomain))
                     }
@@ -436,7 +450,6 @@ handles = append(handles, httpserver.wsRouteHandler("/re-act/chat", chatWSHandle
 log.info("Starting HTTP server on 0.0.0.0:%d", port)
 println(f"\n✓ AI React Web service started on http://0.0.0.0:${port}")
 println(f"✓ WebSocket endpoint: ws://0.0.0.0:${port}/re-act/chat")
-println(f"✓ Frontend: ${fronted}")
 println("\nService is running. Press Ctrl+C to stop.")
 log.info("Server started successfully, waiting for connections...")
 

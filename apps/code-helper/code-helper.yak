@@ -15,9 +15,10 @@
 // =============================================================================
 
 // CLI 参数配置
-port = cli.Int("port", cli.setDefault(9091), cli.setHelp("服务监听端口"))
+port = cli.Int("port", cli.setDefault(9093), cli.setHelp("服务监听端口"))
 collectionName = cli.String("collection", cli.setDefault("yaklang-aikb"), cli.setHelp("RAG 集合名称"))
-topK = cli.Int("topk", cli.setDefault(5), cli.setHelp("返回结果数量"))
+topK = cli.Int("topk", cli.setDefault(10), cli.setHelp("返回结果数量"))
+frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端 HTML 文件路径（可选，默认自动查找）"))
 
 // 验证参数
 cli.check()
@@ -27,24 +28,42 @@ log.info("Configuration:")
 log.info("  Port: %d", port)
 log.info("  Collection: %s", collectionName)
 log.info("  Top K: %d", topK)
+if frontendPath != "" {
+    log.info("  Frontend Path: %s", frontendPath)
+}
 
 // 获取前端文件路径
-possiblePaths = [
-    "apps/code-helper/index.html",
-    "index.html",
-    "./index.html"
-]
-
 var htmlContent
 htmlLoaded = false
 
-for htmlPath in possiblePaths {
-    content, readErr = file.ReadFile(htmlPath)
+// 优先使用指定的前端路径
+if frontendPath != "" {
+    content, readErr = file.ReadFile(frontendPath)
     if readErr == nil {
         htmlContent = content
         htmlLoaded = true
-        log.info("HTML file loaded from: %s", htmlPath)
-        break
+        log.info("HTML file loaded from specified path: %s", frontendPath)
+    } else {
+        log.warn("Failed to load HTML from specified path %s: %v, trying default paths...", frontendPath, readErr)
+    }
+}
+
+// 如果没有指定路径或加载失败，使用默认路径列表
+if !htmlLoaded {
+    possiblePaths = [
+        "apps/code-helper/index.html",
+        "index.html",
+        "./index.html"
+    ]
+    
+    for htmlPath in possiblePaths {
+        content, readErr = file.ReadFile(htmlPath)
+        if readErr == nil {
+            htmlContent = content
+            htmlLoaded = true
+            log.info("HTML file loaded from: %s", htmlPath)
+            break
+        }
     }
 }
 

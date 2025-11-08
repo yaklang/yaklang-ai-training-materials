@@ -1072,28 +1072,6 @@
                     </div>
                 </div>
 
-                <!-- AI 配置 -->
-                <div class="config-section">
-                    <div class="config-section-title">AI 配置</div>
-                    
-                    <div class="config-item">
-                        <label class="config-label">API Key</label>
-                        <input type="password" id="aiApiKey" class="config-input" placeholder="sk-...">
-                        <div class="config-hint">AI 服务的 API 密钥</div>
-                    </div>
-
-                    <div class="config-item">
-                        <label class="config-label">API Domain</label>
-                        <input type="text" id="aiDomain" class="config-input" placeholder="https://api.openai.com">
-                        <div class="config-hint">AI 服务的 API 域名</div>
-                    </div>
-
-                    <div class="config-item">
-                        <label class="config-label">Model</label>
-                        <input type="text" id="aiModel" class="config-input" placeholder="gpt-4">
-                        <div class="config-hint">使用的 AI 模型名称</div>
-                    </div>
-                </div>
             </div>
 
             <div class="config-footer">
@@ -1903,10 +1881,7 @@
                 userInteractLimit: 5,
                 timelineContentLimit: 10000,
                 debugMode: false,
-                approvalMode: 'yolo',
-                aiApiKey: '',
-                aiDomain: '',
-                aiModel: 'gpt-4'
+                approvalMode: 'yolo'
             };
         }
 
@@ -1946,9 +1921,6 @@
             document.getElementById('timelineContentLimit').value = aiConfig.timelineContentLimit || '';
             document.getElementById('debugMode').checked = aiConfig.debugMode || false;
             document.getElementById('approvalMode').value = aiConfig.approvalMode || 'yolo';
-            document.getElementById('aiApiKey').value = aiConfig.aiApiKey || '';
-            document.getElementById('aiDomain').value = aiConfig.aiDomain || '';
-            document.getElementById('aiModel').value = aiConfig.aiModel || '';
         }
 
         // 保存配置
@@ -1969,10 +1941,7 @@
                 userInteractLimit: parseInt(document.getElementById('userInteractLimit').value) || 5,
                 timelineContentLimit: parseInt(document.getElementById('timelineContentLimit').value) || 10000,
                 debugMode: document.getElementById('debugMode').checked,
-                approvalMode: document.getElementById('approvalMode').value,
-                aiApiKey: document.getElementById('aiApiKey').value.trim(),
-                aiDomain: document.getElementById('aiDomain').value.trim(),
-                aiModel: document.getElementById('aiModel').value.trim()
+                approvalMode: document.getElementById('approvalMode').value
             };
 
             try {

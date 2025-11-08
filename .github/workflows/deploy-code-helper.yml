@@ -8,7 +8,6 @@ on:
   #   paths:
   #     - 'apps/code-helper/**'
   #     - '.github/workflows/deploy-code-helper.yml'
-  #     - '.github/workflows/reusable-deploy-yak-app.yml'
   
   # 允许手动触发
   workflow_dispatch:
@@ -20,15 +19,265 @@ concurrency:
 
 jobs:
   deploy:
-    uses: ./.github/workflows/reusable-deploy-yak-app.yml
-    with:
-      app_name: code-helper
-      app_path: apps/code-helper
-      service_name: yak-code-helper
-      install_certs: false
-    secrets:
-      SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
-      SSH_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
-      APP_PORT: ${{ secrets.EMBEDDING_PORT }}
-      APP_CONFIG: ${{ secrets.TOTP_SECRET }}
-
+    runs-on: ubuntu-22.04
+    
+    env:
+      APP_NAME: code-helper
+      APP_PATH: apps/code-helper
+      MAIN_SCRIPT: code-helper.yak
+      SERVICE_NAME: yak-code-helper
+      WORK_DIR: /root/yaklang-ai-training-materials
+      YAK_VERSION: 1.4.4-beta10
+      APP_PORT: ${{ secrets.CODE_HELPER_PORT }}
+      
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Print trigger information
+        run: |
+          echo "============================================"
+          echo "部署应用: ${{ env.APP_NAME }}"
+          echo "服务名称: ${{ env.SERVICE_NAME }}"
+          echo "触发方式: ${{ github.event_name }}"
+          echo "分支: ${{ github.ref }}"
+          echo "提交: ${{ github.sha }}"
+          echo "操作者: ${{ github.actor }}"
+          echo "============================================"
+      
+      - name: Download Yaklang Engine
+        run: |
+          echo "=== 下载 Yaklang 引擎 v${{ env.YAK_VERSION }} ==="
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak_linux_amd64"
+          
+          echo "下载地址: $YAK_URL"
+          wget --progress=dot:binary -O ./yak "$YAK_URL" 2>&1 | \
+            awk '/[0-9]+%/{i++; if(i%3==0) print; next} {print}' || true
+          
+          if [ ! -f ./yak ]; then
+            echo "ERROR: YAK 引擎下载失败"
+            exit 1
+          fi
+          
+          chmod +x ./yak
+          
+          echo ""
+          echo "=== 下载的文件信息 ==="
+          ls -lh ./yak
+          file ./yak
+          
+          echo ""
+          echo "=== 测试 YAK 引擎 ==="
+          ./yak version || echo "注意: 此版本可能不支持 version 命令"
+          
+          echo ""
+          echo "✓ Yaklang 引擎下载并验证成功"
+      
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 准备 SSH 部署 ==="
+          
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$SSH_HOST" ]; then
+            echo "ERROR: SSH 凭证未找到"
+            echo "请确保已设置 EMBEDDING_HOST_PRIVATE_KEY 和 EMBEDDING_HOST secrets"
+            exit 1
+          fi
+          
+          # 创建私钥文件
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > /tmp/deploy_pri
+          chmod 600 /tmp/deploy_pri
+          
+          # 验证私钥格式
+          if ! ssh-keygen -l -f /tmp/deploy_pri >/dev/null 2>&1; then
+            echo "ERROR: SSH 私钥格式无效"
+            exit 1
+          fi
+          
+          echo "✓ SSH 密钥准备成功"
+      
+      - name: Prepare environment configuration
+        run: |
+          echo "=== 准备环境配置 ==="
+          
+          # 创建环境变量配置文件
+          cat > /tmp/app-config.env << 'EOF'
+          # Code Helper 应用配置
+          # 端口配置
+          APP_PORT=${{ env.APP_PORT }}
+          EOF
+          
+          echo "环境配置信息:"
+          if [ -n "${{ env.APP_PORT }}" ]; then
+            echo "  APP_PORT: [已设置]"
+          fi
+          echo "  Collection: yaklang-aikb"
+          echo "  Top K: 10"
+          echo "✓ 配置准备成功"
+      
+      - name: Deploy to remote server
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 部署到远程服务器 ==="
+          echo "目标服务器: [已隐藏]"
+          echo "应用: ${{ env.APP_NAME }}"
+          echo "服务: ${{ env.SERVICE_NAME }}"
+          
+          # 创建远程目录
+          echo ""
+          echo "创建远程目录..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mkdir -p ${{ env.WORK_DIR }}/{${{ env.APP_PATH }},apps,scripts}"
+          
+          # 清理 home 目录下即将上传的文件（避免冲突）
+          echo "清理潜在文件冲突..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/deploy-yak-app.sh ~/install-yak-scripts-to-systemd.yak ~/app-config.env"
+          for file in ${{ env.APP_PATH }}/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -f ~/$filename"
+            fi
+          done
+          
+          # 1. 上传通用部署脚本
+          echo ""
+          echo "上传通用部署脚本..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file ./apps/deploy-yak-app.sh
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/deploy-yak-app.sh ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh && chmod +x ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh"
+          
+          # 2. 上传 systemd 安装脚本
+          echo "上传 systemd 安装脚本..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file ./scripts/install-yak-scripts-to-systemd.yak
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/install-yak-scripts-to-systemd.yak ${{ env.WORK_DIR }}/scripts/install-yak-scripts-to-systemd.yak"
+          
+          # 3. 上传应用文件
+          echo ""
+          echo "上传应用文件从 ${{ env.APP_PATH }}..."
+          for file in ${{ env.APP_PATH }}/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              # 跳过旧的 deploy.sh 文件
+              if [ "$filename" != "deploy.sh" ]; then
+                echo "  → $filename"
+                ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file "$file"
+                ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/$filename ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/$filename"
+              fi
+            fi
+          done
+          
+          # 4. 上传环境配置文件
+          echo ""
+          echo "上传环境配置..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file /tmp/app-config.env
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/app-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env"
+          
+          # 验证上传的文件
+          echo ""
+          echo "验证上传的文件..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "ls -lh ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ ${{ env.WORK_DIR }}/scripts/ ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh"
+          
+          # 5. 执行部署命令
+          echo ""
+          echo "=== 执行通用部署脚本 ==="
+          
+          DEPLOY_CMD="${{ env.WORK_DIR }}/apps/deploy-yak-app.sh \
+            --service-name \"${{ env.SERVICE_NAME }}\" \
+            --main-script \"${{ env.APP_PATH }}/${{ env.MAIN_SCRIPT }}\" \
+            --work-dir \"${{ env.WORK_DIR }}\" \
+            --yak-version \"${{ env.YAK_VERSION }}\" \
+            --config-file \"${{ env.APP_PATH }}/.env\" \
+            --script-args \"--port \\\$APP_PORT --collection yaklang-aikb --topk 10 --frontend \\\"${{ env.WORK_DIR }}/${{ env.APP_PATH }}/index.html\\\"\" \
+            --verify-port \"${{ env.APP_PORT }}\" \
+            --install-yak"
+          
+          # 脱敏后的命令用于日志显示
+          SAFE_DEPLOY_CMD=$(echo "$DEPLOY_CMD" | sed 's/--verify-port "[^"]*"/--verify-port [REDACTED]/g')
+          
+          echo "部署命令:"
+          echo "  ${SAFE_DEPLOY_CMD}"
+          echo ""
+          
+          # 执行部署
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "bash -c '${DEPLOY_CMD}'"
+          
+          if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: 部署失败"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✓ 部署成功完成"
+      
+      - name: Verify deployment
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 验证部署 ==="
+          
+          # 等待服务启动
+          echo "等待服务稳定..."
+          sleep 5
+          
+          # 通过 SSH 验证服务状态
+          echo "检查服务状态..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl is-active ${{ env.SERVICE_NAME }} && echo '✓ 服务已激活' || echo '✗ 服务未激活'"
+          
+          echo ""
+          echo "获取服务状态详情..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl status ${{ env.SERVICE_NAME }} --no-pager -l || true"
+          
+          # 健康检查
+          echo ""
+          echo "在端口 ${{ env.APP_PORT }} 上运行健康检查..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "curl -f http://127.0.0.1:${{ env.APP_PORT }}/ 2>/dev/null && echo '✓ 服务在端口 ${{ env.APP_PORT }} 上响应' || echo '⚠ 端口 ${{ env.APP_PORT }} 健康检查失败'"
+          
+          echo ""
+          echo "✓ 服务验证完成"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "=== 清理 ==="
+          rm -f /tmp/deploy_pri /tmp/app-config.env
+          echo "✓ 清理完成"
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ ${{ env.APP_NAME }} 部署成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${{ env.APP_NAME }} 服务已成功部署到远程服务器。" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 部署详情" >> $GITHUB_STEP_SUMMARY
+          echo "- 应用名称: \`${{ env.APP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 服务名称: \`${{ env.SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 主脚本: \`${{ env.APP_PATH }}/${{ env.MAIN_SCRIPT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 端口: \`${{ env.APP_PORT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 工作目录: \`${{ env.WORK_DIR }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 构建信息" >> $GITHUB_STEP_SUMMARY
+          echo "- 提交: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 分支: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 触发者: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- YAK 版本: \`${{ env.YAK_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 服务管理命令" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看服务状态" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl status ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看服务日志" >> $GITHUB_STEP_SUMMARY
+          echo "journalctl -u ${{ env.SERVICE_NAME }} -f" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 重启服务" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl restart ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 停止服务" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl stop ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
