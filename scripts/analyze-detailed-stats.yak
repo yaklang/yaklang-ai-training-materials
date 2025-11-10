@@ -1,0 +1,250 @@
+#!/usr/bin/env yak
+
+yaklangPath = "/Users/v1ll4n/Projects/yaklang"
+
+// 统计代码行数的函数
+countLinesInDir = func(dir, fileTypes) {
+    cmd = sprintf(`find %s -type f \( %s \) -not -path "%s/vendor/*"`, dir, fileTypes, yaklangPath)
+    files = exec.System(cmd)~
+    
+    fileList = str.Split(string(files), "\n")
+    totalLines = 0
+    fileCount = 0
+    
+    for _, f in fileList {
+        if str.TrimSpace(f) == "" {
+            continue
+        }
+        lineCountCmd = sprintf(`wc -l "%s" | awk '{print $1}'`, f)
+        lineCountStr = exec.System(lineCountCmd)~
+        lineCount = int(str.TrimSpace(string(lineCountStr)))
+        totalLines += lineCount
+        fileCount += 1
+    }
+    
+    return totalLines, fileCount
+}
+
+log.info("Starting detailed code statistics...")
+
+// Yak 语言实现细分统计
+log.info("=== Yak Language Implementation Details ===")
+
+yakComponents = {}
+
+// 1. Yak 语言前端 (antlr4yak)
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4yak", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["yak_frontend_antlr4"] = {"lines": lines, "files": files, "desc": "Yak语言前端(ANTLR4)"}
+log.info("Yak Frontend (ANTLR4): %d lines, %d files", lines, files)
+
+// 2. Yak VM 虚拟机
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/yakvm", yaklangPath),
+    `-name "*.go"`
+)
+yakComponents["yak_vm"] = {"lines": lines, "files": files, "desc": "YakVM虚拟机"}
+log.info("YakVM: %d lines, %d files", lines, files)
+
+// 3. Yak 标准库实现
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/yaklib", yaklangPath),
+    `-name "*.go"`
+)
+yakComponents["yak_stdlib"] = {"lines": lines, "files": files, "desc": "Yak标准库"}
+log.info("Yak Standard Library: %d lines, %d files", lines, files)
+
+// 4. SSA 编译器前端 - C 语言
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4c", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["ssa_frontend_c"] = {"lines": lines, "files": files, "desc": "SSA前端-C语言"}
+log.info("SSA Frontend - C: %d lines, %d files", lines, files)
+
+// 5. SSA 编译器前端 - Java
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4java", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["ssa_frontend_java"] = {"lines": lines, "files": files, "desc": "SSA前端-Java"}
+log.info("SSA Frontend - Java: %d lines, %d files", lines, files)
+
+// 6. SSA 编译器前端 - PHP
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4php", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["ssa_frontend_php"] = {"lines": lines, "files": files, "desc": "SSA前端-PHP"}
+log.info("SSA Frontend - PHP: %d lines, %d files", lines, files)
+
+// 7. SSA 编译器前端 - JavaScript
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4JS", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["ssa_frontend_js"] = {"lines": lines, "files": files, "desc": "SSA前端-JavaScript"}
+log.info("SSA Frontend - JavaScript: %d lines, %d files", lines, files)
+
+// 8. SSA 编译器前端 - Lua
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/antlr4Lua", yaklangPath),
+    `-name "*.go" -o -name "*.g4"`
+)
+yakComponents["ssa_frontend_lua"] = {"lines": lines, "files": files, "desc": "SSA前端-Lua"}
+log.info("SSA Frontend - Lua: %d lines, %d files", lines, files)
+
+// 9. TypeScript 支持
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/typescript", yaklangPath),
+    `-name "*.go"`
+)
+yakComponents["ssa_frontend_typescript"] = {"lines": lines, "files": files, "desc": "SSA前端-TypeScript"}
+log.info("SSA Frontend - TypeScript: %d lines, %d files", lines, files)
+
+// 10. C to SSA
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak/c2ssa", yaklangPath),
+    `-name "*.go"`
+)
+yakComponents["c_to_ssa"] = {"lines": lines, "files": files, "desc": "C语言到SSA"}
+log.info("C to SSA: %d lines, %d files", lines, files)
+
+// 11. Yak 其他组件
+lines, files = countLinesInDir(
+    sprintf("%s/common/yak", yaklangPath),
+    `-name "*.go"`
+)
+// 减去已统计的部分
+totalYakOther = lines
+for _, component in yakComponents {
+    totalYakOther -= component["lines"]
+}
+yakComponents["yak_other"] = {"lines": totalYakOther, "files": 0, "desc": "Yak其他组件"}
+log.info("Yak Other Components: %d lines", totalYakOther)
+
+// YakGRPC 服务细分统计
+log.info("\n=== YakGRPC Service Details ===")
+
+yakgrpcComponents = {}
+
+// 统计 yakgrpc 主目录下的各个功能模块
+yakgrpcMainDir = sprintf("%s/common/yakgrpc", yaklangPath)
+
+// 通过文件名前缀分类统计
+prefixGroups = {
+    "ai": "AI能力接口",
+    "mitm": "MITM代理",
+    "fuzzer": "模糊测试",
+    "plugin": "插件管理",
+    "payload": "Payload管理",
+    "risk": "风险管理",
+    "httpflow": "HTTP流量",
+    "assets": "资产管理",
+    "port": "端口扫描",
+    "codec": "编解码",
+    "syntaxflow": "SyntaxFlow",
+    "diagnose": "诊断工具",
+    "screen": "屏幕录制",
+    "project": "项目管理",
+    "menu": "菜单管理",
+    "license": "许可证",
+}
+
+for prefix, desc in prefixGroups {
+    cmd = sprintf(`find %s -maxdepth 1 -type f -name "grpc_%s*.go" -o -name "%s*.go" | grep -v "_test.go"`, 
+        yakgrpcMainDir, prefix, prefix)
+    files = exec.System(cmd)~
+    
+    fileList = str.Split(string(files), "\n")
+    totalLines = 0
+    fileCount = 0
+    
+    for _, f in fileList {
+        if str.TrimSpace(f) == "" {
+            continue
+        }
+        lineCountCmd = sprintf(`wc -l "%s" | awk '{print $1}'`, f)
+        lineCountStr = exec.System(lineCountCmd)~
+        lineCount = int(str.TrimSpace(string(lineCountStr)))
+        totalLines += lineCount
+        fileCount += 1
+    }
+    
+    if totalLines > 0 {
+        yakgrpcComponents[prefix] = {"lines": totalLines, "files": fileCount, "desc": desc}
+        log.info("YakGRPC - %s: %d lines, %d files", desc, totalLines, fileCount)
+    }
+}
+
+// ypb (protobuf 定义)
+lines, files = countLinesInDir(
+    sprintf("%s/common/yakgrpc/ypb", yaklangPath),
+    `-name "*.proto" -o -name "*.go"`
+)
+yakgrpcComponents["ypb"] = {"lines": lines, "files": files, "desc": "Protobuf定义"}
+log.info("YakGRPC - Protobuf: %d lines, %d files", lines, files)
+
+// yakit store
+lines, files = countLinesInDir(
+    sprintf("%s/common/yakgrpc/yakit", yaklangPath),
+    `-name "*.go"`
+)
+yakgrpcComponents["yakit"] = {"lines": lines, "files": files, "desc": "Yakit存储"}
+log.info("YakGRPC - Yakit Store: %d lines, %d files", lines, files)
+
+// model
+lines, files = countLinesInDir(
+    sprintf("%s/common/yakgrpc/model", yaklangPath),
+    `-name "*.go"`
+)
+yakgrpcComponents["model"] = {"lines": lines, "files": files, "desc": "数据模型"}
+log.info("YakGRPC - Model: %d lines, %d files", lines, files)
+
+// 其他 grpc 文件
+cmd = sprintf(`find %s -maxdepth 1 -type f -name "*.go" | grep -v "_test.go"`, yakgrpcMainDir)
+files = exec.System(cmd)~
+fileList = str.Split(string(files), "\n")
+totalLines = 0
+fileCount = 0
+
+for _, f in fileList {
+    if str.TrimSpace(f) == "" {
+        continue
+    }
+    lineCountCmd = sprintf(`wc -l "%s" | awk '{print $1}'`, f)
+    lineCountStr = exec.System(lineCountCmd)~
+    lineCount = int(str.TrimSpace(string(lineCountStr)))
+    totalLines += lineCount
+    fileCount += 1
+}
+
+// 减去已统计的分类
+for prefix, _ in prefixGroups {
+    if yakgrpcComponents[prefix] != undefined {
+        totalLines -= yakgrpcComponents[prefix]["lines"]
+    }
+}
+
+if totalLines > 0 {
+    yakgrpcComponents["other"] = {"lines": totalLines, "files": fileCount, "desc": "其他服务"}
+    log.info("YakGRPC - Other: %d lines", totalLines)
+}
+
+// 输出 JSON 格式供后续使用
+result = {
+    "yak_language": yakComponents,
+    "yakgrpc_service": yakgrpcComponents,
+}
+
+log.info("\n=== Statistics Complete ===")
+log.info("Yak Language Total Components: %d", len(yakComponents))
+log.info("YakGRPC Service Total Components: %d", len(yakgrpcComponents))
+
+// 保存结果
+jsonData = json.dumps(result)
+file.Save("/tmp/detailed_stats.json", jsonData)
+log.info("Results saved to /tmp/detailed_stats.json")
+
