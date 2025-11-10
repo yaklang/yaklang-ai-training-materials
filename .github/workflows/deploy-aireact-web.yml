@@ -103,9 +103,9 @@ jobs:
       
       - name: Prepare environment configuration
         env:
-          AI_DOMAIN: ${{ secrets.AI_DOMAIN }}
-          AI_MODEL: ${{ secrets.AI_MODEL }}
-          AI_APIKEY: ${{ secrets.AI_APIKEY }}
+          AI_DOMAIN: ${{ secrets.AI_API_DOMAIN }}
+          AI_MODEL: ${{ secrets.AI_API_MODEL }}
+          AI_APIKEY: ${{ secrets.AI_API_KEY }}
         run: |
           echo "=== 准备环境配置 ==="
           
@@ -115,9 +115,9 @@ jobs:
           # 端口配置
           APP_PORT=${{ env.APP_PORT }}
           # AI 配置
-          AI_DOMAIN=${{ secrets.AI_DOMAIN }}
-          AI_MODEL=${{ secrets.AI_MODEL }}
-          AI_APIKEY=${{ secrets.AI_APIKEY }}
+          AI_DOMAIN=${{ secrets.AI_API_DOMAIN }}
+          AI_MODEL=${{ secrets.AI_API_MODEL }}
+          AI_APIKEY=${{ secrets.AI_API_KEY }}
           EOF
           
           echo "环境配置信息:"
