@@ -6,11 +6,12 @@ on:
     branches:
       - main
     paths:
+      - 'ai-benchmark/**'
+      - 'scripts/**'
       - 'awesome-scripts/**'
       - 'basic-syntax/**'
       - 'library-usage/**'
       - 'practice/**'
-      - 'scripts/merge-in-one-text.yak'
       - '.github/workflows/upload-aikb.yml'
   
   # 允许手动触发
