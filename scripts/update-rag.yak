@@ -164,7 +164,13 @@ dev_env_embeddingHandle = (text) => {
         return nil
     }
 
-    log.info("Generating embedding for text (length: %d)", len(text))
+    // 优化日志输出：显示文本预览
+    if len(text) <= 100 {
+        log.info("Generating embedding for text (length: %d): %s", len(text), text)
+    } else {
+        preview = str.TrimSpace(text[:100])
+        log.info("Generating embedding for text (length: %d), preview: %s...", len(text), preview)
+    }
 
     data = {"input": text,"encoding_format":"float"}
     reqPacket = `POST /embeddings HTTP/1.1
@@ -196,13 +202,20 @@ prod_env_embeddingHandle = func(text) {
         return nil
     }
 
-    log.info("Generating embedding for text (length: %d)", len(text))
+    // 优化日志输出：显示文本预览
+    if len(text) <= 100 {
+        log.info("Generating embedding for text (length: %d): %s", len(text), text)
+    } else {
+        preview = str.TrimSpace(text[:100])
+        log.info("Generating embedding for text (length: %d), preview: %s...", len(text), preview)
+    }
 
     // 如果配置了 TOTP，生成验证码
     totpCode = ""
     if totpSecret != "" {
         totpCode = twofa.GetUTCCode(totpSecret)
-        log.info("Generated TOTP code: %s", totpCode)
+        currentTime = time.Now().Unix()
+        log.info("Generated TOTP code: %s (timestamp: %d)", totpCode, currentTime)
     }
 
     // 构建请求体
@@ -275,24 +288,30 @@ Content-Length: %d
 
 
 prod_env_embeddingHandle_with_retry = func(text) {
-    maxRetries = 3
+    maxRetries = 5
     for i = 0; i < maxRetries; i++ {
         if i > 0 {
-            log.warn("Embedding retry attempt %d/%d", i+1, maxRetries)
+            log.warn("🔄 [RETRY %d/%d] Retrying embedding request...", i, maxRetries-1)
         }
 
         result = prod_env_embeddingHandle(text)
         if result != nil {
+            if i > 0 {
+                log.info("✓ Embedding succeeded after %d retries", i)
+            }
             return result
         }
 
         if i < maxRetries - 1 {
-            log.warn("Embedding failed, retrying in 2 seconds...")
-            time.Sleep(2)
+            // 等待时间递增：第1次重试等1秒，第2次等2秒，第3次等3秒，第4次等4秒
+            // 这样可以让 TOTP 有更大机会切换到新的时间窗口
+            waitSeconds = i + 1
+            log.warn("⏳ Embedding failed, waiting %d seconds before retry...", waitSeconds)
+            time.Sleep(waitSeconds)
         }
     }
 
-    log.error("Embedding failed after %d attempts", maxRetries)
+    log.error("❌ Embedding failed after %d attempts, giving up", maxRetries)
     return nil
 }
 
@@ -607,6 +626,7 @@ for filePath, content := range diffFiles {
             opts = [
                 rag.embeddingHandle(prod_env_embeddingHandle),
                 rag.aiServiceType("openai",ai.apiKey(AIAPIKey),ai.model(AIAPIModel),ai.domain(AIAPIDomain)),
+                rag.extraPrompt("This code sample is written in Yaklang programming language. Yaklang is a domain-specific language designed for cybersecurity and penetration testing. When generating questions and indexing this code, focus on Yaklang-specific syntax, built-in functions, security testing patterns, and practical usage scenarios in the context of security research and vulnerability assessment."),
             ]
             err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName, opts...)
             if err {
