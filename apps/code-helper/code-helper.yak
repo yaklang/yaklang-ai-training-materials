@@ -19,9 +19,81 @@ port = cli.Int("port", cli.setDefault(9093), cli.setHelp("服务监听端口"))
 collectionName = cli.String("collection", cli.setDefault("yaklang-aikb"), cli.setHelp("RAG 集合名称"))
 topK = cli.Int("topk", cli.setDefault(10), cli.setHelp("返回结果数量"))
 frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端 HTML 文件路径（可选，默认自动查找）"))
+skipCheck = cli.Bool("skip-check", cli.setDefault(false), cli.setHelp("跳过环境检查"))
 
 // 验证参数
 cli.check()
+
+// 环境检查和依赖安装
+// 关键词: 环境检查, 依赖安装, toolbox.Install
+if !skipCheck {
+    // 定义所有需要的工具
+    // 关键词: requireTools, 依赖列表
+    requireTools = ["llama-server", "model-Qwen3-Embedding-0.6B-Q4", "yaklang-aikb-rag"]
+    
+    println("\n=== Step 1: Environment Check ===")
+    log.info("Checking environment and dependencies...")
+    
+    // 检查必要的工具是否已安装
+    // 关键词: toolbox.List, 工具检查
+    installedTools = {}
+    toolList, err = toolbox.List()
+    if err != nil {
+        log.error("Failed to get tool list: %v", err)
+        die(sprintf("Failed to get tool list: %v", err))
+    }
+    
+    for tool in toolList {
+        installedTools[tool.Name] = tool.Installed
+    }
+    
+    // 遍历所有必需的工具并检查安装
+    // 关键词: 工具安装循环, 批量安装, 强制安装
+    for toolName in requireTools {
+        log.info("Checking %s...", toolName)
+        
+        // 对于 model-Qwen3-Embedding-0.6B-Q4，只检查不强制安装
+        // 其他工具都强制安装以确保是最新版本
+        if toolName == "model-Qwen3-Embedding-0.6B-Q4" {
+            if !installedTools[toolName] {
+                println(sprintf("Installing %s...", toolName))
+                err = toolbox.Install(toolName)
+                if err != nil {
+                    log.error("Failed to install %s: %v", toolName, err)
+                    die(sprintf("Failed to install %s: %v", toolName, err))
+                } else {
+                    println(sprintf("✓ %s installed successfully", toolName))
+                }
+            } else {
+                println(sprintf("✓ %s already installed", toolName))
+            }
+        } else {
+            // 强制安装其他工具
+            println(sprintf("Force installing %s...", toolName))
+            err = toolbox.Install(toolName, toolbox.force(true))
+            if err != nil {
+                log.error("Failed to install %s: %v", toolName, err)
+                die(sprintf("Failed to install %s: %v", toolName, err))
+            } else {
+                println(sprintf("✓ %s installed successfully", toolName))
+            }
+        }
+    }
+    
+    // 检查 RAG 文件是否存在
+    // 关键词: RAG文件检查, 知识库文件
+    ragPath = file.Join(os.GetHomeDir(), "yakit-projects", "projects", "libs", "yaklang-aikb.rag")
+    log.info("Checking RAG file: %s", ragPath)
+    if !file.IsExisted(ragPath) {
+        log.warn("RAG file not found: %s", ragPath)
+        println(sprintf("⚠️  Warning: RAG file not found at %s", ragPath))
+        println("   You may need to download or generate the RAG file first")
+    } else {
+        println(sprintf("✓ RAG file found: %s", ragPath))
+    }
+    
+    println("\n=== Step 2: Starting Service ===")
+}
 
 log.info("Starting Yaklang Code Helper Service...")
 log.info("Configuration:")
@@ -205,7 +277,7 @@ updateHandle = (rsp, req) => {
     log.info("Installing yaklang-aikb-rag...")
 
     // 执行安装
-    err = toolbox.Install("yaklang-aikb-rag")
+    err = toolbox.Install("yaklang-aikb-rag",toolbox.force(true))
     if err != nil {
         log.error("Failed to install yaklang-aikb-rag: %v", err)
         rsp.WriteHeader(500)
@@ -233,17 +305,6 @@ addHandle("/", indexHandle)
 addHandle("/index.html", indexHandle)
 addHandle("/query", queryHandle)
 addHandle("/update", updateHandle)
-
-// 首次启动时安装 yaklang-aikb-rag
-log.info("Installing yaklang-aikb-rag on first startup...")
-installErr = toolbox.Install("yaklang-aikb-rag")
-if installErr != nil {
-    log.warn("Failed to install yaklang-aikb-rag on startup: %v", installErr)
-    println(f"⚠️  Warning: Failed to install yaklang-aikb-rag: ${installErr}")
-} else {
-    log.info("Successfully installed yaklang-aikb-rag on startup")
-    println("✓ yaklang-aikb-rag installed successfully")
-}
 
 // 启动服务器
 log.info("Starting HTTP server on 0.0.0.0:%d", port)

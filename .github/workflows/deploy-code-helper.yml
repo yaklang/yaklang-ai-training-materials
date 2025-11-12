@@ -27,8 +27,8 @@ jobs:
       MAIN_SCRIPT: code-helper.yak
       SERVICE_NAME: yak-code-helper
       WORK_DIR: /root/yaklang-ai-training-materials
-      YAK_VERSION: 1.4.4-beta10
-      YAK_PATH: /usr/local/bin/yak-1.4.4-beta10
+      YAK_VERSION: 1.4.4-alpha1112a
+      YAK_PATH: /usr/local/bin/yak-1.4.4-alpha1112a
       APP_PORT: ${{ secrets.CODE_HELPER_PORT }}
       
     
