@@ -640,7 +640,7 @@ for filePath, content := range diffFiles {
             opts = [
                 rag.embeddingHandle(prod_env_embeddingHandle),
                 rag.aiServiceType("openai",ai.apiKey(AIAPIKey),ai.model(AIAPIModel),ai.domain(AIAPIDomain)),
-                rag.extraPrompt("This code sample is written in Yaklang programming language. Yaklang is a domain-specific language designed for cybersecurity and penetration testing. When generating questions and indexing this code, focus on Yaklang-specific syntax, built-in functions, security testing patterns, and practical usage scenarios in the context of security research and vulnerability assessment."),
+                rag.extraPrompt("这是 Yaklang DSL 代码（安全研究/漏洞评估领域）。目标是构建 Yaklang 专用的问题与索引：仅关注 Yaklang 语法与语义、内置函数/库、模式化安全测试写法（协议交互、fuzz、字典/文件系统、并发、异常与错误处理）及可复用实践。忽略所有与系统命令/脚本运行相关的行与片段（例如 yak xxx.yak、shell 命令、CLI 调用/输出），这些不计入统计、索引与问题生成。只有当代码分片包含实质性 Yak 逻辑（如控制流、函数定义与调用、内置 API 使用、数据处理流程、文件系统/网络操作）时，才生成问题；若分片无语义或仅为命令行/注释/样板，请不要输出任何问题。对每个有意义的分片，产出至少3条主谓宾完整的问题，直接面向 Yaklang 学习与检索，例如：'Yak 中 filesys 如何遍历文件夹？'、'Yaklang 语言中 For 循环如何编写？'、'如何使用内置函数解析 HTTP 响应并提取 Header？'、'如何在 Yak 中并发执行任务并收集结果？'、'Yak 中如何使用正则提取匹配并处理错误？' 问题应紧扣 Yak DSL，不引入与 Yak 无关的内容或泛化话题。"),
             ]
             err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName, opts...)
             if err {
