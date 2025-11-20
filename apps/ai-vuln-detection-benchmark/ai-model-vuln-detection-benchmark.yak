@@ -1,0 +1,783 @@
+// =============================================================================
+// AI 模型漏洞检测能力 Benchmark 测试
+// 功能: 测试不同 AI 模型检测 SQL 注入漏洞的能力，支持 Web 界面和命令行模式
+// 用途: AI 模型性能评估、能力对比、选型参考
+// =============================================================================
+// 关键词: AI benchmark, 漏洞检测, ReAct, SQL注入检测, 模型评估, Web界面
+// =============================================================================
+
+// CLI 参数配置
+// 关键词: CLI参数, 配置选项
+webMode = cli.Bool("web", cli.setDefault(false), cli.setHelp("启动Web界面模式"))
+port = cli.Int("port", cli.setDefault(9093), cli.setHelp("Web服务端口"))
+configFile = cli.String("config", cli.setDefault(""), cli.setHelp("测试配置文件路径(JSON格式，包含testConfigs，必需)"))
+aiConfigFile = cli.String("ai-config", cli.setDefault(""), cli.setHelp("AI配置文件路径(JSON格式，包含aiConfigs，必需)"))
+outputFile = cli.String("output", cli.setDefault(""), cli.setHelp("结果输出文件（默认仅输出到控制台）"))
+
+// 可选的覆盖参数（优先级高于配置文件）
+targetURL = cli.String("url", cli.setDefault(""), cli.setHelp("测试目标URL（覆盖配置文件）"))
+maxIteration = cli.Int("max-iteration", cli.setDefault(0), cli.setHelp("ReAct最大迭代次数（覆盖配置文件）"))
+timeout = cli.Int("timeout", cli.setDefault(0), cli.setHelp("单个测试超时时间/秒（覆盖配置文件）"))
+
+// 验证参数
+cli.check()
+
+log.info("Starting AI Model Vulnerability Detection Benchmark")
+
+// 全局变量
+// 关键词: 全局状态, 测试结果
+globalResults = []
+globalMutex = sync.NewMutex()
+
+// 执行单个模型测试的核心函数
+// 关键词: 核心测试函数, 模型测试
+func runModelTest(aiConfig, testConfig, onProgress) {
+    log.info("=" * 80)
+    log.info("Testing model: %s (%s)", aiConfig["model"], aiConfig["description"])
+    log.info("=" * 80)
+    
+    // 初始化测试结果
+    // 关键词: 结果初始化, 测试数据结构
+    result = {
+        "provider": aiConfig["provider"],
+        "model": aiConfig["model"],
+        "description": aiConfig["description"],
+        "testName": testConfig["name"],
+        "targetURL": testConfig["targetURL"],
+        "success": false,
+        "detected": false,
+        "error": "",
+        "runtimeId": "",
+        "riskCount": 0,
+        "matchedRiskCount": 0,
+        "startTime": time.Now().Unix(),
+        "endTime": 0,
+        "duration": 0,
+        "thoughtLog": [],
+        "answerLog": [],
+    }
+    
+    // 错误处理包装
+    // 关键词: 错误处理, defer recover
+    defer func {
+        err = recover()
+        if err != nil {
+            log.error("Test failed with panic: %v", err)
+            if result["error"] == "" {
+                result["error"] = sprintf("%v", err)
+            }
+        }
+        
+        // 记录结束时间
+        result["endTime"] = time.Now().Unix()
+        result["duration"] = result["endTime"] - result["startTime"]
+        
+        // 保存结果
+        globalMutex.Lock()
+        globalResults = append(globalResults, result)
+        globalMutex.Unlock()
+        
+        // 通知进度
+        if onProgress != nil {
+            onProgress(result)
+        }
+    }
+    
+    // 创建 AI 引擎选项
+    opts = []
+    
+    // 配置会话ID（随机生成避免干扰）
+    // 关键词: 会话隔离, 随机会话ID
+    sessionID = str.RandStr(12)
+    opts = append(opts, aim.sessionID(sessionID))
+    
+    // 配置超时
+    // 关键词: 超时控制, aim.timeout
+    opts = append(opts, aim.timeout(testConfig["timeout"]))
+    
+    // 配置最大迭代次数
+    // 关键词: 迭代控制, aim.maxIteration
+    opts = append(opts, aim.maxIteration(int(testConfig["maxIteration"])))
+    
+    // 配置 YOLO 模式（自动同意所有操作）
+    // 关键词: YOLO模式, 自动审批
+    opts = append(opts, aim.yoloMode())
+    
+    // 配置语言
+    // 关键词: 语言设置
+    opts = append(opts, aim.language("zh"))
+    
+    // 配置 AI 服务提供商
+    // 关键词: AI服务配置, aibalance, ai.model, ai.domain, ai.apiKey
+    aiOpts = []
+    
+    // model 是必选项
+    aiOpts = append(aiOpts, ai.model(aiConfig["model"]))
+    
+    // domain 是可选项
+    if aiConfig["domain"] != "" && aiConfig["domain"] != undefined {
+        aiOpts = append(aiOpts, ai.domain(aiConfig["domain"]))
+    }
+    
+    // apikey 是可选项
+    if aiConfig["apikey"] != "" && aiConfig["apikey"] != undefined {
+        aiOpts = append(aiOpts, ai.apiKey(aiConfig["apikey"]))
+    }
+    
+    opts = append(opts, aim.aiConfig(aiConfig["provider"], aiOpts...))
+    
+    // 禁用用户交互
+    // 关键词: 禁用交互, 自动化测试
+    opts = append(opts, aim.allowUserInteract(false))
+    
+    // 禁用 AI Forge
+    opts = append(opts, aim.disableAIForge(true))
+    
+    // 生成唯一的结果标识符
+    // 关键词: 结果标识, 唯一ID
+    resultId = sprintf("%s-%s-%d", aiConfig["model"], testConfig["name"], time.Now().UnixNano())
+    result["resultId"] = resultId
+    
+    // 配置流式输出回调（记录AI思考过程）
+    // 关键词: 流式输出, 思考过程记录
+    opts = append(opts, aim.onStream(func(react, event, nodeid, data) {
+        if nodeid == "re-act-loop-thought" {
+            result["thoughtLog"] = append(result["thoughtLog"], string(data))
+            log.debug("Thought: %s", string(data))
+            
+            // 通知进度（思考过程）
+            if onProgress != nil {
+                onProgress({
+                    "type": "thought",
+                    "data": string(data),
+                    "model": aiConfig["model"],
+                    "resultId": resultId,
+                })
+            }
+        }
+        if nodeid == "re-act-loop-answer-payload" {
+            result["answerLog"] = append(result["answerLog"], string(data))
+            log.debug("Answer: %s", string(data))
+            
+            // 通知进度（回答内容）
+            if onProgress != nil {
+                onProgress({
+                    "type": "answer",
+                    "data": string(data),
+                    "model": aiConfig["model"],
+                    "resultId": resultId,
+                })
+            }
+        }
+    }))
+    
+    // 配置完成回调，检测漏洞
+    // 关键词: 完成回调, onFinished, 漏洞检测结果
+    opts = append(opts, aim.onFinished(func(react) {
+        // 获取最后一个任务
+        lastTask = react.GetLastTask()
+        taskId = lastTask.GetId()
+        result["runtimeId"] = taskId
+        
+        log.info("Checking risks for task ID: %s", taskId)
+        
+        // 获取该任务生成的所有 Risk 信息
+        risks = lastTask.GetRisks()
+        riskCount = len(risks)
+        
+        log.info("Found %d risk(s) in total", riskCount)
+        
+        // 遍历并记录所有 Risk 信息
+        idx = 0
+        matchedRiskCount = 0
+        for riskItem in risks {
+            log.info("Risk #%d:", idx + 1)
+            log.info("  Title: %s", riskItem.Title)
+            log.info("  TitleVerbose: %s", riskItem.TitleVerbose)
+            log.info("  RiskType: %s", riskItem.RiskType)
+            log.info("  Severity: %s", riskItem.Severity)
+            log.info("  URL: %s", riskItem.Url)
+            log.info("  Host: %s", riskItem.Host)
+            log.info("  Port: %d", riskItem.Port)
+            if riskItem.Description != "" {
+                log.info("  Description: %s", riskItem.Description)
+            }
+            if riskItem.Payload != "" {
+                log.info("  Payload: %s", riskItem.Payload)
+            }
+            
+            // 检查是否匹配关键词
+            // 关键词: Risk匹配, 关键词验证
+            riskMatchKeywords = testConfig["riskMatchKeywords"]
+            if riskMatchKeywords != nil && riskMatchKeywords != undefined && len(riskMatchKeywords) > 0 {
+                // 构建要检查的文本内容（标题、描述、类型等）
+                riskText = sprintf("%s %s %s %s %s", 
+                    riskItem.Title, 
+                    riskItem.TitleVerbose, 
+                    riskItem.RiskType,
+                    riskItem.Description,
+                    riskItem.Payload
+                )
+                riskTextLower = str.ToLower(riskText)
+                
+                // 检查是否包含任何关键词
+                matched = false
+                for keyword in riskMatchKeywords {
+                    keywordLower = str.ToLower(sprintf("%v", keyword))
+                    if str.Contains(riskTextLower, keywordLower) {
+                        matched = true
+                        log.info("  Matched keyword: %s", keyword)
+                        break
+                    }
+                }
+                
+                if matched {
+                    matchedRiskCount++
+                    log.info("  Risk matched configured keywords")
+                } else {
+                    log.info("  Risk did not match configured keywords")
+                }
+            } else {
+                // 如果没有配置关键词，默认所有 Risk 都算匹配
+                matchedRiskCount++
+            }
+            
+            idx++
+        }
+        
+        // 根据匹配的 Risk 数量判断是否检测到漏洞
+        // 关键词: 检测判断, 匹配统计
+        result["riskCount"] = riskCount
+        result["matchedRiskCount"] = matchedRiskCount
+        
+        if matchedRiskCount > 0 {
+            result["detected"] = true
+            log.info("Vulnerability detected! Total risks: %d, Matched risks: %d", riskCount, matchedRiskCount)
+        } else {
+            result["detected"] = false
+            if riskCount > 0 {
+                log.info("Found %d risk(s) but none matched the configured keywords", riskCount)
+            } else {
+                log.info("No vulnerability detected")
+            }
+        }
+    }))
+    
+    // 构造测试任务
+    // 关键词: 任务构造, 漏洞检测任务, 模板替换
+    taskPromptTemplate = testConfig["taskPrompt"]
+    
+    // 如果配置中没有taskPrompt，使用默认模板
+    if taskPromptTemplate == nil || taskPromptTemplate == undefined || taskPromptTemplate == "" {
+        taskPromptTemplate = `你的任务是检测以下 URL 地址是否存在漏洞。
+
+目标 URL: {{targetURL}}`
+    }
+    
+    // 替换模板变量 {{targetURL}}
+    // 关键词: 模板替换, str.ReplaceAll
+    taskPrompt = str.ReplaceAll(taskPromptTemplate, "{{targetURL}}", testConfig["targetURL"])
+    
+    log.info("Task prompt: %s", taskPrompt)
+    
+    // 调用 ReAct 执行任务
+    // 关键词: aim.InvokeReAct, ReAct调用
+    log.info("Invoking ReAct with provider=%s, model=%s", aiConfig["provider"], aiConfig["model"])
+    err = aim.InvokeReAct(taskPrompt, opts...)
+    
+    if err != nil {
+        log.error("Failed to invoke ReAct: %v", err)
+        result["error"] = sprintf("Failed to invoke ReAct: %v", err)
+    } else {
+        log.info("ReAct completed successfully")
+        result["success"] = true
+    }
+    
+    log.info("Test completed for model %s", aiConfig["model"])
+    log.info("  Success: %v", result["success"])
+    log.info("  Detected: %v", result["detected"])
+    log.info("  Risk Count: %d (Matched: %d)", result["riskCount"], result["matchedRiskCount"])
+    log.info("  Runtime ID: %s", result["runtimeId"])
+    log.info("  Duration: %d seconds", result["duration"])
+    if result["error"] != "" {
+        log.info("  Error: %s", result["error"])
+    }
+}
+
+// 生成结果报告
+// 关键词: 结果报告, 统计分析
+func generateReport(results) {
+    println("")
+    println("=" * 80)
+    println("AI Model Vulnerability Detection Benchmark Results")
+    println("=" * 80)
+    println("")
+    
+    // 表头
+    printf("%-25s %-20s %-15s %-10s %-10s %-12s %-10s %-25s\n", 
+        "Test Scenario", "Model", "Provider", "Success", "Detected", "Risks(M/T)", "Duration(s)", "Error")
+    println("-" * 130)
+    
+    // 表格内容
+    for result in results {
+        successStr = "NO"
+        if result["success"] {
+            successStr = "YES"
+        }
+        
+        detectedStr = "NO"
+        if result["detected"] {
+            detectedStr = "YES"
+        }
+        
+        errorStr = result["error"]
+        if len(errorStr) > 23 {
+            errorStr = errorStr[:20] + "..."
+        }
+        
+        // 构建 Risk 显示字符串：匹配数/总数
+        matchedCount = result["matchedRiskCount"]
+        totalCount = result["riskCount"]
+        riskStr = sprintf("%d/%d", matchedCount, totalCount)
+        
+        // 测试场景名称
+        testName = result["testName"]
+        if testName == nil || testName == undefined || testName == "" {
+            testName = result["targetURL"]
+        }
+        if len(testName) > 23 {
+            testName = testName[:20] + "..."
+        }
+        
+        printf("%-25s %-20s %-15s %-10s %-10s %-12s %-10d %-25s\n",
+            testName,
+            result["model"],
+            result["provider"],
+            successStr,
+            detectedStr,
+            riskStr,
+            result["duration"],
+            errorStr
+        )
+    }
+    
+    println("-" * 130)
+    
+    // 统计信息
+    totalTests = len(results)
+    successCount = 0
+    detectedCount = 0
+    totalRisks = 0
+    
+    for result in results {
+        if result["success"] {
+            successCount++
+        }
+        if result["detected"] {
+            detectedCount++
+        }
+        totalRisks += result["riskCount"]
+    }
+    
+    // 计算比率
+    successRate = 0.0
+    detectionRate = 0.0
+    if totalTests > 0 {
+        successRate = float(successCount)/float(totalTests)*100
+        detectionRate = float(detectedCount)/float(totalTests)*100
+    }
+    
+    println("")
+    println("Summary:")
+    printf("  Total Tests: %d\n", totalTests)
+    printf("  Successful Tests: %d (%.1f%%)\n", successCount, successRate)
+    printf("  Detected SQL Injection: %d (%.1f%%)\n", detectedCount, detectionRate)
+    printf("  Total Risks Found: %d\n", totalRisks)
+    println("=" * 80)
+    
+    return {
+        "totalTests": totalTests,
+        "successCount": successCount,
+        "detectedCount": detectedCount,
+        "totalRisks": totalRisks,
+        "successRate": successRate,
+        "detectionRate": detectionRate,
+    }
+}
+
+// 加载配置文件
+// 关键词: 配置加载, 统一加载
+func loadConfigurations() {
+    log.info("Loading configurations...")
+    log.info("  Test Config File: %s", configFile)
+    log.info("  AI Config File: %s", aiConfigFile)
+    
+    // 验证必需参数
+    if configFile == "" {
+        log.error("No test config file specified. Please use --config parameter")
+        die("No test config file specified. Please use --config parameter to provide test configurations.\nExample: yak benchmark.yak --config test-config.json --ai-config ai-config.json")
+    }
+    
+    if aiConfigFile == "" {
+        log.error("No AI config file specified. Please use --ai-config parameter")
+        die("No AI config file specified. Please use --ai-config parameter to provide AI configurations.\nExample: yak benchmark.yak --config test-config.json --ai-config ai-config.json")
+    }
+    
+    // 加载测试配置
+    log.info("Loading test config from file: %s", configFile)
+    testConfigContent, err = file.ReadFile(configFile)
+    if err != nil {
+        log.error("Failed to read test config file: %v", err)
+        die(sprintf("Failed to read test config file: %v", err))
+    }
+    
+    testConfigData = json.loads(testConfigContent)
+    if testConfigData == nil || testConfigData == undefined {
+        log.error("Failed to parse test config file")
+        die("Failed to parse test config file. Please ensure it is valid JSON.")
+    }
+    
+    // 读取测试配置数组
+    testConfigs = testConfigData["testConfigs"]
+    if testConfigs == nil || len(testConfigs) == 0 {
+        log.error("No test configs found in test config file")
+        die("No test configs found in test config file. Please add 'testConfigs' array.")
+    }
+    log.info("Loaded %d test config(s)", len(testConfigs))
+    
+    // 加载 AI 配置
+    log.info("Loading AI config from file: %s", aiConfigFile)
+    aiConfigContent, err = file.ReadFile(aiConfigFile)
+    if err != nil {
+        log.error("Failed to read AI config file: %v", err)
+        die(sprintf("Failed to read AI config file: %v", err))
+    }
+    
+    aiConfigData = json.loads(aiConfigContent)
+    if aiConfigData == nil || aiConfigData == undefined {
+        log.error("Failed to parse AI config file")
+        die("Failed to parse AI config file. Please ensure it is valid JSON.")
+    }
+    
+    // 读取 AI 配置
+    aiConfigs = aiConfigData["aiConfigs"]
+    if aiConfigs == nil || len(aiConfigs) == 0 {
+        log.error("No AI configs found in AI config file")
+        die("No AI configs found in AI config file. Please add 'aiConfigs' array.")
+    }
+    log.info("Loaded %d AI config(s)", len(aiConfigs))
+    
+    // 应用 CLI 参数覆盖
+    if targetURL != "" || maxIteration > 0 || timeout > 0 {
+        log.info("Applying CLI parameter overrides to all test configs")
+        for idx, tc in testConfigs {
+            if targetURL != "" {
+                testConfigs[idx]["targetURL"] = targetURL
+            }
+            if maxIteration > 0 {
+                testConfigs[idx]["maxIteration"] = maxIteration
+            }
+            if timeout > 0 {
+                testConfigs[idx]["timeout"] = timeout
+            }
+        }
+    }
+    
+    totalTests = len(aiConfigs) * len(testConfigs)
+    log.info("Configuration Summary:")
+    log.info("  AI Models: %d", len(aiConfigs))
+    log.info("  Test Scenarios: %d", len(testConfigs))
+    log.info("  Total Tests: %d", totalTests)
+    
+    return aiConfigs, testConfigs
+}
+
+// 执行所有测试
+// 关键词: 测试执行, 主测试流程
+func runAllTests(aiConfigs, testConfigs) {
+    log.info("")
+    log.info("=" * 80)
+    log.info("Starting tests...")
+    log.info("=" * 80)
+    
+    testIdx = 0
+    totalTests = len(aiConfigs) * len(testConfigs)
+    
+    // 执行所有测试：每个 testConfig × 每个 aiConfig
+    for testConfig in testConfigs {
+        testName = testConfig["name"]
+        if testName == nil || testName == undefined || testName == "" {
+            testName = sprintf("Test-%s", testConfig["targetURL"])
+        }
+        
+        log.info("")
+        log.info("=" * 80)
+        log.info("Test Scenario: %s", testName)
+        log.info("  Target URL: %s", testConfig["targetURL"])
+        log.info("  Max Iteration: %d", testConfig["maxIteration"])
+        log.info("  Timeout: %d seconds", testConfig["timeout"])
+        log.info("=" * 80)
+        
+        for aiConfig in aiConfigs {
+            testIdx++
+            log.info("[%d/%d] Testing: %s with %s", testIdx, totalTests, testName, aiConfig["model"])
+            
+            // 如果是 Web 模式，使用带进度回调的版本
+            if webMode && webProgressCallback != nil {
+                runModelTest(aiConfig, testConfig, webProgressCallback)
+            } else {
+                runModelTest(aiConfig, testConfig, nil)
+            }
+        }
+    }
+    
+    log.info("")
+    log.info("=" * 80)
+    log.info("All tests completed")
+    log.info("=" * 80)
+    
+    // 生成报告
+    summary = generateReport(globalResults)
+    
+    // 如果是 Web 模式，发送完成消息
+    if webMode {
+        completeMsg = {
+            "type": "test_completed",
+            "results": globalResults,
+            "summary": summary,
+        }
+        broadcastToWebSockets(completeMsg)
+    }
+    
+    // 保存到文件（如果指定）
+    if outputFile != "" {
+        log.info("Saving results to file: %s", outputFile)
+        
+        jsonOutput = json.dumps({
+            "timestamp": time.Now().Format("2006-01-02 15:04:05"),
+            "aiConfigs": aiConfigs,
+            "testConfigs": testConfigs,
+            "results": globalResults,
+            "summary": summary,
+        })
+        
+        err = file.Save(outputFile, jsonOutput)
+        if err != nil {
+            log.error("Failed to save results to file: %v", err)
+        } else {
+            log.info("Results saved successfully to: %s", outputFile)
+        }
+    }
+    
+    return summary
+}
+
+// 全局 WebSocket 连接管理
+// 关键词: WebSocket连接池, 广播
+globalWebSocketConns = []
+globalWebSocketMutex = sync.NewMutex()
+webProgressCallback = nil
+
+// 广播消息到所有 WebSocket 连接
+// 关键词: 消息广播
+func broadcastToWebSockets(message) {
+    globalWebSocketMutex.Lock()
+    defer globalWebSocketMutex.Unlock()
+    
+    msgJson = json.dumps(message)
+    for conn in globalWebSocketConns {
+        err = conn.WriteMessage(1, msgJson)
+        if err != nil {
+            log.debug("Failed to send message to client: %v", err)
+        }
+    }
+}
+
+// Web服务器：启动HTTP服务器并推送测试进度
+// 关键词: Web服务, HTTP服务器, WebSocket
+func startWebServer(aiConfigs, testConfigs) {
+    log.info("Starting Web server on port %d", port)
+    
+    // 准备配置信息
+    configInfo = {
+        "aiConfigs": aiConfigs,
+        "testConfigs": testConfigs
+    }
+    
+    // 加载前端HTML
+    // 关键词: 前端加载, HTML文件
+    htmlContent = ""
+    possiblePaths = [
+        "scripts/ai-model-vuln-detection-benchmark.html",
+        "ai-model-vuln-detection-benchmark.html",
+    ]
+    
+    for htmlPath in possiblePaths {
+        content, readErr = file.ReadFile(htmlPath)
+        if readErr == nil {
+            htmlContent = content
+            log.info("HTML file loaded from: %s", htmlPath)
+            break
+        }
+    }
+    
+    if len(htmlContent) == 0 {
+        log.error("Failed to load frontend HTML file")
+        die("Frontend HTML file not found. Please ensure ai-model-vuln-detection-benchmark.html exists.")
+    }
+    
+    // 首页处理函数
+    // 关键词: HTTP路由, 首页处理
+    indexHandle = (rsp, req) => {
+        log.info("Serving index.html to %s", req.RemoteAddr)
+        rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+        rsp.WriteHeader(200)
+        rsp.Write(htmlContent)
+    }
+    
+    // WebSocket 处理函数（仅用于推送测试进度）
+    // 关键词: WebSocket处理, 消息推送
+    testWSHandle = (conn) => {
+        clientAddr = conn.RemoteAddr().String()
+        log.info("New WebSocket connection from %s", clientAddr)
+        
+        defer func {
+            err = recover()
+            if err != nil {
+                log.error("WebSocket handler panic: %v", err)
+            }
+            
+            // 从连接池中移除
+            globalWebSocketMutex.Lock()
+            newConns = []
+            for c in globalWebSocketConns {
+                if c != conn {
+                    newConns = append(newConns, c)
+                }
+            }
+            globalWebSocketConns = newConns
+            globalWebSocketMutex.Unlock()
+            
+            conn.Close()
+            log.info("WebSocket connection closed for %s", clientAddr)
+        }
+        
+        // 添加到连接池
+        globalWebSocketMutex.Lock()
+        globalWebSocketConns = append(globalWebSocketConns, conn)
+        globalWebSocketMutex.Unlock()
+        
+        // 发送欢迎消息和配置信息
+        welcomeMsg = {
+            "type": "connected",
+            "message": "WebSocket connected successfully",
+            "config": configInfo
+        }
+        conn.WriteMessage(1, json.dumps(welcomeMsg))
+        log.info("Sent welcome message with config to %s", clientAddr)
+        
+        // 保持连接活跃（只读取消息，不处理）
+        for {
+            _, _, err = conn.ReadMessage()
+            if err != nil {
+                log.debug("WebSocket connection closed by client %s: %v", clientAddr, err)
+                break
+            }
+        }
+    }
+    
+    // 设置全局进度回调函数
+    webProgressCallback = func(progress) {
+        // 发送进度更新到所有连接的客户端
+        if progress["type"] == "thought" || progress["type"] == "answer" {
+            // 流式输出
+            progressMsg = {
+                "type": "stream",
+                "streamType": progress["type"],
+                "model": progress["model"],
+                "resultId": progress["resultId"],
+                "data": progress["data"],
+            }
+            broadcastToWebSockets(progressMsg)
+        } else {
+            // 模型完成
+            progressMsg = {
+                "type": "model_completed",
+                "result": progress,
+            }
+            broadcastToWebSockets(progressMsg)
+        }
+    }
+    
+    // 注册路由
+    handles = []
+    handles = append(handles, httpserver.routeHandler("/", indexHandle))
+    handles = append(handles, httpserver.routeHandler("/index.html", indexHandle))
+    handles = append(handles, httpserver.wsRouteHandler("/benchmark/test", testWSHandle))
+    
+    // 在后台启动 HTTP 服务器
+    go func {
+        defer func {
+            err = recover()
+            if err != nil {
+                log.error("HTTP server panic: %v", err)
+            }
+        }
+        
+        log.info("Starting HTTP server on 0.0.0.0:%d", port)
+        println(f"\n✓ AI Benchmark Web service started on http://0.0.0.0:${port}")
+        println(f"✓ WebSocket endpoint: ws://0.0.0.0:${port}/benchmark/test")
+        println(f"✓ Tests will start automatically and results will be pushed to browser")
+        println("")
+        
+        httpserver.Serve("0.0.0.0", port, handles...)
+    }
+    
+    // 等待一秒确保服务器启动
+    time.Sleep(1)
+    
+    // 发送测试开始通知
+    totalTests = len(aiConfigs) * len(testConfigs)
+    startMsg = {
+        "type": "test_started",
+        "totalTests": totalTests,
+        "aiModelCount": len(aiConfigs),
+        "testScenarioCount": len(testConfigs)
+    }
+    broadcastToWebSockets(startMsg)
+}
+
+// CLI模式：命令行执行
+// 关键词: CLI模式, 命令行执行
+// startCLIMode 已移除，现在使用统一的执行模式
+
+// 主程序入口
+// 关键词: 主程序, 入口函数, 统一模式
+func main() {
+    log.info("Starting AI Model Vulnerability Detection Benchmark")
+    
+    // 加载配置
+    aiConfigs, testConfigs = loadConfigurations()
+    
+    // 如果启用 Web 模式，先启动 Web 服务器
+    if webMode {
+        startWebServer(aiConfigs, testConfigs)
+    }
+    
+    // 执行测试
+    runAllTests(aiConfigs, testConfigs)
+    
+    // 如果不是 Web 模式，程序结束
+    if !webMode {
+        log.info("Benchmark completed")
+    } else {
+        // Web 模式保持服务器运行
+        log.info("Tests completed. Web server is still running. Press Ctrl+C to stop.")
+        for {
+            sleep(100)
+        }
+    }
+}
+
+main()
+
