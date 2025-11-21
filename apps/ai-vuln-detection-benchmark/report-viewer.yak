@@ -1,0 +1,283 @@
+// =============================================================================
+// AI Benchmark 报告查看器
+// 功能: 独立的报告查看 Web 服务
+// 用途: 查看、分析和管理测试报告
+// =============================================================================
+// 关键词: 报告查看, Web服务, 报告管理
+// =============================================================================
+
+// CLI 参数配置
+// 关键词: CLI参数, 配置选项
+port = cli.Int("port", cli.setDefault(9094), cli.setHelp("Web服务端口"))
+reportDir = cli.String("report-dir", cli.setDefault(""), cli.setHelp("报告目录路径（必需）"))
+frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端HTML文件路径（可选，默认自动查找）"))
+
+// 验证参数
+cli.check()
+
+if reportDir == "" {
+    log.error("Report directory is required")
+    die("Please specify report directory using --report-dir parameter.\nExample: yak report-viewer.yak --report-dir ./reports")
+}
+
+log.info("Starting AI Benchmark Report Viewer")
+log.info("Report Directory: %s", reportDir)
+log.info("Web Port: %d", port)
+
+// 加载前端HTML
+// 关键词: 前端加载, HTML文件
+var htmlContent
+htmlLoaded = false
+
+// 优先使用指定的前端路径
+if frontendPath != "" {
+    content, readErr = file.ReadFile(frontendPath)
+    if readErr == nil {
+        htmlContent = content
+        htmlLoaded = true
+        log.info("HTML file loaded from specified path: %s", frontendPath)
+    } else {
+        log.warn("Failed to load HTML from specified path %s: %v, trying default paths...", frontendPath, readErr)
+    }
+}
+
+// 如果没有指定路径或加载失败，使用默认路径列表
+if !htmlLoaded {
+    possiblePaths = [
+        "apps/ai-vuln-detection-benchmark/report-viewer.html",
+        "report-viewer.html",
+        "./report-viewer.html",
+    ]
+    
+    for htmlPath in possiblePaths {
+        content, readErr = file.ReadFile(htmlPath)
+        if readErr == nil {
+            htmlContent = content
+            htmlLoaded = true
+            log.info("HTML file loaded from: %s", htmlPath)
+            break
+        }
+    }
+}
+
+if !htmlLoaded {
+    log.error("Failed to load frontend HTML file")
+    die("Frontend HTML file not found. Please ensure report-viewer.html exists.")
+}
+
+// 首页处理函数
+// 关键词: HTTP路由, 首页处理
+indexHandle = (rsp, req) => {
+    log.info("Serving index.html to %s", req.RemoteAddr)
+    rsp.Header().Set("Content-Type", "text/html; charset=utf-8")
+    rsp.WriteHeader(200)
+    rsp.Write(htmlContent)
+}
+
+// API: 获取报告列表
+// 关键词: 报告列表API, JSON API
+reportsListHandle = (rsp, req) => {
+    log.info("API request: GET /api/reports from %s", req.RemoteAddr)
+    
+    rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+    rsp.Header().Set("Access-Control-Allow-Origin", "*")
+    
+    // 收集报告文件信息
+    reports = []
+    
+    // 使用 file.Walk 遍历目录
+    err = file.Walk(reportDir, func(info) {
+        // 跳过目录
+        if info.IsDir {
+            return true
+        }
+        
+        filename = info.Name
+        filepath = info.Path
+        
+        // 只处理 JSON 文件
+        if !str.HasSuffix(filename, ".json") {
+            return true
+        }
+        
+        // 获取文件修改时间
+        modTime = info.BuildIn.ModTime().Unix()
+        fileSize = info.BuildIn.Size()
+        
+        // 尝试读取文件内容获取更多信息
+        content, err = file.ReadFile(filepath)
+        reportData = {}
+        if err == nil {
+            reportData = json.loads(content)
+        }
+        
+        reportInfo = {
+            "filename": filename,
+            "filepath": filepath,
+            "modTime": modTime,
+            "size": fileSize,
+            "testName": reportData["testName"],
+            "model": reportData["model"],
+            "provider": reportData["provider"],
+            "detected": reportData["detected"],
+            "success": reportData["success"],
+            "timestamp": reportData["timestamp"],
+            "duration": reportData["duration"],
+            "riskCount": reportData["riskCount"],
+            "matchedRiskCount": reportData["matchedRiskCount"],
+        }
+        
+        reports = append(reports, reportInfo)
+        return true
+    })
+    
+    if err != nil {
+        log.error("Failed to walk reports directory: %v", err)
+        rsp.WriteHeader(500)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": sprintf("Failed to read reports: %v", err),
+            "reports": []
+        }))
+        return
+    }
+    
+    // 按修改时间降序排序
+    // 使用简单的冒泡排序
+    for i = 0; i < len(reports); i++ {
+        for j = i + 1; j < len(reports); j++ {
+            if reports[i]["modTime"] < reports[j]["modTime"] {
+                temp = reports[i]
+                reports[i] = reports[j]
+                reports[j] = temp
+            }
+        }
+    }
+    
+    rsp.WriteHeader(200)
+    rsp.Write(json.dumps({
+        "success": true,
+        "count": len(reports),
+        "reports": reports
+    }))
+}
+
+// API: 获取单个报告详情
+// 关键词: 报告详情API
+reportDetailHandle = (rsp, req) => {
+    log.info("API request: GET /api/report from %s", req.RemoteAddr)
+    
+    rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+    rsp.Header().Set("Access-Control-Allow-Origin", "*")
+    
+    // 获取文件名参数
+    filename = req.URL.Query().Get("filename")
+    if filename == "" {
+        rsp.WriteHeader(400)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Missing filename parameter"
+        }))
+        return
+    }
+    
+    // 读取报告文件
+    filepath = sprintf("%s/%s", reportDir, filename)
+    content, err = file.ReadFile(filepath)
+    if err != nil {
+        log.error("Failed to read report file %s: %v", filepath, err)
+        rsp.WriteHeader(404)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": sprintf("Report not found: %v", err)
+        }))
+        return
+    }
+    
+    // 解析 JSON
+    reportData = json.loads(content)
+    if reportData == nil {
+        rsp.WriteHeader(500)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Failed to parse report JSON"
+        }))
+        return
+    }
+    
+    rsp.WriteHeader(200)
+    rsp.Write(json.dumps({
+        "success": true,
+        "report": reportData
+    }))
+}
+
+// API: 获取系统状态
+// 关键词: 系统状态API
+systemStatusHandle = (rsp, req) => {
+    log.info("API request: GET /api/status from %s", req.RemoteAddr)
+    
+    rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+    rsp.Header().Set("Access-Control-Allow-Origin", "*")
+    
+    // 读取配置文件
+    configFile = "/root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/config.json"
+    configData = {}
+    
+    if file.IsExisted(configFile) {
+        content, err = file.ReadFile(configFile)
+        if err == nil {
+            // 解析 Key=Value 格式的配置文件
+            lines = str.Split(string(content), "\n")
+            for line in lines {
+                line = str.TrimSpace(line)
+                // 跳过注释和空行
+                if str.HasPrefix(line, "#") || line == "" {
+                    continue
+                }
+                // 解析 Key=Value
+                if str.Contains(line, "=") {
+                    parts = str.SplitN(line, "=", 2)
+                    if len(parts) == 2 {
+                        key = str.TrimSpace(parts[0])
+                        value = str.TrimSpace(parts[1])
+                        configData[key] = value
+                    }
+                }
+            }
+        }
+    }
+    
+    // 构造返回数据（不包含 engine_path）
+    statusData = {
+        "current_version": configData["current_version"],
+        "last_run_time": configData["last_run_time"],
+        "last_check_time": configData["last_check_time"],
+        "total_runs": configData["total_runs"],
+        "last_run_success": configData["last_run_success"],
+        "last_run_error": configData["last_run_error"],
+    }
+    
+    rsp.WriteHeader(200)
+    rsp.Write(json.dumps({
+        "success": true,
+        "status": statusData
+    }))
+}
+
+// 注册路由
+handles = []
+handles = append(handles, httpserver.routeHandler("/", indexHandle))
+handles = append(handles, httpserver.routeHandler("/index.html", indexHandle))
+handles = append(handles, httpserver.routeHandler("/api/reports", reportsListHandle))
+handles = append(handles, httpserver.routeHandler("/api/report", reportDetailHandle))
+handles = append(handles, httpserver.routeHandler("/api/status", systemStatusHandle))
+
+// 启动服务器
+log.info("Starting HTTP server on 0.0.0.0:%d", port)
+println(f"\n✓ AI Benchmark Report Viewer started on http://0.0.0.0:${port}")
+println(f"✓ Report Directory: ${reportDir}")
+println("\nService is running. Press Ctrl+C to stop.")
+
+httpserver.Serve("0.0.0.0", port, handles...)
+

@@ -393,9 +393,19 @@
         <header>
             <h1>🚀 AI Model Vulnerability Detection Benchmark</h1>
             <p>Test and compare different AI models' capability in detecting SQL injection vulnerabilities</p>
-            <div class="status-indicator">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Connecting...</span>
+            <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="showTestPage()" id="btnTest">
+                    <span>🧪</span>
+                    <span>Live Test</span>
+                </button>
+                <button class="btn btn-secondary" onclick="showReportsPage()" id="btnReports">
+                    <span>📋</span>
+                    <span>Reports</span>
+                </button>
+                <div class="status-indicator" style="margin-left: auto;">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
             </div>
         </header>
 
@@ -410,9 +420,39 @@
             </div>
         </div>
 
+        <!-- Reports Page -->
+        <div class="results-section" id="reportsPage" style="display: none;">
+            <h2 class="section-title">📋 Test Reports</h2>
+            
+            <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-primary" onclick="loadReports()">
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                </button>
+                <div style="flex: 1;"></div>
+                <div style="color: #666; font-size: 14px;">
+                    Total Reports: <strong id="totalReports">0</strong>
+                </div>
+            </div>
+            
+            <div id="reportsContainer">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    <p>Loading reports...</p>
+                </div>
+            </div>
+            
+            <!-- Report Detail Modal -->
+            <div id="reportModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow: auto;">
+                <div style="max-width: 1200px; margin: 50px auto; background: white; border-radius: 10px; padding: 30px; position: relative;">
+                    <button onclick="closeReportModal()" style="position: absolute; top: 20px; right: 20px; background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">✕ Close</button>
+                    <div id="reportDetailContent"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Results Section -->
         <div class="results-section" id="resultsSection">
-            <h2 class="section-title">📊 Test Results</h2>
+            <h2 class="section-title">📊 Live Test Results</h2>
             
             <div class="test-status" id="testStatus">
                 <h3>Testing in progress...</h3>
@@ -829,8 +869,217 @@
         // Old configuration functions removed
         // Configuration functions are no longer needed as configs are loaded from server
 
+        // Page navigation
+        function showTestPage() {
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('configDisplay').style.display = 'block';
+            document.getElementById('reportsPage').style.display = 'none';
+            document.getElementById('btnTest').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            document.getElementById('btnReports').style.background = '#6b7280';
+        }
+
+        function showReportsPage() {
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('configDisplay').style.display = 'none';
+            document.getElementById('reportsPage').style.display = 'block';
+            document.getElementById('btnTest').style.background = '#6b7280';
+            document.getElementById('btnReports').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            loadReports();
+        }
+
+        // Load reports list
+        function loadReports() {
+            const container = document.getElementById('reportsContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><p>Loading reports...</p></div>';
+
+            fetch('/api/reports')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        container.innerHTML = `<div style="text-align: center; padding: 40px; color: #ef4444;"><p>${data.message}</p></div>`;
+                        return;
+                    }
+
+                    document.getElementById('totalReports').textContent = data.count;
+
+                    if (data.reports.length === 0) {
+                        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><p>No reports found</p></div>';
+                        return;
+                    }
+
+                    // Build reports table
+                    let html = `
+                        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: #f3f4f6;">
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Time</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Test Name</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Model</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Success</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Detected</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Risks</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Duration</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.reports.forEach(report => {
+                        const successBadge = report.success ? 
+                            '<span style="background: #22c55e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">YES</span>' :
+                            '<span style="background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">NO</span>';
+                        
+                        const detectedBadge = report.detected ? 
+                            '<span style="background: #22c55e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">YES</span>' :
+                            '<span style="background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">NO</span>';
+
+                        html += `
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 12px;">${report.timestamp || '-'}</td>
+                                <td style="padding: 12px;">${report.testName || '-'}</td>
+                                <td style="padding: 12px;">${report.model || '-'} <span style="color: #999; font-size: 12px;">(${report.provider || '-'})</span></td>
+                                <td style="padding: 12px; text-align: center;">${successBadge}</td>
+                                <td style="padding: 12px; text-align: center;">${detectedBadge}</td>
+                                <td style="padding: 12px; text-align: center;">${report.matchedRiskCount || 0}/${report.riskCount || 0}</td>
+                                <td style="padding: 12px; text-align: center;">${report.duration || 0}s</td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <button onclick="viewReport('${report.filename}')" style="background: #667eea; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">View</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Failed to load reports:', error);
+                    container.innerHTML = `<div style="text-align: center; padding: 40px; color: #ef4444;"><p>Failed to load reports: ${error.message}</p></div>`;
+                });
+        }
+
+        // View report detail
+        function viewReport(filename) {
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('reportDetailContent');
+            
+            content.innerHTML = '<div style="text-align: center; padding: 40px;"><p>Loading report...</p></div>';
+            modal.style.display = 'block';
+
+            fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        content.innerHTML = `<div style="color: #ef4444;"><p>Error: ${data.message}</p></div>`;
+                        return;
+                    }
+
+                    const report = data.report;
+                    
+                    let html = `
+                        <h2 style="margin-bottom: 20px; color: #667eea;">📄 Report Detail</h2>
+                        
+                        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px;">Basic Information</h3>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                                <div><strong>Test Name:</strong> ${report.testName || '-'}</div>
+                                <div><strong>Timestamp:</strong> ${report.timestamp || '-'}</div>
+                                <div><strong>Model:</strong> ${report.model || '-'}</div>
+                                <div><strong>Provider:</strong> ${report.provider || '-'}</div>
+                                <div><strong>Target URL:</strong> ${report.targetURL || '-'}</div>
+                                <div><strong>Duration:</strong> ${report.duration || 0} seconds</div>
+                                <div><strong>Success:</strong> ${report.success ? '✅ YES' : '❌ NO'}</div>
+                                <div><strong>Detected:</strong> ${report.detected ? '✅ YES' : '❌ NO'}</div>
+                                <div><strong>Risk Count:</strong> ${report.matchedRiskCount || 0}/${report.riskCount || 0}</div>
+                                <div><strong>Max Iteration:</strong> ${report.maxIteration || '-'}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    if (report.error) {
+                        html += `
+                            <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
+                                <h3 style="color: #ef4444; margin-bottom: 10px;">Error</h3>
+                                <pre style="white-space: pre-wrap; word-wrap: break-word;">${report.error}</pre>
+                            </div>
+                        `;
+                    }
+
+                    if (report.risks && report.risks.length > 0) {
+                        html += `
+                            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px;">Risks Found (${report.risks.length})</h3>
+                        `;
+                        
+                        report.risks.forEach((risk, index) => {
+                            const matchedBadge = risk.matched ? 
+                                '<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 10px;">MATCHED</span>' : 
+                                '<span style="background: #999; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 10px;">NOT MATCHED</span>';
+                            
+                            html += `
+                                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${risk.matched ? '#22c55e' : '#999'};">
+                                    <h4 style="margin-bottom: 10px;">${index + 1}. ${risk.title || 'Unknown'} ${matchedBadge}</h4>
+                                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                                        <div><strong>Type:</strong> ${risk.riskType || '-'}</div>
+                                        <div><strong>Severity:</strong> <span style="color: ${risk.severity === 'high' || risk.severity === 'critical' ? '#ef4444' : '#f59e0b'};">${risk.severity || '-'}</span></div>
+                                        <div><strong>URL:</strong> ${risk.url || '-'}</div>
+                                        ${risk.description ? `<div style="margin-top: 8px;"><strong>Description:</strong><br>${risk.description}</div>` : ''}
+                                        ${risk.payload ? `<div style="margin-top: 8px;"><strong>Payload:</strong><br><code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; display: block; margin-top: 4px;">${risk.payload}</code></div>` : ''}
+                                        ${risk.matchedKeywords ? `<div style="margin-top: 8px;"><strong>Matched Keywords:</strong> ${risk.matchedKeywords.join(', ')}</div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    }
+
+                    if (report.taskPrompt) {
+                        html += `
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 10px;">Task Prompt</h3>
+                                <pre style="background: #f3f4f6; padding: 15px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; max-height: 300px; overflow-y: auto;">${report.taskPrompt}</pre>
+                            </div>
+                        `;
+                    }
+
+                    if (report.thoughtLog && report.thoughtLog.length > 0) {
+                        html += `
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 10px;">AI Thought Process</h3>
+                                <pre style="background: #f3f4f6; padding: 15px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; max-height: 300px; overflow-y: auto;">${report.thoughtLog.join('')}</pre>
+                            </div>
+                        `;
+                    }
+
+                    if (report.answerLog && report.answerLog.length > 0) {
+                        html += `
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 10px;">AI Answer</h3>
+                                <pre style="background: #f3f4f6; padding: 15px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; max-height: 300px; overflow-y: auto;">${report.answerLog.join('')}</pre>
+                            </div>
+                        `;
+                    }
+
+                    content.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Failed to load report:', error);
+                    content.innerHTML = `<div style="color: #ef4444;"><p>Failed to load report: ${error.message}</p></div>`;
+                });
+        }
+
+        // Close report modal
+        function closeReportModal() {
+            document.getElementById('reportModal').style.display = 'none';
+        }
+
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('DOMContentLoaded', () => {
+            init();
+            showTestPage(); // Default to test page
+        });
 
         // Close WebSocket on page unload
         window.addEventListener('beforeunload', () => {

@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Benchmark Auto Runner Timer
+Documentation=https://github.com/yaklang/yaklang-ai-training-materials
+Requires=ai-benchmark-auto-runner.service
+
+[Timer]
+# 每 5 分钟执行一次
+OnCalendar=*:0/5
+
+# 系统启动后 1 分钟执行第一次
+OnBootSec=1min
+
+# 如果上次执行失败，不会影响下次执行
+Persistent=true
+
+# 执行时间容差（允许延迟 1 分钟）
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+

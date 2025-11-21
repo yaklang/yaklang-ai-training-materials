@@ -12,7 +12,10 @@ webMode = cli.Bool("web", cli.setDefault(false), cli.setHelp("启动Web界面模
 port = cli.Int("port", cli.setDefault(9093), cli.setHelp("Web服务端口"))
 configFile = cli.String("config", cli.setDefault(""), cli.setHelp("测试配置文件路径(JSON格式，包含testConfigs，必需)"))
 aiConfigFile = cli.String("ai-config", cli.setDefault(""), cli.setHelp("AI配置文件路径(JSON格式，包含aiConfigs，必需)"))
-outputFile = cli.String("output", cli.setDefault(""), cli.setHelp("结果输出文件（默认仅输出到控制台）"))
+outputDir = cli.String("output-dir", cli.setDefault(""), cli.setHelp("报告输出目录（默认不保存，每个测试生成独立报告文件）"))
+reportPrefix = cli.String("report-prefix", cli.setDefault("benchmark-report"), cli.setHelp("报告文件名前缀"))
+frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端HTML文件路径（可选，默认自动查找）"))
+yakEngineVersion = cli.String("yaklang-engine-version", cli.setDefault(""), cli.setHelp("Yaklang引擎版本（用于报告记录）"))
 
 // 可选的覆盖参数（优先级高于配置文件）
 targetURL = cli.String("url", cli.setDefault(""), cli.setHelp("测试目标URL（覆盖配置文件）"))
@@ -23,6 +26,81 @@ timeout = cli.Int("timeout", cli.setDefault(0), cli.setHelp("单个测试超时�
 cli.check()
 
 log.info("Starting AI Model Vulnerability Detection Benchmark")
+
+if outputDir != "" {
+    log.info("Report dir: %v" % outputDir)
+}
+
+// 安装并启动 vulinbox 靶场
+// 关键词: vulinbox, 靶场安装, 自动启动
+log.info("=" * 80)
+log.info("Setting up vulinbox target environment...")
+log.info("=" * 80)
+
+// 安装 vulinbox
+log.info("Installing vulinbox...")
+err = toolbox.Install("vulinbox")
+if err != nil {
+    log.error("Failed to install vulinbox: %v", err)
+    die(sprintf("Failed to install vulinbox: %v. Please check your network connection.", err))
+}
+log.info("Vulinbox installed successfully")
+
+// 启动 vulinbox
+// 关键词: vulinbox启动, 后台服务
+startVulinbox = () => {
+    ctx, cancel = context.WithCancel(context.Background())
+    
+    go func {
+        defer func {
+            err = recover()
+            if err != nil {
+                log.error("Vulinbox process panic: %v", err)
+            }
+        }
+        
+        vulinboxPath = file.Join(os.GetHomeDir(), "yakit-projects", "projects", "libs", "vulinbox")
+        log.info("Starting vulinbox from: %s", vulinboxPath)
+        
+        // 启动 vulinbox (HTTP mode, safe mode, 127.0.0.1:8787)
+        res, err = exec.SystemContext(ctx, vulinboxPath + " --nohttps --safe --host 127.0.0.1 --port 8787")
+        if err != nil {
+            log.error("Vulinbox process error: %v", err)
+        }
+        log.info("Vulinbox process output: %s", res)
+    }
+    
+    return cancel
+}
+
+log.info("Starting vulinbox on http://127.0.0.1:8787")
+vulinboxCancel = startVulinbox()
+
+// 等待服务启动成功
+log.info("Waiting for vulinbox to be ready...")
+time.Sleep(5)
+
+// 验证 vulinbox 是否启动成功
+testUrl = "http://127.0.0.1:8787"
+log.info("Testing vulinbox connectivity: %s", testUrl)
+rsp, req, err = poc.Get(testUrl, poc.timeout(5))
+if err != nil {
+    log.warn("Failed to connect to vulinbox: %v", err)
+    log.warn("Vulinbox might not be ready yet, but continuing anyway...")
+} else {
+    log.info("✓ Vulinbox is running successfully on http://127.0.0.1:8787")
+}
+
+log.info("=" * 80)
+
+// 注册清理函数，确保程序退出时停止 vulinbox
+defer func {
+    log.info("Stopping vulinbox...")
+    if vulinboxCancel != nil {
+        vulinboxCancel()
+    }
+    log.info("Vulinbox stopped")
+}
 
 // 全局变量
 // 关键词: 全局状态, 测试结果
@@ -44,12 +122,18 @@ func runModelTest(aiConfig, testConfig, onProgress) {
         "description": aiConfig["description"],
         "testName": testConfig["name"],
         "targetURL": testConfig["targetURL"],
+        "taskPrompt": testConfig["taskPrompt"],
+        "maxIteration": testConfig["maxIteration"],
+        "timeout": testConfig["timeout"],
+        "riskMatchKeywords": testConfig["riskMatchKeywords"],
+        "yakEngineVersion": yakEngineVersion,
         "success": false,
         "detected": false,
         "error": "",
         "runtimeId": "",
         "riskCount": 0,
         "matchedRiskCount": 0,
+        "risks": [],
         "startTime": time.Now().Unix(),
         "endTime": 0,
         "duration": 0,
@@ -71,11 +155,18 @@ func runModelTest(aiConfig, testConfig, onProgress) {
         // 记录结束时间
         result["endTime"] = time.Now().Unix()
         result["duration"] = result["endTime"] - result["startTime"]
+        result["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
         
-        // 保存结果
+        // 保存结果到全局列表
         globalMutex.Lock()
         globalResults = append(globalResults, result)
         globalMutex.Unlock()
+        
+        // 立即保存单个测试报告
+        // 关键词: 报告保存, 单测试报告
+        if outputDir != "" {
+            saveTestReport(result)
+        }
         
         // 通知进度
         if onProgress != nil {
@@ -175,21 +266,16 @@ func runModelTest(aiConfig, testConfig, onProgress) {
     // 关键词: 完成回调, onFinished, 漏洞检测结果
     opts = append(opts, aim.onFinished(func(react) {
         // 获取最后一个任务
-        lastTask = react.GetLastTask()
-        taskId = lastTask.GetId()
-        result["runtimeId"] = taskId
-        
-        log.info("Checking risks for task ID: %s", taskId)
-        
-        // 获取该任务生成的所有 Risk 信息
-        risks = lastTask.GetRisks()
+        risks = react.GetLastTask().GetRisks()
         riskCount = len(risks)
         
-        log.info("Found %d risk(s) in total", riskCount)
+        log.info("############################################################################################Found %d risk(s) in total", riskCount)
         
         // 遍历并记录所有 Risk 信息
         idx = 0
         matchedRiskCount = 0
+        riskDetails = []
+        
         for riskItem in risks {
             log.info("Risk #%d:", idx + 1)
             log.info("  Title: %s", riskItem.Title)
@@ -204,6 +290,20 @@ func runModelTest(aiConfig, testConfig, onProgress) {
             }
             if riskItem.Payload != "" {
                 log.info("  Payload: %s", riskItem.Payload)
+            }
+            
+            // 保存 Risk 详细信息
+            riskDetail = {
+                "title": riskItem.Title,
+                "titleVerbose": riskItem.TitleVerbose,
+                "riskType": riskItem.RiskType,
+                "severity": riskItem.Severity,
+                "url": riskItem.Url,
+                "host": riskItem.Host,
+                "port": riskItem.Port,
+                "description": riskItem.Description,
+                "payload": riskItem.Payload,
+                "matched": false,
             }
             
             // 检查是否匹配关键词
@@ -222,28 +322,35 @@ func runModelTest(aiConfig, testConfig, onProgress) {
                 
                 // 检查是否包含任何关键词
                 matched = false
+                matchedKeywords = []
                 for keyword in riskMatchKeywords {
                     keywordLower = str.ToLower(sprintf("%v", keyword))
                     if str.Contains(riskTextLower, keywordLower) {
                         matched = true
-                        log.info("  Matched keyword: %s", keyword)
-                        break
+                        matchedKeywords = append(matchedKeywords, keyword)
                     }
                 }
                 
                 if matched {
                     matchedRiskCount++
-                    log.info("  Risk matched configured keywords")
+                    riskDetail["matched"] = true
+                    riskDetail["matchedKeywords"] = matchedKeywords
+                    log.info("  Matched keywords: %v", matchedKeywords)
                 } else {
                     log.info("  Risk did not match configured keywords")
                 }
             } else {
                 // 如果没有配置关键词，默认所有 Risk 都算匹配
                 matchedRiskCount++
+                riskDetail["matched"] = true
             }
             
+            riskDetails = append(riskDetails, riskDetail)
             idx++
         }
+        
+        // 保存 Risk 详细信息到结果
+        result["risks"] = riskDetails
         
         // 根据匹配的 Risk 数量判断是否检测到漏洞
         // 关键词: 检测判断, 匹配统计
@@ -301,6 +408,65 @@ func runModelTest(aiConfig, testConfig, onProgress) {
     log.info("  Duration: %d seconds", result["duration"])
     if result["error"] != "" {
         log.info("  Error: %s", result["error"])
+    }
+}
+
+// 保存单个测试报告
+// 关键词: 报告保存, JSON输出
+func saveTestReport(result) {
+    // 确保输出目录存在
+    if outputDir == "" {
+        return
+    }
+    
+    // 创建输出目录
+    err = file.MkdirAll(outputDir)
+    if err != nil {
+        log.error("Failed to create output directory: %v", err)
+        return
+    }
+    
+    // 生成文件名：前缀-时间戳.json
+    filename = sprintf("%s-%d.json", reportPrefix, timestamp())
+    filepath = sprintf("%s/%s", outputDir, filename)
+    
+    // 构建报告内容
+    report = {
+        "timestamp": result["timestamp"],
+        "testName": result["testName"],
+        "targetURL": result["targetURL"],
+        "provider": result["provider"],
+        "model": result["model"],
+        "description": result["description"],
+        "yakEngineVersion": result["yakEngineVersion"],
+        "success": result["success"],
+        "detected": result["detected"],
+        "error": result["error"],
+        "runtimeId": result["runtimeId"],
+        "riskCount": result["riskCount"],
+        "matchedRiskCount": result["matchedRiskCount"],
+        "startTime": result["startTime"],
+        "endTime": result["endTime"],
+        "duration": result["duration"],
+        "maxIteration": result["maxIteration"],
+        "timeout": result["timeout"],
+        "taskPrompt": result["taskPrompt"],
+        "riskMatchKeywords": result["riskMatchKeywords"],
+        "risks": result["risks"],
+        "thoughtLog": result["thoughtLog"],
+        "answerLog": result["answerLog"],
+        "resultId": result["resultId"],
+    }
+    
+    // 转换为 JSON
+    jsonOutput = json.dumps(report)
+    
+    // 保存到文件
+    err = file.Save(filepath, jsonOutput)
+    if err != nil {
+        log.error("Failed to save report to %s: %v", filepath, err)
+    } else {
+        log.info("Report saved successfully to: %s", filepath)
     }
 }
 
@@ -549,24 +715,10 @@ func runAllTests(aiConfigs, testConfigs) {
         broadcastToWebSockets(completeMsg)
     }
     
-    // 保存到文件（如果指定）
-    if outputFile != "" {
-        log.info("Saving results to file: %s", outputFile)
-        
-        jsonOutput = json.dumps({
-            "timestamp": time.Now().Format("2006-01-02 15:04:05"),
-            "aiConfigs": aiConfigs,
-            "testConfigs": testConfigs,
-            "results": globalResults,
-            "summary": summary,
-        })
-        
-        err = file.Save(outputFile, jsonOutput)
-        if err != nil {
-            log.error("Failed to save results to file: %v", err)
-        } else {
-            log.info("Results saved successfully to: %s", outputFile)
-        }
+    // 所有报告已在测试过程中保存到 outputDir
+    if outputDir != "" {
+        log.info("All test reports saved to directory: %s", outputDir)
+        log.info("Total reports: %d", len(globalResults))
     }
     
     return summary
@@ -606,22 +758,41 @@ func startWebServer(aiConfigs, testConfigs) {
     
     // 加载前端HTML
     // 关键词: 前端加载, HTML文件
-    htmlContent = ""
-    possiblePaths = [
-        "scripts/ai-model-vuln-detection-benchmark.html",
-        "ai-model-vuln-detection-benchmark.html",
-    ]
+    var htmlContent
+    htmlLoaded = false
     
-    for htmlPath in possiblePaths {
-        content, readErr = file.ReadFile(htmlPath)
+    // 优先使用指定的前端路径
+    if frontendPath != "" {
+        content, readErr = file.ReadFile(frontendPath)
         if readErr == nil {
             htmlContent = content
-            log.info("HTML file loaded from: %s", htmlPath)
-            break
+            htmlLoaded = true
+            log.info("HTML file loaded from specified path: %s", frontendPath)
+        } else {
+            log.warn("Failed to load HTML from specified path %s: %v, trying default paths...", frontendPath, readErr)
         }
     }
     
-    if len(htmlContent) == 0 {
+    // 如果没有指定路径或加载失败，使用默认路径列表
+    if !htmlLoaded {
+        possiblePaths = [
+            "apps/ai-vuln-detection-benchmark/ai-model-vuln-detection-benchmark.html",
+            "ai-model-vuln-detection-benchmark.html",
+            "./ai-model-vuln-detection-benchmark.html",
+        ]
+        
+        for htmlPath in possiblePaths {
+            content, readErr = file.ReadFile(htmlPath)
+            if readErr == nil {
+                htmlContent = content
+                htmlLoaded = true
+                log.info("HTML file loaded from: %s", htmlPath)
+                break
+            }
+        }
+    }
+    
+    if !htmlLoaded {
         log.error("Failed to load frontend HTML file")
         die("Frontend HTML file not found. Please ensure ai-model-vuln-detection-benchmark.html exists.")
     }
@@ -709,10 +880,169 @@ func startWebServer(aiConfigs, testConfigs) {
         }
     }
     
+    // API: 获取报告列表
+    // 关键词: 报告列表API, JSON API
+    reportsListHandle = (rsp, req) => {
+        log.info("API request: GET /api/reports from %s", req.RemoteAddr)
+        
+        rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+        rsp.Header().Set("Access-Control-Allow-Origin", "*")
+        
+        if outputDir == "" {
+            rsp.WriteHeader(200)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": "No output directory configured",
+                "reports": []
+            }))
+            return
+        }
+        
+        // 收集报告文件信息
+        reports = []
+        
+        // 使用 file.Walk 遍历目录
+        err = file.Walk(outputDir, func(info) {
+            // 跳过目录
+            if info.IsDir {
+                return true
+            }
+            
+            filename = info.Name
+            filepath = info.Path
+            
+            // 只处理 JSON 文件
+            if !str.HasSuffix(filename, ".json") {
+                return true
+            }
+            
+            // 获取文件修改时间
+            modTime = info.BuildIn.ModTime().Unix()
+            fileSize = info.BuildIn.Size()
+            
+            // 尝试读取文件内容获取更多信息
+            content, err = file.ReadFile(filepath)
+            reportData = {}
+            if err == nil {
+                reportData = json.loads(content)
+            }
+            
+            reportInfo = {
+                "filename": filename,
+                "filepath": filepath,
+                "modTime": modTime,
+                "size": fileSize,
+                "testName": reportData["testName"],
+                "model": reportData["model"],
+                "provider": reportData["provider"],
+                "detected": reportData["detected"],
+                "success": reportData["success"],
+                "timestamp": reportData["timestamp"],
+                "duration": reportData["duration"],
+                "riskCount": reportData["riskCount"],
+                "matchedRiskCount": reportData["matchedRiskCount"],
+            }
+            
+            reports = append(reports, reportInfo)
+            return true
+        })
+        
+        if err != nil {
+            log.error("Failed to walk reports directory: %v", err)
+            rsp.WriteHeader(500)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": sprintf("Failed to read reports: %v", err),
+                "reports": []
+            }))
+            return
+        }
+        
+        // 按修改时间降序排序
+        // 使用简单的冒泡排序
+        for i = 0; i < len(reports); i++ {
+            for j = i + 1; j < len(reports); j++ {
+                if reports[i]["modTime"] < reports[j]["modTime"] {
+                    temp = reports[i]
+                    reports[i] = reports[j]
+                    reports[j] = temp
+                }
+            }
+        }
+        
+        rsp.WriteHeader(200)
+        rsp.Write(json.dumps({
+            "success": true,
+            "count": len(reports),
+            "reports": reports
+        }))
+    }
+    
+    // API: 获取单个报告详情
+    // 关键词: 报告详情API
+    reportDetailHandle = (rsp, req) => {
+        log.info("API request: GET /api/report from %s", req.RemoteAddr)
+        
+        rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+        rsp.Header().Set("Access-Control-Allow-Origin", "*")
+        
+        // 获取文件名参数
+        filename = req.URL.Query().Get("filename")
+        if filename == "" {
+            rsp.WriteHeader(400)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": "Missing filename parameter"
+            }))
+            return
+        }
+        
+        if outputDir == "" {
+            rsp.WriteHeader(400)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": "No output directory configured"
+            }))
+            return
+        }
+        
+        // 读取报告文件
+        filepath = sprintf("%s/%s", outputDir, filename)
+        content, err = file.ReadFile(filepath)
+        if err != nil {
+            log.error("Failed to read report file %s: %v", filepath, err)
+            rsp.WriteHeader(404)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": sprintf("Report not found: %v", err)
+            }))
+            return
+        }
+        
+        // 解析 JSON
+        reportData = json.loads(content)
+        if reportData == nil {
+            rsp.WriteHeader(500)
+            rsp.Write(json.dumps({
+                "success": false,
+                "message": "Failed to parse report JSON"
+            }))
+            return
+        }
+        
+        rsp.WriteHeader(200)
+        rsp.Write(json.dumps({
+            "success": true,
+            "report": reportData
+        }))
+    }
+    
     // 注册路由
     handles = []
     handles = append(handles, httpserver.routeHandler("/", indexHandle))
     handles = append(handles, httpserver.routeHandler("/index.html", indexHandle))
+    handles = append(handles, httpserver.routeHandler("/api/reports", reportsListHandle))
+    handles = append(handles, httpserver.routeHandler("/api/report", reportDetailHandle))
     handles = append(handles, httpserver.wsRouteHandler("/benchmark/test", testWSHandle))
     
     // 在后台启动 HTTP 服务器
@@ -754,6 +1084,21 @@ func startWebServer(aiConfigs, testConfigs) {
 // 主程序入口
 // 关键词: 主程序, 入口函数, 统一模式
 func main() {
+    // 确保程序退出时清理资源
+    defer func {
+        err = recover()
+        if err != nil {
+            log.error("Program panic: %v", err)
+        }
+        
+        // 停止 vulinbox
+        if vulinboxCancel != nil {
+            log.info("Stopping vulinbox...")
+            vulinboxCancel()
+            log.info("Vulinbox stopped")
+        }
+    }
+    
     log.info("Starting AI Model Vulnerability Detection Benchmark")
     
     // 加载配置
@@ -770,9 +1115,18 @@ func main() {
     // 如果不是 Web 模式，程序结束
     if !webMode {
         log.info("Benchmark completed")
+        // 停止 vulinbox
+        if vulinboxCancel != nil {
+            log.info("Stopping vulinbox...")
+            vulinboxCancel()
+            log.info("Vulinbox stopped")
+        }
     } else {
         // Web 模式保持服务器运行
         log.info("Tests completed. Web server is still running. Press Ctrl+C to stop.")
+        log.info("Vulinbox is still running on http://127.0.0.1:8787")
+        
+        // 监听信号以便优雅退出
         for {
             sleep(100)
         }

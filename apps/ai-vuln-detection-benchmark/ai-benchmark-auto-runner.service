@@ -1,0 +1,36 @@
+[Unit]
+Description=AI Benchmark Auto Runner Service
+Documentation=https://github.com/yaklang/yaklang-ai-training-materials
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+# 工作目录
+WorkingDirectory=/root/yaklang-ai-training-materials
+
+# 执行脚本
+ExecStart=/bin/bash /root/yaklang-ai-training-materials/apps/ai-vuln-detection-benchmark/auto-benchmark.sh
+
+# 资源限制
+# CPU 限制（50%）
+CPUQuota=50%
+
+# 内存限制（2GB）
+MemoryLimit=2G
+
+# 超时设置（最长运行 30 分钟）
+TimeoutStartSec=1800
+
+# 日志配置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-benchmark-auto-runner
+
+# 重启策略（失败时不重启，由 timer 控制执行周期）
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+

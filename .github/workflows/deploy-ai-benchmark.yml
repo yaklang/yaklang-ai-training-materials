@@ -1,0 +1,528 @@
+name: Deploy AI Benchmark
+
+on:
+  # 当指定文件有改动时触发
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'apps/ai-vuln-detection-benchmark/**'
+  #     - '.github/workflows/deploy-ai-benchmark.yml'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+# 确保同一时间只运行一个部署任务
+concurrency:
+  group: deploy-ai-benchmark
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    
+    env:
+      APP_NAME: ai-benchmark
+      APP_PATH: apps/ai-vuln-detection-benchmark
+      REPORT_VIEWER_SCRIPT: report-viewer.yak
+      REPORT_VIEWER_SERVICE_NAME: yak-ai-benchmark-report-viewer
+      AUTO_RUNNER_SERVICE_NAME: ai-benchmark-auto-runner
+      AUTO_RUNNER_TIMER_NAME: ai-benchmark-auto-runner.timer
+      WORK_DIR: /root/yaklang-ai-training-materials
+      YAK_VERSION: 1.4.4-alpha1121a
+      YAK_PATH: /usr/local/bin/yak-1.4.4-alpha1121a
+      REPORT_VIEWER_PORT: ${{ secrets.AI_BENCHMARK_REPORT_PORT }}
+      REPORT_DIR: /root/ai-benchmark-reports
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Print trigger information
+        run: |
+          echo "============================================"
+          echo "部署应用: ${{ env.APP_NAME }}"
+          echo "Benchmark 服务: ${{ env.BENCHMARK_SERVICE_NAME }}"
+          echo "Report Viewer 服务: ${{ env.REPORT_VIEWER_SERVICE_NAME }}"
+          echo "触发方式: ${{ github.event_name }}"
+          echo "分支: ${{ github.ref }}"
+          echo "提交: ${{ github.sha }}"
+          echo "操作者: ${{ github.actor }}"
+          echo "============================================"
+      
+      - name: Download Yaklang Engine
+        run: |
+          echo "=== 下载 Yaklang 引擎 v${{ env.YAK_VERSION }} ==="
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak_linux_amd64"
+          
+          echo "下载地址: $YAK_URL"
+          wget --progress=dot:binary -O ./yak "$YAK_URL" 2>&1 | \
+            awk '/[0-9]+%/{i++; if(i%3==0) print; next} {print}' || true
+          
+          if [ ! -f ./yak ]; then
+            echo "ERROR: YAK 引擎下载失败"
+            exit 1
+          fi
+          
+          chmod +x ./yak
+          
+          echo ""
+          echo "=== 下载的文件信息 ==="
+          ls -lh ./yak
+          file ./yak
+          
+          echo ""
+          echo "=== 测试 YAK 引擎 ==="
+          ./yak version || echo "注意: 此版本可能不支持 version 命令"
+          
+          echo ""
+          echo "✓ Yaklang 引擎下载并验证成功"
+      
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EMBEDDING_HOST_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 准备 SSH 部署 ==="
+          
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$SSH_HOST" ]; then
+            echo "ERROR: SSH 凭证未找到"
+            echo "请确保已设置 EMBEDDING_HOST_PRIVATE_KEY 和 EMBEDDING_HOST secrets"
+            exit 1
+          fi
+          
+          # 创建私钥文件
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > /tmp/deploy_pri
+          chmod 600 /tmp/deploy_pri
+          
+          # 验证私钥格式
+          if ! ssh-keygen -l -f /tmp/deploy_pri >/dev/null 2>&1; then
+            echo "ERROR: SSH 私钥格式无效"
+            exit 1
+          fi
+          
+          echo "✓ SSH 密钥准备成功"
+      
+      - name: Prepare environment configuration
+        env:
+          TEST_CONFIG_JSON: ${{ secrets.AI_BENCHMARK_TEST_CONFIG }}
+          AI_CONFIG_JSON: ${{ secrets.AI_BENCHMARK_AI_CONFIG }}
+        run: |
+          echo "=== 准备环境配置 ==="
+          
+          # 验证必需的配置
+          if [ -z "$TEST_CONFIG_JSON" ]; then
+            echo "ERROR: AI_BENCHMARK_TEST_CONFIG secret 未设置"
+            exit 1
+          fi
+          
+          if [ -z "$AI_CONFIG_JSON" ]; then
+            echo "ERROR: AI_BENCHMARK_AI_CONFIG secret 未设置"
+            exit 1
+          fi
+          
+          # 创建 Benchmark 环境变量配置文件
+          cat > /tmp/benchmark-config.env << 'EOF'
+          # AI Benchmark 应用配置
+          REPORT_DIR=${{ env.REPORT_DIR }}
+          EOF
+          
+          # 创建 Report Viewer 环境变量配置文件
+          cat > /tmp/report-viewer-config.env << 'EOF'
+          # AI Benchmark Report Viewer 配置
+          REPORT_VIEWER_PORT=${{ env.REPORT_VIEWER_PORT }}
+          REPORT_DIR=${{ env.REPORT_DIR }}
+          EOF
+          
+          # 创建测试配置文件
+          echo "$TEST_CONFIG_JSON" > /tmp/test-config.json
+          echo "✓ 测试配置文件已创建"
+          
+          # 验证 JSON 基本格式（检查是否为空且包含大括号）
+          if [ ! -s /tmp/test-config.json ]; then
+            echo "ERROR: test-config.json 文件为空"
+            exit 1
+          fi
+          
+          if ! grep -q '{' /tmp/test-config.json; then
+            echo "ERROR: test-config.json 格式无效（不包含 JSON 对象）"
+            exit 1
+          fi
+          
+          # 创建 AI 配置文件
+          echo "$AI_CONFIG_JSON" > /tmp/ai-config.json
+          echo "✓ AI 配置文件已创建"
+          
+          # 验证 JSON 基本格式
+          if [ ! -s /tmp/ai-config.json ]; then
+            echo "ERROR: ai-config.json 文件为空"
+            exit 1
+          fi
+          
+          if ! grep -q '{' /tmp/ai-config.json; then
+            echo "ERROR: ai-config.json 格式无效（不包含 JSON 对象）"
+            exit 1
+          fi
+          
+          echo ""
+          echo "环境配置信息:"
+          if [ -n "${{ env.REPORT_VIEWER_PORT }}" ]; then
+            echo "  REPORT_VIEWER_PORT: [已设置]"
+          fi
+          echo "  REPORT_DIR: ${{ env.REPORT_DIR }}"
+          
+          echo ""
+          echo "测试配置信息:"
+          echo "  test-config.json: $(wc -c < /tmp/test-config.json) bytes"
+          
+          echo ""
+          echo "AI 配置信息:"
+          echo "  ai-config.json: $(wc -c < /tmp/ai-config.json) bytes"
+          
+          echo ""
+          echo "✓ 配置准备成功"
+      
+      - name: Deploy to remote server
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 部署到远程服务器 ==="
+          echo "目标服务器: [已隐藏]"
+          echo "应用: ${{ env.APP_NAME }}"
+          
+          # 创建远程目录
+          echo ""
+          echo "创建远程目录..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mkdir -p ${{ env.WORK_DIR }}/{${{ env.APP_PATH }},apps,scripts} && mkdir -p ${{ env.REPORT_DIR }}"
+          
+          # 准备待上传的文件
+          echo ""
+          echo "=== 准备文件打包 ==="
+          
+          # 创建临时打包目录
+          PACKAGE_DIR="/tmp/ai-benchmark-deploy"
+          mkdir -p "$PACKAGE_DIR"/{apps,scripts,configs,app-files}
+          
+          # 1. 复制通用部署脚本
+          echo "准备通用部署脚本..."
+          cp ./apps/deploy-yak-app.sh "$PACKAGE_DIR/apps/"
+          
+          # 2. 复制 systemd 安装脚本
+          echo "准备 systemd 安装脚本..."
+          cp ./scripts/install-yak-scripts-to-systemd.yak "$PACKAGE_DIR/scripts/"
+          
+          # 3. 复制应用文件（跳过 .md 文件）
+          echo "准备应用文件..."
+          for file in ${{ env.APP_PATH }}/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              if [[ "$filename" != *.md ]]; then
+                echo "  → $filename"
+                cp "$file" "$PACKAGE_DIR/app-files/"
+              fi
+            fi
+          done
+          
+          # 4. 复制配置文件
+          echo "准备配置文件..."
+          cp /tmp/benchmark-config.env "$PACKAGE_DIR/configs/"
+          cp /tmp/report-viewer-config.env "$PACKAGE_DIR/configs/"
+          cp /tmp/test-config.json "$PACKAGE_DIR/configs/"
+          cp /tmp/ai-config.json "$PACKAGE_DIR/configs/"
+          
+          # 打包压缩
+          echo ""
+          echo "=== 压缩文件 ==="
+          tar -czf /tmp/ai-benchmark-deploy.tar.gz -C /tmp ai-benchmark-deploy/
+          
+          # 显示压缩包信息
+          echo "压缩包信息:"
+          ls -lh /tmp/ai-benchmark-deploy.tar.gz
+          
+          # 上传压缩包
+          echo ""
+          echo "=== 上传压缩包 ==="
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --upload-file /tmp/ai-benchmark-deploy.tar.gz
+          
+          echo "✓ 压缩包上传完成"
+          
+          # 在服务器端解压
+          echo ""
+          echo "=== 解压文件到服务器 ==="
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "cd ~ && tar -xzf ai-benchmark-deploy.tar.gz"
+          
+          # 移动文件到目标位置
+          echo ""
+          echo "=== 部署文件到目标位置 ==="
+          
+          # 移动通用部署脚本
+          echo "部署通用部署脚本..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/apps/deploy-yak-app.sh ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh && chmod +x ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh"
+          
+          # 移动 systemd 安装脚本
+          echo "部署 systemd 安装脚本..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/scripts/install-yak-scripts-to-systemd.yak ${{ env.WORK_DIR }}/scripts/install-yak-scripts-to-systemd.yak"
+          
+          # 移动应用文件
+          echo "部署应用文件..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/app-files/* ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/"
+          
+          # 设置 bash 脚本执行权限
+          echo "设置脚本执行权限..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "chmod +x ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/auto-benchmark.sh"
+          
+          # 移动配置文件
+          echo "部署配置文件..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/configs/benchmark-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/configs/report-viewer-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/configs/test-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/test-config.json"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "mv ~/ai-benchmark-deploy/configs/ai-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-config.json"
+          
+          # 清理服务器上的临时文件
+          echo ""
+          echo "=== 清理临时文件 ==="
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "rm -rf ~/ai-benchmark-deploy ~/ai-benchmark-deploy.tar.gz"
+          
+          # 清理本地临时文件
+          rm -rf /tmp/ai-benchmark-deploy /tmp/ai-benchmark-deploy.tar.gz
+          
+          echo "✓ 临时文件已清理"
+          
+          # 验证上传的文件
+          echo ""
+          echo "=== 验证部署的文件 ==="
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "ls -lh ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ ${{ env.WORK_DIR }}/scripts/ ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh"
+          
+          echo ""
+          echo "验证配置文件..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "test -f ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/test-config.json && echo '✓ test-config.json 已部署'"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "test -f ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-config.json && echo '✓ ai-config.json 已部署'"
+          
+          echo ""
+          echo "验证脚本文件..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "test -x ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/auto-benchmark.sh && echo '✓ auto-benchmark.sh 已部署并可执行'"
+          
+          echo ""
+          echo "✓ 文件部署完成"
+      
+      - name: Deploy Report Viewer Service
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 部署 Report Viewer 服务 ==="
+          
+          DEPLOY_CMD="${{ env.WORK_DIR }}/apps/deploy-yak-app.sh \
+            --service-name \"${{ env.REPORT_VIEWER_SERVICE_NAME }}\" \
+            --main-script \"${{ env.APP_PATH }}/${{ env.REPORT_VIEWER_SCRIPT }}\" \
+            --work-dir \"${{ env.WORK_DIR }}\" \
+            --yak-version \"${{ env.YAK_VERSION }}\" \
+            --yak-path \"${{ env.YAK_PATH }}\" \
+            --config-file \"${{ env.APP_PATH }}/.env.report-viewer\" \
+            --script-args \"--port \\\$REPORT_VIEWER_PORT --report-dir \\\$REPORT_DIR --frontend ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/report-viewer.html\" \
+            --verify-port \"${{ env.REPORT_VIEWER_PORT }}\" \
+            --install-yak"
+          
+          # 脱敏后的命令用于日志显示
+          SAFE_DEPLOY_CMD=$(echo "$DEPLOY_CMD" | sed 's/--verify-port "[^"]*"/--verify-port [REDACTED]/g')
+          
+          echo "部署命令:"
+          echo "  ${SAFE_DEPLOY_CMD}"
+          echo ""
+          
+          # 执行部署
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "bash -c '${DEPLOY_CMD}'"
+          
+          if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: Report Viewer 部署失败"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✓ Report Viewer 部署成功"
+      
+      - name: Deploy Auto Runner Service
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 部署 Auto Runner 定时服务 ==="
+          
+          # 1. 复制 service 和 timer 文件到 systemd 目录
+          echo "Installing systemd service and timer files..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "cp ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-benchmark-auto-runner.service /etc/systemd/system/"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "cp ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-benchmark-auto-runner.timer /etc/systemd/system/"
+          
+          # 2. 设置 bash 脚本执行权限
+          echo "Setting execute permission for bash script..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "chmod +x ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/auto-benchmark.sh"
+          
+          # 3. 重新加载 systemd
+          echo "Reloading systemd daemon..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl daemon-reload"
+          
+          # 4. 停止旧的服务（如果正在运行）
+          echo "Stopping old services if running..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl stop ai-benchmark-auto-runner.timer || true"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl stop ai-benchmark-auto-runner.service || true"
+          
+          # 5. 启用并启动 timer
+          echo "Enabling and starting timer..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl enable ai-benchmark-auto-runner.timer"
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl start ai-benchmark-auto-runner.timer"
+          
+          # 6. 验证服务状态
+          echo ""
+          echo "Checking timer status..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl status ai-benchmark-auto-runner.timer --no-pager || true"
+          
+          echo ""
+          echo "Listing active timers..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl list-timers ai-benchmark-auto-runner.timer --no-pager || true"
+          
+          echo ""
+          echo "✓ Auto Runner 定时服务部署成功"
+          echo "  - 服务名称: ai-benchmark-auto-runner.service"
+          echo "  - 定时器名称: ai-benchmark-auto-runner.timer"
+          echo "  - 执行周期: 每 5 分钟"
+          echo "  - 脚本路径: ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/auto-benchmark.sh"
+      
+      - name: Verify deployment
+        env:
+          SSH_HOST: ${{ secrets.EMBEDDING_HOST }}
+        run: |
+          echo "=== 验证部署 ==="
+          
+          # 等待服务启动
+          echo "等待服务稳定..."
+          sleep 5
+          
+          # 验证 Report Viewer 服务
+          echo ""
+          echo "检查 Report Viewer 服务状态..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl is-active ${{ env.REPORT_VIEWER_SERVICE_NAME }} && echo '✓ Report Viewer 服务已激活' || echo '✗ Report Viewer 服务未激活'"
+          
+          echo ""
+          echo "Report Viewer 服务状态详情..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl status ${{ env.REPORT_VIEWER_SERVICE_NAME }} --no-pager -l || true"
+          
+          # 健康检查 Report Viewer
+          echo ""
+          echo "Report Viewer 健康检查 (端口 ${{ env.REPORT_VIEWER_PORT }})..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "curl -f http://127.0.0.1:${{ env.REPORT_VIEWER_PORT }}/ 2>/dev/null && echo '✓ Report Viewer 响应正常' || echo '⚠ Report Viewer 健康检查失败'"
+          
+          # 验证 Auto Runner Timer
+          echo ""
+          echo "检查 Auto Runner Timer 状态..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl is-active ai-benchmark-auto-runner.timer && echo '✓ Auto Runner Timer 已激活' || echo '✗ Auto Runner Timer 未激活'"
+          
+          echo ""
+          echo "Auto Runner Timer 状态详情..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl status ai-benchmark-auto-runner.timer --no-pager -l || true"
+          
+          echo ""
+          echo "下次执行时间..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "systemctl list-timers ai-benchmark-auto-runner.timer --no-pager || true"
+          
+          echo ""
+          echo "ℹ️  Auto Runner 每 5 分钟自动检查并执行测试"
+          
+          # 检查报告目录
+          echo ""
+          echo "检查报告目录..."
+          ./yak ssh -H "$SSH_HOST" -i /tmp/deploy_pri --command "ls -lh ${{ env.REPORT_DIR }} && echo '✓ 报告目录存在' || echo '⚠ 报告目录不存在'"
+          
+          echo ""
+          echo "✓ 服务验证完成"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "=== 清理 ==="
+          rm -f /tmp/deploy_pri /tmp/benchmark-config.env /tmp/report-viewer-config.env /tmp/test-config.json /tmp/ai-config.json
+          echo "✓ 清理完成"
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ AI Benchmark 部署成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "AI 漏洞检测基准测试系统已成功部署到远程服务器。" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 部署详情" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Report Viewer 服务" >> $GITHUB_STEP_SUMMARY
+          echo "- 服务名称: \`${{ env.REPORT_VIEWER_SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 脚本: \`${{ env.APP_PATH }}/${{ env.REPORT_VIEWER_SCRIPT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 端口: \`${{ env.REPORT_VIEWER_PORT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 访问方式: Web 界面" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Auto Runner 定时服务" >> $GITHUB_STEP_SUMMARY
+          echo "- 服务名称: \`${{ env.AUTO_RUNNER_SERVICE_NAME }}.service\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 定时器名称: \`${{ env.AUTO_RUNNER_TIMER_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 脚本: \`${{ env.APP_PATH }}/auto-benchmark.sh\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 运行模式: 定时任务 (每 5 分钟)" >> $GITHUB_STEP_SUMMARY
+          echo "- 配置来源: GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "- 功能: 自动检测新引擎版本并执行测试" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 共享配置" >> $GITHUB_STEP_SUMMARY
+          echo "- 报告目录: \`${{ env.REPORT_DIR }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 工作目录: \`${{ env.WORK_DIR }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 引擎存储: \`/root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/yak-engine\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 构建信息" >> $GITHUB_STEP_SUMMARY
+          echo "- 提交: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 分支: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 触发者: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- YAK 版本: \`${{ env.YAK_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 服务管理命令" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Report Viewer 服务" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看服务状态" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl status ${{ env.REPORT_VIEWER_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看服务日志" >> $GITHUB_STEP_SUMMARY
+          echo "journalctl -u ${{ env.REPORT_VIEWER_SERVICE_NAME }} -f" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 重启服务" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl restart ${{ env.REPORT_VIEWER_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Auto Runner 定时服务" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看定时器状态" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl status ${{ env.AUTO_RUNNER_TIMER_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看下次执行时间" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl list-timers ${{ env.AUTO_RUNNER_TIMER_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看服务日志" >> $GITHUB_STEP_SUMMARY
+          echo "journalctl -u ${{ env.AUTO_RUNNER_SERVICE_NAME }} -f" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 查看脚本日志" >> $GITHUB_STEP_SUMMARY
+          echo "tail -f /root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/auto-benchmark.log" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 手动触发一次执行" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl start ${{ env.AUTO_RUNNER_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 停止定时器" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl stop ${{ env.AUTO_RUNNER_TIMER_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 启动定时器" >> $GITHUB_STEP_SUMMARY
+          echo "systemctl start ${{ env.AUTO_RUNNER_TIMER_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 注意事项" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Auto Runner 会每 5 分钟自动检查最新引擎版本" >> $GITHUB_STEP_SUMMARY
+          echo "- 发现新版本时自动下载并执行测试" >> $GITHUB_STEP_SUMMARY
+          echo "- 配置从 GitHub Secrets 自动部署到服务器" >> $GITHUB_STEP_SUMMARY
+          echo "- 两个服务共享报告目录: \`${{ env.REPORT_DIR }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Report Viewer 提供 Web 界面查看报告（端口 \`${{ env.REPORT_VIEWER_PORT }}\`）" >> $GITHUB_STEP_SUMMARY
+          echo "- 测试会自动安装并启动 vulinbox 靶场" >> $GITHUB_STEP_SUMMARY
+          echo "- 更新配置需修改 GitHub Secrets 后重新部署" >> $GITHUB_STEP_SUMMARY
+          echo "- 查看配置状态: \`cat /root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/config.json\`" >> $GITHUB_STEP_SUMMARY
+
