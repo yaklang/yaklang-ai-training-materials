@@ -160,6 +160,11 @@
             background: #f9fafb;
         }
 
+        td[onclick]:hover {
+            background: #e0e7ff !important;
+            transition: background 0.2s ease;
+        }
+
         .badge {
             padding: 4px 8px;
             border-radius: 4px;
@@ -256,6 +261,68 @@
             text-align: center;
             padding: 40px;
             color: #ef4444;
+        }
+
+        .report-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .report-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .report-header:hover {
+            background: #f3f4f6;
+        }
+
+        .report-info {
+            flex: 1;
+        }
+
+        .report-time {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .report-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .report-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .expand-icon {
+            font-size: 12px;
+            color: #666;
+            transition: transform 0.2s ease;
+        }
+
+        .report-content {
+            border-top: 1px solid #e5e7eb;
+            padding: 15px 20px;
+            background: white;
         }
     </style>
 </head>
@@ -409,50 +476,60 @@
                         return;
                     }
 
-                    // Build reports table
-                    let html = `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Test Name</th>
-                                    <th>Model</th>
-                                    <th style="text-align: center;">Success</th>
-                                    <th style="text-align: center;">Detected</th>
-                                    <th style="text-align: center;">Risks</th>
-                                    <th style="text-align: center;">Duration</th>
-                                    <th style="text-align: center;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
+                    // Build report list (each item is a batch report file)
+                    let html = '<div class="report-list">';
 
-                    data.reports.forEach(report => {
-                        const successBadge = report.success ? 
-                            '<span class="badge badge-success">YES</span>' :
-                            '<span class="badge badge-failed">NO</span>';
+                    data.reports.forEach((report, index) => {
+                        const summary = report.summary || {};
+                        const successRate = summary.successRate ? summary.successRate.toFixed(1) : '0';
+                        const detectionRate = summary.detectionRate ? summary.detectionRate.toFixed(1) : '0';
+                        const totalTests = summary.totalTests || 0;
+                        const successCount = summary.successCount || 0;
+                        const detectedCount = summary.detectedCount || 0;
+                        const totalDuration = summary.totalDuration || 0;
                         
-                        const detectedBadge = report.detected ? 
-                            '<span class="badge badge-success">YES</span>' :
-                            '<span class="badge badge-failed">NO</span>';
-
+                        // For old format reports (single test), show basic info
+                        const isBatchReport = report.reportType === 'batch';
+                        const timestamp = report.timestamp || '-';
+                        const yakVersion = report.yakEngineVersion || 'N/A';
+                        
                         html += `
-                            <tr>
-                                <td>${report.timestamp || '-'}</td>
-                                <td>${report.testName || '-'}</td>
-                                <td>${report.model || '-'} <span style="color: #999; font-size: 12px;">(${report.provider || '-'})</span></td>
-                                <td style="text-align: center;">${successBadge}</td>
-                                <td style="text-align: center;">${detectedBadge}</td>
-                                <td style="text-align: center;">${report.matchedRiskCount || 0}/${report.riskCount || 0}</td>
-                                <td style="text-align: center;">${report.duration || 0}s</td>
-                                <td style="text-align: center;">
-                                    <button onclick="viewReport('${report.filename}')" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">View</button>
-                                </td>
-                            </tr>
+                            <div class="report-card" id="report-card-${index}">
+                                <div class="report-header" onclick="toggleReport(${index}, '${report.filename}')">
+                                    <div class="report-info">
+                                        <div class="report-time">
+                                            <span style="font-size: 16px; font-weight: 600;">${timestamp}</span>
+                                            <span class="badge" style="background: #667eea; margin-left: 10px;">${isBatchReport ? 'Batch' : 'Single'}</span>
+                                        </div>
+                                        <div class="report-stats">
+                                            ${isBatchReport ? `
+                                                <span>Tests: <strong>${totalTests}</strong></span>
+                                                <span>Success: <strong style="color: #22c55e;">${successCount}</strong> (${successRate}%)</span>
+                                                <span>Detected: <strong style="color: #667eea;">${detectedCount}</strong> (${detectionRate}%)</span>
+                                                <span>Duration: <strong>${totalDuration}s</strong></span>
+                                            ` : `
+                                                <span>Model: <strong>${report.model || '-'}</strong></span>
+                                                <span>Test: <strong>${report.testName || '-'}</strong></span>
+                                                <span>Success: <strong style="color: ${report.success ? '#22c55e' : '#ef4444'};">${report.success ? 'YES' : 'NO'}</strong></span>
+                                            `}
+                                            <span>Engine: <strong>${yakVersion}</strong></span>
+                                        </div>
+                                    </div>
+                                    <div class="report-actions">
+                                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="event.stopPropagation(); showRawJson('${report.filename}')">
+                                            View JSON
+                                        </button>
+                                        <span class="expand-icon" id="expand-icon-${index}">▼</span>
+                                    </div>
+                                </div>
+                                <div class="report-content" id="report-content-${index}" style="display: none;">
+                                    <div class="loading"><p>Click to load details...</p></div>
+                                </div>
+                            </div>
                         `;
                     });
 
-                    html += '</tbody></table>';
+                    html += '</div>';
                     container.innerHTML = html;
                 })
                 .catch(error => {
@@ -461,13 +538,32 @@
                 });
         }
 
-        // View report detail
-        function viewReport(filename) {
-            const modal = document.getElementById('reportModal');
-            const content = document.getElementById('reportDetailContent');
+        // Track expanded reports
+        const expandedReports = {};
+
+        // Toggle report detail
+        function toggleReport(index, filename) {
+            const content = document.getElementById(`report-content-${index}`);
+            const icon = document.getElementById(`expand-icon-${index}`);
             
-            content.innerHTML = '<div class="loading"><p>Loading report...</p></div>';
-            modal.style.display = 'block';
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▲';
+                
+                // Load report detail if not loaded
+                if (!expandedReports[filename]) {
+                    loadReportDetail(index, filename);
+                }
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        // Load report detail and render matrix table
+        function loadReportDetail(index, filename) {
+            const content = document.getElementById(`report-content-${index}`);
+            content.innerHTML = '<div class="loading"><p>Loading report details...</p></div>';
 
             fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
                 .then(response => response.json())
@@ -478,98 +574,279 @@
                     }
 
                     const report = data.report;
+                    expandedReports[filename] = report;
                     
-                    let html = `
-                        <h2 style="margin-bottom: 20px; color: #667eea;">📄 Report Detail</h2>
-                        
-                        <div class="info-grid">
-                            <div><strong>Test Name:</strong> ${report.testName || '-'}</div>
-                            <div><strong>Timestamp:</strong> ${report.timestamp || '-'}</div>
-                            <div><strong>Model:</strong> ${report.model || '-'}</div>
-                            <div><strong>Provider:</strong> ${report.provider || '-'}</div>
-                            <div><strong>Yak Engine Version:</strong> ${report.yakEngineVersion || 'N/A'}</div>
-                            <div><strong>Target URL:</strong> ${report.targetURL || '-'}</div>
-                            <div><strong>Duration:</strong> ${report.duration || 0} seconds</div>
-                            <div><strong>Success:</strong> ${report.success ? '✅ YES' : '❌ NO'}</div>
-                            <div><strong>Detected:</strong> ${report.detected ? '✅ YES' : '❌ NO'}</div>
-                            <div><strong>Risk Count:</strong> ${report.matchedRiskCount || 0}/${report.riskCount || 0}</div>
-                            <div><strong>Max Iteration:</strong> ${report.maxIteration || '-'}</div>
-                        </div>
-                    `;
-
-                    if (report.error) {
-                        html += `
-                            <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
-                                <h3 style="color: #ef4444; margin-bottom: 10px;">Error</h3>
-                                <pre>${report.error}</pre>
-                            </div>
-                        `;
+                    // Check if it's a batch report
+                    if (report.reportType === 'batch') {
+                        renderBatchReportMatrix(content, report);
+                    } else {
+                        // Single test report - show in old format
+                        renderSingleReportDetail(content, report);
                     }
-
-                    if (report.risks && report.risks.length > 0) {
-                        html += `
-                            <div style="margin-bottom: 20px;">
-                                <h3 style="margin-bottom: 15px;">Risks Found (${report.risks.length})</h3>
-                        `;
-                        
-                        report.risks.forEach((risk, index) => {
-                            const matchedBadge = risk.matched ? 
-                                '<span class="badge badge-success">MATCHED</span>' : 
-                                '<span class="badge" style="background: #999; color: white;">NOT MATCHED</span>';
-                            
-                            const riskClass = risk.matched ? 'risk-matched' : 'risk-not-matched';
-                            
-                            html += `
-                                <div class="risk-item ${riskClass}">
-                                    <h4 style="margin-bottom: 10px;">${index + 1}. ${risk.title || 'Unknown'} ${matchedBadge}</h4>
-                                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                                        <div><strong>Type:</strong> ${risk.riskType || '-'}</div>
-                                        <div><strong>Severity:</strong> <span style="color: ${risk.severity === 'high' || risk.severity === 'critical' ? '#ef4444' : '#f59e0b'};">${risk.severity || '-'}</span></div>
-                                        <div><strong>URL:</strong> ${risk.url || '-'}</div>
-                                        ${risk.description ? `<div style="margin-top: 8px;"><strong>Description:</strong><br>${risk.description}</div>` : ''}
-                                        ${risk.payload ? `<div style="margin-top: 8px;"><strong>Payload:</strong><br><code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; display: block; margin-top: 4px;">${risk.payload}</code></div>` : ''}
-                                        ${risk.matchedKeywords ? `<div style="margin-top: 8px;"><strong>Matched Keywords:</strong> ${risk.matchedKeywords.join(', ')}</div>` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        html += '</div>';
-                    }
-
-                    if (report.taskPrompt) {
-                        html += `
-                            <div style="margin-bottom: 20px;">
-                                <h3 style="margin-bottom: 10px;">Task Prompt</h3>
-                                <pre>${report.taskPrompt}</pre>
-                            </div>
-                        `;
-                    }
-
-                    if (report.thoughtLog && report.thoughtLog.length > 0) {
-                        html += `
-                            <div style="margin-bottom: 20px;">
-                                <h3 style="margin-bottom: 10px;">AI Thought Process</h3>
-                                <pre>${report.thoughtLog.join('')}</pre>
-                            </div>
-                        `;
-                    }
-
-                    if (report.answerLog && report.answerLog.length > 0) {
-                        html += `
-                            <div style="margin-bottom: 20px;">
-                                <h3 style="margin-bottom: 10px;">AI Answer</h3>
-                                <pre>${report.answerLog.join('')}</pre>
-                            </div>
-                        `;
-                    }
-
-                    content.innerHTML = html;
                 })
                 .catch(error => {
                     console.error('Failed to load report:', error);
                     content.innerHTML = `<div class="error"><p>Failed to load report: ${error.message}</p></div>`;
                 });
+        }
+
+        // Render batch report as matrix table
+        function renderBatchReportMatrix(container, report) {
+            const results = report.results || [];
+            const testNames = report.testNames || [];
+            const models = report.models || [];
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No test results found</p></div>';
+                return;
+            }
+
+            // Build result lookup map: testName|model -> result
+            const resultMap = {};
+            results.forEach(result => {
+                const key = `${result.testName}|${result.model}`;
+                resultMap[key] = result;
+            });
+
+            // Build matrix table
+            let html = `
+                <div style="overflow-x: auto; margin-top: 15px;">
+                <table style="min-width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 200px; position: sticky; left: 0; background: #f3f4f6; z-index: 1;">Test Name</th>
+            `;
+
+            // Header row with model names
+            models.forEach(m => {
+                html += `<th style="text-align: center; min-width: 150px;">${m.model}<br><span style="font-weight: normal; font-size: 11px; color: #666;">(${m.provider})</span></th>`;
+            });
+
+            html += `
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Data rows with test names
+            testNames.forEach(testName => {
+                html += `<tr>
+                    <td style="font-weight: 500; position: sticky; left: 0; background: white; z-index: 1;">${testName}</td>
+                `;
+
+                models.forEach(m => {
+                    const key = `${testName}|${m.model}`;
+                    const result = resultMap[key];
+
+                    if (result) {
+                        const successIcon = result.success ? 
+                            '<span style="color: #22c55e; font-size: 16px;">✓</span>' :
+                            '<span style="color: #ef4444; font-size: 16px;">✗</span>';
+                        
+                        const duration = result.duration || 0;
+                        const durationColor = duration > 60 ? '#f59e0b' : '#666';
+                        
+                        // Generate unique ID for this result
+                        const resultId = `${testName}-${m.model}`.replace(/[^a-zA-Z0-9]/g, '_');
+                        
+                        html += `
+                            <td style="text-align: center; cursor: pointer;" onclick="showResultDetail('${resultId}')" title="Click to view details">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                    ${successIcon}
+                                    <span style="font-size: 12px; color: ${durationColor};">${duration}s</span>
+                                </div>
+                            </td>
+                        `;
+                        
+                        // Store result for later access
+                        window.resultCache = window.resultCache || {};
+                        window.resultCache[resultId] = result;
+                    } else {
+                        html += `<td style="text-align: center; color: #ccc;">-</td>`;
+                    }
+                });
+
+                html += `</tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // Render single report detail
+        function renderSingleReportDetail(container, report) {
+            let html = `
+                <div class="info-grid" style="margin-top: 15px;">
+                    <div><strong>Test Name:</strong> ${report.testName || '-'}</div>
+                    <div><strong>Model:</strong> ${report.model || '-'}</div>
+                    <div><strong>Provider:</strong> ${report.provider || '-'}</div>
+                    <div><strong>Target URL:</strong> ${report.targetURL || '-'}</div>
+                    <div><strong>Duration:</strong> ${report.duration || 0} seconds</div>
+                    <div><strong>Success:</strong> ${report.success ? '✅ YES' : '❌ NO'}</div>
+                    <div><strong>Detected:</strong> ${report.detected ? '✅ YES' : '❌ NO'}</div>
+                    <div><strong>Risk Count:</strong> ${report.matchedRiskCount || 0}/${report.riskCount || 0}</div>
+                </div>
+            `;
+            
+            if (report.error) {
+                html += `
+                    <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ef4444;">
+                        <h4 style="color: #ef4444; margin-bottom: 10px;">Error</h4>
+                        <pre>${report.error}</pre>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Show result detail in modal
+        function showResultDetail(resultId) {
+            const result = window.resultCache && window.resultCache[resultId];
+            if (!result) {
+                alert('Result not found');
+                return;
+            }
+            
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('reportDetailContent');
+            
+            let html = `
+                <h2 style="margin-bottom: 20px; color: #667eea;">📄 Test Result Detail</h2>
+                
+                <div class="info-grid">
+                    <div><strong>Test Name:</strong> ${result.testName || '-'}</div>
+                    <div><strong>Timestamp:</strong> ${result.timestamp || '-'}</div>
+                    <div><strong>Model:</strong> ${result.model || '-'}</div>
+                    <div><strong>Provider:</strong> ${result.provider || '-'}</div>
+                    <div><strong>Target URL:</strong> ${result.targetURL || '-'}</div>
+                    <div><strong>Duration:</strong> ${result.duration || 0} seconds</div>
+                    <div><strong>Success:</strong> ${result.success ? '✅ YES' : '❌ NO'}</div>
+                    <div><strong>Detected:</strong> ${result.detected ? '✅ YES' : '❌ NO'}</div>
+                    <div><strong>Risk Count:</strong> ${result.matchedRiskCount || 0}/${result.riskCount || 0}</div>
+                    <div><strong>Max Iteration:</strong> ${result.maxIteration || '-'}</div>
+                </div>
+            `;
+
+            if (result.error) {
+                html += `
+                    <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
+                        <h3 style="color: #ef4444; margin-bottom: 10px;">Error</h3>
+                        <pre>${result.error}</pre>
+                    </div>
+                `;
+            }
+
+            if (result.risks && result.risks.length > 0) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px;">Risks Found (${result.risks.length})</h3>
+                `;
+                
+                result.risks.forEach((risk, index) => {
+                    const matchedBadge = risk.matched ? 
+                        '<span class="badge badge-success">MATCHED</span>' : 
+                        '<span class="badge" style="background: #999; color: white;">NOT MATCHED</span>';
+                    
+                    const riskClass = risk.matched ? 'risk-matched' : 'risk-not-matched';
+                    
+                    html += `
+                        <div class="risk-item ${riskClass}">
+                            <h4 style="margin-bottom: 10px;">${index + 1}. ${risk.title || 'Unknown'} ${matchedBadge}</h4>
+                            <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                                <div><strong>Type:</strong> ${risk.riskType || '-'}</div>
+                                <div><strong>Severity:</strong> <span style="color: ${risk.severity === 'high' || risk.severity === 'critical' ? '#ef4444' : '#f59e0b'};">${risk.severity || '-'}</span></div>
+                                <div><strong>URL:</strong> ${risk.url || '-'}</div>
+                                ${risk.description ? `<div style="margin-top: 8px;"><strong>Description:</strong><br>${risk.description}</div>` : ''}
+                                ${risk.payload ? `<div style="margin-top: 8px;"><strong>Payload:</strong><br><code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; display: block; margin-top: 4px;">${risk.payload}</code></div>` : ''}
+                                ${risk.matchedKeywords ? `<div style="margin-top: 8px;"><strong>Matched Keywords:</strong> ${risk.matchedKeywords.join(', ')}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+
+            if (result.taskPrompt) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px;">Task Prompt</h3>
+                        <pre>${result.taskPrompt}</pre>
+                    </div>
+                `;
+            }
+
+            if (result.thoughtLog && result.thoughtLog.length > 0) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px;">AI Thought Process</h3>
+                        <pre>${result.thoughtLog.join('')}</pre>
+                    </div>
+                `;
+            }
+
+            if (result.answerLog && result.answerLog.length > 0) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px;">AI Answer</h3>
+                        <pre>${result.answerLog.join('')}</pre>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+
+        // Show raw JSON in modal
+        function showRawJson(filename) {
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('reportDetailContent');
+            
+            content.innerHTML = '<div class="loading"><p>Loading JSON...</p></div>';
+            modal.style.display = 'block';
+
+            fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        content.innerHTML = `<div class="error"><p>Error: ${data.message}</p></div>`;
+                        return;
+                    }
+
+                    const jsonStr = JSON.stringify(data.report, null, 2);
+                    content.innerHTML = `
+                        <h2 style="margin-bottom: 20px; color: #667eea;">📋 Raw JSON Data</h2>
+                        <div style="margin-bottom: 15px;">
+                            <button class="btn btn-primary" onclick="copyToClipboard(\`${encodeURIComponent(jsonStr)}\`)">
+                                Copy to Clipboard
+                            </button>
+                        </div>
+                        <pre style="max-height: 600px; overflow: auto;">${escapeHtml(jsonStr)}</pre>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Failed to load JSON:', error);
+                    content.innerHTML = `<div class="error"><p>Failed to load JSON: ${error.message}</p></div>`;
+                });
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(encodedText) {
+            const text = decodeURIComponent(encodedText);
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Close report modal

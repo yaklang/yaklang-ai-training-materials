@@ -24,6 +24,7 @@ TEST_CONFIG="${WORK_DIR}/${APP_PATH}/test-config.json"
 AI_CONFIG="${WORK_DIR}/${APP_PATH}/ai-config.json"
 BENCHMARK_SCRIPT="${WORK_DIR}/${APP_PATH}/ai-model-vuln-detection-benchmark.yak"
 BENCHMARK_FRONTEND="${WORK_DIR}/${APP_PATH}/ai-model-vuln-detection-benchmark.html"
+BENCHMARK_ENV_FILE="${WORK_DIR}/${APP_PATH}/.env.benchmark"
 REPORT_DIR="/root/ai-benchmark-reports"
 
 # 引擎版本信息
@@ -156,7 +157,7 @@ download_engine() {
          -o "$tmp_file" "$engine_url"; then
         log_error "Failed to download engine"
         rm -f "$tmp_file"
-        return 1
+        return 1`
     fi
     
     # 验证下载的文件
@@ -212,6 +213,21 @@ run_benchmark() {
         return 1
     fi
     
+    # 从环境变量文件加载配置
+    local api_key=""
+    if [ -f "$BENCHMARK_ENV_FILE" ]; then
+        log_info "Loading environment from: $BENCHMARK_ENV_FILE"
+        # 读取 AI_BENCHMARK_API_KEY
+        api_key=$(grep "^AI_BENCHMARK_API_KEY=" "$BENCHMARK_ENV_FILE" 2>/dev/null | cut -d'=' -f2- || echo "")
+        if [ -n "$api_key" ]; then
+            log_info "API Key loaded from env file: [REDACTED]"
+        else
+            log_warn "AI_BENCHMARK_API_KEY not found in env file"
+        fi
+    else
+        log_warn "Environment file not found: $BENCHMARK_ENV_FILE"
+    fi
+    
     # 执行基准测试
     local start_time=$(date '+%Y-%m-%d %H:%M:%S')
     log_info "Test started at: $start_time"
@@ -222,6 +238,13 @@ run_benchmark() {
     # 创建临时日志文件捕获详细错误
     local test_log="${LOG_FILE}.test.tmp"
     
+    # 构建 --var 参数
+    local var_args=""
+    if [ -n "$api_key" ]; then
+        var_args="--var aibalance-ai-benchmark-api-key=${api_key}"
+        log_info "Variable parameter added: aibalance-ai-benchmark-api-key=[REDACTED]"
+    fi
+    
     # 执行测试（捕获输出到临时日志）
     log_info "Executing benchmark test..."
     "$engine_path" "$BENCHMARK_SCRIPT" \
@@ -230,6 +253,7 @@ run_benchmark() {
         --output-dir "$REPORT_DIR" \
         --yaklang-engine-version "$version" \
         --frontend "$BENCHMARK_FRONTEND" \
+        $var_args \
         > "$test_log" 2>&1
     
     local exit_code=$?

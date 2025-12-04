@@ -22,8 +22,79 @@ targetURL = cli.String("url", cli.setDefault(""), cli.setHelp("测试目标URL�
 maxIteration = cli.Int("max-iteration", cli.setDefault(0), cli.setHelp("ReAct最大迭代次数（覆盖配置文件）"))
 timeout = cli.Int("timeout", cli.setDefault(0), cli.setHelp("单个测试超时时间/秒（覆盖配置文件）"))
 
+// 变量替换参数（用于替换配置文件中的 {{variable-name}} 占位符）
+// 关键词: 变量替换, 配置变量, --var
+varParams = cli.StringSlice("var", cli.setHelp("设置变量，格式: key=value，可多次使用，用于替换配置中的 {{key}} 占位符"))
+
 // 验证参数
 cli.check()
+
+// 解析变量参数为映射表
+// 关键词: 变量解析, 变量映射
+globalVars = {}
+for varParam in varParams {
+    if str.Contains(varParam, "=") {
+        parts = str.SplitN(varParam, "=", 2)
+        if len(parts) == 2 {
+            key = str.TrimSpace(parts[0])
+            value = str.TrimSpace(parts[1])
+            globalVars[key] = value
+            log.info("Variable set: %s=***", key)  // 不打印敏感值
+        }
+    } else {
+        log.warn("Invalid variable format (expected key=value): %s", varParam)
+    }
+}
+
+// 替换字符串中的变量占位符 {{variable-name}}
+// 关键词: 变量替换函数
+func replaceVariables(text) {
+    if text == nil || text == undefined {
+        return text
+    }
+    
+    result = sprintf("%v", text)
+    for key, value in globalVars {
+        placeholder = sprintf("{{%s}}", key)
+        result = str.ReplaceAll(result, placeholder, value)
+    }
+    return result
+}
+
+// 递归替换配置对象中的所有字符串变量
+// 关键词: 配置替换, 递归替换
+func replaceConfigVariables(config) {
+    if config == nil || config == undefined {
+        return config
+    }
+    
+    // 如果是字符串，直接替换
+    configType = typeof(config)
+    if configType == "string" {
+        return replaceVariables(config)
+    }
+    
+    // 如果是数组，递归处理每个元素
+    if configType == "slice" {
+        result = []
+        for item in config {
+            result = append(result, replaceConfigVariables(item))
+        }
+        return result
+    }
+    
+    // 如果是映射，递归处理每个值
+    if configType == "map" {
+        result = {}
+        for key, value in config {
+            result[key] = replaceConfigVariables(value)
+        }
+        return result
+    }
+    
+    // 其他类型直接返回
+    return config
+}
 
 log.info("Starting AI Model Vulnerability Detection Benchmark")
 
@@ -162,11 +233,7 @@ func runModelTest(aiConfig, testConfig, onProgress) {
         globalResults = append(globalResults, result)
         globalMutex.Unlock()
         
-        // 立即保存单个测试报告
-        // 关键词: 报告保存, 单测试报告
-        if outputDir != "" {
-            saveTestReport(result)
-        }
+        // 单个测试结果已保存到全局列表，批次报告在所有测试完成后保存
         
         // 通知进度
         if onProgress != nil {
@@ -411,9 +478,9 @@ func runModelTest(aiConfig, testConfig, onProgress) {
     }
 }
 
-// 保存单个测试报告
-// 关键词: 报告保存, JSON输出
-func saveTestReport(result) {
+// 保存批次报告（包含所有测试结果）
+// 关键词: 报告保存, 批次报告, JSON输出
+func saveBatchReport(results, testConfigs, aiConfigs) {
     // 确保输出目录存在
     if outputDir == "" {
         return
@@ -430,32 +497,59 @@ func saveTestReport(result) {
     filename = sprintf("%s-%d.json", reportPrefix, timestamp())
     filepath = sprintf("%s/%s", outputDir, filename)
     
-    // 构建报告内容
+    // 统计信息
+    totalTests = len(results)
+    successCount = 0
+    detectedCount = 0
+    totalRisks = 0
+    totalDuration = 0
+    
+    for result in results {
+        if result["success"] {
+            successCount++
+        }
+        if result["detected"] {
+            detectedCount++
+        }
+        totalRisks += result["riskCount"]
+        totalDuration += result["duration"]
+    }
+    
+    // 提取测试配置名称列表
+    testNames = []
+    for tc in testConfigs {
+        testNames = append(testNames, tc["name"])
+    }
+    
+    // 提取模型列表
+    models = []
+    for ac in aiConfigs {
+        models = append(models, {
+            "model": ac["model"],
+            "provider": ac["provider"],
+            "description": ac["description"],
+        })
+    }
+    
+    // 构建批次报告
     report = {
-        "timestamp": result["timestamp"],
-        "testName": result["testName"],
-        "targetURL": result["targetURL"],
-        "provider": result["provider"],
-        "model": result["model"],
-        "description": result["description"],
-        "yakEngineVersion": result["yakEngineVersion"],
-        "success": result["success"],
-        "detected": result["detected"],
-        "error": result["error"],
-        "runtimeId": result["runtimeId"],
-        "riskCount": result["riskCount"],
-        "matchedRiskCount": result["matchedRiskCount"],
-        "startTime": result["startTime"],
-        "endTime": result["endTime"],
-        "duration": result["duration"],
-        "maxIteration": result["maxIteration"],
-        "timeout": result["timeout"],
-        "taskPrompt": result["taskPrompt"],
-        "riskMatchKeywords": result["riskMatchKeywords"],
-        "risks": result["risks"],
-        "thoughtLog": result["thoughtLog"],
-        "answerLog": result["answerLog"],
-        "resultId": result["resultId"],
+        "reportType": "batch",
+        "timestamp": time.Now().Format("2006-01-02 15:04:05"),
+        "yakEngineVersion": yakEngineVersion,
+        "summary": {
+            "totalTests": totalTests,
+            "successCount": successCount,
+            "detectedCount": detectedCount,
+            "totalRisks": totalRisks,
+            "totalDuration": totalDuration,
+            "successRate": float(successCount) / float(totalTests) * 100,
+            "detectionRate": float(detectedCount) / float(totalTests) * 100,
+        },
+        "testConfigs": testConfigs,
+        "aiConfigs": aiConfigs,
+        "testNames": testNames,
+        "models": models,
+        "results": results,
     }
     
     // 转换为 JSON
@@ -464,9 +558,9 @@ func saveTestReport(result) {
     // 保存到文件
     err = file.Save(filepath, jsonOutput)
     if err != nil {
-        log.error("Failed to save report to %s: %v", filepath, err)
+        log.error("Failed to save batch report to %s: %v", filepath, err)
     } else {
-        log.info("Report saved successfully to: %s", filepath)
+        log.info("Batch report saved successfully to: %s", filepath)
     }
 }
 
@@ -609,6 +703,14 @@ func loadConfigurations() {
         log.error("No test configs found in test config file")
         die("No test configs found in test config file. Please add 'testConfigs' array.")
     }
+    
+    // 应用变量替换到测试配置
+    // 关键词: 变量替换应用, 测试配置变量替换
+    if len(globalVars) > 0 {
+        log.info("Applying %d variable(s) to test configs", len(globalVars))
+        testConfigs = replaceConfigVariables(testConfigs)
+    }
+    
     log.info("Loaded %d test config(s)", len(testConfigs))
     
     // 加载 AI 配置
@@ -631,6 +733,14 @@ func loadConfigurations() {
         log.error("No AI configs found in AI config file")
         die("No AI configs found in AI config file. Please add 'aiConfigs' array.")
     }
+    
+    // 应用变量替换到 AI 配置
+    // 关键词: 变量替换应用, 配置变量替换
+    if len(globalVars) > 0 {
+        log.info("Applying %d variable(s) to AI configs", len(globalVars))
+        aiConfigs = replaceConfigVariables(aiConfigs)
+    }
+    
     log.info("Loaded %d AI config(s)", len(aiConfigs))
     
     // 应用 CLI 参数覆盖
@@ -715,10 +825,10 @@ func runAllTests(aiConfigs, testConfigs) {
         broadcastToWebSockets(completeMsg)
     }
     
-    // 所有报告已在测试过程中保存到 outputDir
+    // 保存批次报告（包含所有测试结果）
     if outputDir != "" {
-        log.info("All test reports saved to directory: %s", outputDir)
-        log.info("Total reports: %d", len(globalResults))
+        saveBatchReport(globalResults, testConfigs, aiConfigs)
+        log.info("Batch report saved to directory: %s", outputDir)
     }
     
     return summary
@@ -927,20 +1037,34 @@ func startWebServer(aiConfigs, testConfigs) {
                 reportData = json.loads(content)
             }
             
+            // Check if it's a batch report or single report
+            reportType = reportData["reportType"]
+            
             reportInfo = {
                 "filename": filename,
                 "filepath": filepath,
                 "modTime": modTime,
                 "size": fileSize,
-                "testName": reportData["testName"],
-                "model": reportData["model"],
-                "provider": reportData["provider"],
-                "detected": reportData["detected"],
-                "success": reportData["success"],
+                "reportType": reportType,
                 "timestamp": reportData["timestamp"],
-                "duration": reportData["duration"],
-                "riskCount": reportData["riskCount"],
-                "matchedRiskCount": reportData["matchedRiskCount"],
+                "yakEngineVersion": reportData["yakEngineVersion"],
+            }
+            
+            if reportType == "batch" {
+                // Batch report - include summary info
+                reportInfo["summary"] = reportData["summary"]
+                reportInfo["testNames"] = reportData["testNames"]
+                reportInfo["models"] = reportData["models"]
+            } else {
+                // Single report (old format) - include individual fields
+                reportInfo["testName"] = reportData["testName"]
+                reportInfo["model"] = reportData["model"]
+                reportInfo["provider"] = reportData["provider"]
+                reportInfo["detected"] = reportData["detected"]
+                reportInfo["success"] = reportData["success"]
+                reportInfo["duration"] = reportData["duration"]
+                reportInfo["riskCount"] = reportData["riskCount"]
+                reportInfo["matchedRiskCount"] = reportData["matchedRiskCount"]
             }
             
             reports = append(reports, reportInfo)

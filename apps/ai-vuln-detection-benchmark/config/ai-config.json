@@ -1,0 +1,18 @@
+{
+  "aiConfigs": [
+    {
+      "provider": "aibalance",
+      "model": "VESA-free",
+      "domain": "",
+      "apikey": "xxx",
+      "description": "VESA Free Model"
+    },
+    {
+      "provider": "aibalance",
+      "model": "qwen-32b",
+      "domain": "",
+      "apikey": "{{aibalance-ai-benchmark-api-key}}",
+      "description": "Qwen 32B Model"
+    }
+  ]
+}

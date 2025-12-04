@@ -1,0 +1,14 @@
+{
+    "testConfigs": [
+        {
+            "targetURL": "http://127.0.0.1:8787/user/id?id=1",
+            "maxIteration": 15,
+            "timeout": 300,
+            "name": "SQLite UNION Injection Test",
+            "taskPrompt": "帮我检查{{targetURL}}的sql注入漏洞，你的目标是获取所有表名，一旦成功调用cybersecurity-risk生成风险信息，然后立刻结束任务。提示：数据库是Sqlite类型，参数不需要闭合,使用order by判断列数，列数是9",
+            "riskMatchKeywords": [
+                "vulin_visitors"
+            ]
+        }
+    ]
+}

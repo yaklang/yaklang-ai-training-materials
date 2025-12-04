@@ -111,20 +111,34 @@ reportsListHandle = (rsp, req) => {
             reportData = json.loads(content)
         }
         
+        // Check if it's a batch report or single report
+        reportType = reportData["reportType"]
+        
         reportInfo = {
             "filename": filename,
             "filepath": filepath,
             "modTime": modTime,
             "size": fileSize,
-            "testName": reportData["testName"],
-            "model": reportData["model"],
-            "provider": reportData["provider"],
-            "detected": reportData["detected"],
-            "success": reportData["success"],
+            "reportType": reportType,
             "timestamp": reportData["timestamp"],
-            "duration": reportData["duration"],
-            "riskCount": reportData["riskCount"],
-            "matchedRiskCount": reportData["matchedRiskCount"],
+            "yakEngineVersion": reportData["yakEngineVersion"],
+        }
+        
+        if reportType == "batch" {
+            // Batch report - include summary info
+            reportInfo["summary"] = reportData["summary"]
+            reportInfo["testNames"] = reportData["testNames"]
+            reportInfo["models"] = reportData["models"]
+        } else {
+            // Single report (old format) - include individual fields
+            reportInfo["testName"] = reportData["testName"]
+            reportInfo["model"] = reportData["model"]
+            reportInfo["provider"] = reportData["provider"]
+            reportInfo["detected"] = reportData["detected"]
+            reportInfo["success"] = reportData["success"]
+            reportInfo["duration"] = reportData["duration"]
+            reportInfo["riskCount"] = reportData["riskCount"]
+            reportInfo["matchedRiskCount"] = reportData["matchedRiskCount"]
         }
         
         reports = append(reports, reportInfo)
