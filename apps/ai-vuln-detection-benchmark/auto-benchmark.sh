@@ -25,7 +25,7 @@ AI_CONFIG="${WORK_DIR}/${APP_PATH}/ai-config.json"
 BENCHMARK_SCRIPT="${WORK_DIR}/${APP_PATH}/ai-model-vuln-detection-benchmark.yak"
 BENCHMARK_FRONTEND="${WORK_DIR}/${APP_PATH}/ai-model-vuln-detection-benchmark.html"
 BENCHMARK_ENV_FILE="${WORK_DIR}/${APP_PATH}/.env.benchmark"
-REPORT_DIR="/root/ai-benchmark-reports"
+REPORT_DIR="/root/ai-benchmark-reports-v2"
 
 # 引擎版本信息
 VERSION_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt"

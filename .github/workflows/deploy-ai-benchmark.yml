@@ -32,7 +32,7 @@ jobs:
       YAK_VERSION: 1.4.4-alpha1121a
       YAK_PATH: /usr/local/bin/yak-1.4.4-alpha1121a
       REPORT_VIEWER_PORT: ${{ secrets.AI_BENCHMARK_REPORT_PORT }}
-      REPORT_DIR: /root/ai-benchmark-reports
+      REPORT_DIR: /root/ai-benchmark-reports-v2
     
     steps:
       - name: Checkout repository
@@ -237,19 +237,17 @@ jobs:
           script: |
             echo "=== 部署 Report Viewer 服务 ==="
             
-            DEPLOY_CMD="${{ env.WORK_DIR }}/apps/deploy-yak-app.sh \
-              --service-name \"${{ env.REPORT_VIEWER_SERVICE_NAME }}\" \
-              --main-script \"${{ env.APP_PATH }}/${{ env.REPORT_VIEWER_SCRIPT }}\" \
-              --work-dir \"${{ env.WORK_DIR }}\" \
-              --yak-version \"${{ env.YAK_VERSION }}\" \
-              --yak-path \"${{ env.YAK_PATH }}\" \
-              --config-file \"${{ env.APP_PATH }}/.env.report-viewer\" \
-              --script-args \"--port \$REPORT_VIEWER_PORT --report-dir \$REPORT_DIR --frontend ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/report-viewer.html\" \
-              --verify-port \"${{ env.REPORT_VIEWER_PORT }}\" \
-              --install-yak"
-            
             echo "执行部署命令..."
-            bash -c "$DEPLOY_CMD"
+            ${{ env.WORK_DIR }}/apps/deploy-yak-app.sh \
+              --service-name "${{ env.REPORT_VIEWER_SERVICE_NAME }}" \
+              --main-script "${{ env.APP_PATH }}/${{ env.REPORT_VIEWER_SCRIPT }}" \
+              --work-dir "${{ env.WORK_DIR }}" \
+              --yak-version "${{ env.YAK_VERSION }}" \
+              --yak-path "${{ env.YAK_PATH }}" \
+              --config-file "${{ env.APP_PATH }}/.env.report-viewer" \
+              --script-args '--port $REPORT_VIEWER_PORT --report-dir $REPORT_DIR --frontend ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/report-viewer.html' \
+              --verify-port "${{ env.REPORT_VIEWER_PORT }}" \
+              --install-yak
             
             echo ""
             echo "✓ Report Viewer 部署完成"
