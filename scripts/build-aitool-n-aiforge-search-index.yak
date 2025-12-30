@@ -1,23 +1,23 @@
 #!/usr/bin/env yak
 
 // =============================================================================
-// AI 工具搜索索引构建工具 - Build AI Tool Search Index (New Version)
-// 功能: 从数据库中获取所有 AI 工具，使用 rag.BuildSearchIndexKnowledge 构建搜索索引
-// 用途: 为 AI 工具构建可搜索的问题索引，让用户能通过自然语言查询找到合适的工具
+// AI 能力搜索索引构建工具 - Build AI Capabilities (Tools + Forges) Search Index
+// 功能: 从数据库中获取所有 AI Tools 和 AI Forges，构建统一的搜索索引
+// 用途: 为所有 AI 能力构建可搜索的问题索引，让用户能通过自然语言查询找到合适的工具/Forge
 //
 // 核心设计:
-// - 知识条目（工具描述）-> 多个问题索引
+// - 同时处理 db.YieldAllAITools() 和 db.YieldAllAIForges()
+// - 知识条目（工具/Forge描述）-> 多个问题索引
 // - 问题索引用于语义搜索
 // - 搜索结果通过 entry_id 关联到知识条目
 //
 // 使用示例:
-// go run common/yak/cmd/yak.go scripts/build-aitool-search-index-kb.yak
-// (输出文件将自动命名为 /tmp/aitool-search-index-{version}.rag)
+// go run common/yak/cmd/yak.go scripts/build-aitool-n-aiforge-search-index.yak --output /tmp/ai-capabilities-{version}.rag
 //
-// 应用场景: AI 工具索引构建、工具搜索系统、自动化索引更新
+// 应用场景: AI 能力索引构建、工具/Forge搜索系统、自动化索引更新
 // =============================================================================
 
-__DESC__ = "Build search index for AI tools using BuildSearchIndexKnowledge"
+__DESC__ = "Build search index for AI Tools and AI Forges using BuildSearchIndexKnowledge"
 
 yakit.AutoInitYakit()
 
@@ -26,19 +26,19 @@ yakit.AutoInitYakit()
 // 所有参数均为可选，默认使用内置服务，无需额外配置
 // =============================================================================
 
-// 输出 RAG 文件路径（可选）
+// 输出 RAG 文件路径（必需）
 outputRagPath = cli.String(
     "output",
     cli.setVerboseName("输出路径"),
-    cli.setDefault(""),
-    cli.setHelp("Output RAG export file path (default: /tmp/aitool-search-index-{version}.rag)")
+    cli.setDefault("/tmp/ai-capabilities-{version}.rag"),
+    cli.setHelp("Output RAG export file path. Use {version} placeholder for Yak version. Example: /tmp/ai-capabilities-{version}.rag")
 )
 
-// 并发数（使用1避免数据库锁定问题）
+// 并发数
 maxConcurrency = cli.Int(
     "concurrency",
-    cli.setDefault(10),
-    cli.setHelp("Maximum number of concurrent processing tasks (use 1 to avoid database lock issues)")
+    cli.setDefault(5),
+    cli.setHelp("Maximum number of concurrent processing tasks")
 )
 
 cli.check()
@@ -47,30 +47,38 @@ cli.check()
 // 版本检测和输出路径配置
 // =============================================================================
 
-yakVersion = "dev"
-try {
-    versionInfo = version()
-    if versionInfo != nil && versionInfo["version"] != nil {
-        yakVersion = versionInfo["version"]
-    }
-} catch err {
-    // 忽略版本获取错误
+// 使用内置的 YAK_VERSION 变量获取版本
+yakVersion = YAK_VERSION
+if yakVersion == "" || yakVersion == undefined {
+    yakVersion = "dev"
 }
 
-if outputRagPath == "" {
-    outputRagPath = sprintf("/tmp/aitool-search-index-%s.rag", yakVersion)
-}
-
-log.info("=== AI Tool Search Index Builder ===")
+log.info("=== AI Capabilities Search Index Builder ===")
 log.info("🏷️  Yak Version: %s", yakVersion)
-log.info("📁 Output RAG: %s", outputRagPath)
+
+// 处理输出路径
+// 1. 如果包含 {version}，替换为实际版本
+// 2. 如果不以 .rag 结尾，追加 .rag
+finalOutputPath = outputRagPath
+
+// 替换 {version} 占位符
+if str.Contains(finalOutputPath, "{version}") {
+    finalOutputPath = str.Replace(finalOutputPath, "{version}", yakVersion, -1)
+}
+
+// 确保以 .rag 结尾
+if !str.HasSuffix(finalOutputPath, ".rag") {
+    finalOutputPath = finalOutputPath + ".rag"
+}
+
+log.info("📁 Output RAG: %s", finalOutputPath)
 log.info("⚡ Concurrency: %d", maxConcurrency)
 
 // =============================================================================
 // RAG 系统初始化
 // =============================================================================
 
-ragCollectionName = "yaklang-ai-tools"
+ragCollectionName = "yaklang-ai-capabilities"
 
 // 移除现有集合
 rag.DeleteCollection(ragCollectionName)
@@ -85,20 +93,13 @@ if err != nil {
 }
 
 log.info("✓ RAG system initialized successfully")
+log.info("   📚 Collection name: %s", ragCollectionName)
 
 // =============================================================================
-// 获取 AI 工具列表
+// 过滤函数：跳过 mock 和 测试工具/Forge
 // =============================================================================
 
-log.info("")
-log.info("=== Loading AI Tools ===")
-
-allTools = []
-toolCount = 0
-skippedCount = 0
-
-// 过滤函数：跳过 mock 和 测试工具
-shouldSkipTool = func(name) {
+shouldSkipItem = func(name) {
     lowerName = str.ToLower(name)
     // 过滤 mock_ 开头的工具（测试用）
     if str.HasPrefix(lowerName, "mock_") {
@@ -115,22 +116,80 @@ shouldSkipTool = func(name) {
     return false
 }
 
+// =============================================================================
+// 获取 AI 工具列表
+// =============================================================================
+
+log.info("")
+log.info("=== Loading AI Tools ===")
+
+allItems = []  // 统一存储所有待处理项
+toolCount = 0
+toolSkippedCount = 0
+
 for ins in db.YieldAllAITools() {
     toolName = ins.Name || ""
     // 过滤掉 mock 和 sleep 相关的工具
-    if shouldSkipTool(toolName) {
-        skippedCount++
+    if shouldSkipItem(toolName) {
+        toolSkippedCount++
+        log.debug("   ⏭️  Skipping mock/test tool: %s", toolName)
         continue
     }
-    allTools = append(allTools, ins)
+    // 封装为统一格式
+    item = {
+        "type": "tool",
+        "name": toolName,
+        "verbose_name": ins.VerboseName || toolName,
+        "description": ins.Description || "",
+        "keywords": ins.Keywords || [],
+        "content": ins.Content || "",
+    }
+    allItems = append(allItems, item)
     toolCount++
 }
 
-log.info("✓ Found %d AI tools to process (skipped %d mock/test tools)", toolCount, skippedCount)
+log.info("✓ Found %d AI tools to process (skipped %d mock/test tools)", toolCount, toolSkippedCount)
 
-if toolCount == 0 {
-    log.warn("⚠️  No AI tools found in database")
-    die("No AI tools to process")
+// =============================================================================
+// 获取 AI Forge 列表
+// =============================================================================
+
+log.info("")
+log.info("=== Loading AI Forges ===")
+
+forgeCount = 0
+forgeSkippedCount = 0
+
+for ins in db.YieldAllAIForges() {
+    forgeName = ins.ForgeName || ""
+    // 过滤掉 mock 和 sleep 相关的 Forge
+    if shouldSkipItem(forgeName) {
+        forgeSkippedCount++
+        log.debug("   ⏭️  Skipping mock/test forge: %s", forgeName)
+        continue
+    }
+    // 封装为统一格式
+    item = {
+        "type": "forge",
+        "name": forgeName,
+        "verbose_name": ins.ForgeVerboseName || forgeName,
+        "description": ins.Description || "",
+        "keywords": [],  // Forge 可能没有 keywords 字段
+        "content": ins.ForgeContent || "",
+    }
+    allItems = append(allItems, item)
+    forgeCount++
+}
+
+log.info("✓ Found %d AI forges to process (skipped %d mock/test forges)", forgeCount, forgeSkippedCount)
+
+totalCount = len(allItems)
+log.info("")
+log.info("📊 Total items to process: %d (Tools: %d, Forges: %d)", totalCount, toolCount, forgeCount)
+
+if totalCount == 0 {
+    log.warn("⚠️  No AI tools or forges found in database")
+    die("No items to process")
 }
 
 // =============================================================================
@@ -138,25 +197,31 @@ if toolCount == 0 {
 // =============================================================================
 
 wg = sync.NewSizedWaitGroup(maxConcurrency)
-resultsChan = make(chan map[string]any, toolCount)
+resultsChan = make(chan map[string]any, totalCount)
 
 // 统计变量
 totalQuestions = 0
 questionsMutex = sync.NewMutex()
 
-// 处理单个工具的函数
-processTool = func(toolIndex, totalTools, toolInfo) {
+// 处理单个项目的函数
+processItem = func(itemIndex, totalItems, itemInfo) {
     defer wg.Done()
 
-    toolName = toolInfo.Name || "unknown"
-    toolId = toolName
-    verboseName = toolInfo.VerboseName || toolName
-    description = toolInfo.Description || ""
-    keywords = toolInfo.Keywords || []
+    itemType = itemInfo["type"]
+    itemName = itemInfo["name"]
+    verboseName = itemInfo["verbose_name"]
+    description = itemInfo["description"]
+    keywords = itemInfo["keywords"]
+    content = itemInfo["content"]
+
+    typeLabel = "🔧 Tool"
+    if itemType == "forge" {
+        typeLabel = "🔨 Forge"
+    }
 
     result = {
-        "tool_name": toolName,
-        "tool_id": toolId,
+        "type": itemType,
+        "name": itemName,
         "verbose_name": verboseName,
         "description": description,
         "success": false,
@@ -167,9 +232,9 @@ processTool = func(toolIndex, totalTools, toolInfo) {
     try {
         log.info("")
         log.info("========================================")
-        log.info("📄 [%d/%d] Processing tool: %s", toolIndex, totalTools, toolName)
-        log.info("   🆔 Tool ID: %s", toolId)
-        if verboseName != toolName {
+        log.info("%s [%d/%d] Processing: %s", typeLabel, itemIndex, totalItems, itemName)
+        log.info("   🆔 ID: %s", itemName)
+        if verboseName != itemName {
             log.info("   📝 Verbose Name: %s", verboseName)
         }
         if description != "" {
@@ -184,54 +249,65 @@ processTool = func(toolIndex, totalTools, toolInfo) {
         }
         log.info("----------------------------------------")
 
-        // 构建工具描述文本（作为知识条目内容）
-        toolDescription = sprintf(`工具名称: %s
+        // 构建描述文本（作为知识条目内容）
+        keywordsStr = ""
+        if len(keywords) > 0 {
+            keywordsStr = str.Join(keywords, ", ")
+        }
+
+        itemTypeCN = "Yaklang AI 工具"
+        if itemType == "forge" {
+            itemTypeCN = "Yaklang AI Forge"
+        }
+
+        itemDescription = sprintf(`名称: %s
 显示名称: %s
+类型: %s
 功能描述: %s
 关键词: %s
-类型: Yaklang AI Tool
 
-这是一个 Yaklang AI 工具，可以用于:
+这是一个 %s，可以用于:
 - %s
 
 使用场景:
 - 安全测试和漏洞评估
 - 自动化任务执行
 - 集成到 Yaklang 安全测试框架`,
-            toolName,
+            itemName,
             verboseName,
+            itemTypeCN,
             description,
-            str.Join(keywords, ", "),
+            keywordsStr,
+            itemTypeCN,
             description || "安全测试任务")
 
         log.info("   🔨 Step 1: Building search index...")
-        log.info("   📝 Tool description length: %d bytes", len(toolDescription))
+        log.info("   📝 Description length: %d bytes", len(itemDescription))
 
-        // AI 工具场景的 extraPrompt - 强化工具意图识别
-        aiToolExtraPrompt = `
-【AI 工具搜索场景强化说明】
-这是一个 Yaklang AI 工具的描述信息，用于安全测试、自动化任务、信息收集等场景。
+        // AI 能力场景的 extraPrompt - 强化工具/Forge意图识别
+        aiCapabilityExtraPrompt = sprintf(`
+【AI 能力搜索场景强化说明】
+这是一个 %s 的描述信息，用于安全测试、自动化任务、信息收集等场景。
 
 生成问题时，请特别关注：
-1. 用户可能用什么自然语言描述来找到这个工具？（如："我想扫描端口" → 端口扫描工具）
-2. 用户可能遇到什么问题需要这个工具？（如："如何获取域名IP？" → DNS查询工具）
+1. 用户可能用什么自然语言描述来找到这个%s？（如："我想扫描端口" → 端口扫描工具）
+2. 用户可能遇到什么问题需要这个%s？（如："如何获取域名IP？" → DNS查询工具）
 3. 用户可能有什么安全测试需求？（如："检测网站漏洞" → 漏洞扫描工具）
 4. 使用场景描述（如："需要分析网络流量" → PCAP分析工具）
 
 问题应该覆盖：
 - 场景意图描述（"我想要..."、"需要..."）
-- 功能查询（"有什么工具可以..."）
+- 功能查询（"有什么工具可以..."、"有什么 Forge 可以..."）
 - 问题解决（"如何..."、"怎么..."）
 - 工具推荐（"用什么工具..."、"推荐一个..."）
-`
+`, itemTypeCN, itemTypeCN, itemTypeCN)
 
         // 使用 BuildSearchIndexKnowledge 构建搜索索引
-        // 这会：1) 存储知识条目 2) 生成问题索引 3) 关联问题到知识条目
         log.info("   🤖 Step 2: Calling AI to generate search questions...")
-        searchResult, buildErr = rag.BuildSearchIndexKnowledge(ragCollectionName, toolDescription, rag.extraPrompt(aiToolExtraPrompt))
+        searchResult, buildErr = rag.BuildSearchIndexKnowledge(ragCollectionName, itemDescription, rag.extraPrompt(aiCapabilityExtraPrompt))
         if buildErr != nil {
             log.error("   ❌ Failed to build search index: %v", buildErr)
-            log.error("   ❌ Error details: tool=%s, desc_len=%d", toolName, len(toolDescription))
+            log.error("   ❌ Error details: item=%s, type=%s, desc_len=%d", itemName, itemType, len(itemDescription))
             result["error"] = buildErr
             resultsChan <- result
             return
@@ -251,7 +327,7 @@ processTool = func(toolIndex, totalTools, toolInfo) {
         totalQuestions += questionsGenerated
         questionsMutex.Unlock()
 
-        log.info("   ✓ Successfully indexed tool: %s (entry_id: %s)", toolName, searchResult.EntryID)
+        log.info("   ✓ Successfully indexed %s: %s (entry_id: %s)", itemType, itemName, searchResult.EntryID)
         
         result["success"] = true
         result["questions_generated"] = questionsGenerated
@@ -259,23 +335,23 @@ processTool = func(toolIndex, totalTools, toolInfo) {
 
     } catch processErr {
         log.error("   ❌ Unexpected error: %v", processErr)
-        result["error"] = processErr
+        result["error"] = sprintf("%v", processErr)
     }
 
     resultsChan <- result
 }
 
 // =============================================================================
-// 并发处理 AI 工具
+// 并发处理 AI 能力项目
 // =============================================================================
 
 log.info("")
-log.info("=== Processing AI Tools (Concurrent, max %d) ===", maxConcurrency)
+log.info("=== Processing AI Capabilities (Concurrent, max %d) ===", maxConcurrency)
 
 // 启动并发处理
-for i, toolInfo := range allTools {
+for i, itemInfo := range allItems {
     wg.Add(1)
-    go processTool(i+1, toolCount, toolInfo)
+    go processItem(i+1, totalCount, itemInfo)
 }
 
 // 等待所有任务完成
@@ -285,30 +361,39 @@ close(resultsChan)
 // 收集结果
 successCount = 0
 failedCount = 0
-failedTools = []
+failedItems = []
+successfulTools = 0
+successfulForges = 0
 totalQuestionsFromResults = 0
 
 for result := range resultsChan {
     if result["success"] {
         successCount++
         totalQuestionsFromResults += result["questions_generated"]
+        if result["type"] == "tool" {
+            successfulTools++
+        } else {
+            successfulForges++
+        }
     } else {
         failedCount++
-        failedTools = append(failedTools, result["tool_name"])
+        failedItems = append(failedItems, sprintf("%s (%s)", result["name"], result["type"]))
     }
 }
 
 log.info("")
 log.info("=== Processing Results ===")
-log.info("📊 Total tools: %d", toolCount)
-log.info("✓ Successful: %d", successCount)
-log.info("✗ Failed: %d", failedCount)
+log.info("📊 Total items: %d", totalCount)
+log.info("   🔧 Tools: %d (success: %d)", toolCount, successfulTools)
+log.info("   🔨 Forges: %d (success: %d)", forgeCount, successfulForges)
+log.info("✓ Total successful: %d", successCount)
+log.info("✗ Total failed: %d", failedCount)
 log.info("📚 Total questions generated: %d", totalQuestions)
 
 if failedCount > 0 {
-    log.warn("Failed tools:")
-    for i, toolName := range failedTools {
-        log.warn("  %d. %s", i+1, toolName)
+    log.warn("Failed items:")
+    for i, itemName := range failedItems {
+        log.warn("  %d. %s", i+1, itemName)
     }
 }
 
@@ -337,21 +422,21 @@ log.info("")
 log.info("=== Exporting RAG File ===")
 
 try {
-    err = rag.Export(ragCollectionName, outputRagPath)
+    err = rag.Export(ragCollectionName, finalOutputPath)
     if err != nil {
         log.error("❌ Failed to export RAG file: %v", err)
         die(sprintf("Failed to export RAG file: %v", err))
     }
 
-    if !file.IsExisted(outputRagPath) {
-        log.error("❌ Export succeeded but file does not exist: %s", outputRagPath)
+    if !file.IsExisted(finalOutputPath) {
+        log.error("❌ Export succeeded but file does not exist: %s", finalOutputPath)
         die("Failed to verify exported RAG file")
     }
 
-    fileInfo = file.Stat(outputRagPath)~
+    fileInfo = file.Stat(finalOutputPath)~
     fileSize = fileInfo.Size()
 
-    log.info("✓ RAG file exported: %s", outputRagPath)
+    log.info("✓ RAG file exported: %s", finalOutputPath)
     log.info("   📏 File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
 
 } catch exportErr {
@@ -366,24 +451,31 @@ try {
 log.info("")
 log.info("=== Generating Build Report ===")
 
-reportPath = str.Replace(outputRagPath, ".rag", ".build-report.md", 1)
+reportPath = str.Replace(finalOutputPath, ".rag", ".build-report.md", 1)
 
-report = sprintf("# AI 工具搜索索引构建报告\n\n")
+report = sprintf("# AI 能力搜索索引构建报告\n\n")
 report += sprintf("**构建时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 report += sprintf("**Yak 版本**: %s\n\n", yakVersion)
-report += sprintf("**RAG 文件**: %s\n\n", outputRagPath)
+report += sprintf("**RAG 文件**: %s\n\n", finalOutputPath)
 report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
 
 report += "## 索引结构\n\n"
 report += "本索引采用 **知识条目 -> 多问题索引** 的结构：\n\n"
-report += "- **知识条目 (knowledge_entry)**: 存储工具的完整描述信息\n"
+report += "- **知识条目 (knowledge_entry)**: 存储工具/Forge的完整描述信息\n"
 report += "- **问题索引 (question_index)**: 每个知识条目对应多个搜索问题\n"
 report += "- 问题索引通过 `entry_id` 关联到知识条目\n\n"
+
+report += "## 数据来源\n\n"
+report += "本索引包含以下两类 AI 能力：\n\n"
+report += sprintf("- **AI Tools** (`db.YieldAllAITools()`): %d 个\n", toolCount)
+report += sprintf("- **AI Forges** (`db.YieldAllAIForges()`): %d 个\n\n", forgeCount)
 
 report += "## 构建统计\n\n"
 report += sprintf("| 指标 | 数值 |\n")
 report += sprintf("|------|------|\n")
-report += sprintf("| AI 工具总数 | %d |\n", toolCount)
+report += sprintf("| AI Tools 总数 | %d |\n", toolCount)
+report += sprintf("| AI Forges 总数 | %d |\n", forgeCount)
+report += sprintf("| 总处理项目 | %d |\n", totalCount)
 report += sprintf("| 成功处理 | %d |\n", successCount)
 report += sprintf("| 处理失败 | %d |\n", failedCount)
 report += sprintf("| 知识条目数 | %d |\n", successCount)
@@ -391,18 +483,24 @@ report += sprintf("| 问题索引数 | %d |\n", totalQuestions)
 report += sprintf("| 总文档数 | %d |\n\n", finalDocCount)
 
 if failedCount > 0 {
-    report += "## 处理失败的工具\n\n"
-    for i, toolName := range failedTools {
-        report += sprintf("%d. %s\n", i+1, toolName)
+    report += "## 处理失败的项目\n\n"
+    for i, itemName := range failedItems {
+        report += sprintf("%d. %s\n", i+1, itemName)
     }
     report += "\n"
 }
+
+report += "## 过滤规则\n\n"
+report += "以下类型的工具/Forge 被自动过滤：\n\n"
+report += "- 名称以 `mock_` 开头\n"
+report += "- 名称包含 `mock`\n"
+report += "- 名称为 `sleep` 或以 `sleep_` 开头\n\n"
 
 report += "## 搜索说明\n\n"
 report += "搜索时，系统会：\n\n"
 report += "1. 通过问题索引进行语义搜索\n"
 report += "2. 找到匹配的问题后，通过 `entry_id` 获取对应的知识条目\n"
-report += "3. 返回完整的工具信息\n\n"
+report += "3. 返回完整的工具/Forge信息\n\n"
 
 report += "### Metadata 字段说明\n\n"
 report += "| 字段 | 说明 |\n"
@@ -410,6 +508,7 @@ report += "|------|------|\n"
 report += "| `index_type` | 文档类型：`knowledge_entry` 或 `question_index` |\n"
 report += "| `entry_id` | 知识条目的唯一标识符 |\n"
 report += "| `question_index` | 问题文本（仅 question_index 类型有） |\n"
+report += "| `type` | 能力类型：`tool` 或 `forge` |\n"
 
 // 保存报告
 file.Save(reportPath, report)~
@@ -421,17 +520,18 @@ log.info("✓ Build report generated: %s", reportPath)
 
 log.info("")
 log.info("=== Build Complete ===")
-log.info("✓ AI Tools search index built successfully")
-log.info("   📁 RAG File: %s", outputRagPath)
+log.info("✓ AI Capabilities search index built successfully")
+log.info("   📁 RAG File: %s", finalOutputPath)
 log.info("   📄 Report: %s", reportPath)
-log.info("   📊 Tools: %d processed", successCount)
+log.info("   📊 Items: %d processed (%d tools, %d forges)", successCount, successfulTools, successfulForges)
 log.info("   📚 Questions: %d generated", totalQuestions)
 log.info("")
 log.info("🔍 To search the index, run:")
-log.info("   go run common/yak/cmd/yak.go scripts/search-aitool-search-index.yak --rag-file %s --query \"your query\"", outputRagPath)
+log.info("   go run common/yak/cmd/yak.go scripts/search-aitool-search-index.yak --rag-file %s --query \"your query\"", finalOutputPath)
 
 if failedCount > 0 {
     os.Exit(1)
 } else {
     os.Exit(0)
 }
+
