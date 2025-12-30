@@ -1,0 +1,798 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// AI 工具搜索索引构建工具 - Build AI Tool Search Index
+// 功能: 从数据库中获取所有 AI 工具，使用 liteforge 生成问题索引，构建 RAG 搜索功能
+// 用途: 为 AI 工具构建可搜索的索引，提高工具发现和使用效率
+//
+// 核心技术栈:
+// - db.YieldAllAITools(): 获取所有 AI 工具
+// - liteforge.Invoke(): 调用工具生成索引
+// - rag.Insert(): 插入 RAG 索引
+// - embedding: 向量嵌入服务
+//
+// 新特性:
+// - 自动遍历所有 AI 工具
+// - liteforge 动态索引生成
+// - RAG 系统集成搜索
+// - 进度跟踪和错误处理
+//
+// 使用示例:
+// go run common/yak/cmd/yak.go scripts/build-aitool-search-index.yak --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret --ai-api-key YOUR_KEY --ai-api-model MODEL_NAME --ai-api-domain api.example.com
+// (输出文件将自动命名为 aitool-search-index-{version}.rag)
+//
+// 应用场景: AI 工具索引构建、工具搜索系统、自动化索引更新
+// 关键词: ai-tools indexing liteforge rag-search tool-discovery
+// 搜索标签: #ai-tools #indexing #liteforge #rag #tool-search
+// =============================================================================
+
+__DESC__ = "Build search index for AI tools using liteforge and RAG"
+
+yakit.AutoInitYakit()
+
+// =============================================================================
+// 执行说明
+// 使用 go run 执行此脚本（确保代码最新）：
+// go run common/yak/cmd/yak.go scripts/build-aitool-search-index.yak --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret --ai-api-key YOUR_KEY --ai-api-model MODEL_NAME --ai-api-domain api.example.com
+//
+// 或者使用已安装的 yak 命令：
+// yak scripts/build-aitool-search-index.yak --embedding-host 127.0.0.1 --embedding-port 9099 --totp-secret my-secret --ai-api-key YOUR_KEY --ai-api-model MODEL_NAME --ai-api-domain api.example.com
+//
+// 输出文件将自动命名为：aitool-search-index-{version}.rag（其中 {version} 为当前 yak 引擎版本）
+// =============================================================================
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// 功能: 定义脚本的命令行参数，配置输出路径、embedding 服务等
+// =============================================================================
+
+// 输出 RAG 文件路径（可选，默认使用版本化命名）
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setDefault(""),
+    cli.setHelp("Output RAG export file path for AI tools index (default: aitool-search-index-{version}.rag)")
+)
+
+// Yak 版本参数（可选，默认自动检测）
+versionParam = cli.String(
+    "version",
+    cli.setVerboseName("版本"),
+    cli.setDefault(""),
+    cli.setHelp("Yak engine version (default: auto-detect)")
+)
+
+ragCollectionName = "yaklang-ai-tools"
+
+// 全局RAG系统变量
+ragSystem = nil
+
+// 全局计数器变量
+successCount = 0
+failedCount = 0
+failedTools = []
+
+// Embedding 服务器地址（内置服务，无需配置）
+embeddingHost = cli.String(
+    "embedding-host",
+    cli.setDefault(""),
+    cli.setHelp("Embedding server address (leave empty to use built-in service)")
+)
+
+// Embedding 服务器端口（内置服务，无需配置）
+embeddingPort = cli.Int(
+    "embedding-port",
+    cli.setDefault(0),
+    cli.setHelp("Embedding server port (leave empty to use built-in service)")
+)
+
+// TOTP 密钥（可选，如果 embedding 服务需要验证）
+totpSecret = cli.String(
+    "totp-secret",
+    cli.setDefault(""),
+    cli.setHelp("TOTP secret for embedding service authentication (optional)")
+)
+
+// 超时时间（秒）
+timeout = cli.Int(
+    "timeout",
+    cli.setDefault(30),
+    cli.setHelp("HTTP request timeout in seconds")
+)
+
+// AI API Model（可选，用于指定模型）
+AIAPIModel = cli.String(
+    "ai-api-model",
+    cli.setDefault(""),
+    cli.setHelp("AI API Model for AI service (optional, uses built-in config if not specified)")
+)
+
+// AI API Domain（可选）
+AIAPIDomain = cli.String(
+    "ai-api-domain",
+    cli.setDefault(""),
+    cli.setHelp("AI API Domain for AI service (optional, uses built-in config if not specified)")
+)
+
+cli.check()
+
+// =============================================================================
+// 获取 Yak 版本并设置默认输出路径
+// =============================================================================
+
+// 获取当前 Yak 引擎版本
+yakVersion = "dev"  // 默认版本
+if versionParam != "" {
+    yakVersion = versionParam
+}
+
+log.info("Yak Engine Version: %s", yakVersion)
+
+// 如果没有指定输出路径，使用默认的版本化命名
+if outputRagPath == "" {
+    outputRagPath = sprintf("aitool-search-index-%s.rag", yakVersion)
+    log.info("Using default output path: %s", outputRagPath)
+}
+
+// =============================================================================
+// 参数验证模块
+// =============================================================================
+
+if outputRagPath == "" {
+    die("Required parameter: --output")
+}
+
+log.info("=== AI Tools Index Builder Configuration ===")
+log.info("Output: %s", outputRagPath)
+log.info("Collection: %s", ragCollectionName)
+if embeddingHost == "" || embeddingPort == 0 {
+    log.info("Embedding Service: Built-in (aibalance free)")
+} else {
+    log.info("Embedding Server: %s:%d", embeddingHost, embeddingPort)
+}
+if totpSecret != "" {
+    log.info("TOTP Auth: Enabled")
+} else {
+    log.info("TOTP Auth: Disabled")
+}
+if AIAPIModel != "" {
+    log.info("AI API Model: %s", AIAPIModel)
+}
+if AIAPIDomain != "" {
+    log.info("AI API Domain: %s", AIAPIDomain)
+}
+log.info("Using built-in AI configuration")
+
+// =============================================================================
+// 工具函数定义
+// 功能: 修复内置函数的已知问题
+// =============================================================================
+
+// 修复 len 函数 - 正确计算 rune 数量而不是 byte 数量
+len = (s) => {
+    n = 0
+    for i in s {
+        n++
+    }
+    return n
+}
+
+// =============================================================================
+// Embedding 处理函数定义
+// 功能: 封装 embedding 请求逻辑，支持 TOTP 验证
+// =============================================================================
+
+prod_env_embeddingHandle = func(text) {
+    if text == "" {
+        log.error("Empty text for embedding")
+        return nil
+    }
+
+    // 优化日志输出：显示文本预览
+    if len(text) <= 100 {
+        log.info("Generating embedding for text (length: %d): %s", len(text), text)
+    } else {
+        preview = str.TrimSpace(text[:100])
+        log.info("Generating embedding for text (length: %d), preview: %s...", len(text), preview)
+    }
+
+    // 如果配置了 TOTP，生成验证码
+    totpCode = ""
+    if totpSecret != "" {
+        totpCode = twofa.GetUTCCode(totpSecret)
+        currentTime = time.Now().Unix()
+        log.info("Generated TOTP code: %s (timestamp: %d)", totpCode, currentTime)
+    }
+
+    // 构建请求体
+    requestBody = json.dumps({
+        "input": text,
+        "model": "embedding",
+    })
+
+    // 构建 HTTP 请求
+    httpRequest = sprintf(`POST /embeddings HTTP/1.1
+Host: %s
+Content-Type: application/json`, embeddingHost)
+
+    // 如果有 TOTP，添加验证头
+    if totpCode != "" {
+        httpRequest = sprintf(`%s
+X-TOTP-Code: %s`, httpRequest, totpCode)
+    }
+
+    httpRequest = sprintf(`%s
+Content-Length: %d
+
+%s`, httpRequest, len(requestBody), requestBody)
+
+    // 发送请求
+    try {
+        rsp, _, err = poc.HTTP(
+            httpRequest,
+            poc.host(embeddingHost),
+            poc.port(embeddingPort),
+            poc.https(true),
+            poc.timeout(timeout),
+        )
+
+        if err != nil {
+            log.error("Failed to send embedding request: %v", err)
+            return nil
+        }
+
+        // 获取状态码
+        statusCode = poc.GetStatusCodeFromResponse(rsp)
+
+        if statusCode != 200 {
+            log.error("Embedding request failed with status code: %d", statusCode)
+            _, body = poc.Split(rsp)
+            log.error("Response body: %s", string(body))
+            return nil
+        }
+
+        // 解析响应
+        _, body = poc.Split(rsp)
+        responseData = json.loads(body)
+
+        if responseData["data"] == nil || len(responseData["data"]) == 0 {
+            log.error("No embedding data in response")
+            return nil
+        }
+
+        embeddingData = responseData["data"][0]
+        embedding = embeddingData["embedding"]
+
+        log.info("Embedding generated successfully (dimension: %d)", len(embedding))
+        return embedding
+
+    } catch embeddingErr {
+        log.error("Failed to generate embedding: %v", embeddingErr)
+        return nil
+    }
+}
+
+// 带重试的 embedding 处理函数
+prod_env_embeddingHandle_with_retry = func(text) {
+    maxRetries = 5
+    for i = 0; i < maxRetries; i++ {
+        if i > 0 {
+            log.warn("🔄 [RETRY %d/%d] Retrying embedding request...", i, maxRetries-1)
+        }
+
+        result = prod_env_embeddingHandle(text)
+        if result != nil {
+            if i > 0 {
+                log.info("✓ Embedding succeeded after %d retries", i)
+            }
+            return result
+        }
+
+        if i < maxRetries - 1 {
+            // 等待时间递增：第1次重试等1秒，第2次等2秒，第3次等3秒，第4次等4秒
+            // 这样可以让 TOTP 有更大机会切换到新的时间窗口
+            waitSeconds = i + 1
+            log.warn("⏳ Embedding failed, waiting %d seconds before retry...", waitSeconds)
+            time.Sleep(waitSeconds)
+        }
+    }
+
+    log.error("❌ Embedding failed after %d attempts, giving up", maxRetries)
+    return nil
+}
+
+embeddingHandle = prod_env_embeddingHandle_with_retry
+
+// =============================================================================
+// RAG 集合创建模块
+// 功能: 创建新的 AI 工具 RAG 集合
+// =============================================================================
+
+log.info("")
+log.info("=== Step 1: Creating AI Tools RAG collection ===")
+
+// 移除现有集合
+rag.DeleteCollection(ragCollectionName)
+log.info("✓ New RAG collection created: %s", ragCollectionName)
+
+// =============================================================================
+// 加载 RAG Collection
+// 功能: 使用内置 embedding 服务加载 RAG 集合
+// =============================================================================
+
+log.info("")
+log.info("=== Step 2: Loading RAG collection ===")
+
+var err
+// 如果没有指定外部embedding服务器，使用内置服务
+if embeddingHost == "" || embeddingPort == 0 {
+    log.info("Using built-in embedding service")
+    ragSystem, err = rag.Get(ragCollectionName)
+} else {
+    log.info("Using external embedding service: %s:%d", embeddingHost, embeddingPort)
+    ragSystem, err = rag.Get(ragCollectionName, rag.embeddingHandle(embeddingHandle))
+}
+
+if err != nil {
+    log.error("Failed to load RAG collection: %v", err)
+    die(sprintf("Failed to load RAG collection: %v", err))
+}
+
+log.info("✓ RAG collection loaded successfully: %s", ragCollectionName)
+
+// =============================================================================
+// 获取并处理 AI 工具 (并发优化版本)
+// 功能: 使用并发模型遍历所有 AI 工具，使用 liteforge 生成索引，插入 RAG 系统
+// =============================================================================
+
+log.info("")
+log.info("=== Step 3: Processing AI Tools (Concurrent) ===")
+
+totalTools = 0
+processedTools = 0
+
+// 首先统计工具总数
+for ins in db.YieldAllAITools() {
+    totalTools++
+}
+
+log.info("Found %d AI tools to process", totalTools)
+
+// 创建并发控制
+maxConcurrency = 5  // 最大并发数，增加并发提升处理速度
+wg = sync.NewSizedWaitGroup(maxConcurrency)
+
+log.info("Using concurrent processing with max concurrency: %d", maxConcurrency)
+
+// 定义处理单个工具的函数
+processTool = func(toolInfo, toolIndex) {
+    defer wg.Done()
+
+    toolId = toolInfo["name"]
+    toolName = toolInfo["name"]
+
+    log.info("[%d/%d] Processing AI Tool: %s (ID: %s)", toolIndex, totalTools, toolName, toolId)
+
+    // 使用全局变量计数，不再使用result map
+
+    try {
+        // 构建工具的索引内容（包含描述信息）
+        content = sprintf("工具名称: %s\n", toolName)
+        if toolInfo["description"] != "" {
+            content += sprintf("描述: %s\n", toolInfo["description"])
+        }
+        if len(toolInfo["keywords"]) > 0 {
+            content += sprintf("关键词: %s\n", str.Join(toolInfo["keywords"], ", "))
+        }
+        if toolInfo["verboseName"] != "" {
+            content += sprintf("详细名称: %s\n", toolInfo["verboseName"])
+        }
+
+        log.info("  Processing tool: %s (description length: %d)", toolName, len(content))
+
+        // 构建AI问题生成提示（包含代码以获得更好的问题质量）
+        questionPromptContent = content
+        // 尝试添加代码内容（不超过10k字节）
+        if toolInfo["content"] != "" && toolInfo["content"] != nil {
+            codeContent = sprintf("\n代码示例:\n%s", toolInfo["content"])
+            if len(questionPromptContent) + len(codeContent) <= 10000 {
+                questionPromptContent += codeContent
+                log.info("  Added code content to AI prompt (total: %d bytes)", len(questionPromptContent))
+            } else {
+                // 如果加上代码会超过10k，只添加部分代码
+                maxCodeLen = 10000 - len(questionPromptContent) - 50
+                if maxCodeLen > 100 {
+                    truncatedCode = sprintf("\n代码示例:\n%s...", toolInfo["content"][:maxCodeLen])
+                    questionPromptContent += truncatedCode
+                    log.info("  Added truncated code content to AI prompt (total: %d bytes)", len(questionPromptContent))
+                }
+            }
+        }
+
+        // 使用AI生成工具的搜索问题索引
+        log.info("  Generating search questions using AI...")
+        questionPrompt = sprintf(`请为以下AI工具生成5个搜索问题，这些问题应该是一个用户可能用来查找这个工具的自然语言查询。要求：
+1. 问题要具体、实用
+2. 涵盖工具的主要功能
+3. 使用不同的表述方式
+4. 每个问题不超过50个字符
+
+工具信息：
+%s
+
+请以JSON格式返回：
+{
+  "questions": ["问题1", "问题2", "问题3", "问题4", "问题5"]
+}`, questionPromptContent)
+
+        // 确保内容不超长，限制在2000字节以内
+        if len(questionPrompt) > 2000 {
+            questionPrompt = questionPrompt[:2000] + "..."
+            log.info("  Content truncated to 2000 bytes for AI processing")
+        }
+
+        // 使用liteforge.Execute生成问题索引
+        schema = jsonschema.ActionObject(
+            jsonschema.paramObjectArray("questions",
+                jsonschema.title("生成的搜索问题列表"),
+                jsonschema.required(),
+                jsonschema.paramString("question",
+                    jsonschema.description("生成的搜索问题"),
+                    jsonschema.required()
+                )
+            )
+        )
+
+        result = liteforge.Execute(questionPrompt, liteforge.output(schema))~
+        log.info("  LiteForge executed successfully, result type: %T", result)
+
+        if result != nil {
+            log.info("  AI generated questions successfully")
+
+            // 使用正确的方法获取结果
+            questions = result.GetInvokeParamsArray("questions")
+            log.info("  Successfully extracted %d questions", len(questions))
+
+            if questions != nil && len(questions) > 0 {
+                log.info("  Generated %d questions for tool %s", len(questions), toolName)
+
+                // 将每个问题作为索引存储到RAG（添加元信息）
+                questionIndex = 0
+                for questionObj in questions {
+                    questionIndex++
+                    questionText = questionObj.GetString("question")
+                    indexId = sprintf("%s_q%d", toolId, questionIndex)
+                    questionContent = sprintf("问题: %s\n工具: %s", questionText, toolName)
+
+                    // 添加元信息
+                    metadata = [
+                        rag.docMetadata("tool_name", toolName),
+                        rag.docMetadata("tool_id", toolId),
+                        rag.docMetadata("yak_version", yakVersion),
+                        rag.docMetadata("index_type", "question"),
+                        rag.docMetadata("question_text", questionText),
+                        rag.docMetadata("question_index", sprintf("%d", questionIndex))
+                    ]
+
+                    err = ragSystem.Add(indexId, questionContent, metadata...)
+                    if err != nil {
+                        log.error("  Failed to insert question index %s: %v", indexId, err)
+                    } else {
+                        log.info("  ✓ Inserted question index: %s", questionText)
+                    }
+                }
+
+                // 同时存储原始工具描述作为基础索引（添加元信息）
+                baseIndexId = sprintf("%s_base", toolId)
+                baseContent = sprintf("工具名称: %s\n描述: %s\n关键词: %s",
+                    toolName,
+                    toolInfo["description"] || "无描述",
+                    str.Join(toolInfo["keywords"] || [], ", "))
+
+                // 添加基础索引的元信息
+                baseMetadata = [
+                    rag.docMetadata("tool_name", toolName),
+                    rag.docMetadata("tool_id", toolId),
+                    rag.docMetadata("yak_version", yakVersion),
+                    rag.docMetadata("index_type", "base"),
+                    rag.docMetadata("verbose_name", toolInfo["verboseName"] || ""),
+                    rag.docMetadata("keywords", str.Join(toolInfo["keywords"] || [], ", "))
+                ]
+
+                err = ragSystem.Add(baseIndexId, baseContent, baseMetadata...)
+                if err != nil {
+                    log.error("  Failed to insert base index %s: %v", baseIndexId, err)
+                } else {
+                    log.info("  ✓ Inserted base index for tool: %s", toolName)
+                }
+
+                log.info("✓ [%d/%d] Successfully processed tool: %s (%d questions generated)", toolIndex, totalTools, toolName, len(questions))
+                successCount++
+
+            } else {
+                log.warn("  No valid questions generated, using fallback")
+                throw("No valid questions in AI response")
+            }
+        } else {
+            log.warn("  AI question generation failed for tool %s, using fallback", toolName)
+            // 回退到基础索引
+            baseIndexId = sprintf("%s_base", toolId)
+            baseContent = sprintf("工具名称: %s\n描述: %s\n关键词: %s",
+                toolName,
+                toolInfo["description"] || "无描述",
+                str.Join(toolInfo["keywords"] || [], ", "))
+
+            // 添加基础索引的元信息（回退情况）
+            baseMetadata = [
+                rag.docMetadata("tool_name", toolName),
+                rag.docMetadata("tool_id", toolId),
+                rag.docMetadata("yak_version", yakVersion),
+                rag.docMetadata("index_type", "base_fallback"),
+                rag.docMetadata("verbose_name", toolInfo["verboseName"] || ""),
+                rag.docMetadata("keywords", str.Join(toolInfo["keywords"] || [], ", "))
+            ]
+
+            err = ragSystem.Add(baseIndexId, baseContent, baseMetadata...)
+            if err != nil {
+                log.error("  Failed to insert fallback index %s: %v", baseIndexId, err)
+                log.info("✗ [%d/%d] Failed to process tool: %s", toolIndex, totalTools, toolName)
+                failedCount++
+                failedTools = append(failedTools, toolName)
+            } else {
+                log.info("  ✓ Inserted fallback index for tool: %s", toolName)
+                log.info("✓ [%d/%d] Successfully processed tool with fallback: %s", toolIndex, totalTools, toolName)
+                successCount++
+            }
+        }
+
+    } catch processErr {
+        log.error("✗ [%d/%d] Failed to process tool %s: %v", toolIndex, totalTools, toolName, processErr)
+        failedCount++
+        failedTools = append(failedTools, toolName)
+    }
+
+    // 处理完成，不再需要发送结果
+}
+
+// 启动并发处理
+toolIndex = 0
+for ins in db.YieldAllAITools() {
+    toolIndex++
+    wg.Add(1)
+    // 创建工具信息的副本，避免并发访问问题
+    toolInfo = {
+        "name": ins.Name,
+        "description": ins.Description,
+        "verboseName": ins.VerboseName,
+        "keywords": ins.Keywords
+    }
+    go processTool(toolInfo, toolIndex)
+}
+
+// 等待所有并发任务完成
+wg.Wait()
+
+log.info("")
+log.info("=== Processing Results ===")
+log.info("Success: %d tools", successCount)
+log.info("Failed: %d tools", failedCount)
+
+if failedCount > 0 {
+    log.warn("Failed tools:")
+    for i, toolName := range failedTools {
+        log.warn("  %d. %s", i+1, toolName)
+    }
+}
+
+// =============================================================================
+// 导出 RAG 文件
+// 功能: 将构建好的 AI 工具索引 RAG 导出到文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 4: Exporting AI Tools RAG file ===")
+
+try {
+    err = rag.Export(ragCollectionName, outputRagPath)
+    if err != nil {
+        log.error("Failed to export RAG: %v", err)
+        die(sprintf("Failed to export RAG to %s", outputRagPath))
+    }
+
+    // 验证导出的文件
+    if !file.IsExisted(outputRagPath) {
+        log.error("Export succeeded but file does not exist: %s", outputRagPath)
+        die("Failed to verify exported RAG file")
+    }
+
+    // 获取文件大小
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+
+    log.info("✓ AI Tools RAG file exported successfully: %s", outputRagPath)
+    log.info("  File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
+
+} catch exportErr {
+    log.error("Failed to export RAG: %v", exportErr)
+    die(sprintf("Failed to export RAG: %v", exportErr))
+}
+
+// =============================================================================
+// 生成报告
+// 功能: 生成 Markdown 格式的构建报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 5: Generating build report ===")
+
+reportPath = str.Replace(outputRagPath, ".rag", ".build-report.md", 1)
+
+reportLines = []
+reportLines = append(reportLines, "# AI 工具索引构建报告\n")
+reportLines = append(reportLines, sprintf("**构建时间**: %s\n", time.Now().Format("2006-01-02 15:04:05")))
+reportLines = append(reportLines, sprintf("**Yak 版本**: %s\n", yakVersion))
+reportLines = append(reportLines, sprintf("**输出 RAG**: %s\n", outputRagPath))
+reportLines = append(reportLines, sprintf("**集合名称**: %s\n\n", ragCollectionName))
+reportLines = append(reportLines, "## 处理统计\n\n")
+reportLines = append(reportLines, sprintf("- AI 工具总数: %d\n", totalTools))
+reportLines = append(reportLines, sprintf("- 成功处理: %d\n", successCount))
+reportLines = append(reportLines, sprintf("- 处理失败: %d\n\n", failedCount))
+
+if successCount > 0 {
+    reportLines = append(reportLines, "## 成功处理的工具\n\n")
+    idx = 1
+    for ins in db.YieldAllAITools() {
+        toolName = ins.Name
+        isFailed := false
+        for _, failedTool := range failedTools {
+            if failedTool == toolName {
+                isFailed = true
+                break
+            }
+        }
+
+        if !isFailed {
+            reportLines = append(reportLines, sprintf("%d. %s\n", idx, toolName))
+            idx++
+        }
+    }
+    reportLines = append(reportLines, "\n")
+}
+
+if failedCount > 0 {
+    reportLines = append(reportLines, "## 处理失败的工具\n\n")
+    for i, toolName := range failedTools {
+        reportLines = append(reportLines, sprintf("%d. %s\n", i+1, toolName))
+    }
+    reportLines = append(reportLines, "\n")
+}
+
+reportLines = append(reportLines, "## Embedding 配置\n\n")
+reportLines = append(reportLines, sprintf("- 服务器: %s:%d\n", embeddingHost, embeddingPort))
+if totpSecret != "" {
+    reportLines = append(reportLines, "- TOTP 认证: 启用\n")
+} else {
+    reportLines = append(reportLines, "- TOTP 认证: 禁用\n")
+}
+reportLines = append(reportLines, sprintf("- 超时时间: %d 秒\n\n", timeout))
+reportLines = append(reportLines, "## 输出文件信息\n\n")
+reportLines = append(reportLines, sprintf("- 文件路径: %s\n", outputRagPath))
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    reportLines = append(reportLines, sprintf("- 文件大小: %d bytes (%.2f MB)\n", fileSize, float64(fileSize)/1024/1024))
+}
+
+reportContent = str.Join(reportLines, "")
+
+// 保存报告
+err = file.Save(reportPath, reportContent)
+if err != nil {
+    log.warn("Failed to write report: %v", err)
+} else {
+    log.info("✓ Build report generated: %s", reportPath)
+}
+
+// 打印报告到控制台
+println("")
+println(reportContent)
+
+// =============================================================================
+// 生成 JSON 报告
+// 功能: 生成机器可读的 JSON 格式构建报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 6: Generating JSON report ===")
+
+jsonReportPath = str.Replace(outputRagPath, ".rag", ".build-report.json", 1)
+
+// 获取输出文件信息
+outputFileSize = 0
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    outputFileSize = fileInfo.Size()
+}
+
+// 收集成功和失败的工具列表
+successTools = []
+for ins in db.YieldAllAITools() {
+    toolName = ins.Name
+    isFailed := false
+    for _, failedTool := range failedTools {
+        if failedTool == toolName {
+            isFailed = true
+            break
+        }
+    }
+    if !isFailed {
+        successTools = append(successTools, toolName)
+    }
+}
+
+// 构建 JSON 数据结构
+jsonData = {
+    "build_time": time.Now().Format("2006-01-02 15:04:05"),
+    "build_timestamp": time.Now().Unix(),
+    "yak_version": yakVersion,
+    "status": failedCount == 0 ? "success" : "partial_failure",
+    "config": {
+        "output_rag": outputRagPath,
+        "collection_name": ragCollectionName,
+        "embedding_host": "***",
+        "embedding_port": "***",
+        "totp_enabled": totpSecret != "",
+        "timeout": timeout,
+        "ai_api_model": "***",
+        "ai_api_domain": "***",
+    },
+    "statistics": {
+        "total_tools": totalTools,
+        "success_count": successCount,
+        "failed_count": failedCount,
+    },
+    "tools": {
+        "success": successTools,
+        "failed": failedTools,
+    },
+    "output": {
+        "rag_file": outputRagPath,
+        "rag_file_size_bytes": outputFileSize,
+        "rag_file_size_mb": sprintf("%.2f", float64(outputFileSize)/1024/1024),
+        "markdown_report": reportPath,
+        "json_report": jsonReportPath,
+    },
+}
+
+// 转换为 JSON 字符串
+jsonString = json.dumps(jsonData)
+
+// 保存 JSON 报告
+err = file.Save(jsonReportPath, jsonString)
+if err != nil {
+    log.warn("Failed to write JSON report: %v", err)
+} else {
+    log.info("✓ JSON report generated: %s", jsonReportPath)
+}
+
+// =============================================================================
+// 总结输出
+// =============================================================================
+
+log.info("")
+log.info("=== Build Summary ===")
+log.info("✓ AI Tools index build completed for Yak v%s", yakVersion)
+log.info("  - Total tools: %d", totalTools)
+log.info("  - Success: %d tools", successCount)
+log.info("  - Failed: %d tools", failedCount)
+log.info("  - Output: %s", outputRagPath)
+log.info("  - Report: %s", reportPath)
+log.info("  - JSON Report: %s", jsonReportPath)
+
+if failedCount > 0 {
+    log.warn("⚠️  Some tools failed to process, please check the report")
+    os.Exit(1)
+} else {
+    log.info("✓ All tools processed successfully")
+    os.Exit(0)
+}
