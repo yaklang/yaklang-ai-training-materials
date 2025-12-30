@@ -340,50 +340,150 @@ log.info("🔎 搜索关键词: %s", searchQuery)
 log.info("📏 最大结果数: %d", limit)
 
 searchResults = []
+allResults = []
+
+// 定义结果处理函数
+processSearchResult = func(result, searchType) {
+    // 优先从 KnowledgeBaseEntry 获取知识条目信息
+    kbEntry = result.KnowledgeBaseEntry
+    
+    // 从 Document.Metadata 中获取工具相关信息
+    metadata = result.Document.Metadata
+    toolName = metadata["tool_name"] || ""
+    toolVerboseName = metadata["verbose_name"] || ""
+    toolDescription = metadata["description"] || ""
+    indexType = metadata["index_type"] || "question"
+    questionText = metadata["question_text"] || ""
+    
+    // 如果有关联的知识条目，从 KnowledgeDetails 中解析工具信息
+    knowledgeTitle = ""
+    knowledgeDetails = ""
+    if kbEntry != nil {
+        knowledgeTitle = kbEntry.KnowledgeTitle
+        knowledgeDetails = kbEntry.KnowledgeDetails
+        
+        // 从 KnowledgeDetails 解析工具信息
+        if knowledgeDetails != "" {
+            lines = str.Split(knowledgeDetails, "\n")
+            for _, line := range lines {
+                line = str.TrimSpace(line)
+                if str.HasPrefix(line, "工具名称:") && toolName == "" {
+                    toolName = str.TrimSpace(str.TrimPrefix(line, "工具名称:"))
+                } else if str.HasPrefix(line, "显示名称:") && toolVerboseName == "" {
+                    toolVerboseName = str.TrimSpace(str.TrimPrefix(line, "显示名称:"))
+                } else if str.HasPrefix(line, "功能描述:") && toolDescription == "" {
+                    toolDescription = str.TrimSpace(str.TrimPrefix(line, "功能描述:"))
+                }
+            }
+        }
+    }
+    
+    // 设置默认值
+    if toolName == "" { toolName = "未知工具" }
+    if toolVerboseName == "" { toolVerboseName = toolName }
+    if toolDescription == "" { toolDescription = "暂无描述" }
+    
+    // 使用匹配的问题作为 questionText
+    if questionText == "" && knowledgeTitle != "" {
+        questionText = knowledgeTitle
+    }
+
+    return {
+        "score": result.Score,
+        "tool_name": toolName,
+        "verbose_name": toolVerboseName,
+        "description": toolDescription,
+        "index_type": indexType,
+        "question_text": questionText,
+        "knowledge_entry": kbEntry,
+        "knowledge_title": knowledgeTitle,
+        "knowledge_details": knowledgeDetails,
+        "search_type": searchType,
+    }
+}
+
 try {
-    log.info("⚡ 执行向量搜索...")
-    results, err = ragSystem.FuzzRawSearch(context.Background(), searchQuery, limit)
+    // ============================================
+    // 1. 语义搜索 (Vector Search)
+    // ============================================
+    log.info("⚡ [1/2] 执行语义搜索 (QueryTopN)...")
+    semanticResults, err = ragSystem.QueryTopN(searchQuery, limit)
     if err != nil {
-        log.error("Failed to search RAG: %v", err)
-        log.error("Error type: %T", err)
-        die(sprintf("Failed to search RAG: %v", err))
+        log.warn("⚠️ 语义搜索失败: %v", err)
+    } else {
+        log.info("✓ 语义搜索完成，找到 %d 个结果", len(semanticResults))
+        for _, result := range semanticResults {
+            allResults = append(allResults, processSearchResult(result, "语义"))
+        }
     }
 
-    log.info("✓ 搜索完成，正在处理结果...")
-
-    // 处理搜索结果 (results 是一个 channel)
-    resultCount = 0
-    for result := range results {
-        resultCount++
-        if resultCount > limit {
-            break
+    // ============================================
+    // 2. 关键词搜索 (Fuzzy Search)
+    // ============================================
+    log.info("⚡ [2/2] 执行关键词搜索 (FuzzRawSearch)...")
+    ctx = context.Background()
+    fuzzResultsChan, err = ragSystem.FuzzRawSearch(ctx, searchQuery, limit)
+    if err != nil {
+        log.warn("⚠️ 关键词搜索失败: %v", err)
+    } else {
+        fuzzCount = 0
+        for result := range fuzzResultsChan {
+            fuzzCount++
+            allResults = append(allResults, processSearchResult(result, "关键词"))
         }
-
-        // 从 Document.Metadata 中直接获取工具信息
-        metadata = result.Document.Metadata
-        toolName = metadata["tool_name"] || "未知工具"
-        toolVerboseName = metadata["verbose_name"] || toolName
-        toolDescription = metadata["description"] || "暂无描述"
-        indexType = metadata["index_type"] || "unknown"
-        questionText = metadata["question_text"] || ""
-
-        resultData = {
-            "rank": resultCount,
-            "id": result.Document,
-            "content": result.KnowledgeBaseEntry,
-            "entity": result.Entity,
-            "score": result.Score,
-            "tool_name": toolName,
-            "verbose_name": toolVerboseName,
-            "description": toolDescription,
-            "index_type": indexType,
-            "question_text": questionText,
-        }
-        searchResults = append(searchResults, resultData)
-        log.info("✓ 找到工具: %s (分数: %.4f)", toolVerboseName, result.Score)
+        log.info("✓ 关键词搜索完成，找到 %d 个结果", fuzzCount)
     }
 
-    log.info("✓ 搜索完成，共找到 %d 个结果", len(searchResults))
+    // ============================================
+    // 3. 结果去重与排序
+    // ============================================
+    log.info("📊 合并结果并去重...")
+    
+    // 按 tool_name 去重，保留分数最高的
+    toolResultMap = {}
+    for _, r := range allResults {
+        key = r["tool_name"]
+        existing = toolResultMap[key]
+        if existing == nil || r["score"] > existing["score"] {
+            toolResultMap[key] = r
+        }
+    }
+    
+    // 转换为数组
+    dedupedResults = []
+    for _, v := range toolResultMap {
+        dedupedResults = append(dedupedResults, v)
+    }
+    
+    // 简单冒泡排序（按分数降序）
+    for i := 0; i < len(dedupedResults); i++ {
+        for j := i + 1; j < len(dedupedResults); j++ {
+            if dedupedResults[j]["score"] > dedupedResults[i]["score"] {
+                temp = dedupedResults[i]
+                dedupedResults[i] = dedupedResults[j]
+                dedupedResults[j] = temp
+            }
+        }
+    }
+    
+    // 取前 limit 个结果
+    if len(dedupedResults) > limit {
+        dedupedResults = dedupedResults[:limit]
+    }
+    
+    // 添加排名并输出日志
+    for i, r := range dedupedResults {
+        r["rank"] = i + 1
+        log.info("  📚 [%d] 工具: %s (%s) | %s搜索 | 分数: %.4f", 
+            i+1, r["verbose_name"], r["tool_name"], r["search_type"], r["score"])
+        log.info("      📋 描述: %s", r["description"])
+        if r["question_text"] != "" {
+            log.info("      🔍 匹配: %s", r["question_text"])
+        }
+        searchResults = append(searchResults, r)
+    }
+
+    log.info("✓ 搜索完成，共找到 %d 个不重复结果", len(searchResults))
 
 } catch searchErr {
     log.error("❌ 搜索失败: %v", searchErr)
@@ -403,52 +503,37 @@ if len(searchResults) == 0 {
 // 表格格式输出（人类可读优化）
 if outputFormat == "table" {
     println("")
+    println("================================================================================")
     println("🔍 AI 工具搜索结果")
-    println("==================")
-    printf("%-3s %-30s %-8s %s\n", "排名", "工具名称", "分数", "相关信息")
-    println("-----------------------------------------------------------------------------")
+    println(sprintf("   查询: %s", searchQuery))
+    println("================================================================================")
+    println("")
 
     for _, result := range searchResults {
         toolName = sprintf("%v", result["tool_name"])
         verboseName = sprintf("%v", result["verbose_name"])
         description = sprintf("%v", result["description"])
         questionText = sprintf("%v", result["question_text"])
-        indexType = sprintf("%v", result["index_type"])
+        score = result["score"]
 
-        // 显示名称：优先使用verbose name，否则使用tool name
-        displayName = verboseName
-        if displayName == "" {
-            displayName = toolName
+        // 截断过长的描述
+        if len(description) > 80 {
+            description = description[:80] + "..."
         }
 
-        // 限制显示名称长度
-        if len(displayName) > 28 {
-            displayName = displayName[:28] + "..."
+        // 截断过长的问题
+        if len(questionText) > 60 {
+            questionText = questionText[:60] + "..."
         }
 
-        // 构建显示信息（优先显示问题，其次显示描述）
-        displayInfo = ""
-        if questionText != "" && indexType == "question" {
-            // 显示搜索问题（问题引导的核心内容）
-            if len(questionText) > 50 {
-                questionText = questionText[:50] + "..."
-            }
-            displayInfo = sprintf("🔸 %s", questionText)
-        } else if description != "" {
-            // 显示工具描述
-            if len(description) > 50 {
-                description = description[:50] + "..."
-            }
-            displayInfo = sprintf("📝 %s", description)
-        } else {
-            displayInfo = "ℹ️ 工具信息"
+        println(sprintf("📍 第 %d 名 | 相关度: %.2f%%", result["rank"], score * 100))
+        println(sprintf("   🛠️  工具: %s", verboseName))
+        println(sprintf("   🆔 ID: %s", toolName))
+        println(sprintf("   📋 功能: %s", description))
+        if questionText != "" {
+            println(sprintf("   🔍 匹配问题: %s", questionText))
         }
-
-        printf("%-3d %-30s %-8.4f %s\n",
-            result["rank"],
-            displayName,
-            result["score"],
-            displayInfo)
+        println("--------------------------------------------------------------------------------")
     }
     println("")
 
