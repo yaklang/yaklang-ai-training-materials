@@ -1,0 +1,317 @@
+name: Build AI Capabilities Search Index
+
+on:
+  # 每天 UTC 时间 2:00 运行（北京时间 10:00）
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: "Force rebuild even if RAG file exists"
+        type: boolean
+        default: false
+      version_override:
+        description: "Override version to build (leave empty for latest)"
+        type: string
+        default: ""
+
+# 确保同一时间只运行一个构建任务
+concurrency:
+  group: build-ai-capabilities-index
+  cancel-in-progress: false
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Print workflow information
+        run: |
+          echo "============================================"
+          echo "🤖 AI Capabilities Search Index Builder"
+          echo "============================================"
+          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Force rebuild: ${{ github.event.inputs.force_rebuild || 'false' }}"
+          echo "Version override: ${{ github.event.inputs.version_override || 'none' }}"
+          echo "============================================"
+      
+      - name: Get latest Yak version
+        id: get_version
+        run: |
+          echo "=== Fetching latest Yak version ==="
+          
+          VERSION_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt"
+          
+          # 如果有版本覆盖，使用覆盖版本
+          VERSION_OVERRIDE="${{ github.event.inputs.version_override }}"
+          if [ -n "$VERSION_OVERRIDE" ]; then
+            YAK_VERSION="$VERSION_OVERRIDE"
+            echo "Using override version: $YAK_VERSION"
+          else
+            echo "Fetching version from: $VERSION_URL"
+            YAK_VERSION=$(curl -s "$VERSION_URL" | tr -d '\n\r')
+            
+            if [ -z "$YAK_VERSION" ]; then
+              echo "ERROR: Failed to fetch Yak version"
+              exit 1
+            fi
+            
+            echo "Latest version: $YAK_VERSION"
+          fi
+          
+          # 导出变量
+          echo "YAK_VERSION=$YAK_VERSION" >> $GITHUB_ENV
+          echo "version=$YAK_VERSION" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "✓ Yak version determined: $YAK_VERSION"
+      
+      - name: Check if RAG file exists
+        id: check_rag
+        run: |
+          echo "=== Checking if RAG file exists ==="
+          
+          RAG_FILE_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-ai-capabilities-${{ env.YAK_VERSION }}.rag"
+          
+          echo "Checking URL: $RAG_FILE_URL"
+          
+          # 使用 HEAD 请求检查文件是否存在
+          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_FILE_URL")
+          
+          echo "HTTP Status: $HTTP_CODE"
+          
+          FORCE_REBUILD="${{ github.event.inputs.force_rebuild }}"
+          
+          if [ "$HTTP_CODE" = "200" ] && [ "$FORCE_REBUILD" != "true" ]; then
+            echo "✓ RAG file already exists for version ${{ env.YAK_VERSION }}"
+            echo "Skipping build (use force_rebuild=true to rebuild)"
+            echo "rag_exists=true" >> $GITHUB_OUTPUT
+          else
+            if [ "$FORCE_REBUILD" = "true" ]; then
+              echo "⚠️  Force rebuild requested"
+            else
+              echo "✗ RAG file does not exist for version ${{ env.YAK_VERSION }}"
+            fi
+            echo "Will proceed with build"
+            echo "rag_exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Download Yak engine
+        if: steps.check_rag.outputs.rag_exists == 'false'
+        run: |
+          echo "=== Downloading Yak engine v${{ env.YAK_VERSION }} ==="
+          
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak_linux_amd64"
+          
+          echo "Downloading from: $YAK_URL"
+          wget -q --show-progress -O ./yak "$YAK_URL"
+          
+          if [ ! -f ./yak ]; then
+            echo "ERROR: Failed to download yak engine"
+            exit 1
+          fi
+          
+          chmod +x ./yak
+          
+          # 验证下载的文件
+          echo ""
+          echo "=== Downloaded file info ==="
+          ls -lh ./yak
+          file ./yak
+          
+          # 测试执行
+          echo ""
+          echo "=== Testing yak engine ==="
+          ./yak version || echo "Note: version command may not output in expected format"
+          
+          echo ""
+          echo "✓ Yak engine v${{ env.YAK_VERSION }} downloaded successfully"
+      
+      - name: Build AI Capabilities Search Index
+        if: steps.check_rag.outputs.rag_exists == 'false'
+        run: |
+          echo "=== Building AI Capabilities Search Index ==="
+          
+          OUTPUT_FILE="yak-ai-capabilities-${{ env.YAK_VERSION }}.rag"
+          
+          echo "Output file: $OUTPUT_FILE"
+          echo "Version: ${{ env.YAK_VERSION }}"
+          echo ""
+          
+          # 运行构建脚本
+          # 默认使用内置 AI 配置（不需要额外配置）
+          ./yak scripts/build-aitool-n-aiforge-search-index.yak \
+            --output "$OUTPUT_FILE" \
+            --concurrency 5
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to build AI capabilities index"
+            exit 1
+          fi
+          
+          # 验证生成的文件
+          echo ""
+          echo "=== Verifying generated RAG file ==="
+          
+          if [ ! -f "$OUTPUT_FILE" ]; then
+            echo "ERROR: RAG file was not generated"
+            exit 1
+          fi
+          
+          ls -lh "$OUTPUT_FILE"
+          
+          # 显示构建报告
+          REPORT_FILE="${OUTPUT_FILE%.rag}.build-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo ""
+            echo "=== Build Report ==="
+            cat "$REPORT_FILE"
+          fi
+          
+          echo ""
+          echo "✓ AI Capabilities Search Index built successfully"
+      
+      - name: Upload RAG file to OSS
+        if: steps.check_rag.outputs.rag_exists == 'false'
+        env:
+          OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
+        run: |
+          echo "=== Uploading RAG file to OSS ==="
+          
+          if [ -z "$OSS_KEY_ID" ] || [ -z "$OSS_KEY_SECRET" ]; then
+            echo "ERROR: OSS credentials not found"
+            echo "Please ensure OSS_KEY_ID and OSS_KEY_SECRET secrets are set"
+            exit 1
+          fi
+          
+          BUCKET="yaklang"
+          ENDPOINT="oss-accelerate.aliyuncs.com"
+          
+          OUTPUT_FILE="yak-ai-capabilities-${{ env.YAK_VERSION }}.rag"
+          REMOTE_PATH="/yak/${{ env.YAK_VERSION }}/yak-ai-capabilities-${{ env.YAK_VERSION }}.rag"
+          
+          echo "Local file: $OUTPUT_FILE"
+          echo "Remote path: $REMOTE_PATH"
+          echo ""
+          
+          # 上传 RAG 文件
+          echo "Uploading RAG file..."
+          ./yak upload-oss \
+            -b "$BUCKET" \
+            --endpoint "$ENDPOINT" \
+            -ak "$OSS_KEY_ID" \
+            -sk "$OSS_KEY_SECRET" \
+            -t 10 \
+            -f "$OUTPUT_FILE:$REMOTE_PATH"
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to upload RAG file"
+            exit 1
+          fi
+          
+          echo "✓ RAG file uploaded successfully"
+          
+          # 上传构建报告（如果存在）
+          REPORT_FILE="${OUTPUT_FILE%.rag}.build-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            REMOTE_REPORT_PATH="/yak/${{ env.YAK_VERSION }}/yak-ai-capabilities-${{ env.YAK_VERSION }}.build-report.md"
+            
+            echo ""
+            echo "Uploading build report..."
+            ./yak upload-oss \
+              -b "$BUCKET" \
+              --endpoint "$ENDPOINT" \
+              -ak "$OSS_KEY_ID" \
+              -sk "$OSS_KEY_SECRET" \
+              -t 5 \
+              -f "$REPORT_FILE:$REMOTE_REPORT_PATH"
+            
+            if [ $? -eq 0 ]; then
+              echo "✓ Build report uploaded successfully"
+            else
+              echo "⚠️  Failed to upload build report (non-critical)"
+            fi
+          fi
+          
+          echo ""
+          echo "✓ All files uploaded to OSS"
+      
+      - name: Verify OSS upload
+        if: steps.check_rag.outputs.rag_exists == 'false'
+        run: |
+          echo "=== Verifying OSS upload ==="
+          
+          RAG_FILE_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-ai-capabilities-${{ env.YAK_VERSION }}.rag"
+          
+          echo "Verifying: $RAG_FILE_URL"
+          
+          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_FILE_URL")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            CONTENT_LENGTH=$(curl -I -s "$RAG_FILE_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+            echo "HTTP Status: $HTTP_CODE"
+            echo "Content-Length: $CONTENT_LENGTH bytes"
+            echo ""
+            echo "✓ RAG file verified successfully"
+          else
+            echo "ERROR: Verification failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+      
+      - name: Upload artifacts
+        if: steps.check_rag.outputs.rag_exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-capabilities-index-${{ env.YAK_VERSION }}
+          path: |
+            yak-ai-capabilities-${{ env.YAK_VERSION }}.rag
+            yak-ai-capabilities-${{ env.YAK_VERSION }}.build-report.md
+          retention-days: 30
+      
+      - name: Summary
+        run: |
+          echo "## 🤖 AI Capabilities Search Index Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Yak Version | \`${{ env.YAK_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered By | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u +"%Y-%m-%d %H:%M:%S UTC") |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_rag.outputs.rag_exists }}" = "true" ]; then
+            echo "### ✅ RAG File Already Exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The AI Capabilities RAG file for version \`${{ env.YAK_VERSION }}\` already exists." >> $GITHUB_STEP_SUMMARY
+            echo "No build was performed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The AI Capabilities RAG file has been built and uploaded to OSS." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Access URL" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-ai-capabilities-${{ env.YAK_VERSION }}.rag" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+          # 显示构建报告（如果存在）
+          REPORT_FILE="yak-ai-capabilities-${{ env.YAK_VERSION }}.build-report.md"
+          if [ -f "$REPORT_FILE" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📋 Build Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat "$REPORT_FILE" >> $GITHUB_STEP_SUMMARY
+          fi
+
