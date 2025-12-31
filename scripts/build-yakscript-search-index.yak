@@ -1,0 +1,559 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// YakScript 搜索索引构建工具 - Build YakScript (Plugins) Search Index
+// 功能: 从数据库中获取所有 YakScript (插件)，构建统一的搜索索引
+// 用途: 为所有 Yak 插件构建可搜索的问题索引，让用户能通过自然语言查询找到合适的插件
+//
+// 核心设计:
+// - 使用 db.YieldYakScriptAll() 获取所有 Yak 脚本/插件
+// - 知识条目（插件描述）-> 多个问题索引
+// - 问题索引用于语义搜索
+// - 搜索结果通过 entry_id 关联到知识条目
+//
+// 使用示例:
+// go run common/yak/cmd/yak.go scripts/build-yakscript-search-index.yak --output /tmp/plugins.rag
+//
+// 应用场景: Yak 插件索引构建、插件搜索系统、自动化索引更新
+// =============================================================================
+
+__DESC__ = "Build search index for YakScript (plugins) using BuildSearchIndexKnowledge"
+
+yakit.AutoInitYakit()
+
+// =============================================================================
+// CLI 参数配置模块
+// 所有参数均为可选，默认使用内置服务，无需额外配置
+// =============================================================================
+
+// 输出 RAG 文件路径（必需）
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setDefault("/tmp/plugins.rag"),
+    cli.setHelp("Output RAG export file path. Example: /tmp/plugins.rag")
+)
+
+// 并发数
+maxConcurrency = cli.Int(
+    "concurrency",
+    cli.setDefault(5),
+    cli.setHelp("Maximum number of concurrent processing tasks")
+)
+
+cli.check()
+
+// =============================================================================
+// 版本检测和输出路径配置
+// =============================================================================
+
+// 使用内置的 YAK_VERSION 变量获取版本
+yakVersion = YAK_VERSION
+if yakVersion == "" || yakVersion == undefined {
+    yakVersion = "dev"
+}
+
+log.info("=== YakScript (Plugins) Search Index Builder ===")
+log.info("🏷️  Yak Version: %s", yakVersion)
+
+// 处理输出路径
+finalOutputPath = outputRagPath
+
+// 确保以 .rag 结尾
+if !str.HasSuffix(finalOutputPath, ".rag") {
+    finalOutputPath = finalOutputPath + ".rag"
+}
+
+log.info("📁 Output RAG: %s", finalOutputPath)
+log.info("⚡ Concurrency: %d", maxConcurrency)
+
+// =============================================================================
+// RAG 系统初始化
+// =============================================================================
+
+ragCollectionName = "yaklang-yakscript-plugins"
+
+// 移除现有集合
+rag.DeleteCollection(ragCollectionName)
+
+log.info("")
+log.info("=== Initializing RAG System ===")
+
+ragSystem, err = rag.Get(ragCollectionName)
+if err != nil {
+    log.error("❌ Failed to initialize RAG system: %v", err)
+    die(sprintf("Failed to initialize RAG system: %v", err))
+}
+
+log.info("✓ RAG system initialized successfully")
+log.info("   📚 Collection name: %s", ragCollectionName)
+
+// =============================================================================
+// 过滤函数：跳过 mock 和 测试插件
+// =============================================================================
+
+shouldSkipItem = func(name, scriptType) {
+    lowerName = str.ToLower(name)
+    // 过滤 mock_ 开头的插件（测试用）
+    if str.HasPrefix(lowerName, "mock_") {
+        return true
+    }
+    // 过滤包含 mock 的插件
+    if str.Contains(lowerName, "mock") {
+        return true
+    }
+    // 过滤 sleep 插件（测试用）
+    if lowerName == "sleep" || str.HasPrefix(lowerName, "sleep_") {
+        return true
+    }
+    // 过滤 test_ 开头的插件
+    if str.HasPrefix(lowerName, "test_") {
+        return true
+    }
+    return false
+}
+
+// =============================================================================
+// 获取 YakScript 列表
+// =============================================================================
+
+log.info("")
+log.info("=== Loading YakScript (Plugins) ===")
+
+allItems = []  // 统一存储所有待处理项
+scriptCount = 0
+skippedCount = 0
+
+// 统计不同类型的插件数量
+typeStats = {}
+
+for ins in db.YieldYakScriptAll() {
+    scriptName = ins.ScriptName || ""
+    scriptType = ins.Type || "unknown"
+    
+    // 过滤掉 mock 和 test 相关的插件
+    if shouldSkipItem(scriptName, scriptType) {
+        skippedCount++
+        log.debug("   ⏭️  Skipping mock/test plugin: %s", scriptName)
+        continue
+    }
+    
+    // 统计类型
+    if scriptType in typeStats {
+        typeStats[scriptType] = typeStats[scriptType] + 1
+    } else {
+        typeStats[scriptType] = 1
+    }
+    
+    // 封装为统一格式
+    item = {
+        "script_name": scriptName,
+        "type": scriptType,
+        "help": ins.Help || "",
+        "tags": ins.Tags || "",
+        "author": ins.Author || "",
+        "level": ins.Level || "",
+        "content": ins.Content || "",
+        "is_general_module": ins.IsGeneralModule,
+        "general_module_verbose": ins.GeneralModuleVerbose || "",
+    }
+    allItems = append(allItems, item)
+    scriptCount++
+}
+
+log.info("✓ Found %d YakScript plugins to process (skipped %d mock/test plugins)", scriptCount, skippedCount)
+
+// 打印类型统计
+log.info("")
+log.info("=== Plugin Type Statistics ===")
+for t, count := range typeStats {
+    log.info("   📦 %s: %d", t, count)
+}
+
+totalCount = len(allItems)
+log.info("")
+log.info("📊 Total items to process: %d", totalCount)
+
+if totalCount == 0 {
+    log.warn("⚠️  No YakScript plugins found in database")
+    die("No items to process")
+}
+
+// =============================================================================
+// 并发处理设置
+// =============================================================================
+
+wg = sync.NewSizedWaitGroup(maxConcurrency)
+resultsChan = make(chan map[string]any, totalCount)
+
+// 统计变量
+totalQuestions = 0
+questionsMutex = sync.NewMutex()
+
+// 处理单个项目的函数
+processItem = func(itemIndex, totalItems, itemInfo) {
+    defer wg.Done()
+
+    scriptName = itemInfo["script_name"]
+    scriptType = itemInfo["type"]
+    help = itemInfo["help"]
+    tags = itemInfo["tags"]
+    author = itemInfo["author"]
+    level = itemInfo["level"]
+    content = itemInfo["content"]
+    isGeneralModule = itemInfo["is_general_module"]
+    generalModuleVerbose = itemInfo["general_module_verbose"]
+
+    result = {
+        "script_name": scriptName,
+        "type": scriptType,
+        "help": help,
+        "success": false,
+        "error": nil,
+        "questions_generated": 0,
+    }
+
+    try {
+        log.info("")
+        log.info("========================================")
+        log.info("🔌 [%d/%d] Processing: %s", itemIndex, totalItems, scriptName)
+        log.info("   🆔 Name: %s", scriptName)
+        log.info("   📦 Type: %s", scriptType)
+        if help != "" {
+            helpPreview = help
+            if len(helpPreview) > 100 {
+                helpPreview = helpPreview[:100] + "..."
+            }
+            log.info("   📋 Help: %s", helpPreview)
+        }
+        if tags != "" {
+            log.info("   🏷️  Tags: %s", tags)
+        }
+        if author != "" {
+            log.info("   👤 Author: %s", author)
+        }
+        log.info("----------------------------------------")
+
+        // 构建描述文本（作为知识条目内容）
+        typeDescription = getTypeDescription(scriptType)
+        
+        itemDescription = sprintf(`插件名称: %s
+插件类型: %s (%s)
+功能描述: %s
+标签: %s
+作者: %s
+安全等级: %s
+
+这是一个 Yaklang %s 类型的插件，可以用于:
+- %s
+
+使用场景:
+- 安全测试和漏洞评估
+- 自动化渗透测试任务
+- 集成到 Yaklang 安全测试框架
+- MITM 代理测试和流量分析`,
+            scriptName,
+            scriptType,
+            typeDescription,
+            help || "安全测试任务",
+            tags,
+            author,
+            level,
+            typeDescription,
+            help || "安全测试任务")
+
+        // 如果是通用模块，添加额外信息
+        if isGeneralModule && generalModuleVerbose != "" {
+            itemDescription = itemDescription + sprintf("\n\n通用模块名称: %s", generalModuleVerbose)
+        }
+
+        log.info("   🔨 Step 1: Building search index...")
+        log.info("   📝 Description length: %d bytes", len(itemDescription))
+
+        // AI 能力场景的 extraPrompt - 强化插件意图识别
+        pluginExtraPrompt = sprintf(`
+【Yak 插件搜索场景强化说明】
+这是一个 Yaklang %s 类型的安全插件，用于安全测试、自动化任务、漏洞检测等场景。
+
+生成问题时，请特别关注：
+1. 用户可能用什么自然语言描述来找到这个插件？（如："我想扫描 SQL 注入" → SQL 注入检测插件）
+2. 用户可能遇到什么安全问题需要这个插件？（如："如何检测 XSS 漏洞？" → XSS 扫描插件）
+3. 用户可能有什么渗透测试需求？（如："检测网站漏洞" → 漏洞扫描插件）
+4. 使用场景描述（如："需要分析 HTTP 流量" → MITM 插件）
+
+问题应该覆盖：
+- 场景意图描述（"我想要..."、"需要..."）
+- 功能查询（"有什么插件可以..."、"有什么脚本可以..."）
+- 问题解决（"如何..."、"怎么..."）
+- 插件推荐（"用什么插件..."、"推荐一个..."）
+- 漏洞检测（"检测..."、"扫描..."）
+`, typeDescription)
+
+        // 使用 BuildSearchIndexKnowledge 构建搜索索引
+        log.info("   🤖 Step 2: Calling AI to generate search questions...")
+        searchResult, buildErr = rag.BuildSearchIndexKnowledge(ragCollectionName, itemDescription, rag.extraPrompt(pluginExtraPrompt))
+        if buildErr != nil {
+            log.error("   ❌ Failed to build search index: %v", buildErr)
+            log.error("   ❌ Error details: script=%s, type=%s, desc_len=%d", scriptName, scriptType, len(itemDescription))
+            result["error"] = buildErr
+            resultsChan <- result
+            return
+        }
+
+        // 打印生成的问题
+        questionsGenerated = len(searchResult.Questions)
+        log.info("   ✅ Step 3: AI generated %d question indexes", questionsGenerated)
+        log.info("   📋 Knowledge Entry ID: %s", searchResult.EntryID)
+        log.info("   📚 Generated questions:")
+        for i, q := range searchResult.Questions {
+            log.info("      🔸 Q%d: %s", i+1, q)
+        }
+
+        // 更新全局计数
+        questionsMutex.Lock()
+        totalQuestions += questionsGenerated
+        questionsMutex.Unlock()
+
+        log.info("   ✓ Successfully indexed plugin: %s (entry_id: %s)", scriptName, searchResult.EntryID)
+        
+        result["success"] = true
+        result["questions_generated"] = questionsGenerated
+        result["entry_id"] = searchResult.EntryID
+
+    } catch processErr {
+        log.error("   ❌ Unexpected error: %v", processErr)
+        result["error"] = sprintf("%v", processErr)
+    }
+
+    resultsChan <- result
+}
+
+// 获取插件类型的中文描述
+getTypeDescription = func(scriptType) {
+    typeMap = {
+        "yak": "Yak 脚本",
+        "mitm": "MITM 代理插件",
+        "port-scan": "端口扫描插件",
+        "nuclei": "Nuclei 漏洞模板",
+        "codec": "编解码插件",
+        "packet-hack": "数据包处理插件",
+        "payload": "Payload 生成插件",
+        "poc": "PoC 漏洞检测插件",
+        "fuzzer": "模糊测试插件",
+    }
+    if scriptType in typeMap {
+        return typeMap[scriptType]
+    }
+    return scriptType + " 插件"
+}
+
+// =============================================================================
+// 并发处理 YakScript 插件
+// =============================================================================
+
+log.info("")
+log.info("=== Processing YakScript Plugins (Concurrent, max %d) ===", maxConcurrency)
+
+// 启动并发处理
+for i, itemInfo := range allItems {
+    wg.Add(1)
+    go processItem(i+1, totalCount, itemInfo)
+}
+
+// 等待所有任务完成
+wg.Wait()
+close(resultsChan)
+
+// 收集结果
+successCount = 0
+failedCount = 0
+failedItems = []
+totalQuestionsFromResults = 0
+
+// 按类型统计成功数
+successTypeStats = {}
+
+for result := range resultsChan {
+    if result["success"] {
+        successCount++
+        totalQuestionsFromResults += result["questions_generated"]
+        scriptType = result["type"]
+        if scriptType in successTypeStats {
+            successTypeStats[scriptType] = successTypeStats[scriptType] + 1
+        } else {
+            successTypeStats[scriptType] = 1
+        }
+    } else {
+        failedCount++
+        failedItems = append(failedItems, sprintf("%s (%s)", result["script_name"], result["type"]))
+    }
+}
+
+log.info("")
+log.info("=== Processing Results ===")
+log.info("📊 Total items: %d", totalCount)
+log.info("✓ Total successful: %d", successCount)
+log.info("✗ Total failed: %d", failedCount)
+log.info("📚 Total questions generated: %d", totalQuestions)
+
+// 打印按类型的成功统计
+log.info("")
+log.info("=== Success by Type ===")
+for t, count := range successTypeStats {
+    log.info("   ✓ %s: %d", t, count)
+}
+
+if failedCount > 0 {
+    log.warn("Failed items:")
+    for i, itemName := range failedItems {
+        log.warn("  %d. %s", i+1, itemName)
+    }
+}
+
+// =============================================================================
+// 获取最终文档数量
+// =============================================================================
+
+log.info("")
+log.info("=== Final Statistics ===")
+
+finalDocCount = 0
+try {
+    finalDocCount, _ = ragSystem.CountDocuments()
+    log.info("📊 Final document count: %d", finalDocCount)
+    log.info("   - Knowledge entries: %d", successCount)
+    log.info("   - Question indexes: %d", totalQuestions)
+} catch countErr {
+    log.warn("⚠️  Failed to get document count: %v", countErr)
+}
+
+// =============================================================================
+// 导出 RAG 文件
+// =============================================================================
+
+log.info("")
+log.info("=== Exporting RAG File ===")
+
+try {
+    err = rag.Export(ragCollectionName, finalOutputPath)
+    if err != nil {
+        log.error("❌ Failed to export RAG file: %v", err)
+        die(sprintf("Failed to export RAG file: %v", err))
+    }
+
+    if !file.IsExisted(finalOutputPath) {
+        log.error("❌ Export succeeded but file does not exist: %s", finalOutputPath)
+        die("Failed to verify exported RAG file")
+    }
+
+    fileInfo = file.Stat(finalOutputPath)~
+    fileSize = fileInfo.Size()
+
+    log.info("✓ RAG file exported: %s", finalOutputPath)
+    log.info("   📏 File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
+
+} catch exportErr {
+    log.error("❌ Failed to export RAG file: %v", exportErr)
+    die(sprintf("Failed to export RAG file: %v", exportErr))
+}
+
+// =============================================================================
+// 生成构建报告
+// =============================================================================
+
+log.info("")
+log.info("=== Generating Build Report ===")
+
+reportPath = str.Replace(finalOutputPath, ".rag", ".build-report.md", 1)
+
+report = sprintf("# YakScript 插件搜索索引构建报告\n\n")
+report += sprintf("**构建时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+report += sprintf("**Yak 版本**: %s\n\n", yakVersion)
+report += sprintf("**RAG 文件**: %s\n\n", finalOutputPath)
+report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+
+report += "## 索引结构\n\n"
+report += "本索引采用 **知识条目 -> 多问题索引** 的结构：\n\n"
+report += "- **知识条目 (knowledge_entry)**: 存储插件的完整描述信息\n"
+report += "- **问题索引 (question_index)**: 每个知识条目对应多个搜索问题\n"
+report += "- 问题索引通过 `entry_id` 关联到知识条目\n\n"
+
+report += "## 数据来源\n\n"
+report += sprintf("本索引包含 `db.YieldYakScriptAll()` 返回的所有 Yak 脚本/插件。\n\n")
+
+report += "## 插件类型统计\n\n"
+report += "| 类型 | 总数 | 成功处理 |\n"
+report += "|------|------|----------|\n"
+for t, count := range typeStats {
+    successNum = 0
+    if t in successTypeStats {
+        successNum = successTypeStats[t]
+    }
+    report += sprintf("| %s | %d | %d |\n", t, count, successNum)
+}
+report += "\n"
+
+report += "## 构建统计\n\n"
+report += sprintf("| 指标 | 数值 |\n")
+report += sprintf("|------|------|\n")
+report += sprintf("| 插件总数 | %d |\n", totalCount)
+report += sprintf("| 成功处理 | %d |\n", successCount)
+report += sprintf("| 处理失败 | %d |\n", failedCount)
+report += sprintf("| 跳过数量 | %d |\n", skippedCount)
+report += sprintf("| 知识条目数 | %d |\n", successCount)
+report += sprintf("| 问题索引数 | %d |\n", totalQuestions)
+report += sprintf("| 总文档数 | %d |\n\n", finalDocCount)
+
+if failedCount > 0 {
+    report += "## 处理失败的项目\n\n"
+    for i, itemName := range failedItems {
+        report += sprintf("%d. %s\n", i+1, itemName)
+    }
+    report += "\n"
+}
+
+report += "## 过滤规则\n\n"
+report += "以下类型的插件被自动过滤：\n\n"
+report += "- 名称以 `mock_` 开头\n"
+report += "- 名称包含 `mock`\n"
+report += "- 名称为 `sleep` 或以 `sleep_` 开头\n"
+report += "- 名称以 `test_` 开头\n\n"
+
+report += "## 搜索说明\n\n"
+report += "搜索时，系统会：\n\n"
+report += "1. 通过问题索引进行语义搜索\n"
+report += "2. 找到匹配的问题后，通过 `entry_id` 获取对应的知识条目\n"
+report += "3. 返回完整的插件信息\n\n"
+
+report += "### Metadata 字段说明\n\n"
+report += "| 字段 | 说明 |\n"
+report += "|------|------|\n"
+report += "| `index_type` | 文档类型：`knowledge_entry` 或 `question_index` |\n"
+report += "| `entry_id` | 知识条目的唯一标识符 |\n"
+report += "| `question_index` | 问题文本（仅 question_index 类型有） |\n"
+report += "| `type` | 插件类型：如 `yak`, `mitm`, `port-scan` 等 |\n"
+
+// 保存报告
+file.Save(reportPath, report)~
+log.info("✓ Build report generated: %s", reportPath)
+
+// =============================================================================
+// 最终总结
+// =============================================================================
+
+log.info("")
+log.info("=== Build Complete ===")
+log.info("✓ YakScript plugins search index built successfully")
+log.info("   📁 RAG File: %s", finalOutputPath)
+log.info("   📄 Report: %s", reportPath)
+log.info("   📊 Plugins: %d processed", successCount)
+log.info("   📚 Questions: %d generated", totalQuestions)
+log.info("")
+log.info("🔍 To search the index, use RAG search with the exported file.")
+
+if failedCount > 0 {
+    os.Exit(1)
+} else {
+    os.Exit(0)
+}
+
