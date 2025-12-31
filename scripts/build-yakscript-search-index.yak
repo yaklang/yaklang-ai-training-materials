@@ -41,6 +41,30 @@ maxConcurrency = cli.Int(
     cli.setHelp("Maximum number of concurrent processing tasks")
 )
 
+// 测试模式：限制处理的插件数量（0 表示处理全部）
+testLimit = cli.Int(
+    "limit",
+    cli.setVerboseName("测试限制"),
+    cli.setDefault(0),
+    cli.setHelp("Limit the number of plugins to process (0 = all, for testing use 3)")
+)
+
+// 允许 nuclei-templates 仓库导入的 POC（默认过滤掉）
+allowNucleiTemplatesRepos = cli.Bool(
+    "allow-nuclei-templates-repos",
+    cli.setVerboseName("允许仓库 Nuclei"),
+    cli.setDefault(false),
+    cli.setHelp("Allow nuclei templates imported from nuclei-templates repository (default: filter out)")
+)
+
+// 包含 yak 原生插件和 codec 类型插件（默认过滤掉）
+includeYakNativeAndCodec = cli.Bool(
+    "include-yaknative-n-codec",
+    cli.setVerboseName("包含原生插件"),
+    cli.setDefault(false),
+    cli.setHelp("Include yak native plugins and codec type plugins (default: filter out)")
+)
+
 cli.check()
 
 // =============================================================================
@@ -66,6 +90,12 @@ if !str.HasSuffix(finalOutputPath, ".rag") {
 
 log.info("📁 Output RAG: %s", finalOutputPath)
 log.info("⚡ Concurrency: %d", maxConcurrency)
+if testLimit > 0 {
+    log.info("🧪 Test Mode: Limiting to %d plugins", testLimit)
+}
+log.info("🔧 Options:")
+log.info("   - Allow nuclei-templates repos: %v", allowNucleiTemplatesRepos)
+log.info("   - Include yak native & codec: %v", includeYakNativeAndCodec)
 
 // =============================================================================
 // RAG 系统初始化
@@ -89,10 +119,11 @@ log.info("✓ RAG system initialized successfully")
 log.info("   📚 Collection name: %s", ragCollectionName)
 
 // =============================================================================
-// 过滤函数：跳过 mock 和 测试插件
+// 过滤函数：跳过内部插件、mock 和测试插件
 // =============================================================================
 
-shouldSkipItem = func(name, scriptType) {
+// 基于名称的过滤
+shouldSkipByName = func(name) {
     lowerName = str.ToLower(name)
     // 过滤 mock_ 开头的插件（测试用）
     if str.HasPrefix(lowerName, "mock_") {
@@ -113,6 +144,67 @@ shouldSkipItem = func(name, scriptType) {
     return false
 }
 
+// 基于插件属性的过滤（内部插件）
+shouldSkipByAttribute = func(ins) {
+    // 过滤被标记为忽略的插件（内部插件，不希望被本地插件库查看到）
+    if ins.Ignored {
+        return true, "Ignored=true (internal plugin)"
+    }
+    // 过滤历史记录插件
+    if ins.IsHistory {
+        return true, "IsHistory=true (history record)"
+    }
+    // 过滤强制交互模式的插件（不能作为模块使用）
+    if ins.ForceInteractive {
+        return true, "ForceInteractive=true (interactive only)"
+    }
+    return false, ""
+}
+
+// 基于插件类型的过滤（yak 原生插件和 codec 插件）
+// 这些插件不像其他插件可以使用固定输入来测试
+shouldSkipByType = func(scriptType) {
+    if !includeYakNativeAndCodec {
+        if scriptType == "yak" {
+            return true, "Type=yak (native plugin, use --include-yaknative-n-codec to include)"
+        }
+        if scriptType == "codec" {
+            return true, "Type=codec (codec plugin, use --include-yaknative-n-codec to include)"
+        }
+    }
+    return false, ""
+}
+
+// 判断 nuclei 脚本是否从 nuclei-templates 仓库导入
+// 特征：FromLocal=true, IsExternal=true, 且没有线上 UUID/OnlineId
+isNucleiFromTemplatesRepo = func(ins) {
+    if ins.Type != "nuclei" {
+        return false
+    }
+    // 从 nuclei-templates 仓库导入的特征：
+    // 1. FromLocal = true（本地导入）
+    // 2. IsExternal = true（外部导入）
+    // 3. Uuid 为空 或 OnlineId = 0（没有线上信息）
+    if ins.FromLocal && ins.IsExternal {
+        uuid = ins.Uuid || ""
+        onlineId = ins.OnlineId || 0
+        if uuid == "" || onlineId == 0 {
+            return true
+        }
+    }
+    return false
+}
+
+// 基于 nuclei 来源的过滤（仓库导入的 nuclei 模板）
+shouldSkipNucleiFromRepo = func(ins) {
+    if !allowNucleiTemplatesRepos {
+        if isNucleiFromTemplatesRepo(ins) {
+            return true, "Nuclei from templates repo (use --allow-nuclei-templates-repos to include)"
+        }
+    }
+    return false, ""
+}
+
 // =============================================================================
 // 获取 YakScript 列表
 // =============================================================================
@@ -123,19 +215,78 @@ log.info("=== Loading YakScript (Plugins) ===")
 allItems = []  // 统一存储所有待处理项
 scriptCount = 0
 skippedCount = 0
+skippedByNameCount = 0
+skippedByAttrCount = 0
+skippedByTypeCount = 0
+skippedByNucleiRepoCount = 0
 
 // 统计不同类型的插件数量
 typeStats = {}
+
+// 跳过原因统计
+skipReasons = {}
 
 for ins in db.YieldYakScriptAll() {
     scriptName = ins.ScriptName || ""
     scriptType = ins.Type || "unknown"
     
-    // 过滤掉 mock 和 test 相关的插件
-    if shouldSkipItem(scriptName, scriptType) {
+    // 基于名称的过滤（mock 和 test 相关的插件）
+    if shouldSkipByName(scriptName) {
         skippedCount++
-        log.debug("   ⏭️  Skipping mock/test plugin: %s", scriptName)
+        skippedByNameCount++
+        log.debug("   ⏭️  Skipping by name: %s", scriptName)
         continue
+    }
+    
+    // 基于属性的过滤（内部插件）
+    shouldSkip, skipReason = shouldSkipByAttribute(ins)
+    if shouldSkip {
+        skippedCount++
+        skippedByAttrCount++
+        log.debug("   ⏭️  Skipping by attribute: %s - %s", scriptName, skipReason)
+        // 统计跳过原因
+        if skipReason in skipReasons {
+            skipReasons[skipReason] = skipReasons[skipReason] + 1
+        } else {
+            skipReasons[skipReason] = 1
+        }
+        continue
+    }
+    
+    // 基于类型的过滤（yak 原生插件和 codec 插件）
+    shouldSkip, skipReason = shouldSkipByType(scriptType)
+    if shouldSkip {
+        skippedCount++
+        skippedByTypeCount++
+        log.debug("   ⏭️  Skipping by type: %s - %s", scriptName, skipReason)
+        // 统计跳过原因
+        if skipReason in skipReasons {
+            skipReasons[skipReason] = skipReasons[skipReason] + 1
+        } else {
+            skipReasons[skipReason] = 1
+        }
+        continue
+    }
+    
+    // 基于 nuclei 来源的过滤（仓库导入的 nuclei 模板）
+    shouldSkip, skipReason = shouldSkipNucleiFromRepo(ins)
+    if shouldSkip {
+        skippedCount++
+        skippedByNucleiRepoCount++
+        log.debug("   ⏭️  Skipping nuclei from repo: %s", scriptName)
+        // 统计跳过原因
+        if skipReason in skipReasons {
+            skipReasons[skipReason] = skipReasons[skipReason] + 1
+        } else {
+            skipReasons[skipReason] = 1
+        }
+        continue
+    }
+    
+    // 测试模式：检查是否达到限制
+    if testLimit > 0 && scriptCount >= testLimit {
+        log.debug("   🧪 Test limit reached (%d), stopping collection", testLimit)
+        break
     }
     
     // 统计类型
@@ -161,13 +312,32 @@ for ins in db.YieldYakScriptAll() {
     scriptCount++
 }
 
-log.info("✓ Found %d YakScript plugins to process (skipped %d mock/test plugins)", scriptCount, skippedCount)
+log.info("✓ Found %d YakScript plugins to process", scriptCount)
+log.info("   ⏭️  Skipped total: %d", skippedCount)
+log.info("      - By name (mock/test): %d", skippedByNameCount)
+log.info("      - By attribute (internal): %d", skippedByAttrCount)
+log.info("      - By type (yak/codec): %d", skippedByTypeCount)
+log.info("      - By nuclei repo source: %d", skippedByNucleiRepoCount)
+
+// 打印跳过原因统计
+if len(skipReasons) > 0 {
+    log.info("")
+    log.info("=== Skip Reasons (by attribute) ===")
+    for reason, count := range skipReasons {
+        log.info("   🚫 %s: %d", reason, count)
+    }
+}
 
 // 打印类型统计
 log.info("")
 log.info("=== Plugin Type Statistics ===")
 for t, count := range typeStats {
     log.info("   📦 %s: %d", t, count)
+}
+
+if testLimit > 0 {
+    log.info("")
+    log.info("🧪 Test Mode: Only processing first %d plugins", testLimit)
 }
 
 totalCount = len(allItems)
@@ -290,8 +460,18 @@ processItem = func(itemIndex, totalItems, itemInfo) {
 `, typeDescription)
 
         // 使用 BuildSearchIndexKnowledge 构建搜索索引
+        // 传入 search_type 和 search_target 作为知识条目的元数据
+        // search_type: 插件类型描述，search_target: 插件名称
+        // 使用 noPotentialQuestions 压缩存储大小
         log.info("   🤖 Step 2: Calling AI to generate search questions...")
-        searchResult, buildErr = rag.BuildSearchIndexKnowledge(ragCollectionName, itemDescription, rag.extraPrompt(pluginExtraPrompt))
+        searchTypeDesc = sprintf("Yak插件[%s]", typeDescription)
+        searchResult, buildErr = rag.BuildSearchIndexKnowledge(
+            ragCollectionName, 
+            itemDescription, 
+            rag.extraPrompt(pluginExtraPrompt),
+            rag.setSearchMeta(searchTypeDesc, scriptName),
+            rag.noPotentialQuestions()
+        )
         if buildErr != nil {
             log.error("   ❌ Failed to build search index: %v", buildErr)
             log.error("   ❌ Error details: script=%s, type=%s, desc_len=%d", scriptName, scriptType, len(itemDescription))
@@ -512,12 +692,54 @@ if failedCount > 0 {
     report += "\n"
 }
 
+report += "## 构建选项\n\n"
+report += "| 选项 | 值 |\n"
+report += "|------|------|\n"
+report += sprintf("| `--allow-nuclei-templates-repos` | %v |\n", allowNucleiTemplatesRepos)
+report += sprintf("| `--include-yaknative-n-codec` | %v |\n\n", includeYakNativeAndCodec)
+
 report += "## 过滤规则\n\n"
-report += "以下类型的插件被自动过滤：\n\n"
+report += "### 基于名称的过滤\n\n"
+report += "以下名称模式的插件被自动过滤：\n\n"
 report += "- 名称以 `mock_` 开头\n"
 report += "- 名称包含 `mock`\n"
 report += "- 名称为 `sleep` 或以 `sleep_` 开头\n"
 report += "- 名称以 `test_` 开头\n\n"
+report += "### 基于属性的过滤（内部插件）\n\n"
+report += "以下属性的插件被自动过滤：\n\n"
+report += "- `Ignored = true`: 标记为忽略的内部插件\n"
+report += "- `IsHistory = true`: 历史记录插件\n"
+report += "- `ForceInteractive = true`: 强制交互模式的插件\n\n"
+
+report += "### 基于类型的过滤\n\n"
+if !includeYakNativeAndCodec {
+    report += "以下类型的插件被默认过滤（使用 `--include-yaknative-n-codec` 可包含）：\n\n"
+    report += "- `yak`: Yak 原生脚本（不能使用固定输入测试）\n"
+    report += "- `codec`: 编解码插件（不能使用固定输入测试）\n\n"
+} else {
+    report += "已启用 `--include-yaknative-n-codec`，yak 和 codec 类型插件被包含。\n\n"
+}
+
+report += "### 基于 Nuclei 来源的过滤\n\n"
+if !allowNucleiTemplatesRepos {
+    report += "从 nuclei-templates 仓库导入的 POC 被默认过滤（使用 `--allow-nuclei-templates-repos` 可包含）。\n\n"
+    report += "仓库导入的特征：\n"
+    report += "- `FromLocal = true` 且 `IsExternal = true`\n"
+    report += "- `Uuid` 为空 或 `OnlineId = 0`\n\n"
+} else {
+    report += "已启用 `--allow-nuclei-templates-repos`，仓库导入的 nuclei POC 被包含。\n\n"
+}
+
+// 添加跳过原因统计到报告
+if len(skipReasons) > 0 {
+    report += "### 跳过原因统计\n\n"
+    report += "| 原因 | 数量 |\n"
+    report += "|------|------|\n"
+    for reason, count := range skipReasons {
+        report += sprintf("| %s | %d |\n", reason, count)
+    }
+    report += "\n"
+}
 
 report += "## 搜索说明\n\n"
 report += "搜索时，系统会：\n\n"

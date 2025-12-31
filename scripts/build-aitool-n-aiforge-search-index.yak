@@ -303,8 +303,18 @@ processItem = func(itemIndex, totalItems, itemInfo) {
 `, itemTypeCN, itemTypeCN, itemTypeCN)
 
         // 使用 BuildSearchIndexKnowledge 构建搜索索引
+        // 传入 search_type 和 search_target 作为知识条目的元数据
+        // search_type: AI工具/Forge 类型，search_target: 工具/Forge 名称
+        // 使用 noPotentialQuestions 压缩存储大小
         log.info("   🤖 Step 2: Calling AI to generate search questions...")
-        searchResult, buildErr = rag.BuildSearchIndexKnowledge(ragCollectionName, itemDescription, rag.extraPrompt(aiCapabilityExtraPrompt))
+        searchTypeDesc = itemTypeCN  // "Yaklang AI 工具" 或 "Yaklang AI Forge"
+        searchResult, buildErr = rag.BuildSearchIndexKnowledge(
+            ragCollectionName, 
+            itemDescription, 
+            rag.extraPrompt(aiCapabilityExtraPrompt),
+            rag.setSearchMeta(searchTypeDesc, itemName),
+            rag.noPotentialQuestions()
+        )
         if buildErr != nil {
             log.error("   ❌ Failed to build search index: %v", buildErr)
             log.error("   ❌ Error details: item=%s, type=%s, desc_len=%d", itemName, itemType, len(itemDescription))
