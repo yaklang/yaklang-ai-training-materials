@@ -49,6 +49,14 @@ testLimit = cli.Int(
     cli.setHelp("Limit the number of plugins to process (0 = all, for testing use 3)")
 )
 
+// 强制重建（忽略已有的 RAG 文件）
+forceRebuild = cli.Bool(
+    "force",
+    cli.setVerboseName("强制重建"),
+    cli.setDefault(false),
+    cli.setHelp("Force rebuild index, ignore existing RAG file")
+)
+
 // 允许 nuclei-templates 仓库导入的 POC（默认过滤掉）
 allowNucleiTemplatesRepos = cli.Bool(
     "allow-nuclei-templates-repos",
@@ -90,6 +98,7 @@ if !str.HasSuffix(finalOutputPath, ".rag") {
 
 log.info("📁 Output RAG: %s", finalOutputPath)
 log.info("⚡ Concurrency: %d", maxConcurrency)
+log.info("🔄 Force Rebuild: %v", forceRebuild)
 if testLimit > 0 {
     log.info("🧪 Test Mode: Limiting to %d plugins", testLimit)
 }
@@ -98,13 +107,52 @@ log.info("   - Allow nuclei-templates repos: %v", allowNucleiTemplatesRepos)
 log.info("   - Include yak native & codec: %v", includeYakNativeAndCodec)
 
 // =============================================================================
-// RAG 系统初始化
+// RAG 系统初始化（支持增量更新）
 // =============================================================================
 
 ragCollectionName = "yaklang-yakscript-plugins"
 
-// 移除现有集合
-rag.DeleteCollection(ragCollectionName)
+// 检查 RAG 文件是否存在，决定是增量更新还是全新构建
+existingRagFile = file.IsExisted(finalOutputPath)
+incrementalMode = existingRagFile && !forceRebuild
+
+if incrementalMode {
+    log.info("")
+    log.info("=== Incremental Update Mode ===")
+    log.info("📂 Found existing RAG file: %s", finalOutputPath)
+    log.info("🔄 Will perform incremental update (use --force to rebuild)")
+    
+    // 先删除可能存在的同名集合，避免冲突
+    rag.DeleteCollection(ragCollectionName)
+    
+    // 导入现有的 RAG 文件
+    try {
+        err = rag.Import(finalOutputPath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.warn("⚠️  Failed to import existing RAG file: %v", err)
+            log.info("🔄 Falling back to full rebuild mode")
+            incrementalMode = false
+            rag.DeleteCollection(ragCollectionName)
+        } else {
+            log.info("✓ Successfully imported existing RAG file")
+        }
+    } catch importErr {
+        log.warn("⚠️  Failed to import existing RAG file: %v", importErr)
+        log.info("🔄 Falling back to full rebuild mode")
+        incrementalMode = false
+        rag.DeleteCollection(ragCollectionName)
+    }
+} else {
+    log.info("")
+    log.info("=== Full Build Mode ===")
+    if existingRagFile && forceRebuild {
+        log.info("🔄 Force rebuild requested, ignoring existing file")
+    } else {
+        log.info("📝 No existing RAG file found, creating new index")
+    }
+    // 移除现有集合
+    rag.DeleteCollection(ragCollectionName)
+}
 
 log.info("")
 log.info("=== Initializing RAG System ===")
@@ -117,6 +165,68 @@ if err != nil {
 
 log.info("✓ RAG system initialized successfully")
 log.info("   📚 Collection name: %s", ragCollectionName)
+
+// 获取现有文档数量
+existingDocCount = 0
+try {
+    existingDocCount, _ = ragSystem.CountDocuments()
+    log.info("   📊 Existing documents: %d", existingDocCount)
+} catch countErr {
+    log.debug("Failed to count existing documents: %v", countErr)
+}
+
+// =============================================================================
+// 预加载已存在的知识条目（用于快速去重检查）
+// =============================================================================
+
+// 一次性预加载所有已存在的知识条目的 KnowledgeTitle
+// 存储在内存 map 中，用于 O(1) 快速查找
+existingKnowledgeTitles = {}  // map[string]bool
+
+// 预加载函数 - 一次性获取所有已存在的知识条目（使用 DISTINCT 高效查询）
+preloadExistingKnowledge = func() {
+    if !incrementalMode {
+        return
+    }
+    
+    log.info("📋 Preloading existing knowledge titles (using DISTINCT query)...")
+    preloadStart = time.Now()
+    
+    try {
+        // 使用 DBQueryUniqueKnowledgeTitles 直接获取唯一标题（SQL DISTINCT，高效）
+        titles, err = rag.DBQueryUniqueKnowledgeTitles(rag.dbQueryCollection(ragCollectionName), rag.dbQueryLimit(50000))
+        if err != nil {
+            log.warn("Failed to preload knowledge titles: %v", err)
+            return
+        }
+        
+        // 存储到 map 中
+        for _, title := range titles {
+            if title != "" {
+                existingKnowledgeTitles[title] = true
+            }
+        }
+        
+        preloadElapsed = time.Since(preloadStart)
+        log.info("✓ Preloaded %d unique knowledge titles in %v", len(existingKnowledgeTitles), preloadElapsed)
+    } catch preloadErr {
+        log.warn("Failed to preload knowledge titles: %v", preloadErr)
+    }
+}
+
+// 快速检查插件是否已存在（使用预加载的 map，O(1) 查找）
+checkPluginExists = func(scriptName) {
+    if !incrementalMode {
+        return false
+    }
+    
+    // 直接从内存 map 查找，O(1) 复杂度，纳秒级
+    if scriptName in existingKnowledgeTitles {
+        return true
+    }
+    
+    return false
+}
 
 // =============================================================================
 // 过滤函数：跳过内部插件、mock 和测试插件
@@ -139,6 +249,10 @@ shouldSkipByName = func(name) {
     }
     // 过滤 test_ 开头的插件
     if str.HasPrefix(lowerName, "test_") {
+        return true
+    }
+    // 过滤包含 test 的插件
+    if str.Contains(lowerName, "test") {
         return true
     }
     return false
@@ -212,19 +326,19 @@ shouldSkipNucleiFromRepo = func(ins) {
 log.info("")
 log.info("=== Loading YakScript (Plugins) ===")
 
-allItems = []  // 统一存储所有待处理项
-scriptCount = 0
+candidateItems = []  // 候选项（通过基本过滤的）
 skippedCount = 0
 skippedByNameCount = 0
 skippedByAttrCount = 0
 skippedByTypeCount = 0
 skippedByNucleiRepoCount = 0
 
-// 统计不同类型的插件数量
-typeStats = {}
-
 // 跳过原因统计
 skipReasons = {}
+
+// 第一阶段：快速收集所有候选插件（不检查是否已存在）
+log.info("📋 Phase 1: Collecting candidate plugins (fast filtering)...")
+collectStartTime = time.Now()
 
 for ins in db.YieldYakScriptAll() {
     scriptName = ins.ScriptName || ""
@@ -234,7 +348,6 @@ for ins in db.YieldYakScriptAll() {
     if shouldSkipByName(scriptName) {
         skippedCount++
         skippedByNameCount++
-        log.debug("   ⏭️  Skipping by name: %s", scriptName)
         continue
     }
     
@@ -243,8 +356,6 @@ for ins in db.YieldYakScriptAll() {
     if shouldSkip {
         skippedCount++
         skippedByAttrCount++
-        log.debug("   ⏭️  Skipping by attribute: %s - %s", scriptName, skipReason)
-        // 统计跳过原因
         if skipReason in skipReasons {
             skipReasons[skipReason] = skipReasons[skipReason] + 1
         } else {
@@ -258,8 +369,6 @@ for ins in db.YieldYakScriptAll() {
     if shouldSkip {
         skippedCount++
         skippedByTypeCount++
-        log.debug("   ⏭️  Skipping by type: %s - %s", scriptName, skipReason)
-        // 统计跳过原因
         if skipReason in skipReasons {
             skipReasons[skipReason] = skipReasons[skipReason] + 1
         } else {
@@ -273,27 +382,12 @@ for ins in db.YieldYakScriptAll() {
     if shouldSkip {
         skippedCount++
         skippedByNucleiRepoCount++
-        log.debug("   ⏭️  Skipping nuclei from repo: %s", scriptName)
-        // 统计跳过原因
         if skipReason in skipReasons {
             skipReasons[skipReason] = skipReasons[skipReason] + 1
         } else {
             skipReasons[skipReason] = 1
         }
         continue
-    }
-    
-    // 测试模式：检查是否达到限制
-    if testLimit > 0 && scriptCount >= testLimit {
-        log.debug("   🧪 Test limit reached (%d), stopping collection", testLimit)
-        break
-    }
-    
-    // 统计类型
-    if scriptType in typeStats {
-        typeStats[scriptType] = typeStats[scriptType] + 1
-    } else {
-        typeStats[scriptType] = 1
     }
     
     // 封装为统一格式
@@ -308,16 +402,83 @@ for ins in db.YieldYakScriptAll() {
         "is_general_module": ins.IsGeneralModule,
         "general_module_verbose": ins.GeneralModuleVerbose || "",
     }
-    allItems = append(allItems, item)
-    scriptCount++
+    candidateItems = append(candidateItems, item)
 }
 
-log.info("✓ Found %d YakScript plugins to process", scriptCount)
-log.info("   ⏭️  Skipped total: %d", skippedCount)
+collectElapsed = time.Since(collectStartTime)
+log.info("✓ Collected %d candidate plugins in %v", len(candidateItems), collectElapsed)
+log.info("   ⏭️  Skipped by filters: %d", skippedCount)
+
+// 第二阶段：预加载并检查已存在的条目（增量更新模式）
+allItems = []
+skippedByExistsCount = 0
+typeStats = {}
+
+if incrementalMode && len(candidateItems) > 0 {
+    // 一次性预加载所有已存在的知识条目到内存
+    preloadExistingKnowledge()
+    
+    log.info("")
+    log.info("📋 Phase 2: Filtering existing entries (O(1) memory lookup)...")
+    checkStartTime = time.Now()
+    
+    // 使用预加载的 map 进行快速 O(1) 检查
+    for _, item := range candidateItems {
+        scriptName = item["script_name"]
+        
+        if checkPluginExists(scriptName) {
+            skippedByExistsCount++
+            continue
+        }
+        
+        // 测试模式限制
+        if testLimit > 0 && len(allItems) >= testLimit {
+            continue
+        }
+        
+        // 统计类型
+        scriptType = item["type"]
+        if scriptType in typeStats {
+            typeStats[scriptType] = typeStats[scriptType] + 1
+        } else {
+            typeStats[scriptType] = 1
+        }
+        
+        allItems = append(allItems, item)
+    }
+    
+    checkElapsed = time.Since(checkStartTime)
+    log.info("✓ Existence check completed in %v (for %d candidates)", checkElapsed, len(candidateItems))
+} else {
+    // 非增量模式或无候选项，直接使用所有候选项
+    for _, item := range candidateItems {
+        if testLimit > 0 && len(allItems) >= testLimit {
+            break
+        }
+        
+        scriptType = item["type"]
+        if scriptType in typeStats {
+            typeStats[scriptType] = typeStats[scriptType] + 1
+        } else {
+            typeStats[scriptType] = 1
+        }
+        
+        allItems = append(allItems, item)
+    }
+}
+
+scriptCount = len(allItems)
+
+log.info("")
+log.info("✓ Found %d new YakScript plugins to process", scriptCount)
+log.info("   ⏭️  Skipped total: %d", skippedCount + skippedByExistsCount)
 log.info("      - By name (mock/test): %d", skippedByNameCount)
 log.info("      - By attribute (internal): %d", skippedByAttrCount)
 log.info("      - By type (yak/codec): %d", skippedByTypeCount)
 log.info("      - By nuclei repo source: %d", skippedByNucleiRepoCount)
+if incrementalMode {
+    log.info("   ✓ Already indexed: %d", skippedByExistsCount)
+}
 
 // 打印跳过原因统计
 if len(skipReasons) > 0 {
@@ -342,11 +503,28 @@ if testLimit > 0 {
 
 totalCount = len(allItems)
 log.info("")
-log.info("📊 Total items to process: %d", totalCount)
+log.info("📊 Total new items to process: %d", totalCount)
 
 if totalCount == 0 {
-    log.warn("⚠️  No YakScript plugins found in database")
-    die("No items to process")
+    if incrementalMode {
+        log.info("✓ All plugins are already indexed, nothing to update")
+        // 直接导出现有数据
+        try {
+            err = rag.Export(ragCollectionName, finalOutputPath)
+            if err != nil {
+                log.error("❌ Failed to export RAG file: %v", err)
+                die(sprintf("Failed to export RAG file: %v", err))
+            }
+            log.info("✓ RAG file exported (no changes): %s", finalOutputPath)
+        } catch exportErr {
+            log.error("❌ Failed to export RAG file: %v", exportErr)
+            die(sprintf("Failed to export RAG file: %v", exportErr))
+        }
+        os.Exit(0)
+    } else {
+        log.warn("⚠️  No YakScript plugins found in database")
+        die("No items to process")
+    }
 }
 
 // =============================================================================
@@ -571,7 +749,7 @@ for result := range resultsChan {
 
 log.info("")
 log.info("=== Processing Results ===")
-log.info("📊 Total items: %d", totalCount)
+log.info("📊 Total new items: %d", totalCount)
 log.info("✓ Total successful: %d", successCount)
 log.info("✗ Total failed: %d", failedCount)
 log.info("📚 Total questions generated: %d", totalQuestions)
@@ -581,6 +759,14 @@ log.info("")
 log.info("=== Success by Type ===")
 for t, count := range successTypeStats {
     log.info("   ✓ %s: %d", t, count)
+}
+
+if incrementalMode {
+    log.info("")
+    log.info("=== Incremental Update Summary ===")
+    log.info("   📊 Previously indexed: %d documents", existingDocCount)
+    log.info("   ✓ Skipped (already exists): %d plugins", skippedByExistsCount)
+    log.info("   ➕ Newly added: %d plugins", successCount)
 }
 
 if failedCount > 0 {
@@ -601,8 +787,13 @@ finalDocCount = 0
 try {
     finalDocCount, _ = ragSystem.CountDocuments()
     log.info("📊 Final document count: %d", finalDocCount)
-    log.info("   - Knowledge entries: %d", successCount)
-    log.info("   - Question indexes: %d", totalQuestions)
+    if incrementalMode {
+        log.info("   - Previous documents: %d", existingDocCount)
+        log.info("   - New documents added: %d", finalDocCount - existingDocCount)
+    } else {
+        log.info("   - Knowledge entries: %d", successCount)
+        log.info("   - Question indexes: %d", totalQuestions)
+    }
 } catch countErr {
     log.warn("⚠️  Failed to get document count: %v", countErr)
 }
@@ -651,6 +842,7 @@ report += sprintf("**构建时间**: %s\n\n", time.Now().Format("2006-01-02 15:0
 report += sprintf("**Yak 版本**: %s\n\n", yakVersion)
 report += sprintf("**RAG 文件**: %s\n\n", finalOutputPath)
 report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+report += sprintf("**构建模式**: %s\n\n", incrementalMode ? "增量更新" : "全量构建")
 
 report += "## 索引结构\n\n"
 report += "本索引采用 **知识条目 -> 多问题索引** 的结构：\n\n"
@@ -673,16 +865,28 @@ for t, count := range typeStats {
 }
 report += "\n"
 
-report += "## 构建统计\n\n"
-report += sprintf("| 指标 | 数值 |\n")
-report += sprintf("|------|------|\n")
-report += sprintf("| 插件总数 | %d |\n", totalCount)
-report += sprintf("| 成功处理 | %d |\n", successCount)
-report += sprintf("| 处理失败 | %d |\n", failedCount)
-report += sprintf("| 跳过数量 | %d |\n", skippedCount)
-report += sprintf("| 知识条目数 | %d |\n", successCount)
-report += sprintf("| 问题索引数 | %d |\n", totalQuestions)
-report += sprintf("| 总文档数 | %d |\n\n", finalDocCount)
+if incrementalMode {
+    report += "## 增量更新统计\n\n"
+    report += sprintf("| 指标 | 数值 |\n")
+    report += sprintf("|------|------|\n")
+    report += sprintf("| 原有文档数 | %d |\n", existingDocCount)
+    report += sprintf("| 跳过已存在的插件 | %d |\n", skippedByExistsCount)
+    report += sprintf("| 新增插件数 | %d |\n", totalCount)
+    report += sprintf("| 新增成功 | %d |\n", successCount)
+    report += sprintf("| 新增失败 | %d |\n", failedCount)
+    report += sprintf("| 最终文档数 | %d |\n\n", finalDocCount)
+} else {
+    report += "## 构建统计\n\n"
+    report += sprintf("| 指标 | 数值 |\n")
+    report += sprintf("|------|------|\n")
+    report += sprintf("| 插件总数 | %d |\n", totalCount)
+    report += sprintf("| 成功处理 | %d |\n", successCount)
+    report += sprintf("| 处理失败 | %d |\n", failedCount)
+    report += sprintf("| 跳过数量 | %d |\n", skippedCount)
+    report += sprintf("| 知识条目数 | %d |\n", successCount)
+    report += sprintf("| 问题索引数 | %d |\n", totalQuestions)
+    report += sprintf("| 总文档数 | %d |\n\n", finalDocCount)
+}
 
 if failedCount > 0 {
     report += "## 处理失败的项目\n\n"
@@ -704,7 +908,8 @@ report += "以下名称模式的插件被自动过滤：\n\n"
 report += "- 名称以 `mock_` 开头\n"
 report += "- 名称包含 `mock`\n"
 report += "- 名称为 `sleep` 或以 `sleep_` 开头\n"
-report += "- 名称以 `test_` 开头\n\n"
+report += "- 名称以 `test_` 开头\n"
+report += "- 名称包含 `test`\n\n"
 report += "### 基于属性的过滤（内部插件）\n\n"
 report += "以下属性的插件被自动过滤：\n\n"
 report += "- `Ignored = true`: 标记为忽略的内部插件\n"
@@ -741,6 +946,15 @@ if len(skipReasons) > 0 {
     report += "\n"
 }
 
+report += "## 增量更新机制\n\n"
+report += "当 RAG 文件已存在时，脚本会自动进入增量更新模式：\n\n"
+report += "1. 导入现有的 RAG 文件到内存\n"
+report += "2. 对每个待处理的插件，使用模糊搜索检查是否已存在\n"
+report += "3. 检查方式：搜索插件名称 → 获取知识条目 → 检查 Content 是否包含 `插件名称: xxx`\n"
+report += "4. 如果 Content 包含该插件名称，则跳过该条目\n"
+report += "5. 只添加新的条目，节省 AI 调用成本\n\n"
+report += "使用 `--force` 参数可强制全量重建。\n\n"
+
 report += "## 搜索说明\n\n"
 report += "搜索时，系统会：\n\n"
 report += "1. 通过问题索引进行语义搜索\n"
@@ -753,6 +967,8 @@ report += "|------|------|\n"
 report += "| `index_type` | 文档类型：`knowledge_entry` 或 `question_index` |\n"
 report += "| `entry_id` | 知识条目的唯一标识符 |\n"
 report += "| `question_index` | 问题文本（仅 question_index 类型有） |\n"
+report += "| `search_type` | 插件类型描述：如 `Yak插件[MITM 代理插件]` |\n"
+report += "| `search_target` | 插件名称（用于增量更新时的去重检查） |\n"
 report += "| `type` | 插件类型：如 `yak`, `mitm`, `port-scan` 等 |\n"
 
 // 保存报告
@@ -770,6 +986,10 @@ log.info("   📁 RAG File: %s", finalOutputPath)
 log.info("   📄 Report: %s", reportPath)
 log.info("   📊 Plugins: %d processed", successCount)
 log.info("   📚 Questions: %d generated", totalQuestions)
+if incrementalMode {
+    log.info("   🔄 Mode: Incremental update")
+    log.info("   ⏭️  Skipped: %d already indexed", skippedByExistsCount)
+}
 log.info("")
 log.info("🔍 To search the index, use RAG search with the exported file.")
 

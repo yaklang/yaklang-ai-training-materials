@@ -1,0 +1,153 @@
+// test_report_generating.yak
+// 测试 loop_report_generating 专注模式的基本流程
+
+// 存储最终报告文件路径
+var reportFilename = ""
+var reportContent = ""
+var testPassed = false
+
+// 定义测试任务：基于 yaklang 项目的 README 生成一份简要分析报告
+testPrompt = `请帮我基于 /Users/v1ll4n/Projects/yaklang/README.md 文件生成一份简要的 Yaklang 项目介绍报告。
+
+报告要求：
+1. 简要介绍项目的用途和定位
+2. 列出主要功能特点
+3. 总结项目的技术架构
+
+报告长度控制在 200 字左右即可，这只是一个测试。`
+
+log.Info("========================================")
+log.Info("Testing loop_report_generating focus mode")
+log.Info("========================================")
+log.Info("Test prompt: %s", testPrompt)
+
+// 调用 ReAct 使用 report_generating 专注模式
+err = aim.InvokeReAct(
+    testPrompt,
+    aim.focus("report_generating"),
+    aim.timeout(300), // 5分钟超时
+    aim.maxIteration(15),
+    aim.onEvent(func(react, event) {
+        // 只打印关键事件，不打印 stream
+        if event.Type != "stream" && event.Type != "consumption" && event.Type != "pressure" {
+            log.Info("[EVENT] Type: %s, NodeId: %s", event.Type, event.NodeId)
+        }
+        
+        // 捕获 pin_filename 事件获取报告文件路径
+        if event.Type == "filesystem_pin_filename" {
+            log.Info("[EVENT] Pin filename detected!")
+            try {
+                jsonData = json.loads(event.Content)
+                if jsonData != nil && jsonData["path"] != nil {
+                    reportFilename = jsonData["path"]
+                    log.Info("[EVENT] Extracted filename from JSON: %s", reportFilename)
+                }
+            } catch e {
+                if event.Content != "" {
+                    reportFilename = event.Content
+                    log.Info("[EVENT] Using Content as filename: %s", reportFilename)
+                }
+            }
+        }
+    }),
+    aim.onData(func(react, event, nodeId, data) {
+        dataStr = string(data)
+        
+        // 直接打印所有 stream 类型的 AI 输出内容到 stdout（不过滤 nodeId）
+        if event.Type == "stream" {
+            // 跳过 fast-memory-fetch 的流
+            if nodeId != "fast-memory-fetch" {
+                print(dataStr)  // 直接打印 delta 内容，不换行
+            }
+        }
+        
+        // 打印 report-content 流（AI 标签内容）- 这是真正提取到的报告内容
+        if str.Contains(nodeId, "report-content") {
+            println("\n[REPORT-CONTENT]: " + dataStr)
+        }
+        
+        // 捕获 pin_filename 事件
+        if event.Type == "filesystem_pin_filename" {
+            log.Info("[DATA] Pin filename from data callback!")
+            try {
+                jsonData = json.loads(string(data))
+                if jsonData != nil && jsonData["path"] != nil {
+                    if reportFilename == "" {
+                        reportFilename = jsonData["path"]
+                        log.Info("[DATA] Extracted filename: %s", reportFilename)
+                    }
+                }
+            } catch e {
+                if reportFilename == "" && len(data) > 0 {
+                    reportFilename = string(data)
+                }
+            }
+        }
+    }),
+    aim.onFinished(func(react) {
+        log.Info("[FINISHED] ReAct execution completed")
+        
+        // 如果还没有捕获到 filename，尝试从默认路径查找
+        if reportFilename == "" {
+            log.Warn("No filename captured from events")
+        }
+        
+        // 读取最终报告内容
+        if reportFilename != "" {
+            log.Info("Reading final report from: %s", reportFilename)
+            content, readErr = file.ReadFile(reportFilename)
+            if readErr == nil {
+                reportContent = string(content)
+                log.Info("Report content length: %d bytes", len(reportContent))
+                
+                // 验证报告内容
+                if len(reportContent) > 50 {
+                    testPassed = true
+                    log.Info("Test PASSED: Report generated successfully!")
+                } else {
+                    log.Warn("Test WARNING: Report content is too short")
+                }
+            } else {
+                log.Error("Failed to read report file: %v", readErr)
+            }
+        } else {
+            log.Error("No report filename captured")
+        }
+    }),
+)
+
+if err != nil {
+    log.Error("ReAct execution failed: %v", err)
+} else {
+    log.Info("ReAct execution completed without error")
+}
+
+// 输出最终结果
+log.Info("========================================")
+log.Info("TEST RESULTS")
+log.Info("========================================")
+log.Info("Report Filename: %s", reportFilename)
+log.Info("Report Content Length: %d bytes", len(reportContent))
+log.Info("Test Passed: %v", testPassed)
+
+if reportContent != "" {
+    log.Info("========================================")
+    log.Info("REPORT CONTENT PREVIEW (first 500 chars):")
+    log.Info("========================================")
+    preview = reportContent
+    if len(preview) > 500 {
+        preview = preview[:500] + "\n..."
+    }
+    log.Info("%s", preview)
+}
+
+if testPassed {
+    log.Info("========================================")
+    log.Info("SUCCESS: loop_report_generating is working correctly!")
+    log.Info("========================================")
+} else {
+    log.Warn("========================================")
+    log.Warn("ATTENTION: Test may have issues, please check the logs above")
+    log.Warn("========================================")
+}
+

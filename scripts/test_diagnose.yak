@@ -1,0 +1,94 @@
+#!/usr/bin/env yak
+
+// 诊断：检查导入后向量文档与知识条目的关联关系
+
+ragFile = "/tmp/caps_v1.rag"  // 使用新格式文件
+collectionName = "test-diagnose"
+
+log.info("=== Diagnose: Vector-Knowledge Association ===")
+log.info("📁 RAG File: %s", ragFile)
+
+// 导入
+rag.DeleteCollection(collectionName)
+err = rag.Import(ragFile, rag.importName(collectionName))
+if err != nil {
+    log.error("❌ Import failed: %v", err)
+    die(err)
+}
+log.info("✓ Import successful")
+
+// 获取 RAG 系统
+ragSystem, err = rag.Get(collectionName)
+if err != nil {
+    die(err)
+}
+
+// 统计
+vectorCount, _ = ragSystem.CountDocuments()
+log.info("📊 Vector documents: %d", vectorCount)
+
+// 获取所有知识条目
+entries, err = rag.DBQueryKnowledge("", rag.dbQueryCollection(collectionName), rag.dbQueryLimit(1000))
+if err != nil {
+    log.error("Query knowledge failed: %v", err)
+}
+log.info("📊 Knowledge entries: %d", len(entries))
+
+// 打印前 3 个知识条目
+log.info("")
+log.info("=== Sample Knowledge Entries ===")
+for i, entry := range entries {
+    if i >= 3 {
+        break
+    }
+    log.info("%d. Title: %s", i+1, entry.KnowledgeTitle)
+    log.info("   HiddenIndex: %s", entry.HiddenIndex)
+    log.info("   KnowledgeBaseID: %d", entry.KnowledgeBaseID)
+    log.info("   ID: %d", entry.ID)
+}
+
+// 获取向量文档并检查关联
+log.info("")
+log.info("=== Sample Vector Documents ===")
+vectorDocs, err = rag.DBQueryVectorDocument("", rag.dbQueryCollection(collectionName), rag.dbQueryLimit(10))
+if err != nil {
+    log.error("Query vector failed: %v", err)
+}
+
+for i, doc := range vectorDocs {
+    if i >= 5 {
+        break
+    }
+    log.info("%d. DocumentID: %s", i+1, doc.DocumentID)
+    
+    // 获取 META_Data_UUID
+    metaUUID = ""
+    if doc.Metadata != nil {
+        for k, v := range doc.Metadata {
+            if k == "uuid" || k == "data_uuid" {
+                metaUUID = sprintf("%v", v)
+            }
+        }
+    }
+    log.info("   Metadata: %v", doc.Metadata)
+    log.info("   META_Data_UUID: %s", metaUUID)
+    
+    // 检查是否能找到对应的知识条目
+    foundEntry = false
+    for _, entry := range entries {
+        if entry.HiddenIndex == metaUUID {
+            foundEntry = true
+            log.info("   ✓ Found matching entry: %s", entry.KnowledgeTitle)
+            break
+        }
+    }
+    if !foundEntry && metaUUID != "" {
+        log.warn("   ❌ No matching entry for UUID: %s", metaUUID)
+    }
+}
+
+// 清理
+rag.DeleteCollection(collectionName)
+log.info("")
+log.info("=== Diagnose Complete ===")
+
