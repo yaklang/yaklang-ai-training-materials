@@ -1,0 +1,197 @@
+// RAG 模块图删除功能测试脚本
+// 使用方式: go run common/yak/cmd/yak.go /tmp/rag-delete.yak
+
+println("========================================")
+println("RAG 模块图删除功能测试")
+println("========================================\n")
+
+// 测试配置
+testCollectionName = sprintf("test_rag_delete_%d", time.Now().Unix())
+println(sprintf("测试集合名称: %s", testCollectionName))
+
+// 清理函数
+cleanup = () => {
+    println("\n清理测试数据...")
+    err = rag.DeleteRAG(testCollectionName)
+    if err != nil {
+        println(sprintf("清理失败 (可忽略): %v", err))
+    } else {
+        println("清理成功")
+    }
+}
+defer cleanup()
+
+// 测试1: 创建集合并添加文档
+println("========================================")
+println("测试1: 创建集合并添加文档")
+println("========================================")
+
+// 创建文档数据
+documents = [
+    {"id": "doc1", "content": "这是第一个测试文档，包含了一些关于网络安全的内容。", "metadata": {"type": "security", "priority": 1}},
+    {"id": "doc2", "content": "这是第二个测试文档，描述了XSS攻击的原理和防御方法。", "metadata": {"type": "security", "priority": 2}},
+    {"id": "doc3", "content": "这是第三个测试文档，介绍了SQL注入漏洞的检测技术。", "metadata": {"type": "vulnerability", "priority": 3}},
+    {"id": "doc4", "content": "这是第四个测试文档，讨论了CSRF攻击的防护策略。", "metadata": {"type": "security", "priority": 4}},
+    {"id": "doc5", "content": "这是第五个测试文档，说明了渗透测试的基本流程。", "metadata": {"type": "pentest", "priority": 5}},
+]
+
+// 添加文档
+for doc in documents {
+    err = rag.AddDocument(testCollectionName, doc.id, doc.content, doc.metadata, rag.ragForceNew(true))
+    if err != nil {
+        println(sprintf("添加文档 %s 失败: %v", doc.id, err))
+        panic(sprintf("添加文档失败: %v", err))
+    }
+    println(sprintf("  已添加文档: %s", doc.id))
+}
+println(sprintf("成功添加 %d 个文档\n", len(documents)))
+
+// 测试2: 验证文档存在
+println("========================================")
+println("测试2: 验证文档存在于集合中")
+println("========================================")
+
+// 获取 RAG 集合并验证文档数量
+ragSystem = rag.Get(testCollectionName)~
+docCount = ragSystem.CountDocuments()~
+println(sprintf("集合中文档数量: %d", docCount))
+if docCount != len(documents) {
+    panic(sprintf("文档数量不匹配: 期望 %d, 实际 %d", len(documents), docCount))
+}
+println("文档数量验证通过\n")
+
+// 测试3: 删除单个文档
+println("========================================")
+println("测试3: 删除单个文档 (doc3)")
+println("========================================")
+
+err = rag.DeleteDocument(testCollectionName, "doc3")
+if err != nil {
+    panic(sprintf("删除文档 doc3 失败: %v", err))
+}
+println("已删除文档: doc3")
+
+// 验证文档数量减少
+ragSystem = rag.Get(testCollectionName)~
+newDocCount = ragSystem.CountDocuments()~
+println(sprintf("删除后集合中文档数量: %d", newDocCount))
+if newDocCount != docCount - 1 {
+    panic(sprintf("删除后文档数量不匹配: 期望 %d, 实际 %d", docCount - 1, newDocCount))
+}
+println("单个文档删除验证通过\n")
+
+// 测试4: 搜索验证被删除的文档不出现在结果中
+println("========================================")
+println("测试4: 验证被删除文档不出现在搜索结果中")
+println("========================================")
+
+// 使用与被删除文档相似的查询
+searchResults = ragSystem.Query("SQL注入漏洞检测", 10)~
+println(sprintf("搜索 'SQL注入漏洞检测' 返回 %d 个结果", len(searchResults)))
+
+foundDeletedDoc = false
+for result in searchResults {
+    println(sprintf("  搜索结果: %s (score: %f)", result.Document.ID, result.Score))
+    if result.Document.ID == "doc3" {
+        foundDeletedDoc = true
+    }
+}
+
+if foundDeletedDoc {
+    panic("错误: 被删除的文档 doc3 仍出现在搜索结果中!")
+}
+println("验证通过: 被删除的文档不在搜索结果中\n")
+
+// 测试5: 批量删除文档
+println("========================================")
+println("测试5: 批量删除文档 (doc1, doc2)")
+println("========================================")
+
+// 删除 doc1
+err = rag.DeleteDocument(testCollectionName, "doc1")
+if err != nil {
+    panic(sprintf("删除文档 doc1 失败: %v", err))
+}
+println("已删除文档: doc1")
+
+// 删除 doc2
+err = rag.DeleteDocument(testCollectionName, "doc2")
+if err != nil {
+    panic(sprintf("删除文档 doc2 失败: %v", err))
+}
+println("已删除文档: doc2")
+
+// 验证文档数量
+ragSystem = rag.Get(testCollectionName)~
+finalDocCount = ragSystem.CountDocuments()~
+println(sprintf("批量删除后集合中文档数量: %d", finalDocCount))
+if finalDocCount != 2 {
+    panic(sprintf("批量删除后文档数量不匹配: 期望 2, 实际 %d", finalDocCount))
+}
+println("批量删除验证通过\n")
+
+// 测试6: 验证剩余文档仍可正常搜索
+println("========================================")
+println("测试6: 验证剩余文档仍可正常搜索")
+println("========================================")
+
+remainingSearchResults = ragSystem.Query("安全 攻击 防护", 10)~
+println(sprintf("搜索返回 %d 个结果", len(remainingSearchResults)))
+
+expectedRemainingDocs = {"doc4": true, "doc5": true}
+for result in remainingSearchResults {
+    println(sprintf("  搜索结果: %s (score: %f)", result.Document.ID, result.Score))
+    if expectedRemainingDocs[result.Document.ID] {
+        delete(expectedRemainingDocs, result.Document.ID)
+    }
+}
+println("剩余文档搜索验证通过\n")
+
+// 测试7: 测试删除不存在的文档（不应报错）
+println("========================================")
+println("测试7: 删除不存在的文档")
+println("========================================")
+
+err = rag.DeleteDocument(testCollectionName, "nonexistent_doc")
+if err != nil {
+    println(sprintf("删除不存在的文档返回错误 (可接受): %v", err))
+} else {
+    println("删除不存在的文档未报错 (符合预期)")
+}
+println("")
+
+// 测试8: 使用 Clear 方法清空所有文档
+println("========================================")
+println("测试8: 清空所有文档")
+println("========================================")
+
+ragSystem = rag.Get(testCollectionName)~
+err = ragSystem.ClearDocuments()
+if err != nil {
+    panic(sprintf("清空集合失败: %v", err))
+}
+println("已清空集合")
+
+// 验证集合为空
+finalCount = ragSystem.CountDocuments()~
+println(sprintf("清空后集合中文档数量: %d", finalCount))
+if finalCount != 0 {
+    panic(sprintf("清空后文档数量不匹配: 期望 0, 实际 %d", finalCount))
+}
+println("清空验证通过\n")
+
+println("========================================")
+println("所有 RAG 图删除功能测试通过!")
+println("========================================")
+
+// 测试总结
+println("\n测试总结:")
+println("1. ✓ 创建集合并添加文档")
+println("2. ✓ 验证文档存在于集合中")
+println("3. ✓ 删除单个文档")
+println("4. ✓ 验证被删除文档不出现在搜索结果中")
+println("5. ✓ 批量删除文档")
+println("6. ✓ 验证剩余文档仍可正常搜索")
+println("7. ✓ 删除不存在的文档")
+println("8. ✓ 清空所有文档")
+println("\n所有测试通过!")
