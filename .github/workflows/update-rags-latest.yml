@@ -103,10 +103,25 @@ jobs:
         run: |
           echo "=== Generating diff package ==="
           if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
-            ./yak scripts/diff-zip-v2.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
+            ./yak scripts/diff-zip-v2.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip || {
+              echo "Diff script failed or no changes detected"
+              echo "HAS_CHANGES=false" >> $GITHUB_ENV
+            }
             if [ -f diff-fs.zip ]; then
-              echo "Diff package generated"
-              ls -lh diff-fs.zip
+              # 检查 diff-fs.zip 是否有内容
+              DIFF_COUNT=$(unzip -l diff-fs.zip 2>/dev/null | tail -1 | awk '{print $2}' || echo "0")
+              if [ "$DIFF_COUNT" = "0" ] || [ -z "$DIFF_COUNT" ]; then
+                echo "No changes detected in diff package"
+                echo "HAS_CHANGES=false" >> $GITHUB_ENV
+                rm -f diff-fs.zip
+              else
+                echo "Diff package generated with $DIFF_COUNT files"
+                ls -lh diff-fs.zip
+                echo "HAS_CHANGES=true" >> $GITHUB_ENV
+              fi
+            else
+              echo "No diff package generated (no changes)"
+              echo "HAS_CHANGES=false" >> $GITHUB_ENV
             fi
             if [ -f diff-fs.md ]; then
               cat diff-fs.md
@@ -114,9 +129,11 @@ jobs:
           else
             echo "No old ZIP, using full ZIP as diff"
             cp yaklang-aikb.zip diff-fs.zip
+            echo "HAS_CHANGES=true" >> $GITHUB_ENV
           fi
 
       - name: Update RAG with diff package
+        if: env.HAS_CHANGES == 'true'
         env:
           EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
           EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
@@ -166,6 +183,7 @@ jobs:
           ls -lh "$NEW_RAG_FILE"
 
       - name: Compress RAG and generate SHA256
+        if: env.HAS_CHANGES == 'true'
         run: |
           RAG_FILE="yaklang-aikb-new.rag"
           if [ ! -f "$RAG_FILE" ]; then
@@ -180,6 +198,7 @@ jobs:
           echo "SHA256_HASH=$SHA256_HASH" >> $GITHUB_ENV
 
       - name: Upload files to OSS
+        if: env.HAS_CHANGES == 'true'
         env:
           OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
           OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
@@ -198,6 +217,7 @@ jobs:
             -f "yaklang-aikb.rag.gz.sha256.txt:${RAG_OSS_DIR}/yaklang-aikb.rag.gz.sha256.txt"
 
       - name: Download and update rags-latest.json
+        if: env.HAS_CHANGES == 'true'
         run: |
           wget -q -O rags-latest.json https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json || echo "[]" > rags-latest.json
           jq empty rags-latest.json 2>/dev/null || echo "[]" > rags-latest.json
@@ -212,6 +232,7 @@ jobs:
           cat rags-latest.json
 
       - name: Upload rags-latest.json
+        if: env.HAS_CHANGES == 'true'
         env:
           OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
           OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
@@ -221,14 +242,21 @@ jobs:
             -f "rags-latest.json:/rag/rags-latest.json"
 
       - name: Verify uploads
+        if: env.HAS_CHANGES == 'true'
         run: |
           curl -I "https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yaklang-aikb.rag.gz" | head -5
           curl -s "https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json" | jq .
           echo "Version: $VERSION"
           echo "RAG: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yaklang-aikb.rag.gz"
+      
+      - name: No changes detected
+        if: env.HAS_CHANGES != 'true'
+        run: |
+          echo "No changes detected in training materials"
+          echo "Skipping RAG update and rags-latest.json update"
 
       - name: Upload artifacts
-        if: always()
+        if: always() && env.HAS_CHANGES == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: diff-fs
@@ -237,11 +265,18 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Yaklang AIKB RAG Updated" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Version | $VERSION |" >> $GITHUB_STEP_SUMMARY
-          echo "| SHA256 | $SHA256_HASH |" >> $GITHUB_STEP_SUMMARY
-          echo "### URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- RAG: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yaklang-aikb.rag.gz" >> $GITHUB_STEP_SUMMARY
-          echo "- Index: https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json" >> $GITHUB_STEP_SUMMARY
+          if [ "$HAS_CHANGES" = "true" ]; then
+            echo "## Yaklang AIKB RAG Updated" >> $GITHUB_STEP_SUMMARY
+            echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Version | $VERSION |" >> $GITHUB_STEP_SUMMARY
+            echo "| SHA256 | $SHA256_HASH |" >> $GITHUB_STEP_SUMMARY
+            echo "### URLs" >> $GITHUB_STEP_SUMMARY
+            echo "- RAG: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yaklang-aikb.rag.gz" >> $GITHUB_STEP_SUMMARY
+            echo "- Index: https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## No Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No changes were detected in the training materials." >> $GITHUB_STEP_SUMMARY
+            echo "RAG update and rags-latest.json update were skipped." >> $GITHUB_STEP_SUMMARY
+          fi
