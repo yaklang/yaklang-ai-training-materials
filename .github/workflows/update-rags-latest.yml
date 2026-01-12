@@ -138,19 +138,20 @@ jobs:
           EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
           EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
           TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_API_MODEL: ${{ secrets.AI_API_MODEL }}
-          AI_API_DOMAIN: ${{ secrets.AI_API_DOMAIN }}
         run: |
           echo "=== Updating RAG knowledge base ==="
           if [ ! -f diff-fs.zip ]; then
             echo "No diff package found"
             exit 0
           fi
-          if [ -z "$EMBEDDING_HOST" ] || [ -z "$AI_API_KEY" ]; then
-            echo "ERROR: Missing credentials"
+          if [ -z "$EMBEDDING_HOST" ]; then
+            echo "ERROR: Missing EMBEDDING_HOST"
             exit 1
           fi
+          
+          # 使用 aibalance 类型和 memfit-standard-free 模型（与 CWE 一致）
+          AI_OPTS="--ai-type aibalance --ai-model memfit-standard-free"
+          
           NEW_RAG_FILE="yaklang-aikb-new.rag"
           if [ -f yaklang-aikb-old.rag ]; then
             ./yak scripts/update-rag.yak \
@@ -160,9 +161,7 @@ jobs:
               --embedding-host "$EMBEDDING_HOST" \
               --embedding-port "$EMBEDDING_PORT" \
               --totp-secret "$TOTP_SECRET" \
-              --ai-api-key "$AI_API_KEY" \
-              --ai-api-model "$AI_API_MODEL" \
-              --ai-api-domain "$AI_API_DOMAIN" \
+              $AI_OPTS \
               --timeout 60
           else
             ./yak scripts/update-rag.yak \
@@ -171,9 +170,7 @@ jobs:
               --embedding-host "$EMBEDDING_HOST" \
               --embedding-port "$EMBEDDING_PORT" \
               --totp-secret "$TOTP_SECRET" \
-              --ai-api-key "$AI_API_KEY" \
-              --ai-api-model "$AI_API_MODEL" \
-              --ai-api-domain "$AI_API_DOMAIN" \
+              $AI_OPTS \
               --timeout 60
           fi
           if [ ! -f "$NEW_RAG_FILE" ]; then
