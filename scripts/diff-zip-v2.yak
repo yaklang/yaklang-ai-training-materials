@@ -171,11 +171,9 @@ if len(diffFiles) > 0 {
         die(sprintf("Failed to create diff ZIP: %v", compressErr))
     }
 } else {
-    log.info("No changes detected, creating empty diff ZIP...")
-    
-    // Current version of zip.CompressRaw function will error when compressing empty content
-    emptyZip = zip.CompressRaw({})~
-    file.Save(outputPath, emptyZip)
+    log.info("No changes detected, skipping diff ZIP creation")
+    // 不创建空的 diff ZIP，因为 zip.CompressRaw({}) 会报错
+    // 工作流会检查 diff-fs.zip 是否存在来判断是否有变更
 }
 
 // 生成Markdown报告

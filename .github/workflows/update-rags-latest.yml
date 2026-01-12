@@ -249,11 +249,72 @@ jobs:
           echo "Version: $VERSION"
           echo "RAG: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yaklang-aikb.rag.gz"
       
-      - name: No changes detected
+      - name: Ensure RAG exists in rags-latest.json (no changes)
         if: env.HAS_CHANGES != 'true'
+        env:
+          OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
         run: |
           echo "No changes detected in training materials"
-          echo "Skipping RAG update and rags-latest.json update"
+          echo "Checking if RAG is already registered in rags-latest.json..."
+          
+          # 下载 rags-latest.json
+          wget -q -O rags-latest.json https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json || echo "[]" > rags-latest.json
+          jq empty rags-latest.json 2>/dev/null || echo "[]" > rags-latest.json
+          
+          # 检查是否已存在 Yaklang AI KnowledgeBase
+          EXISTING=$(cat rags-latest.json | jq -r '.[] | select(.name == "Yaklang AI KnowledgeBase") | .name' 2>/dev/null || echo "")
+          
+          if [ -n "$EXISTING" ]; then
+            echo "Yaklang AI KnowledgeBase already exists in rags-latest.json"
+            cat rags-latest.json | jq '.[] | select(.name == "Yaklang AI KnowledgeBase")'
+          else
+            echo "Yaklang AI KnowledgeBase not found, registering existing RAG..."
+            
+            # 检查现有的 RAG 文件是否存在
+            RAG_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/rag/yaklang-aikb.rag"
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -I "$RAG_URL")
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
+              # 下载并压缩现有 RAG
+              curl -f -s -o "yaklang-aikb-existing.rag" "$RAG_URL"
+              ./yak gzip -f yaklang-aikb-existing.rag
+              mv yaklang-aikb-existing.rag.gzip yaklang-aikb.rag.gz
+              
+              # 生成 SHA256
+              SHA256_HASH=$(sha256sum yaklang-aikb.rag.gz | awk '{print $1}')
+              echo "$SHA256_HASH" > yaklang-aikb.rag.gz.sha256.txt
+              
+              # 上传到版本化路径
+              ./yak upload-oss -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+                -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+                -f "yaklang-aikb.rag.gz:${RAG_OSS_DIR}/yaklang-aikb.rag.gz"
+              ./yak upload-oss -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+                -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+                -f "yaklang-aikb.rag.gz.sha256.txt:${RAG_OSS_DIR}/yaklang-aikb.rag.gz.sha256.txt"
+              
+              # 更新 rags-latest.json
+              ./yak rag-metainfo \
+                -f rags-latest.json -o rags-latest.json \
+                --register-name "Yaklang AI KnowledgeBase" \
+                --register-name-zh "Yaklang AI 知识库" \
+                --version "$VERSION" \
+                --rag-file "/rag/yaklang-aikb/${VERSION}/yaklang-aikb.rag.gz" \
+                --hash-file "/rag/yaklang-aikb/${VERSION}/yaklang-aikb.rag.gz.sha256.txt" \
+                --hash "$SHA256_HASH"
+              
+              # 上传更新后的 rags-latest.json
+              ./yak upload-oss -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+                -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+                -f "rags-latest.json:/rag/rags-latest.json"
+              
+              echo "Yaklang AI KnowledgeBase registered successfully"
+              cat rags-latest.json
+            else
+              echo "No existing RAG file found at $RAG_URL"
+              echo "Please run with changes to create initial RAG"
+            fi
+          fi
 
       - name: Upload artifacts
         if: always() && env.HAS_CHANGES == 'true'
