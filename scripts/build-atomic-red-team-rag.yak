@@ -17,10 +17,19 @@
 // 元数据结构:
 // - technique_id: ATT&CK 技术编号 (如 T1053.005)
 // - attck_technique: ATT&CK 技术编号 (与 technique_id 相同，便于兼容)
+// - display_name: ATT&CK 技术显示名称 (如 "Scheduled Task/Job: Scheduled Task")
+// - title: 技术标题 (与 display_name 相同)
+// - short_name: 技术简称 (如 "Scheduled Task")
 // - source_file: 源文件路径
 // - file_name: 文件名（不含扩展名）
 // - file_type: 文件类型
 // - data_source: 数据来源标识 (atomic-red-team)
+// - entry_type: 条目类型 (technique_overview 表示技术概述条目)
+//
+// 特性:
+// - 自动解析 YAML 中的 attack_technique 和 display_name 字段
+// - 为每个技术手动添加描述性知识条目，关联技术编号和名称
+// - 生成的问题包含 "T1xxx 的目的是什么" 等描述性内容，优化搜索体验
 //
 // 使用模式:
 // 1. 首次构建: yak build-atomic-red-team-rag.yak --input-zip /tmp/attck_kb.zip --output /tmp/attck_kb.rag
@@ -207,6 +216,55 @@ extractFileName = (filePath) => {
         return filename
     }
     return ""
+}
+
+// 从 YAML 内容中解析 attack_technique 和 display_name
+// 返回 {attack_technique: "T1053.005", display_name: "Scheduled Task/Job: Scheduled Task"}
+parseYamlMetadata = (content) => {
+    result = {
+        "attack_technique": "",
+        "display_name": "",
+    }
+    
+    lines = str.Split(content, "\n")
+    for line in lines {
+        trimmedLine = str.TrimSpace(line)
+        
+        // 解析 attack_technique: T1053.005
+        if str.HasPrefix(trimmedLine, "attack_technique:") {
+            value = str.TrimSpace(str.TrimPrefix(trimmedLine, "attack_technique:"))
+            // 移除可能的引号
+            value = str.Trim(value, "'\"")
+            result["attack_technique"] = value
+        }
+        
+        // 解析 display_name: 'Scheduled Task/Job: Scheduled Task'
+        if str.HasPrefix(trimmedLine, "display_name:") {
+            value = str.TrimSpace(str.TrimPrefix(trimmedLine, "display_name:"))
+            // 移除可能的引号
+            value = str.Trim(value, "'\"")
+            result["display_name"] = value
+        }
+        
+        // 已解析到所需字段，提前退出
+        if result["attack_technique"] != "" && result["display_name"] != "" {
+            break
+        }
+    }
+    
+    return result
+}
+
+// 提取 display_name 中的简短名称（冒号后面的部分）
+// 如 "Scheduled Task/Job: Scheduled Task" -> "Scheduled Task"
+extractShortName = (displayName) => {
+    if str.Contains(displayName, ":") {
+        parts = str.Split(displayName, ":")
+        if len(parts) >= 2 {
+            return str.TrimSpace(parts[len(parts)-1])
+        }
+    }
+    return displayName
 }
 
 // =============================================================================
@@ -398,32 +456,49 @@ if shouldRestoreProgress {
 log.info("")
 log.info("=== Step 4: Building RAG Index ===")
 
-// 构建带有技术编号和完整文件内容上下文的 AI Prompt
+// 构建带有技术编号、名称和完整文件内容上下文的 AI Prompt
 // 每个分片都能看到完整的文件上下文信息
-buildAttckPromptWithContent = (techniqueID, fileName, filePath, content) => {
+// 参数增加 displayName 和 shortName 用于更好的问题生成
+buildAttckPromptWithContent = (techniqueID, displayName, shortName, fileName, filePath, content) => {
     // 截取文件内容摘要（最多前 2000 字符作为上下文）
     contentSummary = content
     if len(content) > 2000 {
         contentSummary = content[:2000] + "\n... (内容已截断，完整内容见分片)"
     }
     
+    // 如果没有 displayName，使用 techniqueID
+    if displayName == "" {
+        displayName = techniqueID
+    }
+    if shortName == "" {
+        shortName = techniqueID
+    }
+    
     basePrompt = sprintf(`=== 文件上下文信息 ===
 文件路径: %s
 文件名: %s
 ATT&CK 技术编号: %s
+ATT&CK 技术名称: %s
+ATT&CK 技术简称: %s
 数据来源: Atomic Red Team (https://github.com/redcanaryco/atomic-red-team)
 
 === 完整文件内容摘要 ===
 %s
 
 === 分析指南 ===
-你正在分析 MITRE ATT&CK 技术 %s 的 Atomic Red Team 攻击模拟测试定义。
+你正在分析 MITRE ATT&CK 技术 %s (%s) 的 Atomic Red Team 攻击模拟测试定义。
 当前处理的是该文件的一个分片，但上面已提供完整文件的上下文摘要。
 
-目标是构建攻击技术测试的专用索引，用于安全测试和防御检测。
+【核心要点】
+%s 技术的目的是：实现 %s 相关的攻击能力。
+
+目标是构建攻击技术测试的专用索引，用于安全测试、防御检测和技术分类判别。
 
 关注内容：
 - MITRE ATT&CK 技术编号: %s
+- 技术名称: %s
+- 技术目的和攻击意图
+- 攻击行为描述（攻击者想要做什么）
 - 测试场景描述和攻击目的
 - 执行命令和攻击步骤
 - 支持平台（Windows/Linux/macOS）
@@ -433,17 +508,56 @@ ATT&CK 技术编号: %s
 
 对于 YAML 文件：提取 attack_technique、display_name、atomic_tests 中的关键信息。
 
-生成问题应围绕该技术的安全测试和防御，例如：
-- '如何测试 %s 技术？'
+【关键】生成索引时必须包含以下类型的问题，便于用户通过描述目的/行为来检索技术：
+
+1. 目的导向问题（用户说出目的，找到技术）：
+- '我想要实现 %s，应该用什么技术？'
+- '攻击者想要 %s，会使用什么 ATT&CK 技术？'
+- '如何实现 %s？对应哪个 ATT&CK 技术？'
+- '想要达成 %s 目的，需要用什么攻击技术？'
+
+2. 行为描述问题（描述攻击行为，关联技术编号）：
+- '使用 %s 进行攻击属于哪个 ATT&CK 技术？'
+- '%s 这种攻击行为对应什么技术编号？'
+- '如果发现攻击者在 %s，这是什么 ATT&CK 技术？'
+
+3. 技术编号关联问题：
+- '%s 的目的是什么？'
+- '%s (%s) 技术是用来做什么的？'
+- '%s 攻击的意图是什么？'
+- '%s 技术能实现什么攻击目标？'
+
+4. 检测与防御问题：
+- '如何检测 %s 攻击？'
 - '%s 攻击有哪些检测方法？'
-- '%s 攻击需要什么权限？'
+- '怎么防御 %s 技术？'
+
+5. 测试与执行问题：
+- '如何测试 %s (%s) 技术？'
+- '%s 技术需要什么权限？'
 - '如何清理 %s 测试的痕迹？'
 - '%s 属于哪个 ATT&CK 战术阶段？'
 
-重要：请在索引标题中包含技术编号 %s，便于后续检索。`, 
-        filePath, fileName, techniqueID, contentSummary,
-        techniqueID, techniqueID,
-        techniqueID, techniqueID, techniqueID, techniqueID, techniqueID, techniqueID)
+【索引标题规范】
+索引标题必须使用格式："%s (%s) - [行为描述]"
+例如："T1053.005 (Scheduled Task) - 使用计划任务实现持久化攻击"
+
+【重要】
+- 知识内容必须包含该技术的具体攻击行为描述
+- 必须说明"攻击者使用这个技术是为了XXX"
+- 必须能让用户通过描述目的/行为来找到对应的技术编号 %s
+- 请在索引中同时包含技术编号 %s 和技术名称 %s，便于后续检索和技术分类判别`, 
+        filePath, fileName, techniqueID, displayName, shortName, contentSummary,
+        techniqueID, displayName,
+        techniqueID, shortName,
+        techniqueID, displayName,
+        shortName, shortName, shortName, shortName,
+        shortName, shortName, shortName,
+        techniqueID, techniqueID, shortName, shortName, techniqueID,
+        shortName, techniqueID, shortName,
+        techniqueID, shortName, techniqueID, techniqueID,
+        techniqueID, shortName,
+        techniqueID, techniqueID, shortName)
     return basePrompt
 }
 
@@ -467,10 +581,13 @@ buildDefaultPromptWithContent = (filePath, fileName, content) => {
 这是 Atomic Red Team 攻击模拟测试定义（基于 MITRE ATT&CK 框架）。
 当前处理的是该文件的一个分片，但上面已提供完整文件的上下文摘要。
 
-目标是构建攻击技术测试的专用索引，用于安全测试和防御检测。
+目标是构建攻击技术测试的专用索引，用于安全测试、防御检测和技术分类判别。
 
 关注内容：
 - MITRE ATT&CK 技术编号（如 T1053.005）
+- 技术名称（display_name）
+- 技术目的和攻击意图
+- 攻击行为描述（攻击者想要做什么）
 - 测试场景描述和攻击目的
 - 执行命令和攻击步骤
 - 支持平台（Windows/Linux/macOS）
@@ -480,8 +597,36 @@ buildDefaultPromptWithContent = (filePath, fileName, content) => {
 
 对于 YAML 文件：提取 attack_technique、display_name、atomic_tests 中的关键信息。
 
-生成问题应围绕安全测试和防御。
-请在索引标题中包含技术编号，便于后续检索。`, filePath, fileName, contentSummary)
+【关键】生成索引时必须包含以下类型的问题，便于用户通过描述目的/行为来检索技术：
+
+1. 目的导向问题（用户说出目的，找到技术）：
+- '我想要实现 XXX，应该用什么技术？'
+- '攻击者想要 XXX，会使用什么 ATT&CK 技术？'
+- '如何实现 XXX？对应哪个 ATT&CK 技术？'
+
+2. 行为描述问题（描述攻击行为，关联技术编号）：
+- '使用 XXX 进行攻击属于哪个 ATT&CK 技术？'
+- 'XXX 这种攻击行为对应什么技术编号？'
+- '如果发现攻击者在 XXX，这是什么 ATT&CK 技术？'
+
+3. 技术编号关联问题：
+- 'T1xxx 的目的是什么？'
+- 'T1xxx 技术是用来做什么的？'
+- 'T1xxx 攻击的意图是什么？'
+
+4. 检测与防御问题：
+- '如何检测 T1xxx 攻击？'
+- 'T1xxx 攻击有哪些检测方法？'
+- '怎么防御 T1xxx 技术？'
+
+【索引标题规范】
+索引标题必须使用格式："T1xxx (技术名称) - [行为描述]"
+
+【重要】
+- 知识内容必须包含该技术的具体攻击行为描述
+- 必须说明"攻击者使用这个技术是为了XXX"
+- 必须能让用户通过描述目的/行为来找到对应的技术编号
+- 请在索引中同时包含技术编号和技术名称，便于后续检索和技术分类判别`, filePath, fileName, contentSummary)
 }
 
 successCount = 0
@@ -628,6 +773,22 @@ processFile = func(index, filePath, content) {
         }
         
         if ext == ".yaml" || ext == ".yml" {
+            // 解析 YAML 获取 display_name 和 attack_technique
+            yamlMeta = parseYamlMetadata(content)
+            displayName = yamlMeta["display_name"]
+            yamlTechniqueID = yamlMeta["attack_technique"]
+            
+            // 如果从 YAML 解析到了 technique_id，优先使用
+            if yamlTechniqueID != "" && techniqueID == "" {
+                techniqueID = yamlTechniqueID
+            }
+            
+            // 提取简短名称
+            shortName = extractShortName(displayName)
+            
+            log.info("  -> Parsed YAML: technique=%s, display_name=%s, short_name=%s", 
+                techniqueID, displayName, shortName)
+            
             // YAML 文件使用 AI 索引构建
             // 使用带有技术编号的临时文件名，便于追踪
             tempFileName, err = file.TempFileName(sprintf("%s-*.yaml", techniqueID))
@@ -639,9 +800,9 @@ processFile = func(index, filePath, content) {
             // 配置 AI 服务
             aiServiceOpt = rag.aiServiceType("aibalance", ai.model(AIModel))
             
-            // 构建带有技术编号和文件内容上下文的 prompt
+            // 构建带有技术编号、名称和文件内容上下文的 prompt
             // 每个分片都需要知道完整的文件上下文
-            prompt = buildAttckPromptWithContent(techniqueID, fileName, filePath, content)
+            prompt = buildAttckPromptWithContent(techniqueID, displayName, shortName, fileName, filePath, content)
             
             // 配置选项，包含 metadata 和 chunkSize
             opts = [
@@ -650,16 +811,114 @@ processFile = func(index, filePath, content) {
                 rag.chunkSize(20 * 1024),  // 20K chunkSize
             ]
             
-            // 添加 metadata：技术编号、文件名、源路径
+            // 添加 metadata：技术编号、显示名称、文件名、源路径
             if techniqueID != "" {
                 opts = append(opts, rag.docMetadata("technique_id", techniqueID))
                 opts = append(opts, rag.docMetadata("attck_technique", techniqueID))
+            }
+            if displayName != "" {
+                opts = append(opts, rag.docMetadata("display_name", displayName))
+                opts = append(opts, rag.docMetadata("title", displayName))
+                opts = append(opts, rag.docMetadata("short_name", shortName))
             }
             opts = append(opts, rag.docMetadata("source_file", filePath))
             opts = append(opts, rag.docMetadata("file_name", fileName))
             opts = append(opts, rag.docMetadata("file_type", "yaml"))
             opts = append(opts, rag.docMetadata("data_source", "atomic-red-team"))
             
+            // =========================================
+            // 手动添加描述性知识条目 - 优化搜索
+            // 将技术编号和名称关联起来，便于用户搜索
+            // 增加行为描述，让用户说出目的就能关联到技术编号
+            // =========================================
+            if techniqueID != "" && displayName != "" {
+                // 构建描述性知识标题和内容
+                descTitle = sprintf("%s (%s) - ATT&CK 技术概述与行为索引", techniqueID, shortName)
+                descContent = sprintf(`【ATT&CK 技术】%s
+【技术编号】%s
+【技术名称】%s
+【技术简称】%s
+
+【技术目的与行为描述】
+%s 技术的目的是实现 %s 相关的攻击能力。
+攻击者使用 %s 技术是为了：执行 %s 操作，达成攻击目标。
+当攻击者想要进行 %s 相关操作时，会使用 %s 技术。
+
+【技术描述】
+%s 是 MITRE ATT&CK 框架中的一项攻击技术，编号为 %s。
+这是一种用于实现 %s 的攻击手法。
+
+【目的导向搜索（用户说出目的，找到技术）】
+- 我想要实现 %s，应该用什么技术？答：%s
+- 攻击者想要 %s，会使用什么 ATT&CK 技术？答：%s
+- 如何实现 %s？对应哪个 ATT&CK 技术？答：%s
+- 想要达成 %s 目的，需要用什么攻击技术？答：%s
+
+【行为描述搜索（描述攻击行为，关联技术编号）】
+- 使用 %s 进行攻击属于哪个 ATT&CK 技术？答：%s
+- %s 这种攻击行为对应什么技术编号？答：%s
+- 如果发现攻击者在进行 %s，这是什么 ATT&CK 技术？答：%s
+
+【技术编号关联搜索】
+- %s 的目的是什么？
+- %s 是什么技术？
+- 什么是 %s？
+- %s (%s) 技术是用来做什么的？
+- %s 技术能实现什么攻击目标？
+
+【检测与防御搜索】
+- 如何检测 %s 攻击？
+- %s 攻击有哪些检测方法？
+- 怎么防御 %s 技术？
+
+【测试与执行搜索】
+- %s 技术如何测试？
+- %s 需要什么权限？
+- 如何模拟 %s 攻击？
+
+【技术分类判别】
+当检测到以下行为时，可能涉及 %s (%s) 技术：
+- 与 %s 相关的操作
+- 执行 %s 类型的动作
+- 进行 %s 相关的攻击行为
+
+【数据来源】Atomic Red Team (https://github.com/redcanaryco/atomic-red-team)`,
+                    techniqueID, techniqueID, displayName, shortName,
+                    techniqueID, shortName,
+                    techniqueID, shortName,
+                    shortName, techniqueID,
+                    displayName, techniqueID, shortName,
+                    shortName, techniqueID, shortName, techniqueID, shortName, techniqueID, shortName, techniqueID,
+                    shortName, techniqueID, shortName, techniqueID, shortName, techniqueID,
+                    techniqueID, techniqueID, shortName, techniqueID, shortName, techniqueID,
+                    shortName, techniqueID, shortName,
+                    techniqueID, techniqueID, shortName,
+                    techniqueID, shortName, shortName, shortName, shortName)
+                
+                // 构建描述性知识的 metadata
+                descMetadata = {
+                    "technique_id": techniqueID,
+                    "attck_technique": techniqueID,
+                    "display_name": displayName,
+                    "title": descTitle,
+                    "short_name": shortName,
+                    "source_file": filePath,
+                    "file_name": fileName,
+                    "file_type": "yaml",
+                    "data_source": "atomic-red-team",
+                    "entry_type": "technique_overview",  // 标记为技术概述条目
+                }
+                
+                // 添加描述性知识条目到 RAG
+                descErr = ragSystem.Add(descTitle, descContent, rag.docRawMetadata(descMetadata))
+                if descErr != nil {
+                    log.warn("  -> Failed to add technique overview for %s: %v", techniqueID, descErr)
+                } else {
+                    log.info("  -> Added technique overview: %s", descTitle)
+                }
+            }
+            
+            // 使用 AI 构建索引
             err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName, opts...)
             if err {
                 die("Add YAML file %v to RAG error: %v" % [filePath, err])
