@@ -1,0 +1,896 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// Atomic Red Team RAG 构建工具 - 构建 ATT&CK 攻击测试知识库
+// 功能: 从 Atomic Red Team ZIP 包构建 RAG 知识库，支持首次构建和增量更新
+// 用途: ATT&CK 攻击测试知识库构建、安全测试文档索引、增量知识库更新
+//
+// 核心技术栈:
+// - rag.Import/Export: RAG 导入导出
+// - rag.Get: 获取 RAG 集合
+// - rag.BuildIndexKnowledgeFromFile: 使用 AI 构建索引
+// - rag.docMetadata: 设置文档元数据
+// - rag.chunkSize: 设置分片大小 (20K)
+// - rag.extraPrompt: 设置分片上下文 (包含完整文件摘要)
+// - zip.Recursive/ExtractFile: ZIP 文件处理
+//
+// 元数据结构:
+// - technique_id: ATT&CK 技术编号 (如 T1053.005)
+// - attck_technique: ATT&CK 技术编号 (与 technique_id 相同，便于兼容)
+// - source_file: 源文件路径
+// - file_name: 文件名（不含扩展名）
+// - file_type: 文件类型
+// - data_source: 数据来源标识 (atomic-red-team)
+//
+// 使用模式:
+// 1. 首次构建: yak build-atomic-red-team-rag.yak --input-zip /tmp/attck_kb.zip --output /tmp/attck_kb.rag
+// 2. 增量更新: yak build-atomic-red-team-rag.yak --rag-file old.rag --diff-zip diff.zip --output new.rag
+// 3. 测试模式: yak build-atomic-red-team-rag.yak --input-zip /tmp/attck_kb.zip --output /tmp/test.rag --limit 5
+//
+// 数据来源: https://github.com/redcanaryco/atomic-red-team
+//
+// 应用场景: ATT&CK知识库构建、安全测试索引、攻击技术检索
+// 关键词: atomic-red-team attck mitre rag knowledge-base security metadata
+// 搜索标签: #rag #attck #atomic-red-team #security #knowledge-base #metadata
+// =============================================================================
+
+__DESC__ = "Build ATT&CK knowledge base RAG from Atomic Red Team ZIP"
+
+yakit.AutoInitYakit()
+
+// =============================================================================
+// CLI 参数配置模块
+// =============================================================================
+
+// 首次构建模式: 使用完整 ZIP
+inputZipPath = cli.String(
+    "input-zip",
+    cli.setVerboseName("输入ZIP"),
+    cli.setDefault(""),
+    cli.setHelp("Input ZIP file path for initial build (use this for first-time build)")
+)
+
+// 增量更新模式: 旧 RAG + diff ZIP
+ragFilePath = cli.String(
+    "rag-file",
+    cli.setVerboseName("旧RAG路径"),
+    cli.setDefault(""),
+    cli.setHelp("Path to existing RAG file for incremental update")
+)
+
+diffZipPath = cli.String(
+    "diff-zip",
+    cli.setVerboseName("差异ZIP"),
+    cli.setDefault(""),
+    cli.setHelp("Path to diff ZIP file for incremental update")
+)
+
+// 输出 RAG 文件路径
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setRequired(true),
+    cli.setHelp("Output RAG file path")
+)
+
+// RAG 集合名称
+ragCollectionName = cli.String(
+    "collection",
+    cli.setVerboseName("集合名称"),
+    cli.setDefault("atomic-red-team"),
+    cli.setHelp("RAG collection name")
+)
+
+// AI 类型 (使用 aibalance 默认配置)
+AIType = cli.String(
+    "ai-type",
+    cli.setDefault("aibalance"),
+    cli.setHelp("AI service type: aibalance (default)")
+)
+
+// AI 模型
+AIModel = cli.String(
+    "ai-model",
+    cli.setDefault("memfit-standard-free"),
+    cli.setHelp("AI model name")
+)
+
+// 限制处理文件数量（用于测试）
+limitFiles = cli.Int(
+    "limit",
+    cli.setDefault(0),
+    cli.setHelp("Limit number of files to process (0 = no limit, for testing)")
+)
+
+// 并发处理数量
+concurrentCount = cli.Int(
+    "concurrent",
+    cli.setVerboseName("并发数"),
+    cli.setDefault(10),
+    cli.setHelp("Number of concurrent file processing (default: 10)")
+)
+
+// 日志输出文件
+logFile = cli.String(
+    "log-file",
+    cli.setDefault(""),
+    cli.setHelp("Log output file path (e.g., /tmp/a.txt)")
+)
+
+cli.check()
+
+// =============================================================================
+// 参数验证模块
+// =============================================================================
+
+// 确定构建模式
+isInitialBuild = inputZipPath != ""
+isIncrementalUpdate = ragFilePath != "" && diffZipPath != ""
+
+if !isInitialBuild && !isIncrementalUpdate {
+    die("Please specify either --input-zip for initial build, or --rag-file and --diff-zip for incremental update")
+}
+
+if isInitialBuild && isIncrementalUpdate {
+    die("Cannot specify both --input-zip and --rag-file/--diff-zip at the same time")
+}
+
+// 验证文件存在
+if isInitialBuild {
+    if !file.IsExisted(inputZipPath) {
+        die(sprintf("Input ZIP file does not exist: %s", inputZipPath))
+    }
+    log.info("Mode: Initial Build")
+    log.info("Input ZIP: %s", inputZipPath)
+} else {
+    if !file.IsExisted(ragFilePath) {
+        die(sprintf("RAG file does not exist: %s", ragFilePath))
+    }
+    if !file.IsExisted(diffZipPath) {
+        die(sprintf("Diff ZIP file does not exist: %s", diffZipPath))
+    }
+    log.info("Mode: Incremental Update")
+    log.info("RAG File: %s", ragFilePath)
+    log.info("Diff ZIP: %s", diffZipPath)
+}
+
+log.info("Output: %s", outputRagPath)
+log.info("Collection: %s", ragCollectionName)
+log.info("AI Type: %s", AIType)
+log.info("AI Model: %s", AIModel)
+log.info("Concurrent: %d", concurrentCount)
+if limitFiles > 0 {
+    log.info("Limit: %d files (testing mode)", limitFiles)
+}
+if logFile != "" {
+    log.info("Log file: %s", logFile)
+}
+
+// =============================================================================
+// 工具函数定义
+// =============================================================================
+
+// 修复 len 函数 - 正确计算 rune 数量
+len = (s) => {
+    n = 0
+    for i in s {
+        n++
+    }
+    return n
+}
+
+// 从文件路径中提取 ATT&CK 技术编号
+// 路径格式: atomics/T1053.005/T1053.005.yaml
+extractTechniqueID = (filePath) => {
+    parts = str.Split(filePath, "/")
+    for part in parts {
+        if str.HasPrefix(part, "T") && (str.Contains(part, ".") || len(part) >= 5) {
+            // 检查是否是有效的技术编号格式 (T1234 或 T1234.001)
+            if str.RegexpMatch("^T[0-9]{4}(\\.[0-9]{3})?$", part) {
+                return part
+            }
+        }
+    }
+    return ""
+}
+
+// 从文件路径提取文件名（不含扩展名）
+extractFileName = (filePath) => {
+    parts = str.Split(filePath, "/")
+    if len(parts) > 0 {
+        filename = parts[len(parts)-1]
+        // 移除扩展名
+        if str.Contains(filename, ".") {
+            extIdx = str.LastIndex(filename, ".")
+            return filename[:extIdx]
+        }
+        return filename
+    }
+    return ""
+}
+
+// =============================================================================
+// RAG 初始化模块
+// =============================================================================
+
+log.info("")
+log.info("=== Step 1: Initializing RAG ===")
+
+// 移除现有集合
+rag.DeleteCollection(ragCollectionName)
+
+if isIncrementalUpdate {
+    // 增量更新模式：导入现有 RAG
+    log.info("Importing existing RAG file...")
+    try {
+        err = rag.Import(ragFilePath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.error("Failed to import RAG file: %v", err)
+            die(sprintf("Failed to import RAG: %v", err))
+        }
+        log.info("✓ RAG file imported successfully")
+    } catch importErr {
+        log.error("Failed to import RAG file: %v", importErr)
+        die(sprintf("Failed to import RAG: %v", importErr))
+    }
+} else {
+    log.info("Creating new RAG collection: %s", ragCollectionName)
+}
+
+// =============================================================================
+// 加载 RAG Collection (使用 aibalance 默认配置)
+// =============================================================================
+
+log.info("")
+log.info("=== Step 2: Loading RAG collection ===")
+
+// 使用 aibalance 默认配置，不需要手动配置 embedding
+ragSystem, err = rag.Get(ragCollectionName)
+if err != nil {
+    log.error("Failed to load RAG collection: %v", err)
+    die(sprintf("Failed to load RAG collection: %v", err))
+}
+
+log.info("✓ RAG collection ready: %s", ragCollectionName)
+
+// 获取当前文档数量
+oldDocCount = 0
+oldDocCount, err = ragSystem.CountDocuments()
+if err != nil {
+    log.warn("Failed to get document count: %v", err)
+    oldDocCount = 0
+} else {
+    log.info("Current document count: %d", oldDocCount)
+}
+
+// =============================================================================
+// 读取 ZIP 文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 3: Reading ZIP file ===")
+
+zipPath = inputZipPath
+if isIncrementalUpdate {
+    zipPath = diffZipPath
+}
+
+files = make(map[string]string)
+fileCount = 0
+
+err = zip.Recursive(zipPath, func(isDir, pathName, info) {
+    if isDir {
+        return
+    }
+    // 跳过系统文件
+    if str.HasPrefix(pathName, "__MACOSX/") {
+        return
+    }
+    if info.Name() == ".DS_Store" {
+        return
+    }
+    
+    try {
+        content = zip.ExtractFile(zipPath, pathName)~
+        files[pathName] = string(content)
+        fileCount++
+        log.info("Extracted: %s (%d bytes)", pathName, len(content))
+    } catch extractErr {
+        log.error("Failed to extract file %s: %v", pathName, extractErr)
+    }
+})
+
+if err != nil {
+    log.error("Failed to read ZIP file: %v", err)
+    die(sprintf("Failed to read ZIP file: %v", err))
+}
+
+log.info("✓ ZIP processed: %d files extracted", fileCount)
+
+if len(files) == 0 {
+    log.info("No files to process, exporting current RAG...")
+    try {
+        err = rag.Export(ragCollectionName, outputRagPath)
+        if err != nil {
+            die(sprintf("Failed to export RAG: %v", err))
+        }
+        log.info("✓ RAG exported: %s", outputRagPath)
+        os.Exit(0)
+    } catch exportErr {
+        die(sprintf("Failed to export RAG: %v", exportErr))
+    }
+}
+
+// =============================================================================
+// 进度管理模块
+// =============================================================================
+
+progressFilePath = str.Replace(outputRagPath, ".rag", ".progress.json", 1)
+tmpRagPath = str.Replace(outputRagPath, ".rag", "-tmp.rag", 1)
+
+log.info("")
+log.info("=== Progress Management ===")
+log.info("Progress file: %s", progressFilePath)
+log.info("Temporary RAG: %s", tmpRagPath)
+
+// 尝试恢复进度
+processedFiles = []
+shouldRestoreProgress = false
+
+if file.IsExisted(progressFilePath) && file.IsExisted(tmpRagPath) {
+    log.info("Found existing progress, attempting to restore...")
+    
+    try {
+        progressContent = file.ReadFile(progressFilePath)~
+        progressData = json.loads(string(progressContent))
+        
+        if progressData["processed_files"] != nil {
+            processedFiles = progressData["processed_files"]
+            shouldRestoreProgress = true
+            log.info("✓ Progress restored: %d files already processed", len(processedFiles))
+        }
+    } catch restoreErr {
+        log.warn("Failed to restore progress: %v, starting fresh", restoreErr)
+        processedFiles = []
+    }
+}
+
+// 如果需要恢复进度，导入临时 RAG
+if shouldRestoreProgress {
+    log.info("Restoring from temporary RAG...")
+    rag.DeleteCollection(ragCollectionName)
+    
+    try {
+        err = rag.Import(tmpRagPath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.warn("Failed to import temporary RAG: %v, starting fresh", err)
+            shouldRestoreProgress = false
+            processedFiles = []
+            
+            // 重新导入原始 RAG（如果是增量模式）
+            if isIncrementalUpdate {
+                rag.DeleteCollection(ragCollectionName)
+                err = rag.Import(ragFilePath, rag.importName(ragCollectionName))
+                if err != nil {
+                    die(sprintf("Failed to import original RAG: %v", err))
+                }
+            }
+        } else {
+            log.info("✓ Temporary RAG imported")
+        }
+    } catch importErr {
+        log.warn("Failed to import temporary RAG: %v", importErr)
+        shouldRestoreProgress = false
+        processedFiles = []
+    }
+    
+    // 重新加载 RAG 集合
+    ragSystem, err = rag.Get(ragCollectionName)
+    if err != nil {
+        die(sprintf("Failed to reload RAG collection: %v", err))
+    }
+}
+
+// =============================================================================
+// 添加文件到 RAG
+// =============================================================================
+
+log.info("")
+log.info("=== Step 4: Building RAG Index ===")
+
+// 构建带有技术编号和完整文件内容上下文的 AI Prompt
+// 每个分片都能看到完整的文件上下文信息
+buildAttckPromptWithContent = (techniqueID, fileName, filePath, content) => {
+    // 截取文件内容摘要（最多前 2000 字符作为上下文）
+    contentSummary = content
+    if len(content) > 2000 {
+        contentSummary = content[:2000] + "\n... (内容已截断，完整内容见分片)"
+    }
+    
+    basePrompt = sprintf(`=== 文件上下文信息 ===
+文件路径: %s
+文件名: %s
+ATT&CK 技术编号: %s
+数据来源: Atomic Red Team (https://github.com/redcanaryco/atomic-red-team)
+
+=== 完整文件内容摘要 ===
+%s
+
+=== 分析指南 ===
+你正在分析 MITRE ATT&CK 技术 %s 的 Atomic Red Team 攻击模拟测试定义。
+当前处理的是该文件的一个分片，但上面已提供完整文件的上下文摘要。
+
+目标是构建攻击技术测试的专用索引，用于安全测试和防御检测。
+
+关注内容：
+- MITRE ATT&CK 技术编号: %s
+- 测试场景描述和攻击目的
+- 执行命令和攻击步骤
+- 支持平台（Windows/Linux/macOS）
+- 输入参数和依赖项
+- 检测方法和防御建议
+- 清理命令和痕迹消除
+
+对于 YAML 文件：提取 attack_technique、display_name、atomic_tests 中的关键信息。
+
+生成问题应围绕该技术的安全测试和防御，例如：
+- '如何测试 %s 技术？'
+- '%s 攻击有哪些检测方法？'
+- '%s 攻击需要什么权限？'
+- '如何清理 %s 测试的痕迹？'
+- '%s 属于哪个 ATT&CK 战术阶段？'
+
+重要：请在索引标题中包含技术编号 %s，便于后续检索。`, 
+        filePath, fileName, techniqueID, contentSummary,
+        techniqueID, techniqueID,
+        techniqueID, techniqueID, techniqueID, techniqueID, techniqueID, techniqueID)
+    return basePrompt
+}
+
+// 默认 Prompt（无法提取技术编号时使用）
+buildDefaultPromptWithContent = (filePath, fileName, content) => {
+    // 截取文件内容摘要
+    contentSummary = content
+    if len(content) > 2000 {
+        contentSummary = content[:2000] + "\n... (内容已截断)"
+    }
+    
+    return sprintf(`=== 文件上下文信息 ===
+文件路径: %s
+文件名: %s
+数据来源: Atomic Red Team
+
+=== 完整文件内容摘要 ===
+%s
+
+=== 分析指南 ===
+这是 Atomic Red Team 攻击模拟测试定义（基于 MITRE ATT&CK 框架）。
+当前处理的是该文件的一个分片，但上面已提供完整文件的上下文摘要。
+
+目标是构建攻击技术测试的专用索引，用于安全测试和防御检测。
+
+关注内容：
+- MITRE ATT&CK 技术编号（如 T1053.005）
+- 测试场景描述和攻击目的
+- 执行命令和攻击步骤
+- 支持平台（Windows/Linux/macOS）
+- 输入参数和依赖项
+- 检测方法和防御建议
+- 清理命令和痕迹消除
+
+对于 YAML 文件：提取 attack_technique、display_name、atomic_tests 中的关键信息。
+
+生成问题应围绕安全测试和防御。
+请在索引标题中包含技术编号，便于后续检索。`, filePath, fileName, contentSummary)
+}
+
+successCount = 0
+failedCount = 0
+failedFiles = []
+totalFiles = len(files)
+currentIndex = 0
+
+// 保存进度的函数
+saveProgress = func() {
+    progressData = {
+        "processed_files": processedFiles,
+        "success_count": successCount,
+        "failed_count": failedCount,
+        "failed_files": failedFiles,
+        "last_update": time.Now().Format("2006-01-02 15:04:05"),
+    }
+    
+    progressJson = json.dumps(progressData)
+    err = file.Save(progressFilePath, progressJson)
+    if err != nil {
+        log.warn("Failed to save progress: %v", err)
+    } else {
+        log.info("Progress saved: %d/%d files processed", len(processedFiles), totalFiles)
+    }
+}
+
+// 保存临时 RAG 的函数
+saveTempRag = func() {
+    try {
+        err = rag.Export(ragCollectionName, tmpRagPath)
+        if err != nil {
+            log.warn("Failed to export temporary RAG: %v", err)
+        } else {
+            log.info("Temporary RAG saved: %s", tmpRagPath)
+        }
+    } catch exportErr {
+        log.warn("Failed to export temporary RAG: %v", exportErr)
+    }
+}
+
+// 统计需要处理的文件数
+filesToProcess = 0
+for filePath, _ := range files {
+    alreadyProcessed = false
+    for _, processed := range processedFiles {
+        if processed == filePath {
+            alreadyProcessed = true
+            break
+        }
+    }
+    if !alreadyProcessed {
+        filesToProcess++
+    }
+}
+
+log.info("Total files in ZIP: %d", totalFiles)
+log.info("Already processed: %d", len(processedFiles))
+log.info("Files to process: %d", filesToProcess)
+if limitFiles > 0 {
+    log.info("Limit mode: will process max %d files", limitFiles)
+}
+
+// 日志写入函数
+writeLog = func(msg) {
+    if logFile != "" {
+        // 读取现有内容并追加
+        existingContent = ""
+        if file.IsExisted(logFile) {
+            existingContent = string(file.ReadFile(logFile)~)
+        }
+        file.Save(logFile, existingContent + msg + "\n")
+    }
+}
+
+// 初始化日志文件
+if logFile != "" {
+    file.Save(logFile, sprintf("=== ATT&CK RAG Build Log ===\nStarted: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+}
+
+processedInThisRun = 0
+
+// 并发控制 - 使用 SizedWaitGroup 控制并发数
+log.info("Starting concurrent processing with %d workers", concurrentCount)
+swg = sync.NewSizedWaitGroup(concurrentCount)
+
+// 用于线程安全的计数器和结果收集
+resultLock = sync.NewLock()
+processedResultFiles = []
+failedResultFiles = []
+successResultCount = 0
+failedResultCount = 0
+
+// 收集需要处理的文件列表
+filesToProcessList = []
+for filePath, content := range files {
+    // 检查是否已处理
+    alreadyProcessed = false
+    for _, processed := range processedFiles {
+        if processed == filePath {
+            alreadyProcessed = true
+            break
+        }
+    }
+    
+    if alreadyProcessed {
+        resultLock.Lock()
+        successResultCount++
+        resultLock.Unlock()
+        continue
+    }
+    
+    if content == "" {
+        continue
+    }
+    
+    filesToProcessList = append(filesToProcessList, {"path": filePath, "content": content})
+}
+
+// 应用限制
+if limitFiles > 0 && len(filesToProcessList) > limitFiles {
+    filesToProcessList = filesToProcessList[:limitFiles]
+    log.info("Limit mode: will process max %d files", limitFiles)
+}
+
+totalToProcess = len(filesToProcessList)
+log.info("Files to process concurrently: %d", totalToProcess)
+
+// 处理单个文件的函数
+processFile = func(index, filePath, content) {
+    defer swg.Done()
+    
+    try {
+        // 根据文件类型选择处理方式
+        ext = str.ToLower(file.GetExt(filePath))
+        
+        // 提取技术编号和文件名
+        techniqueID = extractTechniqueID(filePath)
+        fileName = extractFileName(filePath)
+        
+        log.info("[%d/%d] Processing: %s (%d bytes)", index, totalToProcess, filePath, len(content))
+        if techniqueID != "" {
+            log.info("  -> Technique ID: %s, File: %s", techniqueID, fileName)
+        }
+        
+        if ext == ".yaml" || ext == ".yml" {
+            // YAML 文件使用 AI 索引构建
+            // 使用带有技术编号的临时文件名，便于追踪
+            tempFileName, err = file.TempFileName(sprintf("%s-*.yaml", techniqueID))
+            if err {
+                die("Create temp file failed: %v" % err)
+            }
+            file.Save(tempFileName, content)~
+            
+            // 配置 AI 服务
+            aiServiceOpt = rag.aiServiceType("aibalance", ai.model(AIModel))
+            
+            // 构建带有技术编号和文件内容上下文的 prompt
+            // 每个分片都需要知道完整的文件上下文
+            prompt = buildAttckPromptWithContent(techniqueID, fileName, filePath, content)
+            
+            // 配置选项，包含 metadata 和 chunkSize
+            opts = [
+                aiServiceOpt,
+                rag.extraPrompt(prompt),
+                rag.chunkSize(20 * 1024),  // 20K chunkSize
+            ]
+            
+            // 添加 metadata：技术编号、文件名、源路径
+            if techniqueID != "" {
+                opts = append(opts, rag.docMetadata("technique_id", techniqueID))
+                opts = append(opts, rag.docMetadata("attck_technique", techniqueID))
+            }
+            opts = append(opts, rag.docMetadata("source_file", filePath))
+            opts = append(opts, rag.docMetadata("file_name", fileName))
+            opts = append(opts, rag.docMetadata("file_type", "yaml"))
+            opts = append(opts, rag.docMetadata("data_source", "atomic-red-team"))
+            
+            err = rag.BuildIndexKnowledgeFromFile(ragCollectionName, tempFileName, opts...)
+            if err {
+                die("Add YAML file %v to RAG error: %v" % [filePath, err])
+            }
+            
+            // 清理临时文件
+            file.Remove(tempFileName)
+            
+        } else {
+            // 其他文件直接添加（带 metadata）
+            metadata = {
+                "source_file": filePath,
+                "file_name": fileName,
+                "file_type": ext,
+                "data_source": "atomic-red-team",
+            }
+            if techniqueID != "" {
+                metadata["technique_id"] = techniqueID
+                metadata["attck_technique"] = techniqueID
+            }
+            
+            err = ragSystem.Add(filePath, content, rag.docRawMetadata(metadata))
+            if err {
+                die("Add file %v to RAG error: %v" % [filePath, err])
+            }
+        }
+        
+        // 更新成功计数
+        resultLock.Lock()
+        successResultCount++
+        processedResultFiles = append(processedResultFiles, filePath)
+        resultLock.Unlock()
+        
+        log.info("✓ [%d/%d] Added: %s", index, totalToProcess, filePath)
+        writeLog(sprintf("✓ [%d/%d] Added: %s", index, totalToProcess, filePath))
+        
+    } catch addErr {
+        log.error("✗ [%d/%d] Failed to add %s: %v", index, totalToProcess, filePath, addErr)
+        writeLog(sprintf("✗ [%d/%d] Failed to add %s: %v", index, totalToProcess, filePath, addErr))
+        
+        resultLock.Lock()
+        failedResultCount++
+        failedResultFiles = append(failedResultFiles, filePath)
+        processedResultFiles = append(processedResultFiles, filePath)
+        resultLock.Unlock()
+    }
+}
+
+// 启动并发处理
+for i, fileItem := range filesToProcessList {
+    swg.Add()
+    go processFile(i + 1, fileItem["path"], fileItem["content"])
+}
+
+// 等待所有任务完成
+swg.Wait()
+
+// 更新全局计数器
+successCount = successResultCount
+failedCount = failedResultCount
+processedFiles = append(processedFiles, processedResultFiles...)
+failedFiles = append(failedFiles, failedResultFiles...)
+processedInThisRun = len(processedResultFiles)
+
+log.info("Concurrent processing completed: %d success, %d failed", successCount, failedCount)
+
+// 最后保存一次
+log.info("")
+log.info("=== Final checkpoint ===")
+saveProgress()
+saveTempRag()
+
+log.info("")
+log.info("=== Build Results ===")
+log.info("Success: %d files", successCount)
+log.info("Failed: %d files", failedCount)
+
+if failedCount > 0 {
+    log.warn("Failed files:")
+    for i, fp := range failedFiles {
+        log.warn("  %d. %s", i+1, fp)
+    }
+}
+
+// 获取新文档数量
+newDocCount = 0
+newDocCount, err = ragSystem.CountDocuments()
+if err != nil {
+    log.warn("Failed to get new document count: %v", err)
+} else {
+    log.info("New document count: %d", newDocCount)
+    log.info("Documents added: %d", newDocCount - oldDocCount)
+}
+
+// =============================================================================
+// 导出 RAG 文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 5: Exporting RAG ===")
+
+try {
+    err = rag.Export(ragCollectionName, outputRagPath)
+    if err != nil {
+        log.error("Failed to export RAG: %v", err)
+        die(sprintf("Failed to export RAG to %s", outputRagPath))
+    }
+    
+    if !file.IsExisted(outputRagPath) {
+        die("Export succeeded but file not found")
+    }
+    
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    
+    log.info("✓ RAG exported: %s", outputRagPath)
+    log.info("  File size: %d bytes (%.2f MB)", fileSize, float64(fileSize)/1024/1024)
+    
+} catch exportErr {
+    log.error("Failed to export RAG: %v", exportErr)
+    die(sprintf("Failed to export RAG: %v", exportErr))
+}
+
+// =============================================================================
+// 清理临时文件
+// =============================================================================
+
+log.info("")
+log.info("=== Step 6: Cleanup ===")
+
+if file.IsExisted(progressFilePath) {
+    err = file.Remove(progressFilePath)
+    if err != nil {
+        log.warn("Failed to remove progress file: %v", err)
+    } else {
+        log.info("✓ Progress file removed")
+    }
+}
+
+if file.IsExisted(tmpRagPath) {
+    err = file.Remove(tmpRagPath)
+    if err != nil {
+        log.warn("Failed to remove temporary RAG: %v", err)
+    } else {
+        log.info("✓ Temporary RAG removed")
+    }
+}
+
+// =============================================================================
+// 生成报告
+// =============================================================================
+
+log.info("")
+log.info("=== Step 7: Generating Report ===")
+
+reportPath = str.Replace(outputRagPath, ".rag", ".build-report.md", 1)
+
+report = sprintf("# ATT&CK 知识库构建报告\n\n")
+report += sprintf("**构建时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+
+if isInitialBuild {
+    report += sprintf("**构建模式**: 首次构建\n")
+    report += sprintf("**输入文件**: %s\n", inputZipPath)
+} else {
+    report += sprintf("**构建模式**: 增量更新\n")
+    report += sprintf("**原始 RAG**: %s\n", ragFilePath)
+    report += sprintf("**差异包**: %s\n", diffZipPath)
+}
+
+report += sprintf("**输出 RAG**: %s\n", outputRagPath)
+report += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+
+report += "## 文档统计\n\n"
+report += sprintf("- 处理前文档数: %d\n", oldDocCount)
+report += sprintf("- 处理后文档数: %d\n", newDocCount)
+report += sprintf("- 新增文档数: %d\n\n", newDocCount - oldDocCount)
+
+report += "## 处理统计\n\n"
+report += sprintf("- 文件总数: %d\n", totalFiles)
+report += sprintf("- 成功处理: %d\n", successCount)
+report += sprintf("- 处理失败: %d\n\n", failedCount)
+
+if failedCount > 0 {
+    report += "## 失败文件\n\n"
+    for i, fp := range failedFiles {
+        report += sprintf("%d. %s\n", i+1, fp)
+    }
+    report += "\n"
+}
+
+report += "## AI 配置\n\n"
+report += sprintf("- AI 类型: %s\n", AIType)
+report += sprintf("- AI 模型: %s\n\n", AIModel)
+
+report += "## 输出文件\n\n"
+if file.IsExisted(outputRagPath) {
+    fileInfo = file.Stat(outputRagPath)~
+    fileSize = fileInfo.Size()
+    report += sprintf("- 文件路径: %s\n", outputRagPath)
+    report += sprintf("- 文件大小: %d bytes (%.2f MB)\n", fileSize, float64(fileSize)/1024/1024)
+}
+
+err = file.Save(reportPath, report)
+if err != nil {
+    log.warn("Failed to write report: %v", err)
+} else {
+    log.info("✓ Report generated: %s", reportPath)
+}
+
+// =============================================================================
+// 总结
+// =============================================================================
+
+log.info("")
+log.info("=== Build Summary ===")
+log.info("✓ ATT&CK Knowledge Base RAG build completed")
+log.info("  - Documents: %d -> %d (+%d)", oldDocCount, newDocCount, newDocCount - oldDocCount)
+log.info("  - Files processed: %d", successCount)
+log.info("  - Files failed: %d", failedCount)
+log.info("  - Output: %s", outputRagPath)
+log.info("  - Report: %s", reportPath)
+
+println("")
+println("=== ATT&CK Knowledge Base Ready ===")
+println(sprintf("RAG File: %s", outputRagPath))
+println(sprintf("Documents: %d", newDocCount))
+
+if failedCount > 0 {
+    log.warn("Some files failed to process, check the report for details")
+    os.Exit(1)
+} else {
+    log.info("All files processed successfully")
+    os.Exit(0)
+}

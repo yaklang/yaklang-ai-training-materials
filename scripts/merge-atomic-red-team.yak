@@ -1,0 +1,261 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// Atomic Red Team YAML 收集工具 - 将 ATT&CK 测试定义压缩到单个 ZIP 文件
+// 功能: 收集 Atomic Red Team 仓库中 atomics/T*/*.yaml 格式的测试定义文件
+// 用途: ATT&CK 攻击测试知识库构建、RAG 知识库数据准备
+//
+// 收集模式: atomics/T*/*.yaml (只收集技术编号目录下的 YAML 定义文件)
+//
+// 核心技术栈:
+// - zip.CompressRaw: ZIP压缩核心函数，内存压缩处理
+// - filesys.Recursive: 递归文件遍历，深度目录扫描
+// - file.ReadFile: 文件内容读取，批量文件处理
+// - cli.String: 命令行参数解析，用户交互接口
+//
+// 数据来源: https://github.com/redcanaryco/atomic-red-team
+//
+// 应用场景: ATT&CK测试库打包、安全知识库构建
+// 关键词: atomic-red-team attck mitre 攻击测试 安全知识库 zip压缩 yaml
+// 搜索标签: #atomic-red-team #attck #security #knowledge-base #zip #yaml
+// =============================================================================
+
+__DESC__ = "Collect Atomic Red Team files and compress to ZIP"
+
+// =============================================================================
+// CLI 参数配置模块 - 命令行接口定义
+// =============================================================================
+
+output_zip = cli.String("output", cli.setDefault("/tmp/attck_kb.zip"), cli.setHelp("输出 ZIP 文件路径"))
+atomic_dir = cli.String("atomic-dir", cli.setDefault("/Users/v1ll4n/atomic-red-team"), cli.setHelp("Atomic Red Team 仓库路径"))
+cli.check()
+
+log.info("Starting Atomic Red Team file collection...")
+log.info("Output ZIP: %s", output_zip)
+log.info("Atomic Red Team directory: %s", atomic_dir)
+
+// =============================================================================
+// 路径验证模块
+// =============================================================================
+
+if !file.IsDir(atomic_dir) {
+    die(sprintf("Atomic Red Team directory not found: %s", atomic_dir))
+}
+
+atomics_path = file.Join(atomic_dir, "atomics")
+if !file.IsDir(atomics_path) {
+    die(sprintf("Atomics directory not found: %s", atomics_path))
+}
+
+log.info("Atomics directory found: %s", atomics_path)
+
+// =============================================================================
+// 文件收集配置
+// =============================================================================
+
+// 只收集 YAML 文件: ATT&CK 测试定义文件 (atomics/T*/*.yaml)
+target_extension = ".yaml"
+log.info("Target extension: %s", target_extension)
+log.info("Target pattern: atomics/T*/*.yaml")
+
+// 需要排除的目录和文件
+excluded_prefixes = ["__MACOSX/", ".git/", ".github/"]
+excluded_files = [".DS_Store", ".gitignore", ".gitattributes"]
+
+// =============================================================================
+// 文件收集模块
+// =============================================================================
+
+log.info("Scanning atomics directory...")
+
+collected_files = {}
+total_files = 0
+total_size = 0
+
+// 统计信息
+extension_stats = {}
+technique_count = 0
+last_technique = ""
+
+err = filesys.Recursive(atomics_path, 
+    filesys.onFileStat((file_path, info) => {
+        // 获取相对路径
+        rel_path = str.TrimPrefix(file_path, atomic_dir + "/")
+        
+        // 检查是否在排除目录中
+        for prefix in excluded_prefixes {
+            if str.HasPrefix(rel_path, prefix) {
+                return nil
+            }
+        }
+        
+        // 检查是否是排除的文件
+        filename = info.Name()
+        for excluded in excluded_files {
+            if filename == excluded {
+                return nil
+            }
+        }
+        
+        // 检查文件扩展名是否为 .yaml
+        ext = file.GetExt(file_path)
+        if str.ToLower(ext) != target_extension {
+            return nil
+        }
+        
+        // 检查路径模式: 必须是 atomics/T*/*.yaml 格式
+        // 即: atomics 目录下 T 开头的子目录中直接的 yaml 文件
+        parts = str.Split(rel_path, "/")
+        // parts 应该是 ["atomics", "Txxxx", "xxx.yaml"] 共 3 层
+        if len(parts) != 3 {
+            return nil
+        }
+        
+        // 检查第二层是否是 T 开头的技术编号目录
+        tech_id = parts[1]
+        if !str.HasPrefix(tech_id, "T") {
+            return nil
+        }
+        
+        // 读取文件内容
+        content, read_err = file.ReadFile(file_path)
+        if read_err != nil {
+            log.error("Failed to read file %s: %v", file_path, read_err)
+            return nil
+        }
+        
+        // 存储文件内容
+        collected_files[rel_path] = string(content)
+        total_files++
+        total_size += len(content)
+        
+        // 更新扩展名统计
+        if extension_stats[ext] == nil {
+            extension_stats[ext] = 0
+        }
+        extension_stats[ext] = extension_stats[ext] + 1
+        
+        // 统计技术编号
+        if tech_id != last_technique {
+            technique_count++
+            last_technique = tech_id
+        }
+        
+        log.info("Collected: %s (%d bytes)", rel_path, len(content))
+        return nil
+    })
+)
+
+if err != nil {
+    log.error("Failed to scan directory: %v", err)
+    die(sprintf("Failed to scan atomics directory: %v", err))
+}
+
+// =============================================================================
+// 收集结果验证
+// =============================================================================
+
+log.info("")
+log.info("=== Collection Summary ===")
+log.info("Total files collected: %d", total_files)
+log.info("Total size: %d bytes (%.2f MB)", total_size, float64(total_size)/1024/1024)
+log.info("Unique techniques: ~%d", technique_count)
+
+if total_files == 0 {
+    die("No files collected, please check the atomic-dir path")
+}
+
+// 显示扩展名统计
+log.info("")
+log.info("=== File Type Distribution ===")
+for ext, count in extension_stats {
+    log.info("  %s: %d files", ext, count)
+}
+
+// =============================================================================
+// ZIP 压缩模块
+// =============================================================================
+
+log.info("")
+log.info("=== Compressing Files ===")
+
+start_time = time.Now()
+compressed_data, compress_err = zip.CompressRaw(collected_files)
+if compress_err != nil {
+    log.error("Failed to compress files: %v", compress_err)
+    die(sprintf("Compression failed: %v", compress_err))
+}
+end_time = time.Now()
+duration = end_time.Sub(start_time)
+
+compressed_size = len(compressed_data)
+compression_ratio = float64(compressed_size) / float64(total_size) * 100
+
+log.info("Compression completed in %v", duration)
+log.info("Original size: %d bytes (%.2f MB)", total_size, float64(total_size)/1024/1024)
+log.info("Compressed size: %d bytes (%.2f MB)", compressed_size, float64(compressed_size)/1024/1024)
+log.info("Compression ratio: %.2f%%", compression_ratio)
+
+// =============================================================================
+// 保存 ZIP 文件
+// =============================================================================
+
+log.info("")
+log.info("=== Saving ZIP File ===")
+
+save_err = file.Save(output_zip, compressed_data)
+if save_err != nil {
+    log.error("Failed to save ZIP file: %v", save_err)
+    die(sprintf("Failed to save ZIP to %s: %v", output_zip, save_err))
+}
+
+log.info("ZIP file saved successfully: %s", output_zip)
+
+// 验证保存的文件
+if !file.IsFile(output_zip) {
+    die(sprintf("Output file not found after save: %s", output_zip))
+}
+
+stat_info = file.Stat(output_zip)~
+log.info("File size verified: %d bytes", stat_info.Size())
+
+// =============================================================================
+// 验证 ZIP 内容
+// =============================================================================
+
+log.info("")
+log.info("=== Verifying ZIP Contents ===")
+
+zip_file_count = 0
+err = zip.Recursive(output_zip, func(isDir, pathName, info) {
+    if !isDir {
+        zip_file_count++
+    }
+})
+
+if err != nil {
+    log.error("Failed to verify ZIP contents: %v", err)
+} else {
+    log.info("ZIP contains %d files (expected: %d)", zip_file_count, total_files)
+    if zip_file_count != total_files {
+        log.warn("File count mismatch!")
+    }
+}
+
+// =============================================================================
+// 最终总结
+// =============================================================================
+
+log.info("")
+log.info("=== Task Completed ===")
+log.info("✓ Collected %d files from Atomic Red Team", total_files)
+log.info("✓ Covered ~%d ATT&CK techniques", technique_count)
+log.info("✓ Compression ratio: %.2f%%", compression_ratio)
+log.info("✓ Output file: %s", output_zip)
+log.info("✓ File size: %.2f MB", float64(compressed_size)/1024/1024)
+
+println("")
+println("=== Atomic Red Team ZIP Package Ready ===")
+println(sprintf("Output: %s", output_zip))
+println(sprintf("Files: %d", total_files))
+println(sprintf("Size: %.2f MB", float64(compressed_size)/1024/1024))
