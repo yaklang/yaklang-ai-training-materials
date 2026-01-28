@@ -1,873 +1,592 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Benchmark Report Viewer</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Benchmark 报告总览</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1224;
+      --card: #11182c;
+      --muted: #94a3b8;
+      --text: #e2e8f0;
+      --primary: #5b8def;
+      --primary-strong: #3b82f6;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --border: #1f2937;
+      --chip: #1c2438;
+      --table-header: #0f172a;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-            background: #f5f5f5;
-            color: #333333;
-            min-height: 100vh;
-        }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter','Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(91,141,239,0.12), transparent 35%), radial-gradient(circle at 80% 0%, rgba(34,197,94,0.12), transparent 30%), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 28px 0 56px;
+    }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+    .container {
+      width: min(1400px, 96%);
+      margin: 0 auto;
+    }
 
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+    .surface {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+      padding: 20px 20px 18px;
+      margin-bottom: 18px;
+    }
 
-        header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .section-title { font-size: 18px; font-weight: 600; }
+    .section-desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
 
-        header p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .status-card {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 12px 10px;
+    }
+    .status-label { color: var(--muted); font-size: 12px; }
+    .status-value { font-size: 16px; font-weight: 600; margin-top: 4px; }
+    .status-ok { color: var(--success); }
+    .status-bad { color: var(--danger); }
 
-        .status-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .spacer { flex: 1; }
 
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
+    button {
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+      color: #0b1224;
+      padding: 10px 16px;
+      box-shadow: 0 14px 30px rgba(91,141,239,0.25);
+    }
+    .btn-primary:hover { transform: translateY(-1px); }
 
-        .status-item {
-            padding: 10px;
-            background: #f9fafb;
-            border-radius: 6px;
-            border-left: 3px solid #667eea;
-        }
+    .counter { color: var(--muted); font-size: 14px; }
 
-        .status-label {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 5px;
-        }
+    .report-list { display: flex; flex-direction: column; gap: 12px; }
+    .report-card {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .report-header {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.18s ease;
+    }
+    .report-header:hover { background: rgba(91,141,239,0.07); }
+    .report-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(226,232,240,0.2);
+      background: rgba(226,232,240,0.06);
+      color: var(--text);
+    }
+    .expand { color: var(--muted); font-size: 12px; }
 
-        .status-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111827;
-        }
+    .report-body { border-top: 1px solid var(--border); display: none; padding: 14px 16px 18px; background: var(--card); }
 
-        .status-success {
-            color: #22c55e;
-        }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      background: var(--table-header);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    thead { background: #0b1326; }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+    }
+    th { text-align: left; font-weight: 600; }
+    tbody tr:hover { background: rgba(91,141,239,0.05); }
+    .sticky {
+      position: sticky;
+      left: 0;
+      background: #0b1326;
+      z-index: 2;
+      box-shadow: 1px 0 0 var(--border);
+    }
+    .cell {
+      text-align: center;
+      cursor: pointer;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid transparent;
+    }
+    .pill-pass { background: rgba(34,197,94,0.16); color: #4ade80; border-color: rgba(34,197,94,0.25); }
+    .pill-fail { background: rgba(239,68,68,0.16); color: #fca5a5; border-color: rgba(239,68,68,0.25); }
+    .pill-detect { background: rgba(91,141,239,0.18); color: #93c5fd; border-color: rgba(91,141,239,0.35); }
 
-        .status-failed {
-            color: #ef4444;
-        }
+    .meta-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(226,232,240,0.06);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+    }
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
+    .loading, .error { text-align: center; padding: 32px; color: var(--muted); }
+    .error { color: #f87171; }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 20px;
+    }
+    .modal-content {
+      width: min(1100px, 96vw);
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px 24px;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.5);
+      position: relative;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    .modal-close {
+      position: absolute;
+      right: 14px;
+      top: 12px;
+      background: rgba(239,68,68,0.16);
+      color: #fecdd3;
+      border: 1px solid rgba(239,68,68,0.35);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+    .info-item { background: rgba(226,232,240,0.04); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); }
+    .info-label { color: var(--muted); font-size: 12px; }
+    .info-value { font-weight: 600; margin-top: 2px; }
+    pre {
+      background: #0b1326;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'Fira Code', 'Inter', monospace;
+      font-size: 12px;
+      max-height: 420px;
+      overflow: auto;
+    }
 
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        .reports-section {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #667eea;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        thead {
-            background: #f3f4f6;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        th {
-            font-weight: 600;
-            color: #374151;
-        }
-
-        tr:hover {
-            background: #f9fafb;
-        }
-
-        td[onclick]:hover {
-            background: #e0e7ff !important;
-            transition: background 0.2s ease;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .badge-success {
-            background: #22c55e;
-            color: white;
-        }
-
-        .badge-failed {
-            background: #ef4444;
-            color: white;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            overflow: auto;
-        }
-
-        .modal-content {
-            max-width: 1200px;
-            margin: 50px auto;
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            background: #f3f4f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .risk-item {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-        }
-
-        .risk-matched {
-            border-left: 4px solid #22c55e;
-        }
-
-        .risk-not-matched {
-            border-left: 4px solid #999;
-        }
-
-        pre {
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 8px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 12px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #ef4444;
-        }
-
-        .report-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .report-card {
-            background: #f9fafb;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            overflow: hidden;
-        }
-
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .report-header:hover {
-            background: #f3f4f6;
-        }
-
-        .report-info {
-            flex: 1;
-        }
-
-        .report-time {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .report-stats {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: #666;
-        }
-
-        .report-actions {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .expand-icon {
-            font-size: 12px;
-            color: #666;
-            transition: transform 0.2s ease;
-        }
-
-        .report-content {
-            border-top: 1px solid #e5e7eb;
-            padding: 15px 20px;
-            background: white;
-        }
-    </style>
+    @media (max-width: 760px) {
+      header h1 { font-size: 22px; }
+      .report-header { grid-template-columns: 1fr; row-gap: 10px; }
+      th, td { font-size: 12px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📋 AI Benchmark Report Viewer</h1>
-            <p>View and analyze AI model vulnerability detection test reports</p>
-        </header>
+  <div class="container">
+    <section class="surface">
+      <div class="section-head">
+        <span class="section-title">系统状态</span>
+      </div>
+      <div id="systemStatus">
+        <div class="loading">正在读取状态...</div>
+      </div>
+    </section>
 
-        <!-- System Status Card -->
-        <div class="status-card">
-            <h2 class="section-title">🔧 System Status</h2>
-            <div id="systemStatus">
-                <div style="text-align: center; color: #999; padding: 20px;">Loading system status...</div>
-            </div>
-        </div>
+    <section class="surface">
+      <div class="section-head">
+        <span class="section-title">测试报告</span>
+      </div>
+      <div class="toolbar">
+        <button class="btn-primary" onclick="refreshAll()">刷新全部</button>
+        <div class="spacer"></div>
+        <div class="counter">报告数量：<strong id="totalReports">0</strong></div>
+      </div>
+      <div id="reportsContainer">
+        <div class="loading">正在加载报告...</div>
+      </div>
+    </section>
+  </div>
 
-        <div class="reports-section">
-            <h2 class="section-title">Test Reports</h2>
-            
-            <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-                <button class="btn btn-primary" onclick="refreshAll()">
-                    <span>🔄</span>
-                    <span>Refresh All</span>
-                </button>
-                <div style="flex: 1;"></div>
-                <div style="color: #666; font-size: 14px;">
-                    Total Reports: <strong id="totalReports">0</strong>
-                </div>
-            </div>
-            
-            <div id="reportsContainer">
-                <div class="loading">
-                    <p>Loading reports...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Report Detail Modal -->
-        <div id="reportModal" class="modal">
-            <div class="modal-content">
-                <button class="modal-close" onclick="closeReportModal()">✕ Close</button>
-                <div id="reportDetailContent"></div>
-            </div>
-        </div>
+  <div id="reportModal" class="modal" onclick="handleModalBg(event)">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeReportModal()">关闭</button>
+      <div id="reportDetailContent"></div>
     </div>
+  </div>
 
-    <script>
-        // Load data on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadSystemStatus();
-            loadReports();
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSystemStatus();
+      loadReports();
+    });
+
+    function loadSystemStatus() {
+      const box = document.getElementById('systemStatus');
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) {
+            box.innerHTML = '<div class="error">状态读取失败</div>';
+            return;
+          }
+          const s = data.status;
+          box.innerHTML = `
+            <div class="status-grid">
+              <div class="status-card">
+                <div class="status-label">引擎版本</div>
+                <div class="status-value">${s.current_version || '-'}</div>
+              </div>
+              <div class="status-card">
+                <div class="status-label">最后检查时间</div>
+                <div class="status-value">${s.last_check_time || '-'}</div>
+              </div>
+              <div class="status-card">
+                <div class="status-label">最后运行时间</div>
+                <div class="status-value">${s.last_run_time || '-'}</div>
+              </div>
+              <div class="status-card">
+                <div class="status-label">最后运行结果</div>
+                <div class="status-value ${s.last_run_success === 'true' ? 'status-ok' : 'status-bad'}">
+                  ${s.last_run_success === 'true' ? '成功' : '失败'}
+                </div>
+              </div>
+              <div class="status-card">
+                <div class="status-label">累计运行次数</div>
+                <div class="status-value">${s.total_runs || 0}</div>
+              </div>
+              ${s.last_run_error ? `
+                <div class="status-card" style="grid-column: 1 / -1;">
+                  <div class="status-label">最后错误</div>
+                  <div class="status-value status-bad" style="font-size:14px;">${s.last_run_error}</div>
+                </div>` : ''}
+            </div>
+          `;
+        })
+        .catch(err => {
+          console.error(err);
+          box.innerHTML = `<div class="error">错误：${err.message}</div>`;
         });
+    }
 
-        // Load system status
-        function loadSystemStatus() {
-            const statusContainer = document.getElementById('systemStatus');
-            
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        statusContainer.innerHTML = `<div style="color: #ef4444; text-align: center;">Failed to load status</div>`;
-                        return;
-                    }
-
-                    const status = data.status;
-                    
-                    let html = '<div class="status-grid">';
-                    
-                    // Current Version
-                    html += `
-                        <div class="status-item">
-                            <div class="status-label">Engine Version</div>
-                            <div class="status-value">${status.current_version || 'N/A'}</div>
-                        </div>
-                    `;
-                    
-                    // Last Check Time
-                    html += `
-                        <div class="status-item">
-                            <div class="status-label">Last Check Time</div>
-                            <div class="status-value">${status.last_check_time || 'N/A'}</div>
-                        </div>
-                    `;
-                    
-                    // Last Run Time
-                    html += `
-                        <div class="status-item">
-                            <div class="status-label">Last Run Time</div>
-                            <div class="status-value">${status.last_run_time || 'N/A'}</div>
-                        </div>
-                    `;
-                    
-                    // Last Run Success
-                    const successClass = status.last_run_success === 'true' ? 'status-success' : 'status-failed';
-                    const successText = status.last_run_success === 'true' ? '✅ Success' : '❌ Failed';
-                    html += `
-                        <div class="status-item">
-                            <div class="status-label">Last Run Status</div>
-                            <div class="status-value ${successClass}">${successText}</div>
-                        </div>
-                    `;
-                    
-                    // Total Runs
-                    html += `
-                        <div class="status-item">
-                            <div class="status-label">Total Runs</div>
-                            <div class="status-value">${status.total_runs || '0'}</div>
-                        </div>
-                    `;
-                    
-                    // Last Run Error (if any)
-                    if (status.last_run_error && status.last_run_error !== '') {
-                        html += `
-                            <div class="status-item" style="grid-column: 1 / -1;">
-                                <div class="status-label">Last Error</div>
-                                <div class="status-value status-failed" style="font-size: 14px;">${status.last_run_error}</div>
-                            </div>
-                        `;
-                    }
-                    
-                    html += '</div>';
-                    
-                    statusContainer.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Failed to load system status:', error);
-                    statusContainer.innerHTML = `<div style="color: #ef4444; text-align: center;">Error: ${error.message}</div>`;
-                });
-        }
-
-        // Load reports list
-        function loadReports() {
-            const container = document.getElementById('reportsContainer');
-            container.innerHTML = '<div class="loading"><p>Loading reports...</p></div>';
-
-            fetch('/api/reports')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        container.innerHTML = `<div class="error"><p>${data.message}</p></div>`;
-                        return;
-                    }
-
-                    document.getElementById('totalReports').textContent = data.count;
-
-                    if (data.reports.length === 0) {
-                        container.innerHTML = '<div class="loading"><p>No reports found</p></div>';
-                        return;
-                    }
-
-                    // Build report list (each item is a batch report file)
-                    let html = '<div class="report-list">';
-
-                    data.reports.forEach((report, index) => {
-                        const summary = report.summary || {};
-                        const successRate = summary.successRate ? summary.successRate.toFixed(1) : '0';
-                        const detectionRate = summary.detectionRate ? summary.detectionRate.toFixed(1) : '0';
-                        const totalTests = summary.totalTests || 0;
-                        const successCount = summary.successCount || 0;
-                        const detectedCount = summary.detectedCount || 0;
-                        const totalDuration = summary.totalDuration || 0;
-                        
-                        // For old format reports (single test), show basic info
-                        const isBatchReport = report.reportType === 'batch';
-                        const timestamp = report.timestamp || '-';
-                        const yakVersion = report.yakEngineVersion || 'N/A';
-                        
-                        html += `
-                            <div class="report-card" id="report-card-${index}">
-                                <div class="report-header" onclick="toggleReport(${index}, '${report.filename}')">
-                                    <div class="report-info">
-                                        <div class="report-time">
-                                            <span style="font-size: 16px; font-weight: 600;">${timestamp}</span>
-                                            <span class="badge" style="background: #667eea; margin-left: 10px;">${isBatchReport ? 'Batch' : 'Single'}</span>
-                                        </div>
-                                        <div class="report-stats">
-                                            ${isBatchReport ? `
-                                                <span>Tests: <strong>${totalTests}</strong></span>
-                                                <span>Success: <strong style="color: #22c55e;">${successCount}</strong> (${successRate}%)</span>
-                                                <span>Detected: <strong style="color: #667eea;">${detectedCount}</strong> (${detectionRate}%)</span>
-                                                <span>Duration: <strong>${totalDuration}s</strong></span>
-                                            ` : `
-                                                <span>Model: <strong>${report.model || '-'}</strong></span>
-                                                <span>Test: <strong>${report.testName || '-'}</strong></span>
-                                                <span>Success: <strong style="color: ${report.success ? '#22c55e' : '#ef4444'};">${report.success ? 'YES' : 'NO'}</strong></span>
-                                            `}
-                                            <span>Engine: <strong>${yakVersion}</strong></span>
-                                        </div>
-                                    </div>
-                                    <div class="report-actions">
-                                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="event.stopPropagation(); showRawJson('${report.filename}')">
-                                            View JSON
-                                        </button>
-                                        <span class="expand-icon" id="expand-icon-${index}">▼</span>
-                                    </div>
-                                </div>
-                                <div class="report-content" id="report-content-${index}" style="display: none;">
-                                    <div class="loading"><p>Click to load details...</p></div>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += '</div>';
-                    container.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Failed to load reports:', error);
-                    container.innerHTML = `<div class="error"><p>Failed to load reports: ${error.message}</p></div>`;
-                });
-        }
-
-        // Track expanded reports
-        const expandedReports = {};
-
-        // Toggle report detail
-        function toggleReport(index, filename) {
-            const content = document.getElementById(`report-content-${index}`);
-            const icon = document.getElementById(`expand-icon-${index}`);
-            
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                icon.textContent = '▲';
-                
-                // Load report detail if not loaded
-                if (!expandedReports[filename]) {
-                    loadReportDetail(index, filename);
-                }
-            } else {
-                content.style.display = 'none';
-                icon.textContent = '▼';
-            }
-        }
-
-        // Load report detail and render matrix table
-        function loadReportDetail(index, filename) {
-            const content = document.getElementById(`report-content-${index}`);
-            content.innerHTML = '<div class="loading"><p>Loading report details...</p></div>';
-
-            fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        content.innerHTML = `<div class="error"><p>Error: ${data.message}</p></div>`;
-                        return;
-                    }
-
-                    const report = data.report;
-                    expandedReports[filename] = report;
-                    
-                    // Check if it's a batch report
-                    if (report.reportType === 'batch') {
-                        renderBatchReportMatrix(content, report);
-                    } else {
-                        // Single test report - show in old format
-                        renderSingleReportDetail(content, report);
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to load report:', error);
-                    content.innerHTML = `<div class="error"><p>Failed to load report: ${error.message}</p></div>`;
-                });
-        }
-
-        // Render batch report as matrix table
-        function renderBatchReportMatrix(container, report) {
-            const results = report.results || [];
-            const testNames = report.testNames || [];
-            const models = report.models || [];
-            
-            if (results.length === 0) {
-                container.innerHTML = '<div class="loading"><p>No test results found</p></div>';
-                return;
-            }
-
-            // Build result lookup map: testName|model -> result
-            const resultMap = {};
-            results.forEach(result => {
-                const key = `${result.testName}|${result.model}`;
-                resultMap[key] = result;
-            });
-
-            // Build matrix table
-            let html = `
-                <div style="overflow-x: auto; margin-top: 15px;">
-                <table style="min-width: 100%;">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 200px; position: sticky; left: 0; background: #f3f4f6; z-index: 1;">Test Name</th>
-            `;
-
-            // Header row with model names
-            models.forEach(m => {
-                html += `<th style="text-align: center; min-width: 150px;">${m.model}<br><span style="font-weight: normal; font-size: 11px; color: #666;">(${m.provider})</span></th>`;
-            });
-
+    function loadReports() {
+      const box = document.getElementById('reportsContainer');
+      box.innerHTML = '<div class="loading">正在加载报告...</div>';
+      fetch('/api/reports')
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) {
+            box.innerHTML = `<div class="error">${data.message}</div>`;
+            return;
+          }
+          document.getElementById('totalReports').textContent = data.count;
+          if (!data.reports.length) {
+            box.innerHTML = '<div class="loading">暂无报告</div>';
+            return;
+          }
+          let html = '<div class="report-list">';
+          data.reports.forEach((report, idx) => {
+            const summary = report.summary || {};
+            const successRate = summary.successRate ? summary.successRate.toFixed(1) : '0';
+            const detectionRate = summary.detectionRate ? summary.detectionRate.toFixed(1) : '0';
+            const isBatch = report.reportType === 'batch';
             html += `
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            // Data rows with test names
-            testNames.forEach(testName => {
-                html += `<tr>
-                    <td style="font-weight: 500; position: sticky; left: 0; background: white; z-index: 1;">${testName}</td>
-                `;
-
-                models.forEach(m => {
-                    const key = `${testName}|${m.model}`;
-                    const result = resultMap[key];
-
-                    if (result) {
-                        const successIcon = result.success ? 
-                            '<span style="color: #22c55e; font-size: 16px;">✓</span>' :
-                            '<span style="color: #ef4444; font-size: 16px;">✗</span>';
-                        
-                        const duration = result.duration || 0;
-                        const durationColor = duration > 60 ? '#f59e0b' : '#666';
-                        
-                        // Generate unique ID for this result
-                        const resultId = `${testName}-${m.model}`.replace(/[^a-zA-Z0-9]/g, '_');
-                        
-                        html += `
-                            <td style="text-align: center; cursor: pointer;" onclick="showResultDetail('${resultId}')" title="Click to view details">
-                                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                                    ${successIcon}
-                                    <span style="font-size: 12px; color: ${durationColor};">${duration}s</span>
-                                </div>
-                            </td>
-                        `;
-                        
-                        // Store result for later access
-                        window.resultCache = window.resultCache || {};
-                        window.resultCache[resultId] = result;
-                    } else {
-                        html += `<td style="text-align: center; color: #ccc;">-</td>`;
-                    }
-                });
-
-                html += `</tr>`;
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
-
-        // Render single report detail
-        function renderSingleReportDetail(container, report) {
-            let html = `
-                <div class="info-grid" style="margin-top: 15px;">
-                    <div><strong>Test Name:</strong> ${report.testName || '-'}</div>
-                    <div><strong>Model:</strong> ${report.model || '-'}</div>
-                    <div><strong>Provider:</strong> ${report.provider || '-'}</div>
-                    <div><strong>Target URL:</strong> ${report.targetURL || '-'}</div>
-                    <div><strong>Duration:</strong> ${report.duration || 0} seconds</div>
-                    <div><strong>Success:</strong> ${report.success ? '✅ YES' : '❌ NO'}</div>
-                    <div><strong>Detected:</strong> ${report.detected ? '✅ YES' : '❌ NO'}</div>
-                    <div><strong>Risk Count:</strong> ${report.matchedRiskCount || 0}/${report.riskCount || 0}</div>
+              <div class="report-card">
+                <div class="report-header" onclick="toggleReport(${idx}, '${report.filename}')">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                      <span style="font-size:16px;font-weight:700;">${report.timestamp || '-'}</span>
+                      <span class="badge" style="border-color:rgba(59,130,246,0.35);color:#bfdbfe;">${isBatch ? '批量报告' : '单报告'}</span>
+                    </div>
+                    <div class="report-meta">
+                      ${isBatch ? `
+                        <span>用例：${summary.totalTests || 0}</span>
+                        <span>成功：${summary.successCount || 0} (${successRate}%)</span>
+                        <span>检测：${summary.detectedCount || 0} (${detectionRate}%)</span>
+                        <span>耗时：${summary.totalDuration || 0}s</span>
+                      ` : `
+                        <span>模型：${report.model || '-'}</span>
+                        <span>用例：${report.testName || '-'}</span>
+                        <span>结果：${report.success ? '成功' : '失败'}</span>
+                      `}
+                      <span>引擎：${report.yakEngineVersion || 'N/A'}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <button class="btn-primary" style="padding:8px 12px;font-size:12px;" onclick="event.stopPropagation();showRawJson('${report.filename}')">查看 JSON</button>
+                    <span class="expand" id="expand-${idx}">展开</span>
+                  </div>
                 </div>
-            `;
-            
-            if (report.error) {
-                html += `
-                    <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ef4444;">
-                        <h4 style="color: #ef4444; margin-bottom: 10px;">Error</h4>
-                        <pre>${report.error}</pre>
-                    </div>
-                `;
-            }
-            
-            container.innerHTML = html;
-        }
-
-        // Show result detail in modal
-        function showResultDetail(resultId) {
-            const result = window.resultCache && window.resultCache[resultId];
-            if (!result) {
-                alert('Result not found');
-                return;
-            }
-            
-            const modal = document.getElementById('reportModal');
-            const content = document.getElementById('reportDetailContent');
-            
-            let html = `
-                <h2 style="margin-bottom: 20px; color: #667eea;">📄 Test Result Detail</h2>
-                
-                <div class="info-grid">
-                    <div><strong>Test Name:</strong> ${result.testName || '-'}</div>
-                    <div><strong>Timestamp:</strong> ${result.timestamp || '-'}</div>
-                    <div><strong>Model:</strong> ${result.model || '-'}</div>
-                    <div><strong>Provider:</strong> ${result.provider || '-'}</div>
-                    <div><strong>Target URL:</strong> ${result.targetURL || '-'}</div>
-                    <div><strong>Duration:</strong> ${result.duration || 0} seconds</div>
-                    <div><strong>Success:</strong> ${result.success ? '✅ YES' : '❌ NO'}</div>
-                    <div><strong>Detected:</strong> ${result.detected ? '✅ YES' : '❌ NO'}</div>
-                    <div><strong>Risk Count:</strong> ${result.matchedRiskCount || 0}/${result.riskCount || 0}</div>
-                    <div><strong>Max Iteration:</strong> ${result.maxIteration || '-'}</div>
+                <div class="report-body" id="report-body-${idx}">
+                  <div class="loading">点击展开加载矩阵...</div>
                 </div>
+              </div>
             `;
+          });
+          html += '</div>';
+          box.innerHTML = html;
+        })
+        .catch(err => {
+          console.error(err);
+          box.innerHTML = `<div class="error">加载失败：${err.message}</div>`;
+        });
+    }
 
-            if (result.error) {
-                html += `
-                    <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
-                        <h3 style="color: #ef4444; margin-bottom: 10px;">Error</h3>
-                        <pre>${result.error}</pre>
-                    </div>
-                `;
-            }
+    const cache = {};
 
-            if (result.risks && result.risks.length > 0) {
-                html += `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 15px;">Risks Found (${result.risks.length})</h3>
-                `;
-                
-                result.risks.forEach((risk, index) => {
-                    const matchedBadge = risk.matched ? 
-                        '<span class="badge badge-success">MATCHED</span>' : 
-                        '<span class="badge" style="background: #999; color: white;">NOT MATCHED</span>';
-                    
-                    const riskClass = risk.matched ? 'risk-matched' : 'risk-not-matched';
-                    
-                    html += `
-                        <div class="risk-item ${riskClass}">
-                            <h4 style="margin-bottom: 10px;">${index + 1}. ${risk.title || 'Unknown'} ${matchedBadge}</h4>
-                            <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                                <div><strong>Type:</strong> ${risk.riskType || '-'}</div>
-                                <div><strong>Severity:</strong> <span style="color: ${risk.severity === 'high' || risk.severity === 'critical' ? '#ef4444' : '#f59e0b'};">${risk.severity || '-'}</span></div>
-                                <div><strong>URL:</strong> ${risk.url || '-'}</div>
-                                ${risk.description ? `<div style="margin-top: 8px;"><strong>Description:</strong><br>${risk.description}</div>` : ''}
-                                ${risk.payload ? `<div style="margin-top: 8px;"><strong>Payload:</strong><br><code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; display: block; margin-top: 4px;">${risk.payload}</code></div>` : ''}
-                                ${risk.matchedKeywords ? `<div style="margin-top: 8px;"><strong>Matched Keywords:</strong> ${risk.matchedKeywords.join(', ')}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-            }
+    function toggleReport(idx, filename) {
+      const body = document.getElementById(`report-body-${idx}`);
+      const expand = document.getElementById(`expand-${idx}`);
+      const visible = body.style.display === 'block';
+      body.style.display = visible ? 'none' : 'block';
+      expand.textContent = visible ? '展开' : '收起';
+      if (!visible && !cache[filename]) {
+        loadReportDetail(body, filename);
+      }
+    }
 
-            if (result.taskPrompt) {
-                html += `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 10px;">Task Prompt</h3>
-                        <pre>${result.taskPrompt}</pre>
-                    </div>
-                `;
-            }
+    function loadReportDetail(container, filename) {
+      container.innerHTML = '<div class="loading">加载详情...</div>';
+      fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) {
+            container.innerHTML = `<div class="error">${data.message}</div>`;
+            return;
+          }
+          const report = data.report;
+          cache[filename] = report;
+          if (report.reportType === 'batch') {
+            renderMatrix(container, report);
+          } else {
+            renderSingle(container, report);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          container.innerHTML = `<div class="error">加载失败：${err.message}</div>`;
+        });
+    }
 
-            if (result.thoughtLog && result.thoughtLog.length > 0) {
-                html += `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 10px;">AI Thought Process</h3>
-                        <pre>${result.thoughtLog.join('')}</pre>
-                    </div>
-                `;
-            }
+    function renderMatrix(container, report) {
+      const results = report.results || [];
+      const testNames = report.testNames || [];
+      const models = report.models || [];
+      if (!results.length) {
+        container.innerHTML = '<div class="loading">无测试结果</div>';
+        return;
+      }
+      const map = {};
+      results.forEach(r => { map[`${r.testName}|${r.model}`] = r; });
 
-            if (result.answerLog && result.answerLog.length > 0) {
-                html += `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 10px;">AI Answer</h3>
-                        <pre>${result.answerLog.join('')}</pre>
-                    </div>
-                `;
-            }
+      let html = `
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th class="sticky" style="min-width:190px;">测试用例</th>
+      `;
+      models.forEach(m => {
+        html += `<th style="text-align:center;min-width:180px;">${m.model}<br><span style="color:${'var(--muted)'};font-weight:500;">${m.provider}</span></th>`;
+      });
+      html += `</tr></thead><tbody>`;
 
-            content.innerHTML = html;
-            modal.style.display = 'block';
-        }
+      testNames.forEach(test => {
+        html += `<tr><td class="sticky" style="font-weight:700;">${test}</td>`;
+        models.forEach(m => {
+          const key = `${test}|${m.model}`;
+          const r = map[key];
+          if (!r) { html += `<td class="cell" style="color:var(--muted);">-</td>`; return; }
+          const id = `${test}-${m.model}`.replace(/[^a-zA-Z0-9]/g,'_');
+          const statusClass = r.detected ? 'pill-detect' : (r.success ? 'pill-pass' : 'pill-fail');
+          const statusLabel = r.detected ? '已检测' : (r.success ? '通过' : '失败');
+          const duration = typeof r.duration === 'number' ? r.duration : (r.duration || 0);
+          const iter = r.maxIteration || r.iteration || r.iterationCount || '-';
+          html += `
+            <td class="cell" onclick="showResultDetail('${id}')" title="查看详情">
+              <div class="pill ${statusClass}">${statusLabel}</div>
+              <div class="meta-row">
+                <span class="chip">时长 ${duration}s</span>
+                <span class="chip">迭代 ${iter}</span>
+              </div>
+            </td>
+          `;
+          window.resultCache = window.resultCache || {};
+          window.resultCache[id] = r;
+        });
+        html += `</tr>`;
+      });
 
-        // Show raw JSON in modal
-        function showRawJson(filename) {
-            const modal = document.getElementById('reportModal');
-            const content = document.getElementById('reportDetailContent');
-            
-            content.innerHTML = '<div class="loading"><p>Loading JSON...</p></div>';
-            modal.style.display = 'block';
+      html += `</tbody></table></div>`;
+      container.innerHTML = html;
+    }
 
-            fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        content.innerHTML = `<div class="error"><p>Error: ${data.message}</p></div>`;
-                        return;
-                    }
+    function renderSingle(container, r) {
+      container.innerHTML = `
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">测试用例</div><div class="info-value">${r.testName || '-'}</div></div>
+          <div class="info-item"><div class="info-label">模型</div><div class="info-value">${r.model || '-'}</div></div>
+          <div class="info-item"><div class="info-label">提供方</div><div class="info-value">${r.provider || '-'}</div></div>
+          <div class="info-item"><div class="info-label">目标地址</div><div class="info-value">${r.targetURL || '-'}</div></div>
+          <div class="info-item"><div class="info-label">时长</div><div class="info-value">${r.duration || 0}s</div></div>
+          <div class="info-item"><div class="info-label">结果</div><div class="info-value">${r.success ? '成功' : '失败'}</div></div>
+          <div class="info-item"><div class="info-label">是否检测</div><div class="info-value">${r.detected ? '是' : '否'}</div></div>
+          <div class="info-item"><div class="info-label">风险匹配</div><div class="info-value">${r.matchedRiskCount || 0}/${r.riskCount || 0}</div></div>
+        </div>
+        ${r.error ? `<div class="error" style="text-align:left;">${r.error}</div>` : ''}
+      `;
+    }
 
-                    const jsonStr = JSON.stringify(data.report, null, 2);
-                    content.innerHTML = `
-                        <h2 style="margin-bottom: 20px; color: #667eea;">📋 Raw JSON Data</h2>
-                        <div style="margin-bottom: 15px;">
-                            <button class="btn btn-primary" onclick="copyToClipboard(\`${encodeURIComponent(jsonStr)}\`)">
-                                Copy to Clipboard
-                            </button>
-                        </div>
-                        <pre style="max-height: 600px; overflow: auto;">${escapeHtml(jsonStr)}</pre>
-                    `;
-                })
-                .catch(error => {
-                    console.error('Failed to load JSON:', error);
-                    content.innerHTML = `<div class="error"><p>Failed to load JSON: ${error.message}</p></div>`;
-                });
-        }
+    function showResultDetail(id) {
+      const r = window.resultCache && window.resultCache[id];
+      if (!r) { alert('未找到结果'); return; }
+      const modal = document.getElementById('reportModal');
+      const box = document.getElementById('reportDetailContent');
+      box.innerHTML = `
+        <h3 style="margin-bottom:10px;font-size:18px;">结果详情</h3>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">测试用例</div><div class="info-value">${r.testName || '-'}</div></div>
+          <div class="info-item"><div class="info-label">时间戳</div><div class="info-value">${r.timestamp || '-'}</div></div>
+          <div class="info-item"><div class="info-label">模型</div><div class="info-value">${r.model || '-'}</div></div>
+          <div class="info-item"><div class="info-label">提供方</div><div class="info-value">${r.provider || '-'}</div></div>
+          <div class="info-item"><div class="info-label">目标</div><div class="info-value">${r.targetURL || '-'}</div></div>
+          <div class="info-item"><div class="info-label">时长</div><div class="info-value">${r.duration || 0}s</div></div>
+          <div class="info-item"><div class="info-label">结果</div><div class="info-value">${r.success ? '成功' : '失败'}</div></div>
+          <div class="info-item"><div class="info-label">检测</div><div class="info-value">${r.detected ? '是' : '否'}</div></div>
+          <div class="info-item"><div class="info-label">最大迭代</div><div class="info-value">${r.maxIteration || '-'}</div></div>
+          <div class="info-item"><div class="info-label">风险匹配</div><div class="info-value">${r.matchedRiskCount || 0}/${r.riskCount || 0}</div></div>
+        </div>
+        ${r.error ? `<div class="error" style="text-align:left;">${r.error}</div>` : ''}
+        ${r.risks && r.risks.length ? `
+          <h4 style="margin:10px 0 6px;">发现的风险（${r.risks.length}）</h4>
+          ${r.risks.map((rk, i) => `
+            <div class="info-item" style="border-color:${rk.matched ? 'rgba(34,197,94,0.4)' : 'var(--border)'};">
+              <div class="info-label">#${i+1} ${rk.riskType || '未知'} · 严重度 ${rk.severity || '-'}</div>
+              <div class="info-value" style="margin-top:6px;">${rk.title || '未命名'}</div>
+              ${rk.description ? `<div style="color:var(--muted);margin-top:4px;font-size:12px;">${rk.description}</div>` : ''}
+              ${rk.payload ? `<pre style="margin-top:6px;">${rk.payload}</pre>` : ''}
+            </div>
+          `).join('')}
+        ` : ''}
+        ${r.taskPrompt ? `<h4 style="margin:12px 0 6px;">任务提示</h4><pre>${r.taskPrompt}</pre>` : ''}
+        ${r.thoughtLog && r.thoughtLog.length ? `<h4 style="margin:12px 0 6px;">思考过程</h4><pre>${r.thoughtLog.join('')}</pre>` : ''}
+        ${r.answerLog && r.answerLog.length ? `<h4 style="margin:12px 0 6px;">回答</h4><pre>${r.answerLog.join('')}</pre>` : ''}
+      `;
+      modal.style.display = 'flex';
+    }
 
-        // Copy to clipboard
-        function copyToClipboard(encodedText) {
-            const text = decodeURIComponent(encodedText);
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
-        }
+    function showRawJson(filename) {
+      const modal = document.getElementById('reportModal');
+      const box = document.getElementById('reportDetailContent');
+      box.innerHTML = '<div class="loading">加载 JSON...</div>';
+      modal.style.display = 'flex';
+      fetch(`/api/report?filename=${encodeURIComponent(filename)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) { box.innerHTML = `<div class="error">${data.message}</div>`; return; }
+          const jsonStr = JSON.stringify(data.report, null, 2);
+          box.innerHTML = `
+            <h3 style="margin-bottom:10px;font-size:18px;">原始 JSON</h3>
+            <button class="btn-primary" style="padding:8px 12px;font-size:12px;margin-bottom:10px;" onclick="copyToClipboard('${encodeURIComponent(jsonStr)}')">复制 JSON</button>
+            <pre>${escapeHtml(jsonStr)}</pre>
+          `;
+        })
+        .catch(err => { box.innerHTML = `<div class="error">加载失败：${err.message}</div>`; });
+    }
 
-        // Escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
 
-        // Close report modal
-        function closeReportModal() {
-            document.getElementById('reportModal').style.display = 'none';
-        }
+    function copyToClipboard(enc) {
+      const text = decodeURIComponent(enc);
+      navigator.clipboard.writeText(text).then(() => alert('已复制'));
+    }
 
-        // Refresh all data
-        function refreshAll() {
-            loadSystemStatus();
-            loadReports();
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('reportModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
-    </script>
+    function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }
+    function handleModalBg(e) { if (e.target.id === 'reportModal') closeReportModal(); }
+    function refreshAll() { loadSystemStatus(); loadReports(); }
+  </script>
 </body>
 </html>
-
