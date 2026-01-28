@@ -139,8 +139,17 @@ jobs:
           cp ./apps/deploy-yak-app.sh "$DEPLOY_DIR/apps/"
           cp ./scripts/install-yak-scripts-to-systemd.yak "$DEPLOY_DIR/scripts/"
           
-          # 显示部署包内容
+          # 显示配置文件内容（用于验证）
           echo ""
+          echo "=== 配置文件内容验证 ==="
+          echo "--- benchmark-config.env ---"
+          cat "$DEPLOY_DIR/configs/benchmark-config.env"
+          echo ""
+          echo "--- report-viewer-config.env ---"
+          cat "$DEPLOY_DIR/configs/report-viewer-config.env"
+          echo ""
+          
+          # 显示部署包内容
           echo "=== 部署包内容 ==="
           find "$DEPLOY_DIR" -type f | head -30
           
@@ -209,10 +218,20 @@ jobs:
             
             # 移动配置文件
             echo "移动配置文件..."
-            mv /tmp/ai-benchmark-configs/test-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/test-config.json
-            mv /tmp/ai-benchmark-configs/ai-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-config.json
-            mv /tmp/ai-benchmark-configs/benchmark-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark
-            mv /tmp/ai-benchmark-configs/report-viewer-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer
+            mv -f /tmp/ai-benchmark-configs/test-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/test-config.json
+            mv -f /tmp/ai-benchmark-configs/ai-config.json ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/ai-config.json
+            mv -f /tmp/ai-benchmark-configs/benchmark-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark
+            mv -f /tmp/ai-benchmark-configs/report-viewer-config.env ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer
+            
+            # 验证配置文件内容
+            echo ""
+            echo "=== 验证配置文件内容 ==="
+            echo "--- .env.benchmark ---"
+            cat ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark
+            echo ""
+            echo "--- .env.report-viewer ---"
+            cat ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer
+            echo ""
             
             # 设置脚本执行权限
             echo "设置脚本执行权限..."

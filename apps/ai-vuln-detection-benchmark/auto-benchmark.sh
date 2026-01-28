@@ -157,7 +157,7 @@ download_engine() {
          -o "$tmp_file" "$engine_url"; then
         log_error "Failed to download engine"
         rm -f "$tmp_file"
-        return 1`
+        return 1
     fi
     
     # 验证下载的文件
