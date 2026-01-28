@@ -122,10 +122,10 @@ update_config_bool() {
 get_latest_version() {
     log_info "Fetching latest engine version from $VERSION_URL..."
     
-    local version=$(curl -s --connect-timeout 10 --max-time 30 "$VERSION_URL" | tr -d '[:space:]')
+    local version=$(curl -s --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 5 "$VERSION_URL" | tr -d '[:space:]')
     
     if [ -z "$version" ]; then
-        log_error "Failed to fetch latest version"
+        log_error "Failed to fetch latest version from OSS"
         return 1
     fi
     
@@ -157,7 +157,7 @@ download_engine() {
          -o "$tmp_file" "$engine_url"; then
         log_error "Failed to download engine"
         rm -f "$tmp_file"
-        return 1`
+        return 1
     fi
     
     # 验证下载的文件
@@ -361,14 +361,30 @@ main() {
     
     # 获取最新版本
     local latest_version=$(get_latest_version)
+    local use_existing=false
+    
     if [ -z "$latest_version" ]; then
-        log_error "Failed to get latest version, will retry on next run"
-        update_config "last_run_error" "Failed to fetch latest version"
-        exit 0
+        log_warn "Failed to get latest version"
+        
+        if [ -n "$current_version" ] && [ -f "$(read_config "engine_path")" ]; then
+            log_info "Fallback to existing version: $current_version"
+            latest_version="$current_version"
+            use_existing=true
+        else
+            log_error "No existing version available, cannot proceed"
+            update_config "last_run_error" "Failed to fetch latest version and no local version found"
+            exit 0
+        fi
     fi
     
     # 判断是否需要更新
-    if [ -z "$current_version" ]; then
+    local engine_path=""
+    
+    if [ "$use_existing" = "true" ]; then
+        log_info "Using existing version due to version check failure"
+        need_update=false
+        engine_path=$(read_config "engine_path")
+    elif [ -z "$current_version" ]; then
         log_info "No version configured, will download latest version"
         need_update=true
     elif [ "$current_version" != "$latest_version" ]; then
@@ -377,29 +393,50 @@ main() {
         need_update=true
     else
         log_info "Version is up to date: $current_version"
-        log_info "No update needed, exiting"
-        need_update=false
+        log_info "Checking if engine file exists..."
+        engine_path=$(read_config "engine_path")
+        if [ ! -f "$engine_path" ]; then
+             log_warn "Engine file missing, forcing redownload"
+             need_update=true
+        else
+             log_info "No update needed, exiting"
+             need_update=false
+        fi
     fi
     
     # 如果不需要更新，退出
     if [ "$need_update" = "false" ]; then
-        log_info "=========================================="
-        log_info "No update required, exiting"
-        log_info "=========================================="
-        exit 0
+        if [ -n "$engine_path" ] && [ -x "$engine_path" ]; then
+             local last_run_success=$(read_config "last_run_success")
+             if [ "$last_run_success" != "true" ]; then
+                 log_info "Last run failed, forcing rerun with current version"
+                 engine_path=$(read_config "engine_path")
+                 # 继续执行下载（检查）和测试逻辑
+             else
+                 log_info "=========================================="
+                 log_info "No update required and last run was successful, exiting"
+                 log_info "=========================================="
+                 exit 0
+             fi
+        else
+             log_error "Engine path invalid or missing: $engine_path"
+             need_update=true
+        fi
     fi
     
-    # 下载引擎
-    local engine_path=$(download_engine "$latest_version")
-    if [ $? -ne 0 ] || [ -z "$engine_path" ]; then
-        log_error "Failed to download engine, will retry on next run"
-        update_config "last_run_error" "Failed to download engine version $latest_version"
-        exit 0
+    if [ "$need_update" = "true" ]; then
+        # 下载引擎
+        engine_path=$(download_engine "$latest_version")
+        if [ $? -ne 0 ] || [ -z "$engine_path" ]; then
+            log_error "Failed to download engine, will retry on next run"
+            update_config "last_run_error" "Failed to download engine version $latest_version"
+            exit 0
+        fi
+        
+        # 更新配置中的版本和引擎路径
+        update_config "current_version" "$latest_version"
+        update_config "engine_path" "$engine_path"
     fi
-    
-    # 更新配置中的版本和引擎路径
-    update_config "current_version" "$latest_version"
-    update_config "engine_path" "$engine_path"
     
     # 执行基准测试
     if run_benchmark "$engine_path" "$latest_version"; then

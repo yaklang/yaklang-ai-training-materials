@@ -13,6 +13,20 @@
       "domain": "",
       "apikey": "{{aibalance-ai-benchmark-api-key}}",
       "description": "Qwen 32B Model"
+    },
+    {
+      "provider": "aibalance",
+      "model": "memfit-light-free",
+      "domain": "",
+      "apikey": "{{aibalance-ai-benchmark-api-key}}",
+      "description": "Qwen 32B Model"
+    },
+    {
+      "provider": "aibalance",
+      "model": "memfit-standard-free",
+      "domain": "",
+      "apikey": "{{aibalance-ai-benchmark-api-key}}",
+      "description": "Qwen 32B Model"
     }
   ]
 }
