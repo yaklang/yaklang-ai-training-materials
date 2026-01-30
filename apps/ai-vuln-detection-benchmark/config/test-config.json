@@ -9,6 +9,21 @@
             "riskMatchKeywords": [
                 "vulin_visitors"
             ]
+        },{
+            "targetURL": "http://127.0.0.1:8787",
+            "maxIteration": 15,
+            "timeout": 300,
+            "name": "Task Context Passing",
+            "taskPrompt": "帮我执行技能小智扫描任务管理，目标是{{targetURL}}",
+            "riskMatchKeywords": [
+                "flag{sfdg1yt71dgs}"
+            ],
+            "extAIForge":[
+                {
+                    "path":"小智扫描任务发布.zip.enc",
+                    "password":"123456"
+                }
+            ]
         }
     ]
 }
