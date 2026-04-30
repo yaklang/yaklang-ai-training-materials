@@ -42,7 +42,10 @@ jobs:
       
       - name: Download Yak Engine from OSS
         run: |
-          YAK_VERSION="1.4.5-beta5"
+          # 1.4.7-beta1 起 rag.OnlineEmbedding 直连 https://aibalance.yaklang.com/v1
+          # （免费 embedding-free 模型，无 TOTP，1024 维），脚本不必再手搓 TOTP HTTP，
+          # 内部已带 connect_timeout=5、retry=5、连接池，明显优于旧手搓 TOTP 调用。
+          YAK_VERSION="1.4.7-beta1"
           echo "Downloading Yak engine version: $YAK_VERSION"
           wget -q -O './yak' "https://aliyun-oss.yaklang.com/yak/${YAK_VERSION}/yak_linux_amd64"
           chmod +x ./yak
@@ -136,41 +139,33 @@ jobs:
       - name: Update RAG with diff package
         if: env.HAS_CHANGES == 'true'
         env:
+          # online 模式下 embedding 不再依赖这三个 secret，仅作为可选回退保留
           EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
           EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
           TOTP_SECRET: ${{ secrets.TOTP_SECRET }}
         run: |
-          echo "=== Updating RAG knowledge base ==="
+          echo "=== Updating RAG knowledge base (embedding-mode=online) ==="
           if [ ! -f diff-fs.zip ]; then
             echo "No diff package found"
             exit 0
           fi
-          if [ -z "$EMBEDDING_HOST" ]; then
-            echo "ERROR: Missing EMBEDDING_HOST"
-            exit 1
-          fi
-          
-          # 使用 aibalance 类型和 memfit-standard-free 模型（与 CWE 一致）
-          AI_OPTS="--ai-type aibalance --ai-model memfit-standard-free"
-          
+
+          # AI forge（生成知识问题）继续走 aibalance + memfit-standard-free
+          # embedding 走 yaklang 内置 rag.OnlineEmbedding（aibalance.yaklang.com/v1，免费 embedding-free）
+          AI_OPTS="--ai-type aibalance --ai-model memfit-standard-free --embedding-mode online"
+
           NEW_RAG_FILE="yaklang-aikb-new.rag"
           if [ -f yaklang-aikb-old.rag ]; then
             ./yak scripts/update-rag.yak \
               --rag-file yaklang-aikb-old.rag \
               --diff-zip diff-fs.zip \
               --output "$NEW_RAG_FILE" \
-              --embedding-host "$EMBEDDING_HOST" \
-              --embedding-port "$EMBEDDING_PORT" \
-              --totp-secret "$TOTP_SECRET" \
               $AI_OPTS \
               --timeout 60
           else
             ./yak scripts/update-rag.yak \
               --diff-zip diff-fs.zip \
               --output "$NEW_RAG_FILE" \
-              --embedding-host "$EMBEDDING_HOST" \
-              --embedding-port "$EMBEDDING_PORT" \
-              --totp-secret "$TOTP_SECRET" \
               $AI_OPTS \
               --timeout 60
           fi
