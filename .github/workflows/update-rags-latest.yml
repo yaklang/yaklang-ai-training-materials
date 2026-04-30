@@ -11,6 +11,7 @@ on:
       - 'basic-syntax/**'
       - 'library-usage/**'
       - 'practice/**'
+      - 'yaklang-website/**'
       - '.github/workflows/update-rags-latest.yml'
   workflow_dispatch:
 

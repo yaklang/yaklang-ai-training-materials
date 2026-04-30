@@ -71,6 +71,9 @@ log.info("Project root directory: %s", project_root)
 // 扩展方法: 可以通过修改此数组添加更多目录
 // 关键词: 目标文件夹 文件夹列表 收集范围 文档目录 扫描目录 目录配置
 // 搜索标签: #target-folders #directory-list #scan-directories #folder-config
+// 关键词: target_folders, yaklang-website, RAG 索引覆盖
+// yaklang-website 包含官方权威 API 文档（含 poc.ReplaceHTTPPacket* 等函数完整列表），
+// 必须纳入 RAG 索引，否则用户问"Yaklang 修改数据包工具函数"等问题时会召回不到。
 target_folders = [
     "ai-benchmark",
     "scripts",
@@ -78,6 +81,7 @@ target_folders = [
     "basic-syntax", 
     "library-usage",
     "practice",
+    "yaklang-website",
 ]
 log.info("Target folders: %v", target_folders)
 

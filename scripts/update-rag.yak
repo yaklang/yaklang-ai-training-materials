@@ -673,7 +673,13 @@ for filePath, content := range diffFiles {
                 die("add yak file %v to rag error: %v" % err)
             }
         } else {
-            err = ragSystem.Add(filePath, content)
+            // 关键词: chunk size, markdown ingestion, big_text override
+            // markdown 默认 chunk 800 偏小，把含函数列表的「prose+清单」分成两半
+            // 会拉大语义距离，导致 ReplaceHTTPPacketHeader 等函数名脱离上下文。
+            // 通过 docMetadata("chunk_size", N) 让 big_text.go 走 metadata 重写分支。
+            err = ragSystem.Add(filePath, content,
+                rag.docMetadata("chunk_size", 2000),
+            )
             if err {
                 die("add text file %v to rag error: %v" % err)
             }
