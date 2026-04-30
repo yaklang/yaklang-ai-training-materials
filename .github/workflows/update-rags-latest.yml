@@ -14,6 +14,12 @@ on:
       - 'yaklang-website/**'
       - '.github/workflows/update-rags-latest.yml'
   workflow_dispatch:
+    inputs:
+      full_rebuild:
+        description: '从零全量重建 RAG（忽略 OSS 上的 yaklang-aikb-old.rag / yaklang-aikb-old.zip，整包当 diff 重建）'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: update-rags-latest
@@ -77,6 +83,17 @@ jobs:
 
       - name: Download existing AIKB files
         run: |
+          # 关键词: full rebuild, skip old baseline, force rebuild RAG
+          # full_rebuild=true 时（仅限 workflow_dispatch 手动触发）跳过基线文件下载，
+          # 后续 diff 步骤会因为找不到 old.zip 而走"整包当 diff"分支，
+          # update-rag.yak 也会因为没有 --rag-file 走"从零全新建库"分支。
+          # 用于：embedding 切片策略变更、prompt 变更、yak 引擎升级等需要重新编码所有文档的场景。
+          if [ "${{ github.event.inputs.full_rebuild }}" = "true" ]; then
+            echo "=== FULL REBUILD requested: skip downloading old baseline files ==="
+            echo "Old yaklang-aikb-old.zip / yaklang-aikb-old.rag will be ignored."
+            echo "update-rag.yak will rebuild RAG from scratch using full yaklang-aikb.zip."
+            exit 0
+          fi
           echo "=== Downloading existing AIKB files ==="
           OLD_ZIP_URL="https://yaklang.oss-accelerate.aliyuncs.com/ai-knowledge-base/yaklang-aikb.zip"
           if curl -f -s -o "yaklang-aikb-old.zip" "$OLD_ZIP_URL"; then
