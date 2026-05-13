@@ -1,0 +1,88 @@
+  <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="169pt" height="226pt" viewBox="0.00 0.00 169.00 226.00">
+   <g class="graph" transform="scale(1 1) rotate(0) translate(4 222)">
+    <polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-222 165,-222 165,4 -4,4">
+    </polygon>
+    <g class="node">
+     <polygon fill="#d3d3d3" stroke="transparent" points="8.5,-192 8.5,-214 153.5,-214 153.5,-192 8.5,-192">
+     </polygon>
+     <polygon fill="none" stroke="#000000" points="8.5,-192 8.5,-214 153.5,-214 153.5,-192 8.5,-192">
+     </polygon>
+     <text text-anchor="start" x="29.0964" y="-199.4" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">
+      
+      
+      
+      HEADERS Frame
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-170 8.5,-192 153.5,-192 153.5,-170 8.5,-170">
+     </polygon>
+     <text text-anchor="start" x="33.4973" y="-176.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :method = POST
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-148 8.5,-170 153.5,-170 153.5,-148 8.5,-148">
+     </polygon>
+     <text text-anchor="start" x="39.7273" y="-154.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :scheme = http
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-126 8.5,-148 153.5,-148 153.5,-126 8.5,-126">
+     </polygon>
+     <text text-anchor="start" x="21.3992" y="-132.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :path = /articles?id=2
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-104 8.5,-126 153.5,-126 153.5,-104 8.5,-104">
+     </polygon>
+     <text text-anchor="start" x="11.1386" y="-110.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :authority = x.x.x.x:8080
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-82 8.5,-104 153.5,-104 153.5,-82 8.5,-82">
+     </polygon>
+     <text text-anchor="start" x="29.6193" y="-88.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      content-length = 1
+     </text>
+     <polygon fill="#d3d3d3" stroke="transparent" points="8.5,-60 8.5,-82 153.5,-82 153.5,-60 8.5,-60">
+     </polygon>
+     <polygon fill="none" stroke="#000000" points="8.5,-60 8.5,-82 153.5,-82 153.5,-60 8.5,-60">
+     </polygon>
+     <text text-anchor="start" x="41.9323" y="-67.4" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">
+      
+      
+      
+      DATA Frame
+     </text>
+     <polygon fill="none" stroke="#000000" points="8.5,-4 8.5,-60 153.5,-60 153.5,-4 8.5,-4">
+     </polygon>
+     <text text-anchor="start" x="13.1511" y="-44.4" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      aGET /admin HTTP/1.1
+     </text>
+     <text text-anchor="start" x="28.8885" y="-27.6" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      Host: x.x.x.x:8080
+     </text>
+     <text text-anchor="start" x="29.228" y="-10.8" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      cookie: session=...
+     </text>
+    </g>
+   </g>
+  </svg>

@@ -1,0 +1,94 @@
+  <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="208pt" height="243pt" viewBox="0.00 0.00 208.00 243.00">
+   <g class="graph" transform="scale(1 1) rotate(0) translate(4 239)">
+    <polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-239 204,-239 204,4 -4,4">
+    </polygon>
+    <g class="node">
+     <polygon fill="#d3d3d3" stroke="transparent" points="8,-208.5 8,-230.5 192,-230.5 192,-208.5 8,-208.5">
+     </polygon>
+     <polygon fill="none" stroke="#000000" points="8,-208.5 8,-230.5 192,-230.5 192,-208.5 8,-208.5">
+     </polygon>
+     <text text-anchor="start" x="48.0964" y="-215.9" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">
+      
+      
+      
+      HEADERS Frame
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-186.5 8,-208.5 192,-208.5 192,-186.5 8,-186.5">
+     </polygon>
+     <text text-anchor="start" x="52.4973" y="-192.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :method = POST
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-164.5 8,-186.5 192,-186.5 192,-164.5 8,-164.5">
+     </polygon>
+     <text text-anchor="start" x="58.7273" y="-170.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :scheme = http
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-142.5 8,-164.5 192,-164.5 192,-142.5 8,-142.5">
+     </polygon>
+     <text text-anchor="start" x="76.6095" y="-148.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :path = /
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-120.5 8,-142.5 192,-142.5 192,-120.5 8,-120.5">
+     </polygon>
+     <text text-anchor="start" x="10.9089" y="-126.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      :authority = www.example.com
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-98.5 8,-120.5 192,-120.5 192,-98.5 8,-98.5">
+     </polygon>
+     <text text-anchor="start" x="15.9748" y="-104.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      Transfer-Encoding = chunked
+     </text>
+     <polygon fill="#d3d3d3" stroke="transparent" points="8,-76.5 8,-98.5 192,-98.5 192,-76.5 8,-76.5">
+     </polygon>
+     <polygon fill="none" stroke="#000000" points="8,-76.5 8,-98.5 192,-98.5 192,-76.5 8,-76.5">
+     </polygon>
+     <text text-anchor="start" x="60.9323" y="-83.9" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">
+      
+      
+      
+      DATA Frame
+     </text>
+     <polygon fill="none" stroke="#000000" points="8,-3.5 8,-76.5 192,-76.5 192,-3.5 8,-3.5">
+     </polygon>
+     <text text-anchor="start" x="96.8927" y="-60.9" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      a
+     </text>
+     <text text-anchor="start" x="96.5" y="-44.1" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      0
+     </text>
+     <text text-anchor="start" x="35.2584" y="-27.3" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      GET /admin HTTP/1.1
+     </text>
+     <text text-anchor="start" x="28.6588" y="-10.5" font-family="Times,serif" font-size="14.00" fill="#000000">
+      
+      
+      
+      Host: www.example.com
+     </text>
+    </g>
+   </g>
+  </svg>
