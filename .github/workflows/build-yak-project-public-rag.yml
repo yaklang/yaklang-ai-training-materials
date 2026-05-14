@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: '5'
+      yak_engine_version:
+        description: 'Yak 引擎版本 (默认 1.4.7-beta1)'
+        required: false
+        type: string
+        default: '1.4.7-beta1'
 
 concurrency:
   group: build-yak-project-public-rag
@@ -71,11 +76,12 @@ jobs:
           echo "============================================"
 
       # 关键词: download yak engine, online embedding
-      # 与 update-rags-latest.yml 保持一致使用 1.4.7-beta1，
+      # 与 update-rags-latest.yml 保持一致默认使用 1.4.7-beta1，
       # 该版本起 rag.OnlineEmbedding 内置 aibalance.yaklang.com/v1 免费 embedding-free 模型
       - name: Download Yak Engine
         run: |
-          YAK_VERSION="1.4.7-beta1"
+          YAK_VERSION="${{ github.event.inputs.yak_engine_version }}"
+          if [ -z "$YAK_VERSION" ]; then YAK_VERSION="1.4.7-beta1"; fi
           echo "Downloading Yak engine version: $YAK_VERSION"
           wget -q -O ./yak "https://aliyun-oss.yaklang.com/yak/${YAK_VERSION}/yak_linux_amd64"
           chmod +x ./yak
@@ -161,34 +167,120 @@ jobs:
           ls -lh yak-project-public.rag
           echo "Baseline ready: yak-project-public.rag (incremental mode enabled)"
 
-      # 关键词: build RAG, incremental, build-yak-project-public-search-index.yak
-      # build 脚本会自动检测 --output 是否存在：存在则走增量（rag.Import + 预加载去重）；不存在则全量
-      - name: Build Yak Project Public RAG
+      # 关键词: build RAG, incremental retry, file size threshold, partial success
+      # 容错策略：
+      #   1. 脚本即使因为 AI 偶发失败 (failedCount>0) 而 os.Exit(1)，shell 层用 || true 吞掉非零退出
+      #   2. 成功判据 = RAG 文件 >= MIN_ACCEPT_SIZE (5MB) 且任务成功率 >= MIN_SUCCESS_RATE
+      #   3. 不满足则重试（最多 MAX_ATTEMPTS = 3）。脚本自带增量：
+      #      - 已成功条目的 search_target 被 rag.DBQueryUniqueKnowledgeTitles 预加载到内存
+      #      - 重试时这些条目被 O(1) 跳过，只重跑失败的少数任务，零额外 AI 成本
+      #   4. 实在跑不完全 -> 只要文件 >= 5MB 仍然继续 compress/upload，下次手动触发会自动增量补完
+      - name: Build Yak Project Public RAG (with retry)
         run: |
           AI_MODEL="${{ github.event.inputs.ai_model }}"
           if [ -z "$AI_MODEL" ]; then AI_MODEL="memfit-light-free"; fi
           CONCURRENCY="${{ github.event.inputs.concurrency }}"
           if [ -z "$CONCURRENCY" ]; then CONCURRENCY="5"; fi
 
-          echo "=== Building Yak Project Public RAG ==="
+          MAX_ATTEMPTS=3
+          MIN_ACCEPT_SIZE=$((5 * 1024 * 1024))   # 5MB 兜底门槛
+          MIN_SUCCESS_RATE=95                     # 成功率 >= 95% 视作"足够好"，无需再重试
+
+          echo "=== Build Yak Project Public RAG ==="
           echo "Version: $VERSION"
           echo "AI model: $AI_MODEL"
           echo "Concurrency: $CONCURRENCY"
-          if [ -f yak-project-public.rag ]; then
-            echo "Mode: INCREMENTAL (existing baseline detected)"
-          else
-            echo "Mode: FULL REBUILD"
-          fi
+          echo "Max attempts: $MAX_ATTEMPTS"
+          echo "Min accept size: $MIN_ACCEPT_SIZE bytes"
+          echo "Min success rate: ${MIN_SUCCESS_RATE}%"
 
-          ./yak scripts/build-yak-project-public-search-index.yak \
-            --output yak-project-public.rag \
-            --source-dir yak-project-public \
-            --concurrency "$CONCURRENCY" \
-            --ai-model "$AI_MODEL"
+          BUILD_OK=0
+
+          for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
+            echo ""
+            echo "==================== ATTEMPT $ATTEMPT / $MAX_ATTEMPTS ===================="
+            if [ -f yak-project-public.rag ]; then
+              CUR_SIZE=$(stat -c%s yak-project-public.rag)
+              echo "Existing baseline: ${CUR_SIZE} bytes -> incremental mode"
+            else
+              echo "No baseline -> full rebuild mode"
+            fi
+
+            # 用 || true 吞掉 os.Exit(1)；shell 层只看产出
+            ./yak scripts/build-yak-project-public-search-index.yak \
+              --output yak-project-public.rag \
+              --source-dir yak-project-public \
+              --concurrency "$CONCURRENCY" \
+              --ai-model "$AI_MODEL" || echo "(build script returned non-zero; checking outputs)"
+
+            if [ ! -f yak-project-public.rag ]; then
+              echo "Attempt $ATTEMPT: RAG file NOT generated, retrying..."
+              continue
+            fi
+
+            SIZE=$(stat -c%s yak-project-public.rag)
+            SIZE_MB=$(echo "scale=2; $SIZE / 1024 / 1024" | bc)
+            echo "Attempt $ATTEMPT: RAG file size = $SIZE bytes (${SIZE_MB} MB)"
+
+            # 关键词: parse build-report.md, 兼容旧格式（无"处理成功"字段）
+            # 优先用"处理成功"字段，fallback 用"任务总数 - 处理失败"反推
+            SUCCESS=0
+            FAILED=0
+            TOTAL_TASKS=0
+            if [ -f yak-project-public.build-report.md ]; then
+              SUCCESS=$(grep -oE '处理成功 \| [0-9]+' yak-project-public.build-report.md | head -1 | grep -oE '[0-9]+' || echo "")
+              FAILED=$(grep -oE '处理失败 \| [0-9]+' yak-project-public.build-report.md | head -1 | grep -oE '[0-9]+' || echo "")
+              TOTAL_TASKS=$(grep -oE '任务总数 \| [0-9]+' yak-project-public.build-report.md | head -1 | grep -oE '[0-9]+' || echo "")
+            fi
+            FAILED=${FAILED:-0}
+            TOTAL_TASKS=${TOTAL_TASKS:-0}
+            if [ -z "$SUCCESS" ] && [ "$TOTAL_TASKS" -gt 0 ]; then
+              SUCCESS=$((TOTAL_TASKS - FAILED))
+            fi
+            SUCCESS=${SUCCESS:-0}
+            TOTAL=$((SUCCESS + FAILED))
+            if [ "$TOTAL" -gt 0 ]; then
+              RATE=$((SUCCESS * 100 / TOTAL))
+              echo "Attempt $ATTEMPT: success=$SUCCESS, failed=$FAILED, total=$TOTAL, rate=${RATE}%"
+            else
+              RATE=0
+              echo "Attempt $ATTEMPT: no task counters in report"
+            fi
+
+            if [ "$SIZE" -ge "$MIN_ACCEPT_SIZE" ] && [ "$FAILED" -eq 0 ]; then
+              echo "Attempt $ATTEMPT: PERFECT - file size OK and zero failures"
+              BUILD_OK=1
+              break
+            fi
+
+            if [ "$SIZE" -ge "$MIN_ACCEPT_SIZE" ] && [ "$RATE" -ge "$MIN_SUCCESS_RATE" ] && [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
+              echo "Attempt $ATTEMPT: ACCEPTABLE - file >= 5MB and rate >= ${MIN_SUCCESS_RATE}% on last attempt"
+              BUILD_OK=1
+              break
+            fi
+
+            if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Attempt $ATTEMPT: not yet acceptable, will retry (incremental fills only $FAILED missing tasks)"
+            fi
+          done
 
           if [ ! -f yak-project-public.rag ]; then
-            echo "ERROR: RAG file was not generated"
+            echo "FATAL: no RAG file after $MAX_ATTEMPTS attempts"
             exit 1
+          fi
+          FINAL_SIZE=$(stat -c%s yak-project-public.rag)
+          if [ "$FINAL_SIZE" -lt "$MIN_ACCEPT_SIZE" ]; then
+            echo "FATAL: RAG file too small (${FINAL_SIZE} bytes < ${MIN_ACCEPT_SIZE}) after $MAX_ATTEMPTS attempts"
+            exit 1
+          fi
+
+          if [ "$BUILD_OK" = "1" ]; then
+            echo ""
+            echo "=== Build accepted (BUILD_OK=1) ==="
+          else
+            echo ""
+            echo "=== Build PARTIAL but file size >= 5MB; uploading anyway ==="
+            echo "    Next manual run will pick up where this left off (incremental)."
           fi
           ls -lh yak-project-public.rag
 

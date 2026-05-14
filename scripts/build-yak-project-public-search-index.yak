@@ -840,6 +840,7 @@ reportContent += "|------|------|\n"
 reportContent += sprintf("| 候选文章总数 | %d |\n", len(candidateArticles))
 reportContent += sprintf("| 已处理文章数 | %d |\n", totalArticles)
 reportContent += sprintf("| 任务总数 | %d |\n", totalCount)
+reportContent += sprintf("| 处理成功 | %d |\n", successCount)
 reportContent += sprintf("| - 整篇成功 | %d |\n", wholeSuccess)
 reportContent += sprintf("| - 章节成功 | %d |\n", sectionSuccess)
 reportContent += sprintf("| 处理失败 | %d |\n", failedCount)
