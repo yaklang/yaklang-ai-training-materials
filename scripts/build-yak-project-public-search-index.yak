@@ -1,0 +1,925 @@
+#!/usr/bin/env yak
+
+// =============================================================================
+// Yak Project Public 文章搜索索引构建工具 - Build Articles Search Index
+// 功能: 对 yak-project-public/ 目录下的所有 Markdown 文章构建 RAG 问题索引
+// 用途: 为 Yaklang 技术生态公众号文章构建可搜索的问题索引，
+//       让用户能通过自然语言查询找到相关的技术文章、产品介绍、教程与案例
+//
+// 核心设计（与 build-yakscript-search-index.yak 风格对齐）:
+// - 混合粒度: 每篇文章 = 1 个「整篇」条目 + N 个「H2 章节」条目
+// - 知识条目 (knowledge_entry) 存储完整文本，问题索引 (question_index) 用于语义搜索
+// - 问题索引通过 entry_id 关联到知识条目
+// - 增量更新: rag.Import 已有 RAG -> 预加载 search_target -> O(1) 去重
+//
+// 数据来源:
+// - 默认目录: yak-project-public/
+// - 来源类型: Yaklang 公众号文章 (Markdown)
+// - 跳过: INDEX.md / README.md / 隐藏文件 / 非 .md 文件
+//
+// 使用示例:
+// yak scripts/build-yak-project-public-search-index.yak --output yak-project-public-{version}.rag
+// yak scripts/build-yak-project-public-search-index.yak --limit 3   # 测试模式只跑 3 个任务
+// yak scripts/build-yak-project-public-search-index.yak --force     # 强制全量重建
+// yak scripts/build-yak-project-public-search-index.yak --no-sections # 只建整篇条目
+//
+// 应用场景: 公众号文章 RAG 索引、产品文档检索、技术案例语义搜索
+// 关键词: rag.BuildSearchIndexKnowledge, yak-project-public, article-rag, h2-split
+// =============================================================================
+
+__DESC__ = "Build search index for yak-project-public articles using BuildSearchIndexKnowledge"
+
+yakit.AutoInitYakit()
+
+// =============================================================================
+// CLI 参数配置模块
+// 关键词: cli 参数, 输出路径, 增量模式, 测试限制
+// =============================================================================
+
+outputRagPath = cli.String(
+    "output",
+    cli.setVerboseName("输出路径"),
+    cli.setDefault("yak-project-public-{version}.rag"),
+    cli.setHelp("Output RAG export file path. Use {version} placeholder. Example: yak-project-public-{version}.rag"),
+)
+
+sourceDir = cli.String(
+    "source-dir",
+    cli.setVerboseName("源目录"),
+    cli.setDefault("yak-project-public"),
+    cli.setHelp("Source directory containing markdown articles. Default: yak-project-public"),
+)
+
+maxConcurrency = cli.Int(
+    "concurrency",
+    cli.setDefault(5),
+    cli.setHelp("Maximum number of concurrent processing tasks"),
+)
+
+testLimit = cli.Int(
+    "limit",
+    cli.setVerboseName("测试限制"),
+    cli.setDefault(0),
+    cli.setHelp("Limit the number of tasks to process (0 = all, for testing use small number)"),
+)
+
+forceRebuild = cli.Bool(
+    "force",
+    cli.setVerboseName("强制重建"),
+    cli.setDefault(false),
+    cli.setHelp("Force rebuild index, ignore existing RAG file"),
+)
+
+noSections = cli.Bool(
+    "no-sections",
+    cli.setVerboseName("跳过章节"),
+    cli.setDefault(false),
+    cli.setHelp("Only build whole-article entries, skip H2 sections (debug)"),
+)
+
+// 关键词: AI model selection, memfit-light-free, aibalance
+// 数据清洗使用 memfit-light-free 模型（轻量、限速更宽松、对 RAG 索引问题生成足够）
+aiType = cli.String(
+    "ai-type",
+    cli.setVerboseName("AI类型"),
+    cli.setDefault("aibalance"),
+    cli.setHelp("AI service type for question-index generation. Default: aibalance"),
+)
+
+aiModel = cli.String(
+    "ai-model",
+    cli.setVerboseName("AI模型"),
+    cli.setDefault("memfit-light-free"),
+    cli.setHelp("AI model name for question-index generation. Default: memfit-light-free"),
+)
+
+cli.check()
+
+// =============================================================================
+// 版本检测和输出路径配置
+// 关键词: YAK_VERSION, 版本占位符替换, .rag 后缀补全
+// =============================================================================
+
+yakVersion = YAK_VERSION
+if yakVersion == "" || yakVersion == undefined {
+    yakVersion = "dev"
+}
+
+log.info("=== Yak Project Public Articles Search Index Builder ===")
+log.info("Yak Version: %s", yakVersion)
+
+finalOutputPath = outputRagPath
+if str.Contains(finalOutputPath, "{version}") {
+    finalOutputPath = str.Replace(finalOutputPath, "{version}", yakVersion, -1)
+}
+if !str.HasSuffix(finalOutputPath, ".rag") {
+    finalOutputPath = finalOutputPath + ".rag"
+}
+
+log.info("Output RAG: %s", finalOutputPath)
+log.info("Source Dir: %s", sourceDir)
+log.info("Concurrency: %d", maxConcurrency)
+log.info("Force Rebuild: %v", forceRebuild)
+log.info("Skip Sections: %v", noSections)
+log.info("AI Type: %s", aiType)
+log.info("AI Model: %s", aiModel)
+if testLimit > 0 {
+    log.info("Test Mode: limit=%d", testLimit)
+}
+
+if !file.IsDir(sourceDir) {
+    log.error("Source directory does not exist or is not a directory: %s", sourceDir)
+    die(sprintf("Source directory does not exist: %s", sourceDir))
+}
+
+// =============================================================================
+// RAG 系统初始化（支持增量更新）
+// 关键词: rag.Import, rag.Get, rag.DeleteCollection, incremental update
+// =============================================================================
+
+ragCollectionName = "yaklang-yak-project-public"
+
+existingRagFile = file.IsExisted(finalOutputPath)
+incrementalMode = existingRagFile && !forceRebuild
+
+if incrementalMode {
+    log.info("=== Incremental Update Mode ===")
+    log.info("Found existing RAG file: %s", finalOutputPath)
+    rag.DeleteCollection(ragCollectionName)
+    try {
+        err = rag.Import(finalOutputPath, rag.importName(ragCollectionName))
+        if err != nil {
+            log.warn("Failed to import existing RAG file: %v, falling back to full rebuild", err)
+            incrementalMode = false
+            rag.DeleteCollection(ragCollectionName)
+        } else {
+            log.info("Imported existing RAG file successfully")
+        }
+    } catch importErr {
+        log.warn("Failed to import existing RAG file: %v, falling back to full rebuild", importErr)
+        incrementalMode = false
+        rag.DeleteCollection(ragCollectionName)
+    }
+} else {
+    log.info("=== Full Build Mode ===")
+    if existingRagFile && forceRebuild {
+        log.info("Force rebuild requested, ignoring existing file")
+    } else {
+        log.info("No existing RAG file, creating new index")
+    }
+    rag.DeleteCollection(ragCollectionName)
+}
+
+log.info("=== Initializing RAG System ===")
+ragSystem, err = rag.Get(ragCollectionName)
+if err != nil {
+    log.error("Failed to initialize RAG system: %v", err)
+    die(sprintf("Failed to initialize RAG system: %v", err))
+}
+log.info("RAG system initialized: collection=%s", ragCollectionName)
+
+existingDocCount = 0
+try {
+    existingDocCount, _ = ragSystem.CountDocuments()
+    log.info("Existing documents: %d", existingDocCount)
+} catch countErr {
+    log.debug("Failed to count existing documents: %v", countErr)
+}
+
+// =============================================================================
+// 预加载已存在的 search_target（用于增量去重）
+// 关键词: rag.DBQueryUniqueKnowledgeTitles, O(1) lookup, search_target dedup
+// =============================================================================
+
+existingTargets = make(map[string]bool)
+
+preloadExistingTargets = func() {
+    if !incrementalMode {
+        return
+    }
+    log.info("Preloading existing search_target values (DISTINCT query)...")
+    preloadStart = time.Now()
+    try {
+        titles, err = rag.DBQueryUniqueKnowledgeTitles(
+            rag.dbQueryCollection(ragCollectionName),
+            rag.dbQueryLimit(50000),
+        )
+        if err != nil {
+            log.warn("Failed to preload existing search_target: %v", err)
+            return
+        }
+        for _, t := range titles {
+            if t != "" {
+                existingTargets[t] = true
+            }
+        }
+        preloadElapsed = time.Since(preloadStart)
+        log.info("Preloaded %d unique search_target entries in %v", len(existingTargets), preloadElapsed)
+    } catch preloadErr {
+        log.warn("Failed to preload: %v", preloadErr)
+    }
+}
+
+checkTargetExists = func(target) {
+    if !incrementalMode {
+        return false
+    }
+    if target in existingTargets {
+        return true
+    }
+    return false
+}
+
+// =============================================================================
+// Markdown 解析函数
+// 关键词: parseFilenameMeta, extractFrontMatter, splitByH2, extractH2Outline
+// =============================================================================
+
+// 关键词: byteTruncate, 字节级截断（粗略）
+// 用于喂 AI 时的 prompt 长度兜底；切到字符中间的概率很小且不影响 AI 理解
+byteTruncate = func(s, maxBytes) {
+    if maxBytes <= 0 {
+        return ""
+    }
+    if len(s) <= maxBytes {
+        return s
+    }
+    return s[:maxBytes]
+}
+
+// 关键词: parseFilenameMeta, 公众号文章文件名元信息解析
+// 文件名格式: "{serial} {YYYY-MM-DD} {title}.md"
+// 示例: "001 2026-05-08 Yakit AI 强化 使用AI高效解决渗透测试中验证码问题.md"
+parseFilenameMeta = func(filename) {
+    name = filename
+    if str.HasSuffix(name, ".md") {
+        name = name[:len(name)-3]
+    }
+    parts = str.SplitN(name, " ", 3)
+    serial = ""
+    dateStr = ""
+    title = name
+    if len(parts) >= 3 {
+        serial = parts[0]
+        dateStr = parts[1]
+        title = parts[2]
+    } else if len(parts) == 2 {
+        serial = parts[0]
+        title = parts[1]
+    }
+    return {
+        "serial": serial,
+        "date": dateStr,
+        "title": title,
+        "filename": filename,
+        "filename_no_ext": name,
+    }
+}
+
+// 关键词: extractFrontMatter, 文章前言摘要提取
+// 策略: 取首个 H1 之后到首个 H2 之前的内容；若无 H1 则取开头若干字节
+extractFrontMatter = func(content, maxBytes) {
+    if maxBytes <= 0 {
+        maxBytes = 1500
+    }
+    lines = str.Split(content, "\n")
+    bufLines = []
+    foundH1 = false
+    inH1Section = false
+    for _, line := range lines {
+        if !foundH1 {
+            if str.HasPrefix(line, "# ") {
+                foundH1 = true
+                inH1Section = true
+                continue
+            }
+        } else {
+            if str.HasPrefix(line, "## ") {
+                inH1Section = false
+                break
+            }
+            if inH1Section {
+                bufLines = append(bufLines, line)
+            }
+        }
+    }
+    summary = ""
+    if foundH1 && len(bufLines) > 0 {
+        summary = str.Join(bufLines, "\n")
+    } else {
+        summary = content
+    }
+    summary = str.TrimSpace(summary)
+    if len(summary) > maxBytes {
+        summary = byteTruncate(summary, maxBytes) + "..."
+    }
+    return summary
+}
+
+// 关键词: extractH2Outline, H2 大纲提取
+// 仅用于喂 AI 时的上下文，便于 AI 理解文章主题脉络
+extractH2Outline = func(content) {
+    outlines = []
+    lines = str.Split(content, "\n")
+    for _, line := range lines {
+        if str.HasPrefix(line, "## ") {
+            t = str.TrimSpace(line[3:])
+            if t != "" {
+                outlines = append(outlines, t)
+            }
+        }
+    }
+    return outlines
+}
+
+// 关键词: splitByH2, 按 H2 切分章节
+// 返回 [{title, body}, ...], body 不含 H2 标题行本身
+splitByH2 = func(content) {
+    lines = str.Split(content, "\n")
+    sections = []
+    currentTitle = ""
+    currentBody = []
+    flushSection = func() {
+        if currentTitle == "" && len(currentBody) == 0 {
+            return
+        }
+        sections = append(sections, {
+            "title": currentTitle,
+            "body": str.Join(currentBody, "\n"),
+        })
+    }
+    for _, line := range lines {
+        if str.HasPrefix(line, "## ") {
+            flushSection()
+            currentTitle = str.TrimSpace(line[3:])
+            currentBody = []
+        } else {
+            if currentTitle != "" {
+                currentBody = append(currentBody, line)
+            }
+        }
+    }
+    flushSection()
+    return sections
+}
+
+// =============================================================================
+// AI prompt 内容构造
+// 关键词: buildWholeArticlePrompt, buildSectionPrompt, AI 索引材料
+// =============================================================================
+
+// 整篇条目的喂 AI 材料: 标题 + 日期 + 前言摘要 + H2 大纲
+buildWholeArticlePrompt = func(meta, content, h2Titles) {
+    summary = extractFrontMatter(content, 1500)
+    outlineBlock = ""
+    if len(h2Titles) > 0 {
+        outlineBlock = "\n\n文章章节大纲:\n"
+        for i, t := range h2Titles {
+            outlineBlock += sprintf("  %d. %s\n", i+1, t)
+        }
+    }
+    return sprintf(`文章标题: %s
+发布日期: %s
+来源: Yaklang 技术生态官方公众号 (yak-project-public)
+内容类型: 技术文章 / 产品发布 / 使用教程 / 案例分享
+
+文章摘要:
+%s%s`,
+        meta["title"],
+        meta["date"],
+        summary,
+        outlineBlock)
+}
+
+// 章节条目的喂 AI 材料: 文章标题 + 章节标题 + 章节正文（截断到 4KB）
+buildSectionPrompt = func(meta, sectionTitle, sectionBody) {
+    bodyLimit = 4096
+    body = sectionBody
+    truncNote = ""
+    if len(body) > bodyLimit {
+        body = byteTruncate(body, bodyLimit)
+        truncNote = "\n\n[节选: 完整内容存于知识条目，仅截取前 4KB 作为问题生成依据]"
+    }
+    return sprintf(`所属文章: %s
+发布日期: %s
+章节标题: %s
+
+章节正文:
+%s%s`,
+        meta["title"],
+        meta["date"],
+        sectionTitle,
+        body,
+        truncNote)
+}
+
+// 关键词: wholeArticleExtraPrompt, 整篇条目的 AI 强化指令
+wholeArticleExtraPrompt = `
+【Yak 公众号文章搜索场景强化说明】
+当前内容是 Yaklang 技术生态官方公众号的一篇技术文章。
+内容主题涵盖以下产品和方向：
+- Yakit (GUI 客户端): MITM、WebFuzzer、热加载、插件商店、暗黑模式
+- Yaklang DSL: 内置库使用、RAG、AI Agent 集成、AI FunctionCall、SyntaxFlow
+- IRify: 代码审计、SSA、增量编译、性能优化、Java 反编译
+- Memfit AI: 长期记忆、Agent 框架、知识库、AI 渗透
+- 安全方向: 渗透测试、SQL 注入、XSS、WebShell、WAF 绕过、TUN 劫持、国密、漏洞扫描、Vulinbox 靶场
+
+生成问题时请特别关注：
+1. 用户可能用什么自然语言描述找到这篇文章？（如："如何用 AI 识别验证码？"、"Yakit 暗黑模式怎么开？"）
+2. 用户可能想了解的相关产品或功能？（如："Yakit 插件商店怎么用？"、"IRify 是什么？"）
+3. 用户可能在解决什么实际问题？（如："如何绕过 WAF？"、"SSA 数据流分析怎么做？"）
+4. 用户可能想学习的技术原理或细节？（如："增量编译是怎么实现的？"、"RAG 向量数据库怎么工作？"）
+
+问题应覆盖：
+- 主题/概念查询（"什么是 X？"、"X 是什么？"）
+- 方案/教程查询（"如何 X？"、"怎么用 X 做 Y？"）
+- 问题排查（"X 报错怎么办？"、"X 为什么不工作？"）
+- 产品功能查询（"Yakit 有 X 功能吗？"、"Yaklang 能 X 吗？"）
+- 场景推荐（"X 场景下用什么？"、"推荐一个 X 工具"）
+`
+
+// 关键词: sectionExtraPrompt, 章节条目的 AI 强化指令
+sectionExtraPrompt = `
+【Yak 公众号文章 - 章节级搜索强化】
+当前内容是一篇 Yaklang 公众号文章中的一个 H2 章节，需要为这个具体子主题生成搜索问题。
+
+生成问题时请特别关注：
+1. 用户可能就这个章节涉及的具体技术细节问什么？（要比整篇问题更聚焦、更细节）
+2. 章节中提到的具体函数、API、参数、命令、操作步骤、代码片段
+3. 章节中讨论的具体问题、bug、解决方案、最佳实践
+
+问题应该：
+- 聚焦本章节的核心技术点，避免与文章其他章节重复
+- 包含本章节出现的具体术语 / 函数名 / 产品名 / 配置项
+- 反映"如何做"、"怎么解决"、"为什么这样设计"、"X 和 Y 区别"等具体诉求
+`
+
+// =============================================================================
+// 扫描源目录, 收集所有候选 markdown 文件
+// 关键词: filesys.Recursive, onFileStat, 过滤 INDEX.md / README.md / static/
+// =============================================================================
+
+log.info("=== Scanning Markdown Articles ===")
+
+shouldSkipFile = func(baseName) {
+    lowerName = str.ToLower(baseName)
+    if str.HasPrefix(baseName, ".") {
+        return true
+    }
+    if lowerName == "index.md" {
+        return true
+    }
+    if lowerName == "readme.md" {
+        return true
+    }
+    if !str.HasSuffix(lowerName, ".md") {
+        return true
+    }
+    return false
+}
+
+candidateArticles = []
+scanStart = time.Now()
+err = filesys.Recursive(sourceDir,
+    filesys.onFileStat((filePath, info) => {
+        baseName = file.GetBase(filePath)
+        if shouldSkipFile(baseName) {
+            return nil
+        }
+        candidateArticles = append(candidateArticles, filePath)
+        return nil
+    }))
+if err != nil {
+    log.error("Failed to scan source directory: %v", err)
+    die(sprintf("Failed to scan source directory: %v", err))
+}
+log.info("Scanned %d candidate markdown articles in %v", len(candidateArticles), time.Since(scanStart))
+
+if len(candidateArticles) == 0 {
+    log.warn("No articles found in source directory: %s", sourceDir)
+    die("No articles to process")
+}
+
+// =============================================================================
+// 任务构建（解析每篇文章 -> 整篇任务 + N 个 H2 章节任务）
+// 关键词: task building, whole-article, section, search_target
+// =============================================================================
+
+preloadExistingTargets()
+
+allTasks = []
+totalArticles = 0
+skippedByExists = 0
+skippedByRead = 0
+skippedEmptySection = 0
+limitReached = false
+
+for _, filePath := range candidateArticles {
+    if testLimit > 0 && len(allTasks) >= testLimit {
+        limitReached = true
+        break
+    }
+
+    baseName = file.GetBase(filePath)
+    meta = parseFilenameMeta(baseName)
+
+    contentBytes, readErr = file.ReadFile(filePath)
+    if readErr != nil {
+        log.warn("Failed to read %s: %v", filePath, readErr)
+        skippedByRead++
+        continue
+    }
+    contentStr = string(contentBytes)
+    if str.TrimSpace(contentStr) == "" {
+        log.warn("Skipping empty article: %s", filePath)
+        skippedByRead++
+        continue
+    }
+    totalArticles++
+
+    h2Titles = extractH2Outline(contentStr)
+
+    // 整篇任务
+    wholeTarget = meta["filename_no_ext"]
+    if checkTargetExists(wholeTarget) {
+        skippedByExists++
+    } else {
+        wholeTask = {
+            "kind": "whole",
+            "search_type": "Yak公众号文章[整篇]",
+            "search_target": wholeTarget,
+            "file_path": filePath,
+            "meta": meta,
+            "content": contentStr,
+            "h2_titles": h2Titles,
+        }
+        allTasks = append(allTasks, wholeTask)
+        if testLimit > 0 && len(allTasks) >= testLimit {
+            limitReached = true
+            continue
+        }
+    }
+
+    if noSections {
+        continue
+    }
+
+    sections = splitByH2(contentStr)
+    for _, sec := range sections {
+        if testLimit > 0 && len(allTasks) >= testLimit {
+            limitReached = true
+            break
+        }
+        secTitle = sec["title"]
+        secBody = sec["body"]
+        if secTitle == "" || str.TrimSpace(secBody) == "" {
+            skippedEmptySection++
+            continue
+        }
+        secTarget = sprintf("%s > %s", meta["filename_no_ext"], secTitle)
+        if checkTargetExists(secTarget) {
+            skippedByExists++
+            continue
+        }
+        sectionTask = {
+            "kind": "section",
+            "search_type": "Yak公众号文章[章节]",
+            "search_target": secTarget,
+            "file_path": filePath,
+            "meta": meta,
+            "section_title": secTitle,
+            "section_body": secBody,
+        }
+        allTasks = append(allTasks, sectionTask)
+    }
+}
+
+log.info("=== Task Statistics ===")
+log.info("Articles processed: %d / %d", totalArticles, len(candidateArticles))
+log.info("Read failures: %d", skippedByRead)
+log.info("Empty sections skipped: %d", skippedEmptySection)
+log.info("Already indexed (skipped): %d", skippedByExists)
+log.info("Tasks to process: %d", len(allTasks))
+if limitReached {
+    log.info("Test limit reached (--limit %d), remaining articles not enumerated", testLimit)
+}
+
+if len(allTasks) == 0 {
+    if incrementalMode {
+        log.info("All articles are already indexed, exporting existing RAG without changes...")
+        try {
+            err = rag.Export(ragCollectionName, finalOutputPath)
+            if err != nil {
+                log.error("Failed to export RAG file: %v", err)
+                die(sprintf("Failed to export RAG file: %v", err))
+            }
+            log.info("RAG file exported (no changes): %s", finalOutputPath)
+        } catch exportErr {
+            log.error("Failed to export RAG: %v", exportErr)
+            die(sprintf("Failed to export RAG: %v", exportErr))
+        }
+        os.Exit(0)
+    } else {
+        log.warn("No tasks to process, aborting")
+        die("No tasks to process")
+    }
+}
+
+// =============================================================================
+// 并发处理任务
+// 关键词: sync.NewSizedWaitGroup, rag.BuildSearchIndexKnowledge, concurrent processing
+// =============================================================================
+
+totalCount = len(allTasks)
+wg = sync.NewSizedWaitGroup(maxConcurrency)
+resultsChan = make(chan map[string]any, totalCount)
+
+totalQuestions = 0
+questionsMutex = sync.NewMutex()
+
+processTask = func(taskIndex, totalTasks, taskInfo) {
+    defer wg.Done()
+
+    kind = taskInfo["kind"]
+    searchType = taskInfo["search_type"]
+    searchTarget = taskInfo["search_target"]
+
+    result = {
+        "kind": kind,
+        "search_target": searchTarget,
+        "success": false,
+        "error": "",
+        "questions_generated": 0,
+    }
+
+    try {
+        promptText = ""
+        extraPromptStr = ""
+        if kind == "whole" {
+            meta = taskInfo["meta"]
+            promptText = buildWholeArticlePrompt(meta, taskInfo["content"], taskInfo["h2_titles"])
+            extraPromptStr = wholeArticleExtraPrompt
+        } else {
+            meta = taskInfo["meta"]
+            promptText = buildSectionPrompt(meta, taskInfo["section_title"], taskInfo["section_body"])
+            extraPromptStr = sectionExtraPrompt
+        }
+
+        log.info("[%d/%d] BUILD kind=%s target=%s prompt_bytes=%d", taskIndex, totalTasks, kind, searchTarget, len(promptText))
+
+        // 关键词: rag.aiServiceType, ai.model, memfit-light-free
+        // 数据清洗（AI 生成问题索引）走 aibalance + memfit-light-free，与 update-rag.yak 风格一致
+        aiServiceOpt = rag.aiServiceType(aiType, ai.model(aiModel))
+
+        searchResult, buildErr = rag.BuildSearchIndexKnowledge(
+            ragCollectionName,
+            promptText,
+            rag.extraPrompt(extraPromptStr),
+            rag.setSearchMeta(searchType, searchTarget),
+            rag.noPotentialQuestions(),
+            aiServiceOpt,
+        )
+        if buildErr != nil {
+            log.error("[%d/%d] FAILED kind=%s target=%s err=%v", taskIndex, totalTasks, kind, searchTarget, buildErr)
+            result["error"] = buildErr
+            resultsChan <- result
+            return
+        }
+
+        qCount = len(searchResult.Questions)
+        log.info("[%d/%d] OK kind=%s target=%s entry_id=%s questions=%d", taskIndex, totalTasks, kind, searchTarget, searchResult.EntryID, qCount)
+        for i, q := range searchResult.Questions {
+            log.debug("    Q%d: %s", i+1, q)
+        }
+
+        questionsMutex.Lock()
+        totalQuestions += qCount
+        questionsMutex.Unlock()
+
+        result["success"] = true
+        result["questions_generated"] = qCount
+        result["entry_id"] = searchResult.EntryID
+    } catch processErr {
+        log.error("[%d/%d] UNEXPECTED kind=%s target=%s err=%v", taskIndex, totalTasks, kind, searchTarget, processErr)
+        result["error"] = sprintf("%v", processErr)
+    }
+
+    resultsChan <- result
+}
+
+log.info("=== Processing Tasks (Concurrent, max %d) ===", maxConcurrency)
+processingStart = time.Now()
+
+for i, taskInfo := range allTasks {
+    wg.Add(1)
+    go processTask(i+1, totalCount, taskInfo)
+}
+
+wg.Wait()
+close(resultsChan)
+
+processingElapsed = time.Since(processingStart)
+log.info("Processing finished in %v", processingElapsed)
+
+// =============================================================================
+// 收集统计结果
+// 关键词: result aggregation, success/failure by kind
+// =============================================================================
+
+successCount = 0
+failedCount = 0
+wholeSuccess = 0
+sectionSuccess = 0
+failedItems = []
+
+for result := range resultsChan {
+    if result["success"] {
+        successCount++
+        if result["kind"] == "whole" {
+            wholeSuccess++
+        } else {
+            sectionSuccess++
+        }
+    } else {
+        failedCount++
+        failedItems = append(failedItems, sprintf("[%s] %s", result["kind"], result["search_target"]))
+    }
+}
+
+log.info("=== Processing Results ===")
+log.info("Total tasks: %d", totalCount)
+log.info("Successful: %d (whole=%d, section=%d)", successCount, wholeSuccess, sectionSuccess)
+log.info("Failed: %d", failedCount)
+log.info("Total questions generated: %d", totalQuestions)
+
+if failedCount > 0 {
+    log.warn("Failed tasks (first 20):")
+    for i, t := range failedItems {
+        if i >= 20 {
+            log.warn("  ... and %d more", failedCount-20)
+            break
+        }
+        log.warn("  %d. %s", i+1, t)
+    }
+}
+
+// =============================================================================
+// 最终文档统计 + 导出 RAG 文件
+// 关键词: ragSystem.CountDocuments, rag.Export
+// =============================================================================
+
+log.info("=== Final Statistics ===")
+finalDocCount = 0
+try {
+    finalDocCount, _ = ragSystem.CountDocuments()
+    log.info("Final document count: %d", finalDocCount)
+    if incrementalMode {
+        log.info("Previous documents: %d", existingDocCount)
+        log.info("New documents added: %d", finalDocCount-existingDocCount)
+    } else {
+        log.info("Knowledge entries (approx): %d", successCount)
+        log.info("Question indexes (approx): %d", totalQuestions)
+    }
+} catch countErr {
+    log.warn("Failed to get document count: %v", countErr)
+}
+
+log.info("=== Exporting RAG File ===")
+try {
+    err = rag.Export(ragCollectionName, finalOutputPath)
+    if err != nil {
+        log.error("Failed to export RAG file: %v", err)
+        die(sprintf("Failed to export RAG file: %v", err))
+    }
+    if !file.IsExisted(finalOutputPath) {
+        log.error("Export succeeded but file does not exist: %s", finalOutputPath)
+        die("Failed to verify exported RAG file")
+    }
+    fileInfo = file.Stat(finalOutputPath)~
+    fileSize = fileInfo.Size()
+    log.info("RAG file exported: %s (size=%d bytes, %.2f MB)", finalOutputPath, fileSize, float64(fileSize)/1024/1024)
+} catch exportErr {
+    log.error("Failed to export RAG: %v", exportErr)
+    die(sprintf("Failed to export RAG: %v", exportErr))
+}
+
+// =============================================================================
+// 生成构建报告
+// 关键词: build-report.md, 与 build-yakscript-search-index.yak 结构对齐
+// =============================================================================
+
+log.info("=== Generating Build Report ===")
+
+reportPath = str.Replace(finalOutputPath, ".rag", ".build-report.md", 1)
+
+reportContent = sprintf("# Yak Project Public 文章搜索索引构建报告\n\n")
+reportContent += sprintf("**构建时间**: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+reportContent += sprintf("**Yak 版本**: %s\n\n", yakVersion)
+reportContent += sprintf("**RAG 文件**: %s\n\n", finalOutputPath)
+reportContent += sprintf("**集合名称**: %s\n\n", ragCollectionName)
+reportContent += sprintf("**源目录**: %s\n\n", sourceDir)
+buildModeStr = "全量构建"
+if incrementalMode {
+    buildModeStr = "增量更新"
+}
+reportContent += sprintf("**构建模式**: %s\n\n", buildModeStr)
+
+reportContent += "## 索引结构\n\n"
+reportContent += "本索引采用 **混合粒度** 的「知识条目 -> 多问题索引」结构：\n\n"
+reportContent += "- **整篇条目** (`search_type = Yak公众号文章[整篇]`): 每篇文章 = 1 个知识条目 + 5-10 个问题索引\n"
+reportContent += "- **章节条目** (`search_type = Yak公众号文章[章节]`): 每个 H2 章节 = 1 个知识条目 + 5-10 个问题索引\n"
+reportContent += "- 知识条目 (`knowledge_entry`) 存储完整内容\n"
+reportContent += "- 问题索引 (`question_index`) 通过 `entry_id` 关联到知识条目\n\n"
+
+reportContent += "## 数据来源\n\n"
+reportContent += sprintf("本索引包含 `%s/` 目录下所有 Markdown 文章（递归扫描，排除 `INDEX.md` / `README.md` / 隐藏文件）。\n\n", sourceDir)
+
+reportContent += "## 构建统计\n\n"
+reportContent += "| 指标 | 数值 |\n"
+reportContent += "|------|------|\n"
+reportContent += sprintf("| 候选文章总数 | %d |\n", len(candidateArticles))
+reportContent += sprintf("| 已处理文章数 | %d |\n", totalArticles)
+reportContent += sprintf("| 任务总数 | %d |\n", totalCount)
+reportContent += sprintf("| - 整篇成功 | %d |\n", wholeSuccess)
+reportContent += sprintf("| - 章节成功 | %d |\n", sectionSuccess)
+reportContent += sprintf("| 处理失败 | %d |\n", failedCount)
+reportContent += sprintf("| 读取失败 | %d |\n", skippedByRead)
+reportContent += sprintf("| 空章节跳过 | %d |\n", skippedEmptySection)
+reportContent += sprintf("| 已存在跳过 | %d |\n", skippedByExists)
+reportContent += sprintf("| 生成问题数 | %d |\n", totalQuestions)
+reportContent += sprintf("| 最终文档数 | %d |\n", finalDocCount)
+reportContent += sprintf("| 处理耗时 | %v |\n\n", processingElapsed)
+
+if incrementalMode {
+    reportContent += "## 增量更新统计\n\n"
+    reportContent += "| 指标 | 数值 |\n"
+    reportContent += "|------|------|\n"
+    reportContent += sprintf("| 原有文档数 | %d |\n", existingDocCount)
+    reportContent += sprintf("| 新增文档数 | %d |\n\n", finalDocCount-existingDocCount)
+}
+
+if failedCount > 0 {
+    reportContent += "## 失败任务\n\n"
+    for i, t := range failedItems {
+        reportContent += sprintf("%d. %s\n", i+1, t)
+    }
+    reportContent += "\n"
+}
+
+reportContent += "## 构建选项\n\n"
+reportContent += "| 选项 | 值 |\n"
+reportContent += "|------|------|\n"
+reportContent += sprintf("| `--source-dir` | `%s` |\n", sourceDir)
+reportContent += sprintf("| `--concurrency` | %d |\n", maxConcurrency)
+reportContent += sprintf("| `--force` | %v |\n", forceRebuild)
+reportContent += sprintf("| `--no-sections` | %v |\n", noSections)
+reportContent += sprintf("| `--limit` | %d |\n", testLimit)
+reportContent += sprintf("| `--ai-type` | `%s` |\n", aiType)
+reportContent += sprintf("| `--ai-model` | `%s` |\n\n", aiModel)
+
+reportContent += "## 搜索说明\n\n"
+reportContent += "搜索时，系统会：\n\n"
+reportContent += "1. 通过问题索引进行语义搜索（HNSW 近似最近邻）\n"
+reportContent += "2. 命中问题后，通过 `entry_id` 获取对应的知识条目\n"
+reportContent += "3. 返回完整的文章正文 / 章节正文\n\n"
+
+reportContent += "### Metadata 字段说明\n\n"
+reportContent += "| 字段 | 说明 |\n"
+reportContent += "|------|------|\n"
+reportContent += "| `index_type` | 文档类型：`knowledge_entry` 或 `question_index` |\n"
+reportContent += "| `entry_id` | 知识条目的唯一标识符 |\n"
+reportContent += "| `search_type` | 条目类型：`Yak公众号文章[整篇]` / `Yak公众号文章[章节]` |\n"
+reportContent += "| `search_target` | 文章名（整篇）或 `<文章名> > <H2标题>`（章节）|\n"
+reportContent += "| `question_index` | 问题文本（仅 question_index 类型有）|\n\n"
+
+reportContent += "## 增量更新机制\n\n"
+reportContent += "当目标 RAG 文件已存在时，脚本自动进入增量更新模式：\n\n"
+reportContent += "1. `rag.Import` 导入现有 RAG 文件\n"
+reportContent += "2. `rag.DBQueryUniqueKnowledgeTitles` 一次性预加载所有已存在的 `search_target` 到内存 map\n"
+reportContent += "3. 对新解析出的任务做 O(1) 查找，跳过已存在的条目\n"
+reportContent += "4. 只对真正新增的任务调用 AI 生成问题索引（节省 AI 调用成本）\n\n"
+reportContent += "使用 `--force` 参数可强制全量重建。\n"
+
+file.Save(reportPath, reportContent)~
+log.info("Build report generated: %s", reportPath)
+
+// =============================================================================
+// 最终总结
+// 关键词: build summary, exit code
+// =============================================================================
+
+log.info("=== Build Complete ===")
+log.info("RAG File: %s", finalOutputPath)
+log.info("Report: %s", reportPath)
+log.info("Articles: %d processed", totalArticles)
+log.info("Tasks: %d (success=%d, failed=%d)", totalCount, successCount, failedCount)
+log.info("Questions: %d generated", totalQuestions)
+if incrementalMode {
+    log.info("Mode: incremental (skipped %d already indexed)", skippedByExists)
+}
+
+if failedCount > 0 {
+    os.Exit(1)
+} else {
+    os.Exit(0)
+}
