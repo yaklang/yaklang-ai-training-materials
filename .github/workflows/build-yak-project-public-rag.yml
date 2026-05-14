@@ -1,37 +1,53 @@
-name: Build Yak Project Public Articles RAG
+name: Build Yak Project Public RAG and Register
+
+# 关键词: yak-project-public, RAG build, rags-latest.json, OSS, register
+# 功能: 构建 yak-project-public 文章 RAG 索引，上传 OSS，并注册到 rags-latest.json 让 Yakit 客户端"线上知识库"可见
+# 注册名: "Yak Project Public" / "Yak Project 公共知识"
+# OSS 路径: /rag/yak-project-public/<YYYYMMDD-N>/yak-project-public.rag.gz
+#
+# 索引参考:
+# - updateCWE.yaml (yaklang 仓库)
+# - update-rags-latest.yml (本仓库)
+# - updateAIToolsAndSkills.yaml (yaklang 仓库)
 
 on:
-  # 每天 UTC 03:00 运行（北京时间 11:00），错峰 ai-capabilities (02:00)
   schedule:
+    # 每天 UTC 03:00 (北京时间 11:00)，错峰 update-rags-latest 与其他工作流
     - cron: '0 3 * * *'
 
-  # 允许手动触发
+  push:
+    branches:
+      - main
+    paths:
+      - 'yak-project-public/**'
+      - 'scripts/build-yak-project-public-search-index.yak'
+      - '.github/workflows/build-yak-project-public-rag.yml'
+
   workflow_dispatch:
     inputs:
       force_rebuild:
-        description: "Force rebuild even if RAG file exists"
+        description: '从零全量重建（跳过下载现有 RAG 做增量）'
+        required: false
         type: boolean
         default: false
-      version_override:
-        description: "Override Yak version to build (leave empty for latest)"
-        type: string
-        default: ""
       ai_model:
-        description: "AI model for question generation (default: memfit-light-free)"
+        description: 'AI 模型 (默认 memfit-light-free)'
+        required: false
         type: string
-        default: "memfit-light-free"
+        default: 'memfit-light-free'
       concurrency:
-        description: "Max concurrent tasks (default: 5)"
+        description: '并发任务数 (默认 5)'
+        required: false
         type: string
-        default: "5"
+        default: '5'
 
-# 同一时间只允许一个构建任务，避免 OSS 上覆盖冲突
 concurrency:
   group: build-yak-project-public-rag
   cancel-in-progress: false
 
 jobs:
-  check-and-build:
+  build-and-register:
+    name: Build Yak Project Public RAG
     runs-on: ubuntu-22.04
 
     steps:
@@ -40,311 +56,303 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Print workflow information
+      - name: Print trigger information
         run: |
           echo "============================================"
-          echo "Yak Project Public Articles RAG Builder"
+          echo "Build Yak Project Public RAG and Register"
           echo "============================================"
-          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
           echo "Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           echo "Force rebuild: ${{ github.event.inputs.force_rebuild || 'false' }}"
-          echo "Version override: ${{ github.event.inputs.version_override || 'none' }}"
           echo "AI model: ${{ github.event.inputs.ai_model || 'memfit-light-free' }}"
           echo "Concurrency: ${{ github.event.inputs.concurrency || '5' }}"
           echo "============================================"
 
-      - name: Get latest Yak version
-        id: get_version
+      # 关键词: download yak engine, online embedding
+      # 与 update-rags-latest.yml 保持一致使用 1.4.7-beta1，
+      # 该版本起 rag.OnlineEmbedding 内置 aibalance.yaklang.com/v1 免费 embedding-free 模型
+      - name: Download Yak Engine
         run: |
-          echo "=== Fetching latest Yak version ==="
-
-          VERSION_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt"
-
-          VERSION_OVERRIDE="${{ github.event.inputs.version_override }}"
-          if [ -n "$VERSION_OVERRIDE" ]; then
-            YAK_VERSION="$VERSION_OVERRIDE"
-            echo "Using override version: $YAK_VERSION"
-          else
-            echo "Fetching version from: $VERSION_URL"
-            YAK_VERSION=$(curl -s "$VERSION_URL" | tr -d '\n\r')
-
-            if [ -z "$YAK_VERSION" ]; then
-              echo "ERROR: Failed to fetch Yak version"
-              exit 1
-            fi
-
-            echo "Latest version: $YAK_VERSION"
-          fi
-
-          echo "YAK_VERSION=$YAK_VERSION" >> $GITHUB_ENV
-          echo "version=$YAK_VERSION" >> $GITHUB_OUTPUT
-
-          echo ""
-          echo "Yak version determined: $YAK_VERSION"
-
-      - name: Check if RAG file exists on OSS
-        id: check_rag
-        run: |
-          echo "=== Checking if RAG file exists on OSS ==="
-
-          RAG_FILE_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-project-public-${{ env.YAK_VERSION }}.rag"
-
-          echo "Checking URL: $RAG_FILE_URL"
-
-          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_FILE_URL")
-
-          echo "HTTP Status: $HTTP_CODE"
-
-          FORCE_REBUILD="${{ github.event.inputs.force_rebuild }}"
-
-          if [ "$HTTP_CODE" = "200" ] && [ "$FORCE_REBUILD" != "true" ]; then
-            echo "RAG file already exists for version ${{ env.YAK_VERSION }}"
-            echo "Skipping build (use force_rebuild=true to rebuild)"
-            echo "rag_exists=true" >> $GITHUB_OUTPUT
-          else
-            if [ "$FORCE_REBUILD" = "true" ]; then
-              echo "Force rebuild requested"
-            else
-              echo "RAG file does not exist for version ${{ env.YAK_VERSION }}"
-            fi
-            echo "Will proceed with build"
-            echo "rag_exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Download Yak engine
-        if: steps.check_rag.outputs.rag_exists == 'false'
-        run: |
-          echo "=== Downloading Yak engine v${{ env.YAK_VERSION }} ==="
-
-          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak_linux_amd64"
-
-          echo "Downloading from: $YAK_URL"
-          wget -q --show-progress -O ./yak "$YAK_URL"
-
-          if [ ! -f ./yak ]; then
-            echo "ERROR: Failed to download yak engine"
-            exit 1
-          fi
-
+          YAK_VERSION="1.4.7-beta1"
+          echo "Downloading Yak engine version: $YAK_VERSION"
+          wget -q -O ./yak "https://aliyun-oss.yaklang.com/yak/${YAK_VERSION}/yak_linux_amd64"
           chmod +x ./yak
+          ./yak version
 
-          echo ""
-          echo "=== Downloaded file info ==="
-          ls -lh ./yak
-          file ./yak
-
-          echo ""
-          echo "=== Testing yak engine ==="
-          ./yak version || echo "Note: version command may not output in expected format"
-
-          echo ""
-          echo "Yak engine v${{ env.YAK_VERSION }} downloaded successfully"
-
-      - name: Verify yak-project-public source directory
-        if: steps.check_rag.outputs.rag_exists == 'false'
+      - name: Verify source directory
         run: |
-          echo "=== Verifying source directory ==="
-
           if [ ! -d yak-project-public ]; then
             echo "ERROR: yak-project-public directory not found in repository"
             exit 1
           fi
-
           ARTICLE_COUNT=$(find yak-project-public -maxdepth 1 -type f -name "*.md" \
             -not -name "INDEX.md" -not -name "README.md" | wc -l | tr -d ' ')
-
-          echo "Found $ARTICLE_COUNT candidate markdown articles in yak-project-public/"
-
+          echo "Found $ARTICLE_COUNT candidate markdown articles"
           if [ "$ARTICLE_COUNT" -lt 10 ]; then
-            echo "WARNING: article count looks suspiciously low: $ARTICLE_COUNT"
+            echo "ERROR: article count looks suspiciously low: $ARTICLE_COUNT"
+            exit 1
           fi
 
-      - name: Build Yak Project Public Articles RAG
-        if: steps.check_rag.outputs.rag_exists == 'false'
+      # 关键词: version YYYYMMDD-N, 404 probe, available slot
+      # 版本号策略与 yaklang-aikb / CWE / MITRE 一致：当天日期 + 自增 index，
+      # 探测 OSS 对应路径是否存在（HTTP 200 = 已被占用 / 404 = 可用）
+      - name: Generate Version
         run: |
-          echo "=== Building Yak Project Public Articles RAG ==="
+          DATE_STR=$(date +%Y%m%d)
+          INDEX=1
+          while true; do
+            VERSION="${DATE_STR}-${INDEX}"
+            CHECK_URL="https://yaklang.oss-accelerate.aliyuncs.com/rag/yak-project-public/${VERSION}/yak-project-public.rag.gz"
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -I "$CHECK_URL" || echo "000")
+            if [ "$HTTP_STATUS" = "404" ] || [ "$HTTP_STATUS" = "000" ]; then
+              echo "Version $VERSION is available"
+              break
+            fi
+            echo "Version $VERSION already exists, trying next index..."
+            INDEX=$((INDEX + 1))
+            if [ $INDEX -gt 100 ]; then
+              echo "ERROR: Too many versions for today!"
+              exit 1
+            fi
+          done
+          echo "Using version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          RAG_OSS_DIR="/rag/yak-project-public/${VERSION}"
+          echo "RAG_OSS_DIR=$RAG_OSS_DIR" >> $GITHUB_ENV
 
-          OUTPUT_FILE="yak-project-public-${{ env.YAK_VERSION }}.rag"
+      # 关键词: download existing RAG, incremental baseline
+      # 从 rags-latest.json 找到已注册的 "Yak Project Public" 文件路径，下载并解压作为增量基线。
+      # force_rebuild=true 时跳过，走全量重建路径。
+      - name: Download existing RAG (for incremental update)
+        continue-on-error: true
+        run: |
+          if [ "${{ github.event.inputs.force_rebuild }}" = "true" ]; then
+            echo "=== FULL REBUILD requested: skip downloading existing baseline ==="
+            exit 0
+          fi
+          echo "=== Trying to fetch existing Yak Project Public RAG baseline ==="
+          wget -q -O rags-latest.json https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json || {
+            echo "No existing rags-latest.json"
+            echo "[]" > rags-latest.json
+          }
+          jq empty rags-latest.json 2>/dev/null || echo "[]" > rags-latest.json
+          OLD_RAG_PATH=$(jq -r '.[] | select(.name == "Yak Project Public") | .file' rags-latest.json 2>/dev/null || echo "")
+          if [ -z "$OLD_RAG_PATH" ] || [ "$OLD_RAG_PATH" = "null" ]; then
+            echo "No existing Yak Project Public registered in rags-latest.json (first build)"
+            exit 0
+          fi
+          echo "Found existing RAG at: $OLD_RAG_PATH"
+          OLD_RAG_URL="https://yaklang.oss-accelerate.aliyuncs.com${OLD_RAG_PATH}"
+          wget -q -O yak-project-public-existing.rag.gz "$OLD_RAG_URL" || {
+            echo "Failed to download existing RAG; will rebuild from scratch"
+            rm -f yak-project-public-existing.rag.gz
+            exit 0
+          }
+          ls -lh yak-project-public-existing.rag.gz
+          # 关键词: yak gzip -d, decompress baseline
+          # 解压后命名为 build 脚本期望的 --output 路径，让 build 脚本自动进入增量模式
+          ./yak gzip -d -f yak-project-public-existing.rag.gz -o yak-project-public.rag || {
+            echo "Failed to decompress existing RAG; will rebuild from scratch"
+            rm -f yak-project-public.rag
+            exit 0
+          }
+          ls -lh yak-project-public.rag
+          echo "Baseline ready: yak-project-public.rag (incremental mode enabled)"
+
+      # 关键词: build RAG, incremental, build-yak-project-public-search-index.yak
+      # build 脚本会自动检测 --output 是否存在：存在则走增量（rag.Import + 预加载去重）；不存在则全量
+      - name: Build Yak Project Public RAG
+        run: |
           AI_MODEL="${{ github.event.inputs.ai_model }}"
-          if [ -z "$AI_MODEL" ]; then
-            AI_MODEL="memfit-light-free"
-          fi
+          if [ -z "$AI_MODEL" ]; then AI_MODEL="memfit-light-free"; fi
           CONCURRENCY="${{ github.event.inputs.concurrency }}"
-          if [ -z "$CONCURRENCY" ]; then
-            CONCURRENCY="5"
-          fi
+          if [ -z "$CONCURRENCY" ]; then CONCURRENCY="5"; fi
 
-          echo "Output file: $OUTPUT_FILE"
-          echo "Version: ${{ env.YAK_VERSION }}"
+          echo "=== Building Yak Project Public RAG ==="
+          echo "Version: $VERSION"
           echo "AI model: $AI_MODEL"
           echo "Concurrency: $CONCURRENCY"
-          echo ""
+          if [ -f yak-project-public.rag ]; then
+            echo "Mode: INCREMENTAL (existing baseline detected)"
+          else
+            echo "Mode: FULL REBUILD"
+          fi
 
-          # 关键词: build-yak-project-public-search-index.yak invocation
-          # 注意: 脚本默认 --source-dir=yak-project-public，从仓库根目录运行即可
           ./yak scripts/build-yak-project-public-search-index.yak \
-            --output "$OUTPUT_FILE" \
+            --output yak-project-public.rag \
             --source-dir yak-project-public \
             --concurrency "$CONCURRENCY" \
             --ai-model "$AI_MODEL"
 
-          if [ $? -ne 0 ]; then
-            echo "ERROR: Failed to build yak-project-public RAG"
-            exit 1
-          fi
-
-          echo ""
-          echo "=== Verifying generated RAG file ==="
-
-          if [ ! -f "$OUTPUT_FILE" ]; then
+          if [ ! -f yak-project-public.rag ]; then
             echo "ERROR: RAG file was not generated"
             exit 1
           fi
+          ls -lh yak-project-public.rag
 
-          ls -lh "$OUTPUT_FILE"
-
-          REPORT_FILE="${OUTPUT_FILE%.rag}.build-report.md"
+          REPORT_FILE="yak-project-public.build-report.md"
           if [ -f "$REPORT_FILE" ]; then
             echo ""
             echo "=== Build Report ==="
             cat "$REPORT_FILE"
           fi
 
-          echo ""
-          echo "Yak Project Public RAG built successfully"
+      # 关键词: gzip compress, sha256 checksum, file size guard
+      - name: Compress RAG and generate SHA256
+        run: |
+          RAG_FILE=yak-project-public.rag
+          RAG_GZ_FILE=yak-project-public.rag.gz
+          SHA256_FILE=yak-project-public.rag.gz.sha256.txt
 
-      - name: Upload RAG file to OSS
-        if: steps.check_rag.outputs.rag_exists == 'false'
+          echo "=== Compressing RAG file ==="
+          # yak gzip 输出 .gzip 后缀，需要重命名为 .gz
+          ./yak gzip -f "$RAG_FILE"
+          mv "${RAG_FILE}.gzip" "$RAG_GZ_FILE"
+
+          FILE_SIZE=$(stat -c%s "$RAG_GZ_FILE")
+          FILE_SIZE_MB=$(echo "scale=2; $FILE_SIZE/1024/1024" | bc)
+          echo "RAG.gz size: $FILE_SIZE bytes (${FILE_SIZE_MB} MB)"
+
+          # 关键词: size guard 1MB lower bound
+          # yak-project-public.rag.gz 全量约 30MB，增量后至少应该 > 1MB
+          SIZE_LIMIT=$((1 * 1024 * 1024))
+          if [ "$FILE_SIZE" -lt "$SIZE_LIMIT" ]; then
+            echo "ERROR: RAG.gz size is less than 1MB; build looks broken"
+            exit 1
+          fi
+          echo "RAG_FILE_SIZE=$FILE_SIZE" >> $GITHUB_ENV
+
+          SHA256_HASH=$(sha256sum "$RAG_GZ_FILE" | awk '{print $1}')
+          echo "$SHA256_HASH" > "$SHA256_FILE"
+          echo "SHA256: $SHA256_HASH"
+          echo "SHA256_HASH=$SHA256_HASH" >> $GITHUB_ENV
+
+      # 关键词: upload-oss, .rag.gz, .sha256.txt, build-report.md
+      - name: Upload RAG files to OSS
         env:
           OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
           OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
         run: |
-          echo "=== Uploading RAG file to OSS ==="
-
           if [ -z "$OSS_KEY_ID" ] || [ -z "$OSS_KEY_SECRET" ]; then
-            echo "ERROR: OSS credentials not found"
-            echo "Please ensure OSS_KEY_ID and OSS_KEY_SECRET secrets are set"
+            echo "ERROR: OSS_KEY_ID / OSS_KEY_SECRET secrets not set"
             exit 1
           fi
-
-          BUCKET="yaklang"
-          ENDPOINT="oss-accelerate.aliyuncs.com"
-
-          OUTPUT_FILE="yak-project-public-${{ env.YAK_VERSION }}.rag"
-          REMOTE_PATH="/yak/${{ env.YAK_VERSION }}/yak-project-public-${{ env.YAK_VERSION }}.rag"
-
-          echo "Local file: $OUTPUT_FILE"
-          echo "Remote path: $REMOTE_PATH"
-          echo ""
-
-          echo "Uploading RAG file..."
+          echo "=== Uploading RAG.gz ==="
           ./yak upload-oss \
-            -b "$BUCKET" \
-            --endpoint "$ENDPOINT" \
-            -ak "$OSS_KEY_ID" \
-            -sk "$OSS_KEY_SECRET" \
-            -t 10 \
-            -f "$OUTPUT_FILE:$REMOTE_PATH"
+            -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+            -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 10 \
+            -f "yak-project-public.rag.gz:${RAG_OSS_DIR}/yak-project-public.rag.gz"
 
-          if [ $? -ne 0 ]; then
-            echo "ERROR: Failed to upload RAG file"
-            exit 1
-          fi
+          echo "=== Uploading SHA256 ==="
+          ./yak upload-oss \
+            -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+            -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+            -f "yak-project-public.rag.gz.sha256.txt:${RAG_OSS_DIR}/yak-project-public.rag.gz.sha256.txt"
 
-          echo "RAG file uploaded successfully"
-
-          # 同步上传构建报告
-          REPORT_FILE="${OUTPUT_FILE%.rag}.build-report.md"
-          if [ -f "$REPORT_FILE" ]; then
-            REMOTE_REPORT_PATH="/yak/${{ env.YAK_VERSION }}/yak-project-public-${{ env.YAK_VERSION }}.build-report.md"
-
-            echo ""
-            echo "Uploading build report..."
+          if [ -f yak-project-public.build-report.md ]; then
+            echo "=== Uploading build-report.md ==="
             ./yak upload-oss \
-              -b "$BUCKET" \
-              --endpoint "$ENDPOINT" \
-              -ak "$OSS_KEY_ID" \
-              -sk "$OSS_KEY_SECRET" \
-              -t 5 \
-              -f "$REPORT_FILE:$REMOTE_REPORT_PATH"
-
-            if [ $? -eq 0 ]; then
-              echo "Build report uploaded successfully"
-            else
-              echo "WARNING: Failed to upload build report (non-critical)"
-            fi
+              -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+              -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+              -f "yak-project-public.build-report.md:${RAG_OSS_DIR}/yak-project-public.build-report.md" || \
+              echo "WARNING: failed to upload build report (non-critical)"
           fi
 
-          echo ""
-          echo "All files uploaded to OSS"
-
-      - name: Verify OSS upload
-        if: steps.check_rag.outputs.rag_exists == 'false'
+      # 关键词: rags-latest.json, rag-metainfo, register-name, register-name-zh
+      # 把 "Yak Project Public" / "Yak Project 公共知识" 注册到 rags-latest.json，
+      # 这是 Yakit 客户端"线上知识库"列表唯一数据源。
+      - name: Update rags-latest.json
         run: |
-          echo "=== Verifying OSS upload ==="
+          echo "=== Downloading existing rags-latest.json ==="
+          wget -q -O rags-latest.json https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json || {
+            echo "No existing rags-latest.json; creating empty array"
+            echo "[]" > rags-latest.json
+          }
+          jq empty rags-latest.json 2>/dev/null || echo "[]" > rags-latest.json
 
-          RAG_FILE_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-project-public-${{ env.YAK_VERSION }}.rag"
+          echo "=== Existing entries ==="
+          jq -r '.[] | .name' rags-latest.json || true
 
-          echo "Verifying: $RAG_FILE_URL"
+          echo "=== Registering Yak Project Public ==="
+          ./yak rag-metainfo \
+            -f rags-latest.json \
+            -o rags-latest.json \
+            --register-name "Yak Project Public" \
+            --register-name-zh "Yak Project 公共知识" \
+            --version "$VERSION" \
+            --rag-file "${RAG_OSS_DIR}/yak-project-public.rag.gz" \
+            --hash-file "${RAG_OSS_DIR}/yak-project-public.rag.gz.sha256.txt" \
+            --hash "$SHA256_HASH" \
+            --file-size "$RAG_FILE_SIZE"
 
-          HTTP_CODE=$(curl -I -s -o /dev/null -w "%{http_code}" "$RAG_FILE_URL")
+          echo "=== New rags-latest.json content ==="
+          cat rags-latest.json | jq .
 
-          if [ "$HTTP_CODE" = "200" ]; then
-            CONTENT_LENGTH=$(curl -I -s "$RAG_FILE_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
-            echo "HTTP Status: $HTTP_CODE"
-            echo "Content-Length: $CONTENT_LENGTH bytes"
-            echo ""
-            echo "RAG file verified successfully"
-          else
-            echo "ERROR: Verification failed (HTTP $HTTP_CODE)"
-            exit 1
-          fi
+      - name: Upload rags-latest.json to OSS
+        env:
+          OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
+        run: |
+          ./yak upload-oss \
+            -b yaklang --endpoint oss-accelerate.aliyuncs.com \
+            -ak "$OSS_KEY_ID" -sk "$OSS_KEY_SECRET" -t 5 \
+            -f "rags-latest.json:/rag/rags-latest.json"
+
+      # 关键词: verify, HTTP HEAD, oss-qn mirror
+      # 校验三个端点都可达：
+      # 1) 加速节点 oss-accelerate.aliyuncs.com (上传后立即可访问)
+      # 2) 七牛镜像 oss-qn.yaklang.com (Yakit 客户端实际拉取的地址)
+      - name: Verify uploads
+        run: |
+          echo "=== Verify on oss-accelerate ==="
+          curl -I "https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yak-project-public.rag.gz" | head -5
+          curl -I "https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yak-project-public.rag.gz.sha256.txt" | head -5
+          echo ""
+          echo "=== Verify rags-latest.json on oss-accelerate ==="
+          curl -s "https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json" | \
+            jq '.[] | select(.name == "Yak Project Public")'
+          echo ""
+          echo "=== Yakit client mirror (oss-qn.yaklang.com) ==="
+          # 七牛 CDN 缓存可能有几分钟延迟，仅校验状态码
+          curl -I "https://oss-qn.yaklang.com/rag/rags-latest.json" | head -3 || true
 
       - name: Upload artifacts
-        if: steps.check_rag.outputs.rag_exists == 'false'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: yak-project-public-rag-${{ env.YAK_VERSION }}
+          name: yak-project-public-rag
           path: |
-            yak-project-public-${{ env.YAK_VERSION }}.rag
-            yak-project-public-${{ env.YAK_VERSION }}.build-report.md
+            yak-project-public.rag.gz
+            yak-project-public.rag.gz.sha256.txt
+            yak-project-public.build-report.md
+            rags-latest.json
           retention-days: 30
 
       - name: Summary
         run: |
-          echo "## Yak Project Public Articles RAG Build" >> $GITHUB_STEP_SUMMARY
+          echo "## Yak Project Public RAG Built and Registered" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Build Information" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Yak Version | \`${{ env.YAK_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Triggered By | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Time | $(date -u +"%Y-%m-%d %H:%M:%S UTC") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Register Name | \`Yak Project Public\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Display Name (zh) | \`Yak Project 公共知识\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | \`$VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| File Size | $RAG_FILE_SIZE bytes |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA256 | \`$SHA256_HASH\` |" >> $GITHUB_STEP_SUMMARY
           echo "| AI Model | \`${{ github.event.inputs.ai_model || 'memfit-light-free' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Concurrency | \`${{ github.event.inputs.concurrency || '5' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ steps.check_rag.outputs.rag_exists }}" = "true" ]; then
-            echo "### RAG File Already Exists" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The yak-project-public RAG file for version \`${{ env.YAK_VERSION }}\` already exists." >> $GITHUB_STEP_SUMMARY
-            echo "No build was performed." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### Build Successful" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The yak-project-public RAG file has been built and uploaded to OSS." >> $GITHUB_STEP_SUMMARY
-          fi
-
+          echo "### URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- RAG: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yak-project-public.rag.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- SHA256: https://yaklang.oss-accelerate.aliyuncs.com${RAG_OSS_DIR}/yak-project-public.rag.gz.sha256.txt" >> $GITHUB_STEP_SUMMARY
+          echo "- Index: https://yaklang.oss-accelerate.aliyuncs.com/rag/rags-latest.json" >> $GITHUB_STEP_SUMMARY
+          echo "- Yakit mirror: https://oss-qn.yaklang.com/rag/rags-latest.json" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Access URL" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "https://yaklang.oss-accelerate.aliyuncs.com/yak/${{ env.YAK_VERSION }}/yak-project-public-${{ env.YAK_VERSION }}.rag" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-          REPORT_FILE="yak-project-public-${{ env.YAK_VERSION }}.build-report.md"
+          REPORT_FILE="yak-project-public.build-report.md"
           if [ -f "$REPORT_FILE" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Build Report" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             cat "$REPORT_FILE" >> $GITHUB_STEP_SUMMARY
           fi
