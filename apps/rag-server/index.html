@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG · Agentic Knowledge Search</title>
+    <style>
+        :root {
+            --primary:        #ff6a00;
+            --primary-soft:   rgba(255, 106, 0, 0.10);
+            --primary-border: rgba(255, 106, 0, 0.30);
+            --primary-shadow: rgba(255, 106, 0, 0.25);
+
+            /* Light theme (default) */
+            --bg-page:    #ffffff;
+            --bg-elev-0:  #ffffff;
+            --bg-elev-1:  #f7f8fa;
+            --bg-elev-2:  #eef0f4;
+            --bg-input:   #ffffff;
+            --bg-stream:  #fafafa;
+            --bg-codeblock: #f4f4f6;
+            --bg-userq:   rgba(255, 106, 0, 0.06);
+
+            --fg-strong:  #1f2329;
+            --fg:         #3c4043;
+            --fg-mute:    #5f6368;
+            --fg-soft:    #80868b;
+
+            --border:     rgba(0, 0, 0, 0.08);
+            --border-2:   rgba(0, 0, 0, 0.14);
+            --shadow-search: 0 1px 6px rgba(32, 33, 36, 0.10);
+            --shadow-search-focus: 0 2px 12px rgba(32, 33, 36, 0.18);
+            --shadow-panel: 0 1px 3px rgba(32, 33, 36, 0.06), 0 1px 2px rgba(32, 33, 36, 0.04);
+
+            --kind-task:     #f29900;
+            --kind-timeline: #1e8e3e;
+            --kind-title:    #b06000;
+            --kind-file:     #8430ce;
+            --kind-search:   #1a73e8;
+            --kind-thought:  #5f6368;
+            --kind-event:    #80868b;
+            --kind-plan:     #d93025;
+            --kind-start:    #ff6a00;
+            --kind-end:      #1e8e3e;
+
+            --ok:  #1e8e3e;
+            --err: #d93025;
+            --warn: #f29900;
+        }
+
+        [data-theme="dark"] {
+            --bg-page:    #0f1218;
+            --bg-elev-0:  #14181f;
+            --bg-elev-1:  #1a1f28;
+            --bg-elev-2:  #232a35;
+            --bg-input:   #1a1f28;
+            --bg-stream:  #161a22;
+            --bg-codeblock: #0a0d13;
+            --bg-userq:   rgba(255, 138, 60, 0.10);
+
+            --fg-strong:  #f1f3f4;
+            --fg:         #d6d9de;
+            --fg-mute:    #9aa0a6;
+            --fg-soft:    #5f6368;
+
+            --border:     rgba(255, 255, 255, 0.08);
+            --border-2:   rgba(255, 255, 255, 0.16);
+            --shadow-search: 0 1px 6px rgba(0, 0, 0, 0.5);
+            --shadow-search-focus: 0 2px 14px rgba(255, 106, 0, 0.25);
+            --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+
+            --kind-task:     #ffb74d;
+            --kind-timeline: #81c784;
+            --kind-title:    #ffd54f;
+            --kind-file:     #ba68c8;
+            --kind-search:   #4dd0e1;
+            --kind-thought:  #bdbdbd;
+            --kind-event:    #90a4ae;
+            --kind-plan:     #f06292;
+            --kind-start:    #ff8a3c;
+            --kind-end:      #66bb6a;
+
+            --ok:  #66bb6a;
+            --err: #ef5350;
+            --warn: #ffb74d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            min-height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--fg);
+            background: var(--bg-page);
+            font-size: 14px;
+            line-height: 1.6;
+            transition: background 0.3s, color 0.2s;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 16px 28px 60px;
+        }
+
+        /* -------- Top bar -------- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0 12px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 10px;
+            color: var(--fg-strong);
+            font-size: 13px; font-weight: 600;
+        }
+        .brand-logo {
+            width: 22px; height: 22px; border-radius: 6px;
+            background: linear-gradient(135deg, var(--primary), #ffa454);
+            display: flex; align-items: center; justify-content: center;
+            color: #1a0c00; font-weight: 800; font-size: 12px;
+            box-shadow: 0 2px 8px var(--primary-shadow);
+        }
+        .brand-sub {
+            font-size: 11px; color: var(--fg-mute); font-weight: 400;
+        }
+
+        .topbar-right {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .pills {
+            display: flex; gap: 6px; flex-wrap: wrap;
+        }
+        .pill {
+            background: var(--bg-elev-1);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 11px;
+            display: inline-flex; gap: 5px; align-items: center;
+            color: var(--fg-mute);
+        }
+        .pill-value { color: var(--fg-strong); font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace; }
+        .pill-value.ok   { color: var(--ok); }
+        .pill-value.warn { color: var(--warn); }
+        .pill-value.err  { color: var(--err); }
+
+        .icon-btn {
+            background: var(--bg-elev-1);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 30px; height: 30px;
+            color: var(--fg-mute);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .icon-btn:hover { background: var(--bg-elev-2); color: var(--fg-strong); }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        /* -------- Hero / Search Section -------- */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 600ms cubic-bezier(.65, 0, .35, 1);
+            margin: 0 auto;
+            width: 100%;
+            max-width: 640px;
+        }
+        [data-state="initial"] .hero {
+            min-height: calc(100vh - 200px);
+            transform: translateY(-4vh);
+        }
+        [data-state="active"] .hero {
+            min-height: auto;
+            transform: translateY(0);
+            margin: 0 auto 18px;
+            padding: 4px 0 0;
+        }
+
+        .hero-logo {
+            font-size: 38px;
+            font-weight: 600;
+            color: var(--fg-strong);
+            margin-bottom: 28px;
+            letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 10px;
+            transition: all 500ms cubic-bezier(.65, 0, .35, 1);
+            background: linear-gradient(120deg, var(--fg-strong), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        [data-state="active"] .hero-logo {
+            font-size: 16px;
+            margin-bottom: 8px;
+            opacity: 0.7;
+        }
+        .hero-logo::before {
+            content: "";
+            width: 32px; height: 32px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, var(--primary), #ffa454);
+            box-shadow: 0 4px 14px var(--primary-shadow);
+            transition: all 500ms cubic-bezier(.65, 0, .35, 1);
+            flex-shrink: 0;
+            -webkit-text-fill-color: initial;
+        }
+        [data-state="active"] .hero-logo::before {
+            width: 18px; height: 18px; border-radius: 5px;
+        }
+
+        /* -------- Search Box (Google style) -------- */
+        .searchbox {
+            width: 100%;
+            max-width: 580px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 6px 10px 6px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--shadow-search);
+            transition: box-shadow 0.18s, border-color 0.18s, transform 0.5s cubic-bezier(.65,0,.35,1);
+            position: relative;
+        }
+        [data-state="active"] .searchbox {
+            border-radius: 24px;
+            max-width: 580px;
+        }
+        .searchbox:hover {
+            box-shadow: var(--shadow-search-focus);
+            border-color: var(--border-2);
+        }
+        .searchbox.focused {
+            box-shadow: var(--shadow-search-focus);
+            border-color: var(--primary-border);
+        }
+        .searchbox-icon {
+            color: var(--fg-mute);
+            flex-shrink: 0;
+            width: 18px; height: 18px;
+        }
+        .searchbox input {
+            flex: 1 1 auto;
+            min-width: 0;
+            background: transparent;
+            border: 0;
+            outline: none;
+            color: var(--fg-strong);
+            font-size: 15px;
+            font-family: inherit;
+            padding: 10px 4px;
+        }
+        .searchbox input::placeholder { color: var(--fg-soft); }
+        .send-btn {
+            background: var(--primary);
+            color: #fff;
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 64px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px var(--primary-shadow);
+        }
+        .send-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 12px var(--primary-shadow); }
+        .send-btn:active { transform: translateY(0); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .send-btn.stop {
+            background: var(--bg-elev-2);
+            color: var(--fg-strong);
+            box-shadow: none;
+        }
+        .send-btn.stop:hover { background: var(--bg-elev-1); }
+
+        /* -------- Suggestions (under search box) -------- */
+        .suggestions {
+            margin-top: 22px;
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center;
+            transition: opacity 0.3s, max-height 0.4s, margin-top 0.4s;
+            overflow: hidden;
+        }
+        [data-state="active"] .suggestions {
+            max-height: 0; margin-top: 0; opacity: 0; pointer-events: none;
+        }
+        .sugg {
+            padding: 6px 13px;
+            background: var(--bg-elev-1);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: var(--fg-mute);
+            font-size: 12.5px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sugg:hover {
+            background: var(--primary-soft);
+            border-color: var(--primary-border);
+            color: var(--fg-strong);
+        }
+        .hero-tagline {
+            margin-top: 14px;
+            font-size: 12px;
+            color: var(--fg-soft);
+            text-align: center;
+            transition: opacity 0.3s, max-height 0.4s, margin-top 0.4s;
+        }
+        [data-state="active"] .hero-tagline {
+            max-height: 0; margin-top: 0; opacity: 0; overflow: hidden;
+        }
+
+        /* -------- Result Section -------- */
+        .result-panel {
+            opacity: 0;
+            transform: translateY(20px);
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 0.4s 0.15s, transform 0.4s 0.15s, max-height 0.5s;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        [data-state="active"] .result-panel {
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 9999px;
+            overflow: visible;
+        }
+
+        .answer-card {
+            background: var(--bg-elev-0);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 22px 20px;
+            box-shadow: var(--shadow-panel);
+        }
+        .user-q {
+            margin: -6px -6px 14px;
+            padding: 8px 12px;
+            background: var(--bg-userq);
+            border-radius: 8px;
+            color: var(--fg-strong);
+            font-size: 13.5px;
+            font-weight: 500;
+            display: flex; gap: 8px; align-items: flex-start;
+        }
+        .user-q::before {
+            content: "Q";
+            color: var(--primary);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .duration {
+            margin-top: 14px;
+            padding-top: 10px;
+            font-size: 11px;
+            color: var(--fg-soft);
+            font-family: ui-monospace, monospace;
+            border-top: 1px dashed var(--border);
+            display: flex; gap: 14px; flex-wrap: wrap;
+        }
+        .err-msg {
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: rgba(217, 48, 37, 0.08);
+            border: 1px solid rgba(217, 48, 37, 0.30);
+            border-radius: 8px;
+            color: var(--err);
+            font-size: 13px;
+        }
+
+        /* -------- Stream Section -------- */
+        .stream-card {
+            background: var(--bg-stream);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .stream-summary {
+            padding: 10px 16px;
+            cursor: pointer;
+            list-style: none;
+            font-size: 12.5px;
+            color: var(--fg-mute);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .stream-summary::-webkit-details-marker { display: none; }
+        .stream-summary:hover { background: var(--bg-elev-1); }
+        .stream-summary-l {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .stream-summary .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--fg-soft);
+        }
+        .stream-summary .dot.live  {
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary-shadow);
+            animation: dot-pulse 1.4s infinite ease-in-out;
+        }
+        .stream-summary .dot.done  { background: var(--ok); }
+        .stream-summary .dot.error { background: var(--err); }
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+        .stream-summary .chevron {
+            transition: transform 0.2s;
+            color: var(--fg-soft);
+        }
+        .stream-card[open] .stream-summary .chevron { transform: rotate(180deg); }
+
+        .stream-inner {
+            padding: 4px 14px 12px;
+            max-height: 320px;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-2) transparent;
+        }
+        .stream-inner::-webkit-scrollbar { width: 6px; }
+        .stream-inner::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+        .log {
+            opacity: 0;
+            transform: translateY(8px);
+            animation: log-in 360ms ease-out forwards;
+            background: var(--bg-elev-0);
+            border: 1px solid var(--border);
+            border-left-width: 3px;
+            border-radius: 7px;
+            padding: 6px 10px;
+            font-size: 12px;
+            line-height: 1.55;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .log.fade-out { animation: log-out 360ms ease-in forwards; }
+        @keyframes log-in {
+            from { opacity: 0; transform: translateY(10px); filter: blur(2px); }
+            to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes log-out {
+            from { opacity: 0.85; transform: translateY(0); filter: blur(0); max-height: 60px; padding: 6px 10px; margin-bottom: 6px; }
+            to   { opacity: 0;    transform: translateY(-6px); filter: blur(2px); max-height: 0; padding: 0 10px; margin-bottom: 0; border-color: transparent; }
+        }
+        .log .ltag {
+            font-size: 10px; font-weight: 600;
+            padding: 1px 6px; border-radius: 4px;
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            background: var(--bg-elev-2);
+            color: var(--fg-mute);
+        }
+        .log .lmsg {
+            flex: 1 1 auto;
+            min-width: 0;
+            color: var(--fg);
+            word-break: break-word;
+            white-space: pre-wrap;
+            font-size: 12.5px;
+        }
+        .log .ltime {
+            font-size: 10px; color: var(--fg-soft);
+            font-family: ui-monospace, monospace;
+            flex-shrink: 0;
+        }
+        .log.kind-task     { border-left-color: var(--kind-task); }
+        .log.kind-task     .ltag { color: var(--kind-task); }
+        .log.kind-timeline { border-left-color: var(--kind-timeline); }
+        .log.kind-timeline .ltag { color: var(--kind-timeline); }
+        .log.kind-title    { border-left-color: var(--kind-title); }
+        .log.kind-title    .ltag { color: var(--kind-title); }
+        .log.kind-file     { border-left-color: var(--kind-file); }
+        .log.kind-file     .ltag { color: var(--kind-file); }
+        .log.kind-file     .lmsg { font-family: ui-monospace, monospace; font-size: 11.5px; }
+        .log.kind-search   { border-left-color: var(--kind-search); }
+        .log.kind-search   .ltag { color: var(--kind-search); }
+        .log.kind-thought  { border-left-color: var(--kind-thought); }
+        .log.kind-thought  .ltag { color: var(--kind-thought); }
+        .log.kind-event    { border-left-color: var(--kind-event); }
+        .log.kind-event    .ltag { color: var(--kind-event); }
+        .log.kind-plan     { border-left-color: var(--kind-plan); }
+        .log.kind-plan     .ltag { color: var(--kind-plan); }
+        .log.kind-start    { border-left-color: var(--kind-start); }
+        .log.kind-start    .ltag { color: var(--kind-start); }
+        .log.kind-end      { border-left-color: var(--kind-end); }
+        .log.kind-end      .ltag { color: var(--kind-end); }
+
+        /* -------- Markdown -------- */
+        .md {
+            color: var(--fg);
+            font-size: 14.5px;
+            line-height: 1.75;
+            animation: fade-in 400ms ease-out;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to   { opacity: 1; transform: none; }
+        }
+        .md.streaming::after {
+            content: "▍";
+            color: var(--primary);
+            animation: blink 1s steps(2) infinite;
+            margin-left: 1px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .md > *:first-child { margin-top: 0 !important; }
+        .md h1, .md h2, .md h3, .md h4 {
+            margin: 18px 0 8px;
+            color: var(--fg-strong);
+            line-height: 1.4;
+        }
+        .md h1 { font-size: 20px; }
+        .md h2 { font-size: 17px; }
+        .md h3 { font-size: 15px; }
+        .md h4 { font-size: 14px; color: var(--primary); }
+        .md p  { margin: 8px 0; }
+        .md ul, .md ol { padding-left: 22px; margin: 8px 0; }
+        .md li { margin: 4px 0; }
+        .md strong { color: var(--fg-strong); font-weight: 600; }
+        .md em { color: var(--primary); font-style: normal; font-weight: 500; }
+        .md code {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            background: var(--bg-codeblock);
+            color: var(--primary);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12.5px;
+            border: 1px solid var(--border);
+        }
+        .md pre {
+            background: var(--bg-codeblock);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+        .md pre code {
+            background: transparent;
+            color: var(--fg);
+            padding: 0;
+            border: 0;
+        }
+        .md blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 12px;
+            margin: 10px 0;
+            color: var(--fg-mute);
+        }
+        .md a { color: var(--kind-search); text-decoration: none; border-bottom: 1px dashed currentColor; }
+        .md hr { border: 0; border-top: 1px dashed var(--border-2); margin: 14px 0; }
+        .md table {
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        .md th, .md td {
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+        }
+        .md th {
+            background: var(--bg-elev-1);
+            font-weight: 600;
+        }
+
+        /* footer / hint */
+        .hint {
+            margin-top: 12px;
+            font-size: 10.5px;
+            color: var(--fg-soft);
+            display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+        }
+        .hint kbd {
+            background: var(--bg-elev-1);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-family: ui-monospace, monospace;
+            font-size: 10px;
+        }
+
+        @media (max-width: 640px) {
+            .app { padding: 12px 16px 40px; }
+            .topbar { font-size: 11px; }
+            .hero-logo { font-size: 30px; }
+            [data-state="initial"] .hero { min-height: calc(100vh - 240px); }
+            .answer-card { padding: 14px 16px 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app" id="app" data-state="initial">
+
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-logo">R</div>
+            <div>
+                RAG · Agentic Knowledge
+                <div class="brand-sub">yaklang + memfit tier · SSE</div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="pills" id="pills"></div>
+            <button class="icon-btn" id="theme-toggle" title="切换主题">
+                <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="hero">
+        <div class="hero-logo" id="hero-logo">智能知识搜索</div>
+
+        <form class="searchbox" id="searchbox" autocomplete="off">
+            <svg class="searchbox-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+            </svg>
+            <input type="text" id="input" placeholder="请输入你的问题，例如：yaklang 是什么？" />
+            <button type="submit" class="send-btn" id="send">搜索</button>
+        </form>
+
+        <div class="hero-tagline">基于 RAG 与 Agentic 多路检索，自动从本地知识库中找到答案</div>
+
+        <div class="suggestions" id="suggestions">
+            <span class="sugg" data-q="用一句话介绍 yaklang">用一句话介绍 yaklang</span>
+            <span class="sugg" data-q="poc.HTTP 如何发送原始报文？给一段最简示例">poc.HTTP 如何发送原始报文</span>
+            <span class="sugg" data-q="Fuzztag 与传统 fuzzing 框架相比有什么独特设计？">Fuzztag 的独特设计</span>
+            <span class="sugg" data-q="yaklang 中如何处理 HTTP 响应的解码？">HTTP 响应解码</span>
+        </div>
+    </div>
+
+    <div class="result-panel" id="result-panel">
+        <div class="answer-card" id="answer-card">
+            <div class="user-q" id="user-q"></div>
+            <div class="md streaming" id="md"></div>
+            <div class="duration" id="duration">等待回答...</div>
+        </div>
+
+        <details class="stream-card" id="stream-card" open>
+            <summary class="stream-summary">
+                <span class="stream-summary-l">
+                    <span class="dot" id="stream-dot"></span>
+                    <span id="stream-title">实时检索流</span>
+                </span>
+                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </summary>
+            <div class="stream-inner" id="stream-inner"></div>
+        </details>
+    </div>
+
+    <div class="hint">
+        <span><kbd>Enter</kbd> 搜索</span>
+        <span id="hint-status"></span>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// Theme: follow system on first load, persist user choice
+// ============================================================================
+(function initTheme() {
+    let theme;
+    try {
+        const urlTheme = new URLSearchParams(location.search).get("theme");
+        if (urlTheme === "light" || urlTheme === "dark") {
+            theme = urlTheme;
+            localStorage.setItem("rag.theme", theme);
+        }
+    } catch (_) {}
+    if (!theme) {
+        const saved = localStorage.getItem("rag.theme");
+        if (saved === "light" || saved === "dark") {
+            theme = saved;
+        } else {
+            theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    updateThemeIcon(theme);
+})();
+
+function updateThemeIcon(theme) {
+    const el = document.getElementById("theme-icon");
+    if (theme === "dark") {
+        el.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    } else {
+        el.innerHTML = '<circle cx="12" cy="12" r="4"></circle>'
+            + '<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>';
+    }
+}
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("rag.theme", next);
+    updateThemeIcon(next);
+});
+
+// ============================================================================
+// Mini Markdown Renderer (no external deps - self contained)
+// supports: # h1~h4, **bold** *italic* `inline code`, ``` fenced code ```,
+//          - lists, 1. ordered lists, > blockquote, --- hr, [text](url)
+// ============================================================================
+function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function renderInline(text) {
+    let out = "";
+    let i = 0;
+    while (i < text.length) {
+        const ch = text[i];
+        // inline code
+        if (ch === "`") {
+            const j = text.indexOf("`", i + 1);
+            if (j !== -1) {
+                out += `<code>${escHtml(text.slice(i + 1, j))}</code>`;
+                i = j + 1; continue;
+            }
+        }
+        // bold
+        if (text.startsWith("**", i)) {
+            const j = text.indexOf("**", i + 2);
+            if (j !== -1) {
+                out += `<strong>${renderInline(text.slice(i + 2, j))}</strong>`;
+                i = j + 2; continue;
+            }
+        }
+        if (text.startsWith("__", i)) {
+            const j = text.indexOf("__", i + 2);
+            if (j !== -1) {
+                out += `<strong>${renderInline(text.slice(i + 2, j))}</strong>`;
+                i = j + 2; continue;
+            }
+        }
+        // italic
+        if ((ch === "*" || ch === "_") && text[i + 1] !== ch) {
+            const close = text.indexOf(ch, i + 1);
+            if (close !== -1 && close - i > 1) {
+                const inner = text.slice(i + 1, close);
+                if (!inner.includes("\n")) {
+                    out += `<em>${renderInline(inner)}</em>`;
+                    i = close + 1; continue;
+                }
+            }
+        }
+        // links
+        if (ch === "[") {
+            const closeBracket = text.indexOf("]", i + 1);
+            if (closeBracket !== -1 && text[closeBracket + 1] === "(") {
+                const closeParen = text.indexOf(")", closeBracket + 2);
+                if (closeParen !== -1) {
+                    const linkText = text.slice(i + 1, closeBracket);
+                    const url = text.slice(closeBracket + 2, closeParen);
+                    out += `<a href="${escHtml(url)}" target="_blank" rel="noopener">${escHtml(linkText)}</a>`;
+                    i = closeParen + 1; continue;
+                }
+            }
+        }
+        out += escHtml(ch);
+        i++;
+    }
+    return out;
+}
+
+function renderMarkdown(md) {
+    if (!md) return "";
+    const lines = md.split(/\r?\n/);
+    const out = [];
+    let i = 0;
+    let inCode = false;
+    let codeLang = "";
+    let codeBuf = [];
+    let listType = null;
+    let listItems = [];
+    let paraBuf = [];
+
+    const flushList = () => {
+        if (!listType) return;
+        out.push(`<${listType}>`);
+        for (const it of listItems) out.push(`<li>${renderInline(it)}</li>`);
+        out.push(`</${listType}>`);
+        listType = null; listItems = [];
+    };
+    const flushPara = () => {
+        if (!paraBuf.length) return;
+        out.push(`<p>${renderInline(paraBuf.join(" "))}</p>`);
+        paraBuf = [];
+    };
+
+    while (i < lines.length) {
+        const line = lines[i];
+        if (line.startsWith("```")) {
+            if (!inCode) {
+                flushPara(); flushList();
+                inCode = true;
+                codeLang = line.slice(3).trim();
+                codeBuf = [];
+            } else {
+                out.push(`<pre><code class="lang-${escHtml(codeLang)}">${escHtml(codeBuf.join("\n"))}</code></pre>`);
+                inCode = false; codeLang = ""; codeBuf = [];
+            }
+            i++; continue;
+        }
+        if (inCode) { codeBuf.push(line); i++; continue; }
+
+        if (/^\s*(---+|\*\*\*+)\s*$/.test(line)) {
+            flushPara(); flushList();
+            out.push("<hr/>"); i++; continue;
+        }
+        const h = line.match(/^(#{1,4})\s+(.*)$/);
+        if (h) {
+            flushPara(); flushList();
+            const lv = h[1].length;
+            out.push(`<h${lv}>${renderInline(h[2].trim())}</h${lv}>`);
+            i++; continue;
+        }
+        if (line.startsWith("> ")) {
+            flushPara(); flushList();
+            const bq = [];
+            while (i < lines.length && lines[i].startsWith("> ")) {
+                bq.push(lines[i].slice(2)); i++;
+            }
+            out.push(`<blockquote>${renderInline(bq.join(" "))}</blockquote>`);
+            continue;
+        }
+        const ol = line.match(/^\s*(\d+)\.\s+(.*)$/);
+        if (ol) {
+            flushPara();
+            if (listType !== "ol") { flushList(); listType = "ol"; }
+            listItems.push(ol[2]); i++; continue;
+        }
+        const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+        if (ul) {
+            flushPara();
+            if (listType !== "ul") { flushList(); listType = "ul"; }
+            listItems.push(ul[1]); i++; continue;
+        }
+        if (line.trim() === "") {
+            flushPara(); flushList(); i++; continue;
+        }
+        flushList();
+        paraBuf.push(line);
+        i++;
+    }
+    if (inCode) out.push(`<pre><code>${escHtml(codeBuf.join("\n"))}</code></pre>`);
+    flushPara(); flushList();
+    return out.join("\n");
+}
+
+// ============================================================================
+// Stream Log Manager (fade-in / fade-out)
+// ============================================================================
+const STREAM_MAX = 14;
+const STREAM_FADE_AFTER_MS = 6000;
+const streamInner = document.getElementById("stream-inner");
+const streamDot = document.getElementById("stream-dot");
+const streamTitle = document.getElementById("stream-title");
+
+let logCount = 0;
+
+function timeStr() {
+    return new Date().toTimeString().slice(0, 8);
+}
+
+function appendStreamLog(tag, message, kind, opts) {
+    opts = opts || {};
+    const sticky = !!opts.sticky;
+    const node = document.createElement("div");
+    const safeKind = (kind || "event").replace(/[^a-z0-9_-]/gi, "");
+    node.className = "log kind-" + safeKind;
+    node.innerHTML = `
+        <span class="ltag">${escHtml(tag || "log")}</span>
+        <span class="lmsg">${escHtml(message || "")}</span>
+        <span class="ltime">${timeStr()}</span>`;
+    streamInner.appendChild(node);
+    streamInner.scrollTop = streamInner.scrollHeight;
+    logCount++;
+    streamTitle.textContent = `实时检索流 · ${logCount} 条`;
+
+    if (!sticky) {
+        setTimeout(() => {
+            if (!node.parentElement) return;
+            node.classList.add("fade-out");
+            setTimeout(() => { if (node.parentElement) node.remove(); }, 380);
+        }, STREAM_FADE_AFTER_MS);
+    }
+    while (streamInner.children.length > STREAM_MAX + 2) {
+        const oldest = streamInner.children[0];
+        if (oldest && !oldest.classList.contains("fade-out")) {
+            oldest.classList.add("fade-out");
+            setTimeout(() => { if (oldest.parentElement) oldest.remove(); }, 350);
+        } else if (oldest) { oldest.remove(); } else break;
+    }
+}
+
+function clearStream() {
+    streamInner.innerHTML = "";
+    logCount = 0;
+    streamTitle.textContent = "实时检索流";
+}
+
+// ============================================================================
+// Status pills (auto refresh)
+// ============================================================================
+const pillsEl = document.getElementById("pills");
+function renderPills(s) {
+    if (!s) return;
+    const ai = s.ai || {};
+    let modelStr;
+    if (ai.mode === "tiered") {
+        modelStr = `tier`;
+    } else if (ai.mode === "single") {
+        modelStr = ai.model || "single";
+        if (modelStr.length > 16) modelStr = modelStr.slice(0, 14) + "..";
+    } else { modelStr = "?"; }
+    const flightCls = (s.inflight >= s.concurrent) ? "warn" : "";
+    pillsEl.innerHTML = `
+        <span class="pill">KB <span class="pill-value">${s.kbCount}</span></span>
+        <span class="pill">${escHtml(modelStr)}</span>
+        <span class="pill">并发 <span class="pill-value ${flightCls}">${s.inflight}/${s.concurrent}</span></span>
+        <span class="pill"><span class="pill-value ${s.ok ? "ok" : "err"}">${s.ok ? "ON" : "OFF"}</span></span>`;
+}
+
+async function refreshStatus() {
+    try {
+        const r = await fetch("/api/health", { cache: "no-store" });
+        const j = await r.json();
+        renderPills(j);
+    } catch (e) {/* ignore */}
+}
+refreshStatus();
+setInterval(refreshStatus, 5000);
+
+// ============================================================================
+// SSE chat
+// ============================================================================
+const app = document.getElementById("app");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const form = document.getElementById("searchbox");
+const searchbox = document.getElementById("searchbox");
+const userQ = document.getElementById("user-q");
+const md = document.getElementById("md");
+const duration = document.getElementById("duration");
+const answerCard = document.getElementById("answer-card");
+const heroLogo = document.getElementById("hero-logo");
+const hintStatus = document.getElementById("hint-status");
+
+let activeES = null;
+let answerRaw = "";
+let answerStartedAt = 0;
+let answerChars = 0;
+let errMsg = null;
+
+function setActiveState(active) {
+    app.dataset.state = active ? "active" : "initial";
+}
+
+function setSending(b) {
+    if (b) {
+        sendBtn.textContent = "停止";
+        sendBtn.classList.add("stop");
+        streamDot.className = "dot live";
+        hintStatus.textContent = "搜索中…";
+    } else {
+        sendBtn.textContent = "搜索";
+        sendBtn.classList.remove("stop");
+        if (streamDot.classList.contains("live")) {
+            streamDot.classList.remove("live");
+            streamDot.classList.add("done");
+        }
+        hintStatus.textContent = "";
+    }
+}
+
+function safeParse(d) { try { return JSON.parse(d); } catch (e) { return { _raw: d }; } }
+
+function newQuery(q) {
+    answerRaw = "";
+    answerChars = 0;
+    answerStartedAt = Date.now();
+    errMsg = null;
+    userQ.textContent = q;
+    md.innerHTML = "";
+    md.classList.add("streaming");
+    duration.textContent = "等待回答...";
+    // remove any leftover err msg
+    const ex = answerCard.querySelector(".err-msg");
+    if (ex) ex.remove();
+    clearStream();
+    streamDot.className = "dot live";
+}
+
+function appendAnswer(chunk) {
+    answerRaw += chunk;
+    answerChars = answerRaw.length;
+    md.innerHTML = renderMarkdown(answerRaw);
+    md.classList.add("streaming");
+    // do not auto-scroll the page; user scrolls naturally
+}
+
+function finishAnswer(d) {
+    md.classList.remove("streaming");
+    const ms = (d && typeof d.durationMs === "number") ? d.durationMs : (Date.now() - answerStartedAt);
+    const ok = !errMsg && (d ? d.ok !== false : true);
+    const sec = (ms / 1000).toFixed(2);
+    duration.textContent = `${ok ? "完成" : "结束"} · 耗时 ${sec}s · ${answerChars} 字答案`;
+    if (errMsg) {
+        const e = document.createElement("div");
+        e.className = "err-msg";
+        e.textContent = errMsg;
+        answerCard.appendChild(e);
+    }
+    streamDot.className = "dot " + (ok ? "done" : "error");
+    setSending(false);
+}
+
+function stopActive() {
+    if (activeES) {
+        try { activeES.close(); } catch (_) {}
+        activeES = null;
+        errMsg = errMsg || "已被用户中止";
+        finishAnswer({ ok: false });
+    }
+}
+
+function sendQuestion() {
+    if (activeES) { stopActive(); return; }
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = "";
+    setActiveState(true);
+    newQuery(q);
+    setSending(true);
+
+    const url = "/api/chat?q=" + encodeURIComponent(q);
+    let es;
+    try {
+        es = new EventSource(url);
+    } catch (e) {
+        errMsg = String(e);
+        finishAnswer({ ok: false });
+        return;
+    }
+    activeES = es;
+
+    es.addEventListener("start", (e) => {
+        const d = safeParse(e.data);
+        let modelInfo;
+        if (d.aiMode === "tiered") {
+            modelInfo = `tier · ${d.aiLightModel || "?"} / ${d.aiQualityModel || "?"}`;
+        } else {
+            modelInfo = d.aiModel || "single";
+        }
+        appendStreamLog("启动", `KB×${d.kbCount} · ${modelInfo}`, "start", { sticky: true });
+    });
+
+    es.addEventListener("log", (e) => {
+        const d = safeParse(e.data);
+        const kind = d.kind || "event";
+        if (kind === "status") return;
+        const msg = d.message || "";
+        if (!msg) return;
+        appendStreamLog(d.label || kind, msg, kind);
+    });
+
+    es.addEventListener("thought", (e) => {
+        const d = safeParse(e.data);
+        if (d.chunk) appendStreamLog("思考", d.chunk, "thought");
+    });
+
+    es.addEventListener("answer", (e) => {
+        const d = safeParse(e.data);
+        if (d.chunk) appendAnswer(d.chunk);
+    });
+
+    es.addEventListener("error", (e) => {
+        if (e.data) {
+            const d = safeParse(e.data);
+            errMsg = d.message || "未知错误";
+            appendStreamLog("错误", `[${d.code || "ERR"}] ${errMsg}`, "event", { sticky: true });
+            finishAnswer({ ok: false });
+        } else {
+            // network / disconnect
+            if (answerChars === 0) {
+                errMsg = "连接断开";
+                finishAnswer({ ok: false });
+            }
+        }
+        try { es.close(); } catch (_) {}
+        if (activeES === es) activeES = null;
+        refreshStatus();
+    });
+
+    es.addEventListener("end", (e) => {
+        const d = safeParse(e.data);
+        finishAnswer(d);
+        appendStreamLog("完成", `${answerChars} 字 · ${(d.durationMs / 1000).toFixed(1)}s`, "end", { sticky: true });
+        try { es.close(); } catch (_) {}
+        if (activeES === es) activeES = null;
+        refreshStatus();
+    });
+}
+
+form.addEventListener("submit", (e) => { e.preventDefault(); sendQuestion(); });
+input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); sendQuestion(); }
+    if (e.key === "Escape" && activeES) { stopActive(); }
+});
+input.addEventListener("focus", () => searchbox.classList.add("focused"));
+input.addEventListener("blur", () => searchbox.classList.remove("focused"));
+
+for (const el of document.querySelectorAll(".sugg")) {
+    el.addEventListener("click", () => {
+        input.value = el.dataset.q || el.textContent;
+        sendQuestion();
+    });
+}
+
+// Autostart with ?q=<question>
+(() => {
+    try {
+        const params = new URLSearchParams(location.search);
+        const q = params.get("q");
+        if (q) {
+            input.value = q;
+            setTimeout(sendQuestion, 600);
+        }
+    } catch (_) {}
+})();
+
+input.focus();
+</script>
+</body>
+</html>

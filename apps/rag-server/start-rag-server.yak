@@ -1,0 +1,771 @@
+// =============================================================================
+// RAG Server (yak) - Agentic RAG over SSE
+// 功能: 启动一个 HTTP 服务，导入若干 .rag 知识库文件，
+//       基于 aim Agentic RAG (focus=knowledge_enhance) 进行问答，
+//       SSE 流式返回搜索日志与回答内容，并发受信号量保护。
+// 关键词: rag.Import, aim.InvokeReAct, aim.focus, knowledge_enhance, SSE, semaphore, 429
+//
+// 使用示例:
+//   yak start-rag-server.yak --rag-files kb1.rag,kb2.rag --concurrent 5
+//
+// 默认 AI: 走本地全局 aiconfig 的分级模型 (TieredAIConfig)
+//   - Lightweight tier: memfit-light-free (用于快速感知/压缩)
+//   - Intelligent tier: memfit-basic-free (用于推理/最终答案)
+//   - 由 ~/yakit-projects 全局 aiconfig (yakit 数据库) 决定，本脚本不传
+//     aim.aiConfig，让 aim 走 WithTieredAICallback() 自动分级。
+// 仅当传 --ai-apikey / --ai-model / --ai-domain 任一时，本脚本切换为粗粒度
+//   单 callback 模式 (aim.aiConfig)，覆盖所有 tier。
+// 默认端口: 9093
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// CLI 参数定义
+// 关键词: cli.String, cli.Int, cli.check, tier light intelligent memfit
+// -----------------------------------------------------------------------------
+port = cli.Int("port",
+    cli.setDefault(9093),
+    cli.setHelp("HTTP server listen port"))
+ragFilesArg = cli.String("rag-files",
+    cli.setDefault(""),
+    cli.setHelp("Comma-separated .rag knowledge base file paths (required)"))
+concurrent = cli.Int("concurrent",
+    cli.setDefault(3),
+    cli.setHelp("Maximum simultaneous active chat requests (over this returns 429)"))
+aiType = cli.String("ai-type",
+    cli.setDefault("aibalance"),
+    cli.setHelp("AI service provider type, only used when --ai-model/--ai-apikey/--ai-domain given"))
+// 关键词: ai-model default empty, prefer tiered config from yakit-projects
+aiModel = cli.String("ai-model",
+    cli.setDefault(""),
+    cli.setHelp("AI model name override. EMPTY (default) means use local tiered aiconfig (light=memfit-light-free + intelligent=memfit-basic-free)"))
+aiAPIKey = cli.String("ai-apikey",
+    cli.setDefault(""),
+    cli.setHelp("AI API key (optional, for self-hosted aibalance / openai)"))
+aiDomain = cli.String("ai-domain",
+    cli.setDefault(""),
+    cli.setHelp("AI service domain override (optional)"))
+timeoutSec = cli.Int("timeout",
+    cli.setDefault(180),
+    cli.setHelp("Single chat overall timeout in seconds"))
+// 关键词: max-iteration default 1, fast single-round Agentic RAG
+maxIter = cli.Int("max-iteration",
+    cli.setDefault(1),
+    cli.setHelp("Agentic RAG maximum search rounds (default 1 for speed; aim's loop_knowledge_enhance is itself capped at 3 internal rounds)"))
+frontendPath = cli.String("frontend",
+    cli.setDefault(""),
+    cli.setHelp("Optional path to frontend index.html, auto-detected by default"))
+// 关键词: model tier display labels for /api/health and UI
+displayLightModel = "memfit-light-free"
+displayQualityModel = "memfit-basic-free"
+
+cli.check()
+
+// -----------------------------------------------------------------------------
+// 启动期参数校验
+// 关键词: rag-files 必填, ragFiles 列表
+// -----------------------------------------------------------------------------
+if ragFilesArg == "" {
+    log.error("--rag-files is required, please provide comma-separated .rag file paths")
+    die("missing --rag-files")
+}
+
+ragFiles = []
+for raw in str.Split(ragFilesArg, ",") {
+    trimmed = str.TrimSpace(raw)
+    if trimmed == "" {
+        continue
+    }
+    if !file.IsExisted(trimmed) {
+        log.error("rag file not found: %s", trimmed)
+        die(sprintf("rag file not found: %s", trimmed))
+    }
+    ragFiles = append(ragFiles, trimmed)
+}
+if len(ragFiles) == 0 {
+    log.error("no valid rag file in --rag-files")
+    die("no valid rag file")
+}
+
+// 关键词: model mode resolution, tiered default vs single-callback override
+useCustomAIConfig = (aiModel != "" || aiAPIKey != "" || aiDomain != "")
+modelDisplay = ""
+if useCustomAIConfig {
+    if aiModel != "" {
+        modelDisplay = sprintf("%s (single callback override)", aiModel)
+    } else {
+        modelDisplay = sprintf("%s (single callback, model from server-side default)", aiType)
+    }
+} else {
+    modelDisplay = sprintf("tiered: light=%s, intelligent=%s (from local aiconfig)", displayLightModel, displayQualityModel)
+}
+
+log.info("=== RAG Server Configuration ===")
+log.info("  Port: %d", port)
+log.info("  Concurrent limit: %d", concurrent)
+log.info("  AI mode: %s", modelDisplay)
+log.info("  Timeout: %d seconds", timeoutSec)
+log.info("  Max iteration: %d", maxIter)
+log.info("  RAG files: %d", len(ragFiles))
+// 关键词: range index iteration, 标准索引遍历
+for idx = 0; idx < len(ragFiles); idx++ {
+    log.info("    [%d] %s", idx+1, ragFiles[idx])
+}
+
+// -----------------------------------------------------------------------------
+// 加载前端 index.html
+// 关键词: frontend html load, YAK_DIR resolve script-relative path
+// -----------------------------------------------------------------------------
+var htmlContent
+htmlLoaded = false
+htmlSearchPaths = []
+if frontendPath != "" {
+    htmlSearchPaths = append(htmlSearchPaths, frontendPath)
+}
+// 优先解析脚本所在目录下的 index.html（不受 cwd 影响）
+// 关键词: YAK_DIR script-relative, robust path resolution
+scriptDir = ""
+try {
+    scriptDir = YAK_DIR
+} catch err {
+    scriptDir = ""
+}
+if scriptDir != "" {
+    htmlSearchPaths = append(htmlSearchPaths, file.Join(scriptDir, "index.html"))
+}
+htmlSearchPaths = append(htmlSearchPaths, "apps/rag-server/index.html")
+htmlSearchPaths = append(htmlSearchPaths, "index.html")
+htmlSearchPaths = append(htmlSearchPaths, "./index.html")
+
+for p in htmlSearchPaths {
+    content, readErr = file.ReadFile(p)
+    if readErr == nil && len(content) > 0 {
+        htmlContent = content
+        htmlLoaded = true
+        log.info("Frontend HTML loaded from: %s (%d bytes)", p, len(htmlContent))
+        break
+    }
+}
+if !htmlLoaded {
+    log.error("Failed to find index.html; tried: %v", htmlSearchPaths)
+    die("frontend index.html not found")
+}
+
+// -----------------------------------------------------------------------------
+// 导入 .rag 文件 -> 集合
+// 关键词: rag.Import, rag.HasCollection, rag.importName, rag.progressHandler
+// -----------------------------------------------------------------------------
+log.info("=== Importing RAG Files ===")
+attachedKBs = []
+for idx = 0; idx < len(ragFiles); idx++ {
+    f = ragFiles[idx]
+    absPath = file.Abs(f)
+    if absPath == "" {
+        absPath = f
+    }
+
+    // 集合名: rag_<sha256[:8]>_<basename_no_ext_sanitized>
+    // 关键词: collection name, sha256 hash prefix, deterministic
+    baseName = file.GetBase(absPath)
+    if str.HasSuffix(baseName, ".rag") {
+        baseName = baseName[:len(baseName)-4]
+    }
+    // 清理特殊字符（只保留字母数字下划线连字符），使用正则替换
+    // 关键词: re.ReplaceAll sanitize, ASCII-only collection name
+    safeName = re.ReplaceAll(baseName, "[^a-zA-Z0-9_-]", "_")
+    if safeName == "" {
+        safeName = sprintf("kb%d", idx)
+    }
+    pathHash = codec.Sha256(absPath)
+    kbName = sprintf("rag_%s_%s", pathHash[:8], safeName)
+
+    log.info("[%d/%d] %s -> collection %s", idx+1, len(ragFiles), absPath, kbName)
+
+    if rag.HasCollection(kbName) {
+        log.info("  collection already exists, skip importing")
+        attachedKBs = append(attachedKBs, kbName)
+        continue
+    }
+
+    importErr = rag.Import(absPath,
+        rag.importName(kbName),
+        rag.progressHandler(func(percent, message, msgType) {
+            // 关键词: import progress callback, 仅在关键节点打印
+            if percent == 0 || percent == 100 || (percent >= 20 && percent < 21) || (percent >= 50 && percent < 51) || (percent >= 80 && percent < 81) {
+                log.info("  [import %.0f%%] %s", percent, message)
+            }
+        }),
+    )
+    if importErr != nil {
+        log.error("  import failed: %v", importErr)
+        die(sprintf("failed to import %s: %v", absPath, importErr))
+    }
+    log.info("  imported successfully")
+    attachedKBs = append(attachedKBs, kbName)
+}
+
+if len(attachedKBs) == 0 {
+    log.error("no knowledge base attached after import")
+    die("no knowledge base attached")
+}
+log.info("=== %d knowledge base(s) ready ===", len(attachedKBs))
+
+// -----------------------------------------------------------------------------
+// 全局状态：互斥锁保护的计数器信号量（yak 无 select 语法，用 Mutex+int 实现）
+// 关键词: counter semaphore, sync.NewMutex, non-blocking acquire, inflight count
+// -----------------------------------------------------------------------------
+inflightLock = sync.NewMutex()
+inflightCount = 0
+concurrentLimit = concurrent
+
+// 非阻塞抢占：成功返回 true，达到上限返回 false
+// 关键词: non-blocking acquire, reject on saturation
+func acquireSlot() {
+    inflightLock.Lock()
+    defer inflightLock.Unlock()
+    if inflightCount >= concurrentLimit {
+        return false
+    }
+    inflightCount++
+    return true
+}
+
+func releaseSlot() {
+    inflightLock.Lock()
+    defer inflightLock.Unlock()
+    if inflightCount > 0 {
+        inflightCount--
+    }
+}
+
+func getInflight() {
+    inflightLock.Lock()
+    defer inflightLock.Unlock()
+    return inflightCount
+}
+
+// -----------------------------------------------------------------------------
+// SSE 工具函数
+// 关键词: SSE event emit, write event helper, sendMu mutex
+// 每个 chat 连接独享一个 sendMu，保证多 goroutine（onStream/onEvent）写帧不撕碎
+// -----------------------------------------------------------------------------
+
+// 构造一个绑定到本次连接 (w + sendMu) 的事件发送闭包工厂
+// 关键词: SSE writer factory, per-connection mutex, single-line JSON for SSE compliance
+// 注意: yak json.dumps 默认带 2-space indent (多行)，违反 SSE data: 单行规范。
+//   解决方案有两条：
+//   1) 用 json.dumps(payload, json.withIndent("")) 强制单行
+//   2) 把多行 JSON 按 \n 拆分，每行加 data: 前缀 (SSE 标准做法)
+// 这里选 (1)，更紧凑。
+makeEmitter = (w, sendMu) => {
+    return (eventName, payload) => {
+        sendMu.Lock()
+        defer sendMu.Unlock()
+        // 关键词: SSE single-line data, json.withIndent disabled
+        payloadStr = json.dumps(payload, json.withIndent(""))
+        line = sprintf("event: %s\ndata: %s\n\n", eventName, payloadStr)
+        _, werr = w.Write([]byte(line))
+        if werr != nil {
+            return werr
+        }
+        try {
+            w.Flush()
+        } catch flushErr {
+            log.warn("SSE flush failed: %v", flushErr)
+        }
+        return nil
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 路由 1: 首页 (返回 index.html)
+// 关键词: index handler, serve html
+// -----------------------------------------------------------------------------
+indexHandler = (w, req) => {
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    w.Header().Set("Cache-Control", "no-cache")
+    w.WriteHeader(200)
+    w.Write(htmlContent)
+}
+
+// -----------------------------------------------------------------------------
+// 路由 2: /api/health (健康检查)
+// 关键词: health endpoint, json response, inflight count
+// -----------------------------------------------------------------------------
+healthHandler = (w, req) => {
+    w.Header().Set("Content-Type", "application/json; charset=utf-8")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+    // 关键词: health payload includes tiered models for UI
+    aiInfo = {
+        "type": aiType,
+        "mode": "tiered",
+        "lightModel": displayLightModel,
+        "qualityModel": displayQualityModel,
+    }
+    if useCustomAIConfig {
+        aiInfo["mode"] = "single"
+        aiInfo["model"] = aiModel
+        aiInfo["domain"] = aiDomain
+    }
+    payload = {
+        "ok": true,
+        "ragFiles": len(ragFiles),
+        "kbCount": len(attachedKBs),
+        "kbNames": attachedKBs,
+        "concurrent": concurrent,
+        "inflight": getInflight(),
+        "ai": aiInfo,
+    }
+    w.Write([]byte(json.dumps(payload)))
+}
+
+// -----------------------------------------------------------------------------
+// 路由 3: /api/chat (SSE Agentic RAG 主接口)
+// 关键词: SSE chat handler, Flusher, semaphore acquire, aim.InvokeReAct,
+//        focus knowledge_enhance, attachedKnowledgeBase, yoloMode
+// -----------------------------------------------------------------------------
+chatHandler = (w, req) => {
+    clientAddr = req.RemoteAddr
+    log.info("/api/chat incoming from %s", clientAddr)
+
+    // 读取问题：优先 query string q，其次 POST body 中的 question 字段
+    // 关键词: read question, query param, post body json
+    question = ""
+    qVal = req.URL.Query().Get("q")
+    if qVal != "" {
+        question = qVal
+    }
+    if question == "" {
+        bodyBytes, readErr = io.ReadAll(req.Body)
+        if readErr == nil && len(bodyBytes) > 0 {
+            bodyObj = json.loads(string(bodyBytes))
+            if bodyObj != nil && bodyObj != undefined {
+                qFromBody = bodyObj["question"]
+                if qFromBody != nil && qFromBody != undefined {
+                    question = string(qFromBody)
+                }
+                if question == "" {
+                    qFromBody2 = bodyObj["q"]
+                    if qFromBody2 != nil && qFromBody2 != undefined {
+                        question = string(qFromBody2)
+                    }
+                }
+            }
+        }
+    }
+
+    if question == "" {
+        w.Header().Set("Content-Type", "application/json; charset=utf-8")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.WriteHeader(400)
+        w.Write([]byte(`{"ok":false,"error":"missing question (use ?q=... or POST body {question:...})"}`))
+        return
+    }
+
+    log.info("question from %s: %s", clientAddr, question)
+
+    // 设置 SSE 响应头（一定要在 WriteHeader 前）
+    // 关键词: SSE headers, text/event-stream, no-cache, CORS
+    w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+    w.Header().Set("Cache-Control", "no-cache")
+    w.Header().Set("Connection", "keep-alive")
+    w.Header().Set("X-Accel-Buffering", "no")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+
+    // 尝试抢信号量，失败立刻 429
+    // 关键词: 429 busy, non-blocking acquire, semaphore reject
+    acquired = acquireSlot()
+    if !acquired {
+        log.warn("concurrency limit reached, reject %s", clientAddr)
+        w.WriteHeader(429)
+        // 关键词: 429 reject single-line SSE payload
+        errJson = json.dumps({"code": 429, "message": "server is busy, please retry later"}, json.withIndent(""))
+        rejectMsg := sprintf("event: error\ndata: %s\n\nevent: end\ndata: {\"reason\":\"server_busy\"}\n\n", errJson)
+        w.Write([]byte(rejectMsg))
+        try { w.Flush() } catch e { _ = e }
+        return
+    }
+
+    // 进入正常流程：先 200 OK，准备 emitter
+    w.WriteHeader(200)
+    sendMu = sync.NewMutex()
+    emit = makeEmitter(w, sendMu)
+
+    // 关键词: per-request sessionID, artifact paths collection for cleanup
+    sessionID = sprintf("ragsrv-%s", str.RandStr(12))
+    cleanupPaths = []
+    cleanupMu = sync.NewMutex()
+    addCleanup = (p) => {
+        if p == "" { return }
+        cleanupMu.Lock()
+        defer cleanupMu.Unlock()
+        cleanupPaths = append(cleanupPaths, p)
+    }
+
+    // 释放信号量保护 + panic 恢复 + 清理 session artifact 目录
+    // 关键词: defer release, panic recover, cleanup pinned artifact dirs
+    defer func {
+        rec := recover()
+        if rec != nil {
+            log.error("chat handler panic: %v", rec)
+            try { emit("error", {"code": 500, "message": sprintf("internal error: %v", rec)}) } catch e2 { _ = e2 }
+        }
+        // 关键词: cleanup pinned artifact dirs, RemoveAll session workdir
+        cleanupMu.Lock()
+        paths = cleanupPaths
+        cleanupMu.Unlock()
+        for p in paths {
+            // 关键词: file.Remove == os.RemoveAll, recursive delete
+            try {
+                file.Remove(p)
+                log.info("cleanup artifact path: %s", p)
+            } catch ce {
+                log.warn("cleanup failed for %s: %v", p, ce)
+            }
+        }
+        releaseSlot()
+        log.info("/api/chat finished for %s session=%s, cleaned=%d, inflight=%d",
+                clientAddr, sessionID, len(paths), getInflight())
+    }
+
+    // 起始通知
+    startTime = time.Now()
+    startPayload = {
+        "question": question,
+        "kbCount":  len(attachedKBs),
+        "kbNames":  attachedKBs,
+    }
+    if useCustomAIConfig {
+        startPayload["aiMode"] = "single"
+        startPayload["aiModel"] = aiModel
+    } else {
+        startPayload["aiMode"] = "tiered"
+        startPayload["aiLightModel"] = displayLightModel
+        startPayload["aiQualityModel"] = displayQualityModel
+    }
+    emit("start", startPayload)
+
+    // ---- 构造 aim 选项 ----
+    // 关键词: aim.focus knowledge_enhance, aim.yoloMode, aim.attachedKnowledgeBase,
+    //        默认走 WithTieredAICallback (light/intelligent), 仅自定义模式才覆盖
+    opts = []
+
+    // 专注模式 = knowledge_enhance: Agentic RAG, 多轮自动检索 + 总结
+    opts = append(opts, aim.focus("knowledge_enhance"))
+    // YOLO 模式：自动审批，禁止交互
+    opts = append(opts, aim.yoloMode())
+    opts = append(opts, aim.allowUserInteract(false))
+    opts = append(opts, aim.timeout(float(timeoutSec)))
+    opts = append(opts, aim.maxIteration(maxIter))
+    opts = append(opts, aim.language("zh"))
+    opts = append(opts, aim.disableToolUse(true))
+    opts = append(opts, aim.disableMCPServers(true))
+    opts = append(opts, aim.disableAIForge(true))
+    // 关键词: per-request sessionID for isolation + later cleanup
+    opts = append(opts, aim.sessionID(sessionID))
+
+    // 把每一个导入的知识库都挂上去
+    // 关键词: attachedKnowledgeBase per kb
+    for kb in attachedKBs {
+        opts = append(opts, aim.attachedKnowledgeBase(kb))
+    }
+
+    // AI 服务配置
+    // 关键词: tiered default no aim.aiConfig, custom override via aim.aiConfig
+    // 默认 (useCustomAIConfig=false): 不传 aim.aiConfig，aim 自动启用 WithTieredAICallback,
+    //   从 ~/yakit-projects 全局 aiconfig 读 lightweight/intelligent tier (memfit 分级).
+    // 自定义 (任一 --ai-* 给出): 用粗粒度单 callback 覆盖 (会被填到 Original + 兼容 tier).
+    if useCustomAIConfig {
+        aiOpts = []
+        if aiModel != "" {
+            aiOpts = append(aiOpts, ai.model(aiModel))
+        }
+        if aiAPIKey != "" {
+            aiOpts = append(aiOpts, ai.apiKey(aiAPIKey))
+        }
+        if aiDomain != "" {
+            aiOpts = append(aiOpts, ai.domain(aiDomain))
+        }
+        opts = append(opts, aim.aiConfig(aiType, aiOpts...))
+    }
+
+    // ---- 事件回调：把 aim 事件流转成 SSE 事件 ----
+    // 关键词: SSE clean protocol, log/thought/answer/error/end only
+    // 噪音事件 (流式 token usage / stream chunk / pong / pressure 等) 一律丢弃，
+    // 仅保留对用户有意义的 检索进度 / 思考 / 答案 / 错误 / 结束。
+
+    // 关键词: noise event types, drop list to prevent UI spam
+    noiseTypes = {
+        "stream":                  true,
+        "stream_start":             true,
+        "stream_finished":          true,
+        "consumption":              true,
+        "pong":                     true,
+        "pressure":                 true,
+        "ai_first_byte_cost_ms":    true,
+        "ai_total_cost_ms":         true,
+        "ai_call_summary":          true,
+        "prompt_profile":           true,
+    }
+    // 关键词: noise nodeId list, technical chatter that user does not care about
+    noiseNodeIds = {
+        "stream-finished":      true,
+        "ai_first_byte_cost_ms": true,
+        "ai_total_cost_ms":     true,
+        "ai_call_summary":      true,
+        "pressure":             true,
+        "system":               true,
+    }
+
+    // 关键词: friendly message renderer per-nodeId, defensive map access
+    renderTaskMessage = (obj) => {
+        try {
+            nowStatus = obj["react_task_now_status"]
+            oldStatus = obj["react_task_old_status"]
+            if nowStatus != nil && oldStatus != nil {
+                return sprintf("任务状态变更: %v -> %v", oldStatus, nowStatus)
+            }
+            status = obj["react_task_status"]
+            if status != nil {
+                return sprintf("任务状态: %v", status)
+            }
+            queueLen = obj["queue_len"]
+            if queueLen != nil {
+                return sprintf("入/出队 (队列长度=%v)", queueLen)
+            }
+        } catch err {
+            return ""
+        }
+        return ""
+    }
+
+    // 关键词: safe map-style getter (returns nil if obj is not map / key missing)
+    safeMapGet = (obj, key) => {
+        if obj == nil || obj == undefined {
+            return nil
+        }
+        try {
+            v = obj[key]
+            return v
+        } catch err {
+            // obj 可能是 slice/array, 字符串索引会 panic
+            return nil
+        }
+    }
+
+    // 关键词: extract content from json structured event
+    extractStructuredMessage = (rawContent, isJson, nodeId) => {
+        if rawContent == "" {
+            return ""
+        }
+        if !isJson {
+            return rawContent
+        }
+        obj = nil
+        try {
+            obj = json.loads(rawContent)
+        } catch err {
+            return rawContent
+        }
+        if obj == nil || obj == undefined {
+            return rawContent
+        }
+        // 关键词: priority order common message fields (defensive against array roots)
+        for key in ["message", "content", "value", "title", "path", "filename", "payload"] {
+            v = safeMapGet(obj, key)
+            if v != nil && v != undefined {
+                s = sprintf("%v", v)
+                if s != "" {
+                    return s
+                }
+            }
+        }
+        // 关键词: react_task_* friendly rendering
+        if str.HasPrefix(nodeId, "react_task_") {
+            msg = renderTaskMessage(obj)
+            if msg != "" {
+                return msg
+            }
+        }
+        // 关键词: timeline_item special handling, content + entry_type
+        entryType = safeMapGet(obj, "entry_type")
+        if entryType != nil && entryType != undefined {
+            entryContent = safeMapGet(obj, "content")
+            if entryContent != nil && entryContent != undefined {
+                return sprintf("[%v] %v", entryType, entryContent)
+            }
+            return sprintf("[%v]", entryType)
+        }
+        return ""
+    }
+
+    opts = append(opts, aim.onEvent(func(react, event) {
+        // 关键词: event nil-guard, IsStream skip, noise type filter
+        if event == nil || event == undefined {
+            return
+        }
+        if event.IsStream {
+            return
+        }
+        evtType = string(event.Type)
+        if evtType == "" {
+            return
+        }
+        if noiseTypes[evtType] {
+            return
+        }
+
+        nodeId = string(event.NodeId)
+        if noiseNodeIds[nodeId] {
+            return
+        }
+        isJson = false
+        try {
+            isJson = bool(event.IsJson)
+        } catch _ {
+            isJson = false
+        }
+        rawContent = ""
+        if event.Content != nil && event.Content != undefined {
+            rawContent = string(event.Content)
+        }
+        message = extractStructuredMessage(rawContent, isJson, nodeId)
+
+        // 关键词: capture pinned filesystem path for later cleanup
+        if evtType == "filesystem_pin_directory" || evtType == "filesystem_pin_filename" {
+            if isJson {
+                try {
+                    obj = json.loads(rawContent)
+                    p = obj["path"]
+                    if p != nil && p != undefined {
+                        addCleanup(string(p))
+                    }
+                } catch capErr {
+                    log.warn("cleanup path capture failed: %v", capErr)
+                }
+            }
+        }
+
+        // 关键词: error event mapping
+        if evtType == "fail_react_task" || evtType == "fail_plan_and_execution" {
+            emit("error", {"code": 500, "message": message, "nodeId": nodeId})
+            return
+        }
+
+        // 关键词: log event mapping with kind label, drop noisy "status" kind
+        kind = "info"
+        label = nodeId
+        if evtType == "structured" {
+            if nodeId == "re-act-loading-status-key" || nodeId == "status" {
+                // 关键词: drop status kind per user request (UI noise)
+                return
+            } else if nodeId == "timeline_item" {
+                kind = "timeline"
+                label = "时间线"
+            } else if nodeId == "session_title" {
+                kind = "title"
+                label = "会话标题"
+            } else if str.HasPrefix(nodeId, "react_task_") {
+                kind = "task"
+                label = "任务"
+            } else if str.HasPrefix(nodeId, "filesystem") || str.Contains(nodeId, "pin_") {
+                kind = "file"
+                label = "文件"
+            } else if str.Contains(nodeId, "knowledge") || str.Contains(nodeId, "search") {
+                kind = "search"
+                label = "检索"
+            } else {
+                kind = "event"
+                label = nodeId
+            }
+        } else if evtType == "filesystem_pin_filename" || evtType == "filesystem_pin_directory" {
+            kind = "file"
+            label = "文件"
+        } else if evtType == "knowledge" || evtType == "task_knowledge" {
+            kind = "search"
+            label = "检索"
+        } else if evtType == "thought" {
+            // 关键词: non-stream thought type, not the streaming nodeId path
+            kind = "thought"
+            label = "思考"
+        } else if evtType == "plan" {
+            kind = "plan"
+            label = "计划"
+        } else {
+            kind = "event"
+            label = evtType
+        }
+
+        if message == "" {
+            return
+        }
+        emit("log", {
+            "kind":    kind,
+            "label":   label,
+            "message": message,
+            "type":    evtType,
+            "nodeId":  nodeId,
+        })
+    }))
+
+    // onStream: 严格只处理 thought / answer 两类 nodeId, 其他全部丢弃
+    // 关键词: stream nodeId whitelist, drop liteforge/select_kb chunks
+    opts = append(opts, aim.onStream(func(react, event, nodeid, data) {
+        nodeStr = string(nodeid)
+        chunk = string(data)
+        if chunk == "" {
+            return
+        }
+        if nodeStr == "re-act-loop-thought" {
+            emit("thought", {"chunk": chunk})
+            return
+        }
+        if nodeStr == "re-act-loop-answer-payload" {
+            emit("answer", {"chunk": chunk})
+            return
+        }
+        // 其他流（liteforge[xxx] / select_knowledge_base / json schema 等）一律忽略
+    }))
+
+    // ---- 执行 Agentic RAG (同步阻塞) ----
+    // 关键词: aim.InvokeReAct synchronous, blocks until done
+    log.info("invoking aim.InvokeReAct for %s ...", clientAddr)
+    invokeErr := nil
+    try {
+        invokeErr = aim.InvokeReAct(question, opts...)
+    } catch e {
+        invokeErr = sprintf("invoke panic: %v", e)
+    }
+    durationMs = int(time.Now().Sub(startTime).Milliseconds())
+
+    if invokeErr != nil && invokeErr != undefined {
+        log.error("InvokeReAct failed for %s: %v", clientAddr, invokeErr)
+        emit("error", {"code": 500, "message": sprintf("invoke failed: %v", invokeErr)})
+    }
+
+    // 结束事件
+    // 关键词: end event, duration milliseconds
+    emit("end", {"durationMs": durationMs, "ok": invokeErr == nil || invokeErr == undefined})
+}
+
+// -----------------------------------------------------------------------------
+// 路由注册 + 启动服务
+// 关键词: httpserver.Serve, httpserver.routeHandler, route registration
+// -----------------------------------------------------------------------------
+handles = [
+    httpserver.routeHandler("/", indexHandler),
+    httpserver.routeHandler("/index.html", indexHandler),
+    httpserver.routeHandler("/api/health", healthHandler),
+    httpserver.routeHandler("/api/chat", chatHandler),
+]
+
+log.info("=== Starting HTTP server on 0.0.0.0:%d ===", port)
+println(sprintf("\n[OK] RAG Server started:"))
+println(sprintf("     Web UI:       http://0.0.0.0:%d/", port))
+println(sprintf("     Health:       http://0.0.0.0:%d/api/health", port))
+println(sprintf("     Chat (SSE):   http://0.0.0.0:%d/api/chat?q=...", port))
+println(sprintf("     KB count:     %d", len(attachedKBs)))
+println(sprintf("     Concurrent:   %d", concurrent))
+println(sprintf("     AI mode:      %s", modelDisplay))
+println("\nPress Ctrl+C to stop.\n")
+
+httpserver.Serve("0.0.0.0", port, handles...)
