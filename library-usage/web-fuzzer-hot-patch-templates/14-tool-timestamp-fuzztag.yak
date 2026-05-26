@@ -1,0 +1,59 @@
+/*
+模版名称: [工具] 时间戳 fuzz tag
+对应 i18n key: HTTPFuzzerHotPatch.tool_timestamp_fuzztag
+关键词: 时间戳, Timestamp, fuzz tag, 工具, Unix时间
+适用场景: 数据包中需要插入当前 Unix 时间戳（秒/毫秒/纳秒/格式化日期）
+用法: {{yak(ts|s)}} 秒 / {{yak(ts|ms)}} 毫秒 / {{yak(ts|ns)}} 纳秒 / {{yak(ts|date)}} YYYY-MM-DD HH:MM:SS
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 时间戳 fuzz tag - 支持 s / ms / ns / date 四种格式
+ts = func(param) {
+    fmtKey = str.ToLower(str.TrimSpace(param))
+    n = time.Now()
+    if fmtKey == "ms" {
+        return [sprintf("%d", n.UnixMilli())]
+    }
+    if fmtKey == "ns" {
+        return [sprintf("%d", n.UnixNano())]
+    }
+    if fmtKey == "date" {
+        return [n.Format("2006-01-02 15:04:05")]
+    }
+    /* default: seconds */
+    return [sprintf("%d", n.Unix())]
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start timestamp fuzz tag self test")
+
+    sec = ts("s")[0]
+    log.info("seconds: " + sec)
+    secNum = parseInt(sec)
+    assert secNum > 1700000000, "seconds value too small"
+    assert secNum < 9999999999, "seconds value too large"
+
+    msStr = ts("ms")[0]
+    log.info("milliseconds: " + msStr)
+    msNum = parseInt(msStr)
+    assert msNum > 1700000000000, "ms value too small"
+    assert len(msStr) == 13, "ms hex length should be 13 digits"
+
+    nsStr = ts("ns")[0]
+    log.info("nanoseconds: " + nsStr)
+    assert len(nsStr) >= 16, "ns should have at least 16 digits"
+
+    dateStr = ts("date")[0]
+    log.info("date: " + dateStr)
+    assert len(dateStr) == 19, "date format YYYY-MM-DD HH:MM:SS"
+
+    defaultStr = ts("")[0]
+    log.info("default(seconds): " + defaultStr)
+    assert len(defaultStr) == 10, "default seconds length should be 10"
+
+    log.info("timestamp fuzz tag self test passed")
+}
+
+runSelfTest()

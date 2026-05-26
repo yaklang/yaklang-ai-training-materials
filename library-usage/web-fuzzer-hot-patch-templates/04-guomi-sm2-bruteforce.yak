@@ -1,0 +1,72 @@
+/*
+模版名称: [国密-爆破] SM2 公钥加密字典爆破
+对应 i18n key: HTTPFuzzerHotPatch.bruteforce_sm2
+关键词: SM2, 国密, 公钥加密, 字典爆破, fuzz tag
+适用场景: 登录接口使用 SM2 公钥加密 JSON 体，需要用字典生成所有候选密文
+用法: 在 Fuzzer 包中使用 {{yak(decodeSm2|...)}} 触发，函数返回所有加密后的 Base64 字符串
+注意: SM2 加密每次结果不同（C1 随机），适用于爆破而不适用于对比已知密文
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// SM2 公钥加密字典爆破 - 默认使用 C1C3C2 排列（国密标准）
+// 请将下方 publicKeyPem 替换为目标系统的 SM2 公钥
+sm2PublicKeyPem = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAE4E3hKxSesB6qTLcdty+DkfUOEQns
+S8TgE/314ha5cBaTdux3yKTWfUficpWqfdWMu15ZOX0VqIdrtb8Py1kwdA==
+-----END PUBLIC KEY-----`
+
+decodeSm2 = func(param) {
+    usernameDict = ["admin"]
+    passwordDict = ["admin", "123456", "admin123", "88888888", "666666"]
+    resultList = []
+    for username in usernameDict {
+        for password in passwordDict {
+            m = {"username": username, "password": password}
+            jsonInput = json.dumps(m)
+            cipherBytes = codec.Sm2EncryptC1C3C2([]byte(sm2PublicKeyPem), jsonInput)~
+            resultList.Append(codec.EncodeBase64(cipherBytes))
+        }
+    }
+    return resultList
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码 - 临时生成一对密钥对，覆盖模版变量后做加解密验证
+func runSelfTest() {
+    log.info("start sm2 bruteforce self test")
+
+    priv, pub = codec.Sm2GeneratePemKeyPair()~
+    sm2PublicKeyPem = string(pub)
+
+    decodeSm2Test = func(param) {
+        usernameDict = ["admin"]
+        passwordDict = ["admin", "123456", "admin123"]
+        resultList = []
+        for username in usernameDict {
+            for password in passwordDict {
+                m = {"username": username, "password": password}
+                jsonInput = json.dumps(m)
+                cipherBytes = codec.Sm2EncryptC1C3C2([]byte(sm2PublicKeyPem), jsonInput)~
+                resultList.Append(codec.EncodeBase64(cipherBytes))
+            }
+        }
+        return resultList
+    }
+
+    payloads = decodeSm2Test("placeholder")
+    log.info(sprintf("generated payload count: %d", len(payloads)))
+    assert len(payloads) == 3, "should generate 3 payloads"
+
+    for p in payloads {
+        cipherBytes = codec.DecodeBase64(p)~
+        plain = codec.Sm2DecryptC1C3C2(priv, cipherBytes)~
+        plainStr = string(plain)
+        log.info("decrypted payload: " + plainStr)
+        parsed = json.loads(plainStr)
+        assert parsed["username"] == "admin", "username mismatch"
+    }
+
+    log.info("sm2 bruteforce self test passed")
+}
+
+runSelfTest()

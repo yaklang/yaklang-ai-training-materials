@@ -1,0 +1,60 @@
+/*
+模版名称: [签名] Body MD5/SM3 防篡改签名
+对应 i18n key: HTTPFuzzerHotPatch.sign_body_md5_sm3
+关键词: Body签名, MD5, SM3, beforeRequest, 防篡改, Content-Digest
+适用场景: 服务端要求请求头中带 body 的哈希值用于防篡改检查（MD5 或国密 SM3）
+默认算法: SM3（可改为 MD5/SHA256），结果 Hex 编码注入 header X-Body-Digest
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// Body Hash 防篡改签名 - 计算 body 哈希注入到 header
+// 算法可选: "md5" / "sm3" / "sha256"
+bodyDigestAlgo = "sm3"
+
+calcBodyDigest = func(algo, body) {
+    if algo == "md5" {
+        return codec.Md5(body)
+    }
+    if algo == "sha256" {
+        return codec.EncodeToHex(codec.Sha256(body))
+    }
+    return codec.EncodeToHex(codec.Sm3(body))
+}
+
+beforeRequest = func(https, originReq, req) {
+    body = poc.GetHTTPPacketBody(req)
+    digest = calcBodyDigest(bodyDigestAlgo, body)
+    req = poc.ReplaceHTTPPacketHeader(req, "X-Body-Digest", digest)
+    req = poc.ReplaceHTTPPacketHeader(req, "X-Digest-Algo", bodyDigestAlgo)
+    return req
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start body digest self test")
+
+    plainBody = `{"order_id":"O20260526","amount":99.99}`
+    mockReq = `POST /api/order HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+
+` + plainBody
+
+    signedReq = beforeRequest(true, []byte(mockReq), []byte(mockReq))
+    signedStr = string(signedReq)
+    log.info("signed request:\n" + signedStr)
+
+    gotDigest = poc.GetHTTPPacketHeader(signedReq, "X-Body-Digest")
+    gotAlgo = poc.GetHTTPPacketHeader(signedReq, "X-Digest-Algo")
+    log.info("got digest: " + gotDigest + " algo: " + gotAlgo)
+    assert gotAlgo == "sm3", "algo mismatch"
+    assert len(gotDigest) == 64, "sm3 hex length should be 64"
+
+    expectDigest = codec.EncodeToHex(codec.Sm3(plainBody))
+    assert gotDigest == expectDigest, "digest mismatch"
+
+    log.info("body digest self test passed")
+}
+
+runSelfTest()

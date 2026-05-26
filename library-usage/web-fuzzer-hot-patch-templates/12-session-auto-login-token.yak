@@ -1,0 +1,112 @@
+/*
+模版名称: [会话] 自动登录注入 Authorization Token
+对应 i18n key: HTTPFuzzerHotPatch.session_auto_login_token
+关键词: 自动登录, Authorization, Bearer, beforeRequest, session, 内存缓存
+适用场景: 测试需要登录态的接口时，每次新建 Fuzzer 后用此模版自动登录拿 token 注入到请求头
+说明: token 用模块级变量缓存，避免每次发包都登录；如需重新登录请清空缓存或修改 cachedToken = ""
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 自动登录获取 token 并注入到 Authorization 请求头
+// 请修改下方 loginRequest 为目标系统的真实登录请求
+loginRequest = `POST /api/login HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/json
+
+{"username":"admin","password":"admin123"}`
+
+loginUseHttps = false  /* 登录接口是否走 https */
+tokenJsonPath = "data.access_token"  /* 从响应 body JSON 中提取 token 的路径，用点号分隔 */
+
+cachedToken = ""
+
+extractByJsonPath = func(obj, path) {
+    parts = str.Split(path, ".")
+    cur = obj
+    for p in parts {
+        if cur == nil {
+            return ""
+        }
+        cur = cur[p]
+    }
+    return sprintf("%v", cur)
+}
+
+fetchToken = func() {
+    rsp, _, err = poc.HTTP(loginRequest, poc.https(loginUseHttps), poc.timeout(10))
+    if err != nil {
+        log.error("login request failed: " + sprintf("%v", err))
+        return ""
+    }
+    body = poc.GetHTTPPacketBody(rsp)
+    parsed = json.loads(string(body))
+    return extractByJsonPath(parsed, tokenJsonPath)
+}
+
+beforeRequest = func(https, originReq, req) {
+    if cachedToken == "" {
+        cachedToken = fetchToken()
+    }
+    if cachedToken == "" {
+        return req
+    }
+    return poc.ReplaceHTTPPacketHeader(req, "Authorization", "Bearer "+cachedToken)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码 - 起一个 mock 登录服务，校验 token 自动注入逻辑
+func runSelfTest() {
+    log.info("start auto login token self test")
+
+    port = os.GetRandomAvailableTCPPort()
+    host = "127.0.0.1"
+    loginCount = {"n": 0}
+    expectedToken = "mock-token-" + codec.EncodeToHex(codec.RandBytes(4))
+
+    go func {
+        httpserver.Serve(host, port,
+            httpserver.routeHandler("/api/login", (w, req) => {
+                loginCount["n"] = loginCount["n"] + 1
+                w.Header().Set("Content-Type", "application/json")
+                rspJson = json.dumps({
+                    "code": 0,
+                    "data": {"access_token": expectedToken},
+                })
+                w.Write(rspJson)
+            }),
+            httpserver.handler((w, req) => {
+                w.Write("fallback")
+            }),
+        )
+    }
+    os.WaitConnect(str.HostPort(host, port), 4)
+
+    loginRequest = sprintf(`POST /api/login HTTP/1.1
+Host: %s:%d
+Content-Type: application/json
+
+{"username":"admin","password":"admin123"}`, host, port)
+    loginUseHttps = false
+    cachedToken = ""
+
+    mockReq = `GET /api/profile HTTP/1.1
+Host: api.example.com
+
+`
+
+    signedReq1 = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    auth1 = poc.GetHTTPPacketHeader(signedReq1, "Authorization")
+    log.info("first call auth: " + auth1)
+    assert auth1 == "Bearer "+expectedToken, "auth mismatch first call"
+    assert loginCount["n"] == 1, "should login once"
+
+    signedReq2 = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    auth2 = poc.GetHTTPPacketHeader(signedReq2, "Authorization")
+    log.info("second call auth: " + auth2)
+    assert auth2 == "Bearer "+expectedToken, "auth mismatch second call"
+    assert loginCount["n"] == 1, "should NOT login again due to cache"
+
+    log.info("auto login token self test passed")
+}
+
+runSelfTest()

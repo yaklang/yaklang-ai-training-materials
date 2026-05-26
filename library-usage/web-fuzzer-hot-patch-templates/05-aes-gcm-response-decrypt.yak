@@ -1,0 +1,53 @@
+/*
+模版名称: [AES] 响应解密 AES-GCM/Base64
+对应 i18n key: HTTPFuzzerHotPatch.response_decrypt_aes_gcm_base64
+关键词: AES-GCM, afterRequest, 响应解密, NonceSize12, AEAD
+适用场景: 现代 API 使用 AES-GCM 加密响应，nonce 长度 12 字节，body 整体 Base64 编码
+说明: AES-GCM 是带认证的加密模式，密文末尾 16 字节为认证 tag，本模版假定 nonce 固定（实际场景中往往 nonce 随响应一同返回）
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// AES-GCM 响应解密 - nonce 长度 12 字节
+// key / nonce 使用 Base64 编码，请替换为实际值
+aesKey = "MTIzNDU2Nzg5MDEyMzQ1Ng=="  /* Base64("1234567890123456") - AES-128 */
+aesNonce = "MTIzNDU2Nzg5MDEy"        /* Base64("123456789012") - 12 字节 */
+aesKey = codec.DecodeBase64(aesKey)~
+aesNonce = codec.DecodeBase64(aesNonce)~
+
+decryptAesGcm = func(req, rsp) {
+    body = poc.GetHTTPPacketBody(rsp)
+    if len(body) == 0 {
+        return rsp
+    }
+    cipherBytes = codec.DecodeBase64(body)~
+    plain = codec.AESGCMDecryptWithNonceSize12(aesKey, cipherBytes, aesNonce)~
+    return poc.ReplaceHTTPPacketBody(rsp, plain)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    return decryptAesGcm(req, rsp)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start aes gcm response decrypt self test")
+
+    plaintext = `{"code":0,"data":{"items":[1,2,3]}}`
+    cipherBytes = codec.AESGCMEncryptWithNonceSize12(aesKey, plaintext, aesNonce)~
+    cipherB64 = codec.EncodeBase64(cipherBytes)
+
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+` + cipherB64
+
+    decRsp = afterRequest(true, []byte(""), []byte(""), []byte(mockRsp), []byte(mockRsp))
+    decBody = poc.GetHTTPPacketBody(decRsp)
+    log.info("decrypted body: " + string(decBody))
+    assert string(decBody) == plaintext, "aes gcm decrypt mismatch"
+
+    log.info("aes gcm response decrypt self test passed")
+}
+
+runSelfTest()

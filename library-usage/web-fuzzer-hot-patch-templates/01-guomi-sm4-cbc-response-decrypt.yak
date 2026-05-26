@@ -1,0 +1,62 @@
+/*
+模版名称: [国密] 响应解密 SM4-CBC/Base64
+对应 i18n key: HTTPFuzzerHotPatch.response_decrypt_sm4_cbc_base64
+关键词: SM4, 国密, afterRequest, 响应解密, Base64
+适用场景: 服务端返回 body 为 Base64 编码的 SM4-CBC 密文，使用固定 key/iv
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 响应解密模板 - 适用于响应 body 为 Base64 编码的国密 SM4-CBC 密文
+// key / iv 使用 Base64 编码，请替换为实际值
+key = "MTIzNDU2Nzg5MDEyMzQ1Ng=="  /* Base64("1234567890123456") */
+iv = "MTIzNDU2Nzg5MDEyMzQ1Ng=="
+key = codec.DecodeBase64(key)~
+iv = codec.DecodeBase64(iv)~
+
+hostFilter = ""  /* 仅解密指定 Host 的响应，留空则解密所有 */
+
+decryptSm4Response = func(req, rsp) {
+    if hostFilter != "" {
+        host = poc.GetHTTPPacketHeader(req, "Host")
+        if host != hostFilter {
+            return rsp
+        }
+    }
+    body = poc.GetHTTPPacketBody(rsp)
+    body = codec.DecodeBase64(body)~
+    body = codec.Sm4CBCDecrypt(key, body, iv)~
+    return poc.ReplaceHTTPPacketBody(rsp, body)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    return decryptSm4Response(req, rsp)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码 - 不会进入 yakit 模版库
+func runSelfTest() {
+    log.info("start sm4 cbc response decrypt self test")
+
+    plaintext = `{"code":0,"msg":"ok","data":{"id":1}}`
+    cipherBytes = codec.Sm4CBCEncrypt(key, plaintext, iv)~
+    cipherBase64 = codec.EncodeBase64(cipherBytes)
+
+    mockReq = `GET /api/user HTTP/1.1
+Host: test.local
+User-Agent: yak
+
+`
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+` + cipherBase64
+
+    decRsp = afterRequest(true, []byte(mockReq), []byte(mockReq), []byte(mockRsp), []byte(mockRsp))
+    decBody = poc.GetHTTPPacketBody(decRsp)
+    log.info("decrypted body: " + string(decBody))
+    assert string(decBody) == plaintext, "sm4 cbc response decrypt mismatch"
+
+    log.info("sm4 cbc response decrypt self test passed")
+}
+
+runSelfTest()

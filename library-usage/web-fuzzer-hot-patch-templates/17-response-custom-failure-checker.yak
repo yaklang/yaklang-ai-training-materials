@@ -1,0 +1,96 @@
+/*
+模版名称: [响应] customFailureChecker 自定义失败检查
+对应 i18n key: HTTPFuzzerHotPatch.response_custom_failure_checker
+关键词: customFailureChecker, 失败检查, 响应分析, 状态码, 响应内容
+适用场景: 服务端返回 200 但 body 中包含错误，需要把这种"假成功"标记为失败便于过滤
+默认规则:
+  - 状态码 >= 500 标记失败
+  - body 包含 "error" / "失败" / "ratelimit" 等关键字标记失败
+  - body 过短（小于 50 字节）标记失败
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 自定义失败检查 - 综合状态码、响应关键字、响应长度判断
+failureKeywords = ["error", "exception", "ratelimit", "rate limit", "失败", "异常", "请稍后", "blocked"]
+minBodySize = 50
+
+customFailureChecker = func(https, req, rsp, fail) {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode >= 500 {
+        fail(sprintf("server error status %d", statusCode))
+        return
+    }
+
+    body = poc.GetHTTPPacketBody(rsp)
+    bodyStr = str.ToLower(string(body))
+    for kw in failureKeywords {
+        if str.Contains(bodyStr, str.ToLower(kw)) {
+            fail(sprintf("response contains failure keyword: %s", kw))
+            return
+        }
+    }
+
+    if len(body) < minBodySize {
+        fail(sprintf("response body too short: %d bytes", len(body)))
+        return
+    }
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start custom failure checker self test")
+
+    failReasonRef = {"reason": ""}
+    failCb = func(reason) {
+        failReasonRef["reason"] = reason
+    }
+
+    // 场景 1: 500 错误
+    rsp500 = `HTTP/1.1 500 Internal Server Error
+Content-Type: text/plain
+Content-Length: 100
+
+This is a long enough error body to bypass the size check at least.`
+    failReasonRef["reason"] = ""
+    customFailureChecker(true, []byte(""), []byte(rsp500), failCb)
+    log.info("case 500: " + failReasonRef["reason"])
+    assert str.Contains(failReasonRef["reason"], "status 500"), "case 500 should fail"
+
+    // 场景 2: 包含 error 关键字
+    rspErr = `HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 80
+
+{"code":1,"msg":"some error happened in service","data":null,"trace":"xxx"}`
+    failReasonRef["reason"] = ""
+    customFailureChecker(true, []byte(""), []byte(rspErr), failCb)
+    log.info("case error: " + failReasonRef["reason"])
+    assert str.Contains(failReasonRef["reason"], "error"), "case error should fail"
+
+    // 场景 3: body 过短
+    rspShort = `HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 2
+
+ok`
+    failReasonRef["reason"] = ""
+    customFailureChecker(true, []byte(""), []byte(rspShort), failCb)
+    log.info("case short: " + failReasonRef["reason"])
+    assert str.Contains(failReasonRef["reason"], "too short"), "case short should fail"
+
+    // 场景 4: 正常响应不应失败
+    rspOk = `HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 80
+
+{"code":0,"data":{"user":"alice","email":"alice@example.com","level":5,"vip":true}}`
+    failReasonRef["reason"] = ""
+    customFailureChecker(true, []byte(""), []byte(rspOk), failCb)
+    log.info("case ok reason: " + failReasonRef["reason"])
+    assert failReasonRef["reason"] == "", "case ok should NOT fail"
+
+    log.info("custom failure checker self test passed")
+}
+
+runSelfTest()

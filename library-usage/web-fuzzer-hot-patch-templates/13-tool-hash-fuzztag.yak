@@ -1,0 +1,68 @@
+/*
+模版名称: [工具] Hash fuzz tag (MD5/SHA1/SHA256/SM3)
+对应 i18n key: HTTPFuzzerHotPatch.tool_hash_fuzztag
+关键词: Hash, MD5, SHA1, SHA256, SM3, fuzz tag, 工具
+适用场景: 在数据包中用 fuzz tag 计算任意字符串的哈希值
+用法: {{yak(hash|md5,plaintext)}}、{{yak(hash|sha256,abc)}}、{{yak(hash|sm3,test)}}
+支持算法: md5 / sha1 / sha256 / sha512 / sm3，结果均为 hex 小写字符串
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// Hash fuzz tag - 第一个参数是算法名，第二个参数是明文
+hash = func(param) {
+    parts = str.SplitN(param, ",", 2)
+    if len(parts) < 2 {
+        return [""]
+    }
+    algo = str.ToLower(str.TrimSpace(parts[0]))
+    data = parts[1]
+    if algo == "md5" {
+        return [codec.Md5(data)]
+    }
+    if algo == "sha1" {
+        return [codec.Sha1(data)]
+    }
+    if algo == "sha256" {
+        return [codec.Sha256(data)]
+    }
+    if algo == "sha512" {
+        return [codec.Sha512(data)]
+    }
+    if algo == "sm3" {
+        return [codec.EncodeToHex(codec.Sm3(data))]
+    }
+    return [""]
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start hash fuzz tag self test")
+
+    md5Result = hash("md5,hello")[0]
+    log.info("md5(hello) = " + md5Result)
+    assert md5Result == "5d41402abc4b2a76b9719d911017c592", "md5 mismatch"
+
+    sha1Result = hash("sha1,hello")[0]
+    log.info("sha1(hello) = " + sha1Result)
+    assert sha1Result == "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d", "sha1 mismatch"
+
+    sha256Result = hash("sha256,hello")[0]
+    log.info("sha256(hello) = " + sha256Result)
+    assert sha256Result == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "sha256 mismatch"
+
+    sm3Result = hash("sm3,abc")[0]
+    log.info("sm3(abc) = " + sm3Result)
+    assert sm3Result == "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0", "sm3 mismatch"
+
+    sha512Result = hash("sha512,hello")[0]
+    log.info("sha512(hello) = " + sha512Result)
+    assert len(sha512Result) == 128, "sha512 should be 128 hex chars"
+
+    unknown = hash("md4,abc")[0]
+    assert unknown == "", "unknown algo should return empty"
+
+    log.info("hash fuzz tag self test passed")
+}
+
+runSelfTest()

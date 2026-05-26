@@ -1,0 +1,112 @@
+/*
+模版名称: [重试] retryHandler 智能重试
+对应 i18n key: HTTPFuzzerHotPatch.retry_smart_retry
+关键词: retryHandler, 智能重试, 状态码处理, 405, 429, 限流退避
+适用场景: 根据响应状态码自动调整重试策略
+默认规则:
+  - 405 Method Not Allowed: 改用 POST 方法重发
+  - 429 Too Many Requests: 等待 1 秒后重发原请求
+  - 403/401: 不重试（直接放弃）
+  - 其他错误状态: 用原请求包重发一次
+重试触发条件请配合 yakit 重试配置（开启重试 + 失败状态码）使用
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// retryHandler - 根据响应状态码采用不同重试策略
+retryHandler = func(https, retryCount, req, rsp, retry) {
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    if statusCode == 405 {
+        log.info(sprintf("retry: switch GET to POST (count=%d)", retryCount))
+        retry(poc.ReplaceHTTPPacketMethod(req, "POST"))
+        return
+    }
+    if statusCode == 429 {
+        log.info(sprintf("retry: rate limited, sleep 1s (count=%d)", retryCount))
+        sleep(1)
+        retry()
+        return
+    }
+    if statusCode == 401 || statusCode == 403 {
+        log.info(sprintf("retry: %d denied, give up", statusCode))
+        return
+    }
+    if statusCode >= 500 {
+        log.info(sprintf("retry: %d server error, retry once (count=%d)", statusCode, retryCount))
+        retry()
+        return
+    }
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start smart retry self test")
+
+    retryStat = {
+        "called": 0,
+        "lastReq": "",
+    }
+    retryCb = func(args...) {
+        retryStat["called"] = retryStat["called"] + 1
+        if len(args) > 0 {
+            retryStat["lastReq"] = string(args[0])
+        } else {
+            retryStat["lastReq"] = ""
+        }
+    }
+
+    // 场景 1: 405 应该切到 POST
+    origReq = `GET /api/data HTTP/1.1
+Host: test.local
+
+`
+    rsp405 = `HTTP/1.1 405 Method Not Allowed
+Content-Length: 0
+
+`
+    retryStat["called"] = 0
+    retryStat["lastReq"] = ""
+    retryHandler(false, 1, []byte(origReq), []byte(rsp405), retryCb)
+    log.info(sprintf("case 405: called=%d", retryStat["called"]))
+    assert retryStat["called"] == 1, "405 should trigger retry"
+    assert str.HasPrefix(retryStat["lastReq"], "POST "), "should switch to POST"
+
+    // 场景 2: 429 应该重发原请求
+    rsp429 = `HTTP/1.1 429 Too Many Requests
+Retry-After: 1
+Content-Length: 0
+
+`
+    retryStat["called"] = 0
+    retryStat["lastReq"] = ""
+    start = time.Now().Unix()
+    retryHandler(false, 1, []byte(origReq), []byte(rsp429), retryCb)
+    elapsed = time.Now().Unix() - start
+    log.info(sprintf("case 429: called=%d elapsed=%ds", retryStat["called"], elapsed))
+    assert retryStat["called"] == 1, "429 should trigger retry"
+    assert elapsed >= 1, "429 should sleep at least 1 second"
+
+    // 场景 3: 401 不应重试
+    rsp401 = `HTTP/1.1 401 Unauthorized
+Content-Length: 0
+
+`
+    retryStat["called"] = 0
+    retryHandler(false, 1, []byte(origReq), []byte(rsp401), retryCb)
+    log.info(sprintf("case 401: called=%d", retryStat["called"]))
+    assert retryStat["called"] == 0, "401 should NOT retry"
+
+    // 场景 4: 500 应该重试一次
+    rsp500 = `HTTP/1.1 500 Internal Server Error
+Content-Length: 0
+
+`
+    retryStat["called"] = 0
+    retryHandler(false, 1, []byte(origReq), []byte(rsp500), retryCb)
+    log.info(sprintf("case 500: called=%d", retryStat["called"]))
+    assert retryStat["called"] == 1, "500 should retry once"
+
+    log.info("smart retry self test passed")
+}
+
+runSelfTest()

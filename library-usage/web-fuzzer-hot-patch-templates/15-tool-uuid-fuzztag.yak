@@ -1,0 +1,41 @@
+/*
+模版名称: [工具] UUID fuzz tag
+对应 i18n key: HTTPFuzzerHotPatch.tool_uuid_fuzztag
+关键词: UUID, fuzz tag, 工具, 唯一标识
+适用场景: 数据包中需要 UUID 作为请求 id、trace id、幂等键等
+用法: {{yak(uuidv4)}} 标准 UUID v4 / {{yak(uuidv4|nohyphen)}} 不带连字符的 32 位 hex
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// UUID fuzz tag - 默认输出标准 UUID v4，传入 "nohyphen" 输出去掉连字符的 hex
+uuidv4 = func(param) {
+    raw = uuid()
+    if str.ToLower(str.TrimSpace(param)) == "nohyphen" {
+        return [str.ReplaceAll(raw, "-", "")]
+    }
+    return [raw]
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start uuid fuzz tag self test")
+
+    u1 = uuidv4("")[0]
+    log.info("uuid: " + u1)
+    assert len(u1) == 36, "uuid length should be 36"
+    assert str.Contains(u1, "-"), "uuid should contain hyphen"
+
+    u2 = uuidv4("nohyphen")[0]
+    log.info("uuid nohyphen: " + u2)
+    assert len(u2) == 32, "nohyphen uuid length should be 32"
+    assert !str.Contains(u2, "-"), "nohyphen uuid should not contain hyphen"
+
+    /* 两次生成应该不同 */
+    u3 = uuidv4("")[0]
+    assert u3 != u1, "two uuids should be different"
+
+    log.info("uuid fuzz tag self test passed")
+}
+
+runSelfTest()

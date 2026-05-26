@@ -1,0 +1,94 @@
+/*
+模版名称: [流处理] mirrorHTTPFlow 提取参数链
+对应 i18n key: HTTPFuzzerHotPatch.mirror_flow_extract_chain
+关键词: mirrorHTTPFlow, 参数链, 提取参数, 关联测试, 多步请求
+适用场景: 多步请求场景中，需要从前一个响应中提取 token / id / csrf 等参数注入到下一个请求
+返回的 map 会作为 {{params(name)}} fuzz tag 的输入，配合 Fuzzer 的关联测试使用
+默认提取:
+  - 响应 body JSON 中的 access_token / token / csrfToken
+  - 响应头中的 X-CSRF-Token
+  - 响应状态码作为 current_status_code
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mirrorHTTPFlow - 从响应中提取关键参数注入到下一个请求
+mirrorHTTPFlow = func(req, rsp, params) {
+    if params == nil {
+        params = {}
+    }
+
+    statusCode = poc.GetStatusCodeFromResponse(rsp)
+    params["current_status_code"] = sprintf("%d", statusCode)
+
+    csrfHeader = poc.GetHTTPPacketHeader(rsp, "X-CSRF-Token")
+    if csrfHeader != "" {
+        params["csrf_token"] = csrfHeader
+    }
+
+    body = poc.GetHTTPPacketBody(rsp)
+    if len(body) > 0 {
+        tryParseJson = func() {
+            defer func {
+                err = recover()
+                if err != nil {
+                    log.warn("mirror flow: not a json body")
+                }
+            }
+            data = json.loads(string(body))
+            keys = ["access_token", "token", "csrfToken", "csrf_token", "session_id"]
+            for k in keys {
+                v = data[k]
+                if v != nil {
+                    params[k] = sprintf("%v", v)
+                }
+            }
+        }
+        tryParseJson()
+    }
+
+    return params
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start mirror flow self test")
+
+    mockReq = `GET /api/login HTTP/1.1
+Host: test.local
+
+`
+
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+X-CSRF-Token: csrf-abc-123
+Content-Length: 100
+
+{"code":0,"access_token":"tok_xyz_456","csrfToken":"csrf-body-789","session_id":"sess_abc"}`
+
+    result = mirrorHTTPFlow([]byte(mockReq), []byte(mockRsp), {})
+    log.info(sprintf("result: %v", result))
+
+    assert result["current_status_code"] == "200", "should extract status code"
+    assert result["csrf_token"] == "csrf-abc-123", "should extract csrf from header"
+    assert result["access_token"] == "tok_xyz_456", "should extract access_token"
+    assert result["csrfToken"] == "csrf-body-789", "should extract csrfToken from body"
+    assert result["session_id"] == "sess_abc", "should extract session_id"
+
+    /* 测试 nil params 处理 */
+    result2 = mirrorHTTPFlow([]byte(mockReq), []byte(mockRsp), nil)
+    assert result2["current_status_code"] == "200", "nil params should work"
+
+    /* 测试非 JSON 响应 */
+    mockRsp2 = `HTTP/1.1 200 OK
+Content-Type: text/html
+
+<html>not json</html>`
+    result3 = mirrorHTTPFlow([]byte(mockReq), []byte(mockRsp2), {})
+    log.info(sprintf("result3: %v", result3))
+    assert result3["current_status_code"] == "200", "non-json should still extract status"
+
+    log.info("mirror flow self test passed")
+}
+
+runSelfTest()

@@ -1,0 +1,70 @@
+/*
+模版名称: [国密] 请求&响应 SM4-CBC 双向加解密
+对应 i18n key: HTTPFuzzerHotPatch.bidirectional_sm4_cbc
+关键词: SM4, 国密, beforeRequest, afterRequest, 双向加解密
+适用场景: 客户端用 SM4-CBC 加密请求 body，服务端返回的 body 也是 SM4-CBC 密文
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 双向 SM4-CBC 加解密 - beforeRequest 加密请求体, afterRequest 解密响应体
+// key / iv 使用 Base64 编码，请替换为实际值
+sm4Key = "MTIzNDU2Nzg5MDEyMzQ1Ng=="  /* Base64("1234567890123456") */
+sm4Iv = "MTIzNDU2Nzg5MDEyMzQ1Ng=="
+sm4Key = codec.DecodeBase64(sm4Key)~
+sm4Iv = codec.DecodeBase64(sm4Iv)~
+
+beforeRequest = func(https, originReq, req) {
+    body = poc.GetHTTPPacketBody(req)
+    if len(body) == 0 {
+        return req
+    }
+    cipherBytes = codec.Sm4CBCEncrypt(sm4Key, body, sm4Iv)~
+    cipherText = codec.EncodeBase64(cipherBytes)
+    return poc.ReplaceHTTPPacketBody(req, cipherText)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    body = poc.GetHTTPPacketBody(rsp)
+    if len(body) == 0 {
+        return rsp
+    }
+    cipherBytes = codec.DecodeBase64(body)~
+    plain = codec.Sm4CBCDecrypt(sm4Key, cipherBytes, sm4Iv)~
+    return poc.ReplaceHTTPPacketBody(rsp, plain)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start sm4 cbc bidirectional self test")
+
+    plainReqBody = `{"username":"admin","password":"123456"}`
+    mockReq = `POST /api/login HTTP/1.1
+Host: test.local
+Content-Type: application/json
+
+` + plainReqBody
+
+    encReq = beforeRequest(true, []byte(mockReq), []byte(mockReq))
+    encBody = poc.GetHTTPPacketBody(encReq)
+    log.info("encrypted req body base64: " + string(encBody))
+    cipherBytes = codec.DecodeBase64(encBody)~
+    plainBack = codec.Sm4CBCDecrypt(sm4Key, cipherBytes, sm4Iv)~
+    assert string(plainBack) == plainReqBody, "request encrypt mismatch"
+
+    plainRspBody = `{"code":0,"data":{"token":"abc.def.ghi"}}`
+    encRspBytes = codec.Sm4CBCEncrypt(sm4Key, plainRspBody, sm4Iv)~
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+` + codec.EncodeBase64(encRspBytes)
+
+    decRsp = afterRequest(true, []byte(mockReq), []byte(mockReq), []byte(mockRsp), []byte(mockRsp))
+    decBody = poc.GetHTTPPacketBody(decRsp)
+    log.info("decrypted rsp body: " + string(decBody))
+    assert string(decBody) == plainRspBody, "response decrypt mismatch"
+
+    log.info("sm4 cbc bidirectional self test passed")
+}
+
+runSelfTest()

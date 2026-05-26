@@ -1,0 +1,51 @@
+/*
+模版名称: [AES] 响应解密 AES-ECB/Base64
+对应 i18n key: HTTPFuzzerHotPatch.response_decrypt_aes_ecb_base64
+关键词: AES-ECB, afterRequest, 响应解密, PKCS7Padding, 老系统
+适用场景: 旧系统常用 AES-ECB 模式（无 IV），body 整体 Base64 编码
+注意: ECB 模式安全性弱，相同明文块会产生相同密文块，仅作渗透测试参考
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// AES-ECB 响应解密 - 无需 IV
+// key 使用 Base64 编码，请替换为实际值
+aesEcbKey = "MTIzNDU2Nzg5MDEyMzQ1Ng=="  /* Base64("1234567890123456") - AES-128 */
+aesEcbKey = codec.DecodeBase64(aesEcbKey)~
+
+decryptAesEcb = func(req, rsp) {
+    body = poc.GetHTTPPacketBody(rsp)
+    if len(body) == 0 {
+        return rsp
+    }
+    cipherBytes = codec.DecodeBase64(body)~
+    plain = codec.AESECBDecrypt(aesEcbKey, cipherBytes, nil)~
+    return poc.ReplaceHTTPPacketBody(rsp, plain)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    return decryptAesEcb(req, rsp)
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start aes ecb response decrypt self test")
+
+    plaintext = `{"code":0,"msg":"ok","ts":1700000000}`
+    cipherBytes = codec.AESECBEncrypt(aesEcbKey, plaintext, nil)~
+    cipherB64 = codec.EncodeBase64(cipherBytes)
+
+    mockRsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+` + cipherB64
+
+    decRsp = afterRequest(true, []byte(""), []byte(""), []byte(mockRsp), []byte(mockRsp))
+    decBody = poc.GetHTTPPacketBody(decRsp)
+    log.info("decrypted body: " + string(decBody))
+    assert string(decBody) == plaintext, "aes ecb decrypt mismatch"
+
+    log.info("aes ecb response decrypt self test passed")
+}
+
+runSelfTest()

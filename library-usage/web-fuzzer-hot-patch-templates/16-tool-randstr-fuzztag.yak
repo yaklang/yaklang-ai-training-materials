@@ -1,0 +1,84 @@
+/*
+模版名称: [工具] 随机字符串 fuzz tag
+对应 i18n key: HTTPFuzzerHotPatch.tool_randstr_fuzztag
+关键词: 随机字符串, randstr, fuzz tag, 工具, 字符集
+适用场景: 数据包中需要可配置长度和字符集的随机字符串（数字 / 字母 / 混合）
+用法: {{yak(randstr|len,charset)}}
+  - len 长度，默认 8
+  - charset 字符集: digit / lower / upper / alpha / alnum / hex，默认 alnum
+  - 示例: {{yak(randstr|16,hex)}} / {{yak(randstr|6,digit)}}
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 随机字符串 fuzz tag - 支持自定义长度和字符集
+randstr = func(param) {
+    parts = str.SplitN(param, ",", 2)
+    n = 8
+    if len(parts) >= 1 && str.TrimSpace(parts[0]) != "" {
+        v = parseInt(str.TrimSpace(parts[0]))
+        if v > 0 {
+            n = v
+        }
+    }
+    charset = "alnum"
+    if len(parts) >= 2 {
+        cs = str.ToLower(str.TrimSpace(parts[1]))
+        if cs != "" {
+            charset = cs
+        }
+    }
+
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    if charset == "digit" {
+        alphabet = "0123456789"
+    } else if charset == "lower" {
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+    } else if charset == "upper" {
+        alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    } else if charset == "alpha" {
+        alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    } else if charset == "hex" {
+        alphabet = "0123456789abcdef"
+    }
+
+    poolSize = len(alphabet)
+    buf = make([]byte, 0)
+    for i = 0; i < n; i++ {
+        idx = randn(0, poolSize-1)
+        buf = append(buf, alphabet[idx])
+    }
+    return [string(buf)]
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start randstr fuzz tag self test")
+
+    s1 = randstr("")[0]
+    log.info("default(8 alnum): " + s1)
+    assert len(s1) == 8, "default length should be 8"
+
+    s2 = randstr("16")[0]
+    log.info("len 16 alnum: " + s2)
+    assert len(s2) == 16, "length should be 16"
+
+    s3 = randstr("10,digit")[0]
+    log.info("digit only: " + s3)
+    assert len(s3) == 10, "digit length"
+    assert re.Match("^[0-9]+$", s3), "digit charset"
+
+    s4 = randstr("12,hex")[0]
+    log.info("hex only: " + s4)
+    assert len(s4) == 12, "hex length"
+    assert re.Match("^[0-9a-f]+$", s4), "hex charset"
+
+    s5 = randstr("6,lower")[0]
+    log.info("lower only: " + s5)
+    assert len(s5) == 6, "lower length"
+    assert re.Match("^[a-z]+$", s5), "lower charset"
+
+    log.info("randstr fuzz tag self test passed")
+}
+
+runSelfTest()

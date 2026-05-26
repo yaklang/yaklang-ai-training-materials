@@ -1,0 +1,53 @@
+/*
+模版名称: [国密-爆破] SM4-CBC 字典加密爆破
+对应 i18n key: HTTPFuzzerHotPatch.bruteforce_sm4_cbc
+关键词: SM4, 国密, 字典爆破, fuzz tag, 用户名密码
+适用场景: 登录接口对 username/password JSON 体做 SM4-CBC 加密，需要爆破用户名密码
+用法: 在 Fuzzer 包中使用 {{yak(decodeSm4|...)}} 触发，参数会被忽略，函数返回所有加密后的 Base64 字符串
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// SM4-CBC 字典爆破 - 输出加密后的字典数组供 Fuzzer 替换
+decodeSm4 = func(param) {
+    key = codec.DecodeHex("31323334353637383930313233343536")~  /* 16 字节密钥 */
+    iv = codec.DecodeHex("61626364656667686162636465666768")~   /* 16 字节 IV */
+    usernameDict = ["admin"]
+    passwordDict = ["admin", "123456", "admin123", "88888888", "666666"]
+    resultList = []
+    for username in usernameDict {
+        for password in passwordDict {
+            m = {"username": username, "password": password}
+            jsonInput = json.dumps(m)
+            cipherBytes = codec.Sm4CBCEncrypt(key, jsonInput, iv)~
+            resultList.Append(codec.EncodeBase64(cipherBytes))
+        }
+    }
+    return resultList
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start sm4 cbc bruteforce self test")
+
+    payloads = decodeSm4("placeholder")
+    log.info(sprintf("generated payload count: %d", len(payloads)))
+    assert len(payloads) == 5, "should generate 5 payloads"
+
+    key = codec.DecodeHex("31323334353637383930313233343536")~
+    iv = codec.DecodeHex("61626364656667686162636465666768")~
+
+    for p in payloads {
+        cipherBytes = codec.DecodeBase64(p)~
+        plain = codec.Sm4CBCDecrypt(key, cipherBytes, iv)~
+        plainStr = string(plain)
+        log.info("decrypted payload: " + plainStr)
+        parsed = json.loads(plainStr)
+        assert parsed["username"] == "admin", "username mismatch"
+        assert parsed["password"] != "", "password should not be empty"
+    }
+
+    log.info("sm4 cbc bruteforce self test passed")
+}
+
+runSelfTest()

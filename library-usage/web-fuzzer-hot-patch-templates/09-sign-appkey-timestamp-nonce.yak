@@ -1,0 +1,68 @@
+/*
+模版名称: [签名] AppKey+Timestamp+Nonce 三方签名生成
+对应 i18n key: HTTPFuzzerHotPatch.sign_appkey_timestamp_nonce
+关键词: AppKey, Timestamp, Nonce, HMAC-SHA256, beforeRequest, 防重放
+适用场景: 京东/阿里/微信支付风格的开放平台 API 签名，时间戳+随机串+AppSecret 三段式
+签名算法: hmacSha256(appSecret, appKey + timestamp + nonce + body)，结果 Hex 编码
+注入位置: 默认注入到 query (X-App-Key/X-Timestamp/X-Nonce/X-Sign)，可自行改成 header
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// AppKey + Timestamp + Nonce 三方签名 - beforeRequest 自动注入
+appKey = "demo-appkey-001"
+appSecret = "S3cr3t!@#example"
+
+genNonce = func(n) {
+    return codec.EncodeToHex(codec.RandBytes(n))
+}
+
+beforeRequest = func(https, originReq, req) {
+    timestamp = sprintf("%d", time.Now().Unix())
+    nonce = genNonce(8)
+    body = string(poc.GetHTTPPacketBody(req))
+    signRaw = appKey + timestamp + nonce + body
+    sign = codec.EncodeToHex(codec.HmacSha256(appSecret, signRaw))
+
+    req = poc.AppendHTTPPacketQueryParam(req, "X-App-Key", appKey)
+    req = poc.AppendHTTPPacketQueryParam(req, "X-Timestamp", timestamp)
+    req = poc.AppendHTTPPacketQueryParam(req, "X-Nonce", nonce)
+    req = poc.AppendHTTPPacketQueryParam(req, "X-Sign", sign)
+    return req
+}
+// ===== HOT PATCH TEMPLATE END =====
+
+// 本地自测代码
+func runSelfTest() {
+    log.info("start appkey timestamp nonce sign self test")
+
+    mockReq = `POST /api/order HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+
+{"product_id":"P001","quantity":2}`
+
+    signedReq = beforeRequest(true, []byte(mockReq), []byte(mockReq))
+    signedStr = string(signedReq)
+    log.info("signed request:\n" + signedStr)
+
+    gotAppKey = poc.GetHTTPPacketQueryParam(signedReq, "X-App-Key")
+    gotTimestamp = poc.GetHTTPPacketQueryParam(signedReq, "X-Timestamp")
+    gotNonce = poc.GetHTTPPacketQueryParam(signedReq, "X-Nonce")
+    gotSign = poc.GetHTTPPacketQueryParam(signedReq, "X-Sign")
+
+    assert gotAppKey == appKey, "appkey mismatch"
+    assert gotTimestamp != "", "timestamp should not be empty"
+    assert gotNonce != "" && len(gotNonce) == 16, "nonce should be 16 hex chars"
+    assert gotSign != "" && len(gotSign) == 64, "sign should be 64 hex chars"
+
+    body = string(poc.GetHTTPPacketBody(signedReq))
+    signRaw = appKey + gotTimestamp + gotNonce + body
+    wantSign = codec.EncodeToHex(codec.HmacSha256(appSecret, signRaw))
+    log.info("got sign: " + gotSign)
+    log.info("expect sign: " + wantSign)
+    assert gotSign == wantSign, "sign verification failed"
+
+    log.info("appkey timestamp nonce sign self test passed")
+}
+
+runSelfTest()
