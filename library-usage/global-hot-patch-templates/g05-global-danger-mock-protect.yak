@@ -1,0 +1,117 @@
+/*
+模版名称: [全局] 危险操作 Mock 保护（DELETE/PUT 自动 mock）
+对应 i18n key: GlobalHotPatch.danger_mock_protect
+关键词: 全局热加载, mockHTTPRequest, 危险操作保护, DELETE, PUT, 误操作护栏, 全站防护
+适用场景: 全系统级护栏：所有 MITM/Fuzzer 流量经过此模板后，凡是 DELETE/PUT/PATCH 或 path 含 delete/destroy 的请求都被 mock 成 403，不会真到服务端
+说明: 与 M12（MITM 模块版）的区别——本模板作为"全局"启用，对 MITM + WebFuzzer 流量都生效，是更高一层的安全网
+参考文章: yak-project-public 024 (2025-12-05) Mock 重塑无污染客户端测试
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全局危险操作护栏模板
+// 命中 → 直接 mockResponse 一个 403，请求不发出
+DANGEROUS_METHODS = ["DELETE", "PUT", "PATCH"]
+DANGEROUS_PATH_KEYWORDS = ["/delete", "/destroy", "/wipe", "/drop", "/purge", "/truncate"]
+// 允许白名单 host 跳过保护（如靶场 / 测试环境）
+WHITELIST_HOST_KEYWORDS = ["vulinbox", "127.0.0.1", "localhost"]
+
+isWhitelistByUrl = func(url) {
+    for h in WHITELIST_HOST_KEYWORDS {
+        if str.Contains(url, h) { return true }
+    }
+    return false
+}
+
+isDangerousByMethod = func(method) {
+    upper = str.ToUpper(method)
+    for m in DANGEROUS_METHODS {
+        if upper == m { return true }
+    }
+    return false
+}
+
+isDangerousByPath = func(url) {
+    lower = str.ToLower(url)
+    for kw in DANGEROUS_PATH_KEYWORDS {
+        if str.Contains(lower, kw) { return true }
+    }
+    return false
+}
+
+buildBlockedResponse = func(method, url) {
+    body = json.dumps({
+        "ok": false,
+        "code": 403,
+        "msg": "[GLOBAL-PROTECT] dangerous operation blocked",
+        "method": method,
+        "url": url,
+        "tip": "remove this template or add host to WHITELIST_HOST_KEYWORDS to allow",
+    }, json.withIndent(""))
+    return "HTTP/1.1 403 Forbidden\r\n" +
+        "Content-Type: application/json\r\n" +
+        "X-Yak-Global-Protect: 1\r\n" +
+        "Content-Length: " + sprintf("%d", len(body)) + "\r\n\r\n" + body
+}
+
+mockHTTPRequest = func(isHttps, url, req, mockResponse) {
+    if isWhitelistByUrl(url) {
+        return
+    }
+    method = poc.GetHTTPRequestMethod(req)
+    if isDangerousByMethod(method) || isDangerousByPath(url) {
+        log.warn(sprintf("[GLOBAL-PROTECT] blocked %s %s", method, url))
+        mockResponse(buildBlockedResponse(method, url))
+    }
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 全局热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start global danger mock protect self test")
+
+    captured = {"rsp": ""}
+    mockResponse = func(rsp) { captured["rsp"] = rsp }
+
+    delReq := []byte("DELETE /api/users/1 HTTP/1.1\r\nHost: prod.target\r\n\r\n")
+    mockHTTPRequest(false, "http://prod.target/api/users/1", delReq, mockResponse)
+    assert captured["rsp"] != "", "production DELETE should be blocked"
+    assert str.Contains(captured["rsp"], "GLOBAL-PROTECT"), "blocked rsp should contain global mark"
+
+    captured["rsp"] = ""
+    putReq := []byte("PUT /api/items/9 HTTP/1.1\r\nHost: prod.target\r\n\r\n")
+    mockHTTPRequest(false, "http://prod.target/api/items/9", putReq, mockResponse)
+    assert captured["rsp"] != "", "PUT should be blocked"
+
+    captured["rsp"] = ""
+    pathReq := []byte("POST /admin/users/delete HTTP/1.1\r\nHost: prod.target\r\n\r\n")
+    mockHTTPRequest(false, "http://prod.target/admin/users/delete", pathReq, mockResponse)
+    assert captured["rsp"] != "", "delete keyword path should be blocked"
+
+    captured["rsp"] = ""
+    safeReq := []byte("GET /api/users HTTP/1.1\r\nHost: prod.target\r\n\r\n")
+    mockHTTPRequest(false, "http://prod.target/api/users", safeReq, mockResponse)
+    assert captured["rsp"] == "", "GET should NOT be blocked"
+
+    captured["rsp"] = ""
+    rangeReq := []byte("DELETE /api/users/1 HTTP/1.1\r\nHost: vulinbox.test\r\n\r\n")
+    mockHTTPRequest(false, "http://vulinbox.test/api/users/1", rangeReq, mockResponse)
+    assert captured["rsp"] == "", "vulinbox should be whitelisted"
+
+    captured["rsp"] = ""
+    localReq := []byte("DELETE /api/x HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n")
+    mockHTTPRequest(false, "http://127.0.0.1:8080/api/x", localReq, mockResponse)
+    assert captured["rsp"] == "", "127.0.0.1 should be whitelisted"
+
+    log.info("global danger mock protect self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

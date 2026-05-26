@@ -1,0 +1,139 @@
+/*
+模版名称: [全局] 流量染色 + tag（敏感关键字/状态码）
+对应 i18n key: GlobalHotPatch.flow_tag_coloring
+关键词: 全局热加载, 流量染色, AddTag, hijackSaveHTTPFlow, 状态码染色, 敏感关键字, 路径分类
+适用场景: 全局生效的流量分类与染色——所有 MITM/Fuzzer 的入库流量都会被打标签 + 染色，方便后续在历史/分析面板按 tag 过滤
+说明: 与 M10 不同的是，本模板作为"全局热加载"启用，对全系统流量都生效，规则集中维护一次
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全局染色 + tag 模板（hijackSaveHTTPFlow）
+// 规则列表 → 命中 → AddTag + 染色
+PATH_RULES = [
+    {"keyword": "/admin",  "tag": "admin-area",  "color": "Blue"},
+    {"keyword": "upload",  "tag": "upload-api",  "color": "Purple"},
+    {"keyword": "login",   "tag": "login-flow",  "color": "Green"},
+]
+BODY_RULES = [
+    {"keyword": "password", "tag": "credential", "color": "Red"},
+    {"keyword": "secret",   "tag": "credential", "color": "Red"},
+    {"keyword": "id_card",  "tag": "pii",        "color": "Orange"},
+]
+
+applyColor = func(flow, color) {
+    if color == "Red"    { flow.Red() }
+    if color == "Orange" { flow.Orange() }
+    if color == "Yellow" { flow.Yellow() }
+    if color == "Green"  { flow.Green() }
+    if color == "Blue"   { flow.Blue() }
+    if color == "Purple" { flow.Purple() }
+    if color == "Cyan"   { flow.Cyan() }
+    if color == "Grey"   { flow.Grey() }
+}
+
+tagByStatus = func(flow) {
+    code = flow.StatusCode
+    if code >= 500 {
+        flow.AddTag("server-error")
+        flow.Red()
+        return
+    }
+    if code >= 400 {
+        flow.AddTag("client-error")
+        flow.Yellow()
+    }
+}
+
+scanBody = func(flow) {
+    rsp = codec.StrconvUnquote(flow.Response)~
+    text = str.ToLower(string(rsp))
+    for rule in BODY_RULES {
+        if str.Contains(text, str.ToLower(rule.keyword)) {
+            flow.AddTag(rule.tag)
+            applyColor(flow, rule.color)
+        }
+    }
+}
+
+scanPath = func(flow) {
+    url = flow.Url
+    lower = str.ToLower(url)
+    for rule in PATH_RULES {
+        if str.Contains(lower, str.ToLower(rule.keyword)) {
+            flow.AddTag(rule.tag)
+            applyColor(flow, rule.color)
+            return
+        }
+    }
+}
+
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    tagByStatus(flow)
+    scanPath(flow)
+    scanBody(flow)
+    modify(flow)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 全局热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start global flow tag coloring self test")
+
+    makeFlow = func(url, statusCode, rsp) {
+        f = make(map[string]any)
+        f["Url"] = url
+        f["StatusCode"] = statusCode
+        f["Request"] = codec.StrconvQuote("GET " + url + " HTTP/1.1\r\nHost: x\r\n\r\n")
+        f["Response"] = codec.StrconvQuote(rsp)
+        f["__tags"] = []
+        f["__colors"] = []
+        f["AddTag"] = func(t...) { for one in t { f["__tags"] = append(f["__tags"], one) } }
+        f["Red"]    = func() { f["__colors"] = append(f["__colors"], "Red") }
+        f["Orange"] = func() { f["__colors"] = append(f["__colors"], "Orange") }
+        f["Yellow"] = func() { f["__colors"] = append(f["__colors"], "Yellow") }
+        f["Green"]  = func() { f["__colors"] = append(f["__colors"], "Green") }
+        f["Blue"]   = func() { f["__colors"] = append(f["__colors"], "Blue") }
+        f["Purple"] = func() { f["__colors"] = append(f["__colors"], "Purple") }
+        f["Cyan"]   = func() { f["__colors"] = append(f["__colors"], "Cyan") }
+        f["Grey"]   = func() { f["__colors"] = append(f["__colors"], "Grey") }
+        return f
+    }
+
+    saved = []
+    modify = func(f) { saved = append(saved, f) }
+    drop = func() { log.error("should not drop") }
+
+    adminFlow = makeFlow("http://target/admin/users", 200, "HTTP/1.1 200 OK\r\n\r\n{\"ok\":1}")
+    hijackSaveHTTPFlow(adminFlow, modify, drop)
+    log.info(sprintf("admin tags=%v colors=%v", adminFlow["__tags"], adminFlow["__colors"]))
+    assert "admin-area" in adminFlow["__tags"], "admin-area tag should be added"
+    assert "Blue" in adminFlow["__colors"], "Blue color should be applied"
+
+    creFlow = makeFlow("http://target/api/login", 500, "HTTP/1.1 500\r\n\r\n{\"password\":\"x\"}")
+    hijackSaveHTTPFlow(creFlow, modify, drop)
+    log.info(sprintf("login+5xx tags=%v colors=%v", creFlow["__tags"], creFlow["__colors"]))
+    assert "server-error" in creFlow["__tags"], "server-error tag should be added"
+    assert "login-flow" in creFlow["__tags"], "login-flow tag should be added"
+    assert "credential" in creFlow["__tags"], "credential tag should be added"
+    assert "Red" in creFlow["__colors"], "Red should be applied (server-error + credential)"
+    assert "Green" in creFlow["__colors"], "Green should be applied (login)"
+
+    safeFlow = makeFlow("http://target/api/items", 200, "HTTP/1.1 200 OK\r\n\r\n{\"items\":[]}")
+    hijackSaveHTTPFlow(safeFlow, modify, drop)
+    assert len(safeFlow["__tags"]) == 0, "safe flow should not be tagged"
+    assert len(safeFlow["__colors"]) == 0, "safe flow should not be colored"
+
+    assert len(saved) == 3, "all 3 flows should be saved"
+    log.info("global flow tag coloring self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

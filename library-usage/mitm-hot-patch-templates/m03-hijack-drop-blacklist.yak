@@ -1,0 +1,93 @@
+/*
+模版名称: [请求] hijackHTTPRequest 黑名单 drop 静态资源/敏感 host
+关键词: hijackHTTPRequest, drop, 黑名单, 静态资源, 噪音过滤, 广告统计屏蔽
+适用场景: MITM 抓包时希望直接丢弃静态资源（.css/.js/.png 等）或第三方统计/广告 host，减少数据库噪音，避免影响业务排查
+说明: yakit 的 MITM 过滤器只能"不入库"，drop() 才会真正阻断请求；本模板适用于希望浏览器都加载不到这些资源的场景
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackHTTPRequest 黑名单 drop 模板
+// 命中黑名单 host 或文件后缀 → drop()，未命中 → forward
+STATIC_SUFFIX = [".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2", ".ttf", ".svg"]
+BLACKLIST_HOST = ["googletagmanager.com", "google-analytics.com", "doubleclick.net", "baidu-stat", "umeng.com"]
+
+matchStaticSuffix = func(url) {
+    lower = str.ToLower(url)
+    for suffix in STATIC_SUFFIX {
+        if str.Contains(lower, suffix+"?") || str.HasSuffix(lower, suffix) {
+            return true
+        }
+    }
+    return false
+}
+
+matchBlacklistHost = func(url) {
+    for h in BLACKLIST_HOST {
+        if str.Contains(url, h) {
+            return true
+        }
+    }
+    return false
+}
+
+shouldDrop = func(url) {
+    return matchStaticSuffix(url) || matchBlacklistHost(url)
+}
+
+hijackHTTPRequest = func(isHttps, url, req, forward, drop) {
+    if shouldDrop(url) {
+        drop()
+        return
+    }
+    forward(req)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start hijack drop blacklist self test")
+
+    mockReq := []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+    captured = {"forwarded_count": 0, "dropped_count": 0}
+    forward = func(b) { captured["forwarded_count"] = captured["forwarded_count"] + 1 }
+    drop = func() { captured["dropped_count"] = captured["dropped_count"] + 1 }
+
+    droppedUrls = [
+        "http://example.com/static/app.css",
+        "http://example.com/assets/logo.png?v=2",
+        "https://www.googletagmanager.com/gtag/js",
+        "https://google-analytics.com/collect",
+        "http://cdn.example.com/lib.woff2",
+    ]
+    for u in droppedUrls {
+        hijackHTTPRequest(str.HasPrefix(u, "https://"), u, mockReq, forward, drop)
+    }
+    assert captured["dropped_count"] == len(droppedUrls), sprintf("expected %d drops, got %d", len(droppedUrls), captured["dropped_count"])
+    assert captured["forwarded_count"] == 0, "no blacklisted url should be forwarded"
+
+    captured["forwarded_count"] = 0
+    captured["dropped_count"] = 0
+    keptUrls = [
+        "http://example.com/api/users",
+        "http://example.com/page.html",
+        "https://api.example.com/v1/data",
+    ]
+    for u in keptUrls {
+        hijackHTTPRequest(str.HasPrefix(u, "https://"), u, mockReq, forward, drop)
+    }
+    assert captured["forwarded_count"] == len(keptUrls), "all business urls should be forwarded"
+    assert captured["dropped_count"] == 0, "no business url should be dropped"
+
+    log.info("hijack drop blacklist self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

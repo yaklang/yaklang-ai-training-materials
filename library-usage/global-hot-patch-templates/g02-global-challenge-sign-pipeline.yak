@@ -1,0 +1,115 @@
+/*
+模版名称: [全局] 动态 Challenge + HMAC 签名注入 pipeline
+对应 i18n key: GlobalHotPatch.challenge_sign_pipeline
+关键词: 全局热加载, Challenge, HMAC, beforeRequest, 签名注入, 协议归一化, 内网对抗
+适用场景: 全站统一签名场景（所有业务接口都需要先取 challenge → HMAC 签名 → 注入 header），全局热加载一次配置全局生效
+参考文章: yak-project-public 009 (2026-03-18) 前端加密测不动 全局热加载帮你自动接管签名流程
+说明: fetchChallenge 是可注入的扩展点，自测时替换为 mock；与模块版（webFuzzer G1）的区别是全局版对"匹配 host 列表"的所有接口自动签名
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全局动态 Challenge 签名模板
+// 工作流程:
+//   1. beforeRequest 命中目标 host（HOST_PATTERN）且不是 challenge 接口本身
+//   2. fetchChallenge(host, isHttps) 从远端取密文 nonce
+//   3. HMAC-SHA256 签名 → 注入 X-Global-Sign 头
+// 自测时把 fetchChallenge 替换成 mock，避免发包
+SIGN_KEY = "GlobalSignSharedKey"
+HOST_PATTERN = ".internal."           /* 命中 host 包含该串才签名 */
+CHALLENGE_PATH = "/api/auth/challenge"
+SIGN_HEADER = "X-Global-Sign"
+
+fetchChallenge = func(isHttps, host) {
+    challengeReq = "GET " + CHALLENGE_PATH + " HTTP/1.1\r\n" +
+        "Host: " + host + "\r\n" +
+        "User-Agent: yak-global-sign\r\n" +
+        "Connection: close\r\n\r\n"
+    rsp, _, err = poc.HTTP(challengeReq, poc.https(isHttps), poc.timeout(5), poc.save(false))
+    if err != nil {
+        log.error(sprintf("fetchChallenge failed: %v", err))
+        return ""
+    }
+    body = poc.GetHTTPPacketBody(rsp)
+    params = json.loads(string(body))
+    if params == nil || !("nonce" in params) {
+        return ""
+    }
+    return sprintf("%v", params.nonce)
+}
+
+isTargetHost = func(host) {
+    return str.Contains(host, HOST_PATTERN)
+}
+
+beforeRequest = func(https, originReq, req) {
+    host = poc.GetHTTPPacketHeader(req, "Host")
+    if !isTargetHost(host) {
+        return req
+    }
+    u = str.ExtractURLFromHTTPRequestRaw(req, https)~
+    if str.HasPrefix(u.Path, CHALLENGE_PATH) {
+        return req
+    }
+    nonce = fetchChallenge(https, host)
+    if nonce == "" {
+        return req
+    }
+    sig = codec.EncodeToHex(codec.HmacSha256(SIGN_KEY, nonce))
+    return poc.ReplaceHTTPPacketHeader(req, SIGN_HEADER, sig)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 全局热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start global challenge sign pipeline self test")
+
+    mockNonce = "nonce-" + codec.EncodeToHex(codec.RandBytes(8))
+    expectedSig = codec.EncodeToHex(codec.HmacSha256(SIGN_KEY, mockNonce))
+    fetchCalls = 0
+
+    fetchChallenge = func(isHttps, host) {
+        fetchCalls = fetchCalls + 1
+        return mockNonce
+    }
+
+    targetReq := []byte(`GET /api/biz/list HTTP/1.1
+Host: api.shop.internal.example.com
+
+`)
+    signedReq = beforeRequest(false, targetReq, targetReq)
+    sig = poc.GetHTTPPacketHeader(signedReq, SIGN_HEADER)
+    log.info("injected sign: " + sig)
+    assert sig == expectedSig, "global sign mismatch"
+    assert fetchCalls == 1, "fetchChallenge should be called once"
+
+    challengeReqRaw := []byte(`GET /api/auth/challenge HTTP/1.1
+Host: api.shop.internal.example.com
+
+`)
+    untouched = beforeRequest(false, challengeReqRaw, challengeReqRaw)
+    sig2 = poc.GetHTTPPacketHeader(untouched, SIGN_HEADER)
+    assert sig2 == "", "challenge endpoint itself should NOT be signed"
+    assert fetchCalls == 1, "challenge endpoint should NOT trigger fetch (avoid recursion)"
+
+    externalReq := []byte(`GET /api/biz/list HTTP/1.1
+Host: api.public.example.com
+
+`)
+    untouched2 = beforeRequest(false, externalReq, externalReq)
+    sig3 = poc.GetHTTPPacketHeader(untouched2, SIGN_HEADER)
+    assert sig3 == "", "non-target host should NOT be signed"
+    assert fetchCalls == 1, "non-target host should NOT trigger fetch"
+
+    log.info("global challenge sign pipeline self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

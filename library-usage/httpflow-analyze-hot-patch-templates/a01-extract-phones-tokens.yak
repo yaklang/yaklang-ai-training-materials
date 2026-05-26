@@ -1,0 +1,152 @@
+/*
+模版名称: [分析] 敏感数据全量提取（手机号/JWT/Authorization）+ JSON 报告
+关键词: analyzeHTTPFlow, onAnalyzeHTTPFlowFinish, 手机号, Token, Authorization, JSON 报告, sync.NewMutex
+适用场景: 对历史流量做批量敏感数据扫描，输出汇总 JSON 报告到 yakit 临时目录；命中后自动给流量染色
+参考文章: yak-project-public 030 (2025-10-24) 流量分析热加载实战技巧 案例一
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全量提取敏感数据并输出 JSON 报告
+// 关键点:
+//   1. analyzeHTTPFlow 是并发调用，对全局收集 slice 必须加锁
+//   2. 必须用 flow.GetResponse() / flow.GetRequest() 拿到反转义后的原文
+//   3. 在 onAnalyzeHTTPFlowFinish 阶段 Close 文件句柄
+mu = sync.NewMutex()
+phones = []
+tokens = []
+reportPath = ""
+reportFile = nil
+
+ensureReportFile = func() {
+    if reportFile != nil { return }
+    path = yakit.GetHomeTempDir()
+    reportPath = str.PathJoin(path, sprintf("analyze-phones-tokens-%d.json", time.Now().Unix()))
+    f, err = file.OpenFile(reportPath, file.O_CREATE|file.O_RDWR|file.O_TRUNC, 0o666)
+    if err != nil {
+        log.error(sprintf("open report file failed: %v", err))
+        return
+    }
+    reportFile = f
+}
+
+extractFromFlow = func(flow, extract) {
+    mu.Lock()
+    defer mu.Unlock()
+
+    resp = flow.GetResponse()
+    req = flow.GetRequest()
+
+    phoneMatches = re.FindAll(resp, `1[3-9]\d{9}`)
+    if len(phoneMatches) > 0 {
+        flow.Red()
+        for m in phoneMatches {
+            phones = append(phones, m)
+            extract("phone-leak", flow, m)
+        }
+    }
+
+    tokenMatches = re.FindAll(req, `(?i)Authorization:\s*Bearer\s+[A-Za-z0-9._\-]+`)
+    if len(tokenMatches) > 0 {
+        flow.Orange()
+        for m in tokenMatches {
+            tokens = append(tokens, m)
+            extract("token-leak", flow, m)
+        }
+    }
+}
+
+analyzeHTTPFlow = func(flow, extract) {
+    extractFromFlow(flow, extract)
+}
+
+onAnalyzeHTTPFlowFinish = func(totalCount, matchedCount) {
+    ensureReportFile()
+    result = {
+        "total_flows": totalCount,
+        "matched_flows": matchedCount,
+        "phones": phones,
+        "tokens": tokens,
+    }
+    raw = json.dumps(result, json.withIndent("  "))
+    if reportFile != nil {
+        reportFile.Write(raw)
+        reportFile.Close()
+        reportFile = nil
+    }
+    log.info(sprintf("analyze finished: total=%d matched=%d phones=%d tokens=%d report=%s",
+        totalCount, matchedCount, len(phones), len(tokens), reportPath))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 历史分析热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start extract phones tokens self test")
+
+    phones = []
+    tokens = []
+    reportFile = nil
+    reportPath = ""
+
+    extractCalls = []
+    extract = func(ruleName, flow, content...) {
+        for c in content {
+            extractCalls = append(extractCalls, ruleName + ":" + c)
+        }
+    }
+
+    colors = []
+    tags = []
+    makeFlow = func(req, rsp) {
+        f = make(map[string]any)
+        f["Request"] = codec.StrconvQuote(req)
+        f["Response"] = codec.StrconvQuote(rsp)
+        f["GetRequest"] = func() { return req }
+        f["GetResponse"] = func() { return rsp }
+        f["Red"] = func() { colors = append(colors, "Red") }
+        f["Orange"] = func() { colors = append(colors, "Orange") }
+        f["AddTag"] = func(t...) { for one in t { tags = append(tags, one) } }
+        return f
+    }
+
+    f1 = makeFlow(
+        "GET /api/users HTTP/1.1\r\nHost: a\r\nAuthorization: Bearer eyJabc.eyJdef.signaturePart\r\n\r\n",
+        "HTTP/1.1 200 OK\r\n\r\nphones: 13812345678 and 13900008888",
+    )
+    f2 = makeFlow(
+        "GET /api/healthz HTTP/1.1\r\nHost: a\r\n\r\n",
+        "HTTP/1.1 200 OK\r\n\r\nOK",
+    )
+
+    analyzeHTTPFlow(f1, extract)
+    analyzeHTTPFlow(f2, extract)
+
+    log.info(sprintf("phones=%v tokens=%v", phones, tokens))
+    log.info(sprintf("extract calls=%v", extractCalls))
+    assert len(phones) == 2, sprintf("expected 2 phones, got %d", len(phones))
+    assert len(tokens) == 1, sprintf("expected 1 token, got %d", len(tokens))
+    assert "Red" in colors, "phone hit flow should be Red"
+    assert "Orange" in colors, "token hit flow should be Orange"
+    assert len(extractCalls) == 3, sprintf("extract should be called 3 times, got %d", len(extractCalls))
+
+    onAnalyzeHTTPFlowFinish(2, 3)
+    log.info("report path: " + reportPath)
+    assert reportPath != "", "report path must be set"
+    raw = string(file.ReadFile(reportPath)~)
+    assert str.Contains(raw, `"total_flows": 2`), "report should contain total_flows"
+    assert str.Contains(raw, "13812345678"), "report should contain phone number"
+    assert str.Contains(raw, "Bearer eyJabc.eyJdef.signaturePart"), "report should contain token"
+
+    file.Remove(reportPath)
+    log.info("extract phones tokens self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

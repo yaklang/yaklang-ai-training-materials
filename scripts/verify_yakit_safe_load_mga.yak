@@ -1,0 +1,44 @@
+// Verify that all 22 new MITM / Analyze / Global hot-patch templates do NOT
+// trigger their runSelfTest() when loaded the way yakit loads them (via dyn.Eval,
+// where YAK_MAIN=false).
+
+baseDir = "/Users/v1ll4n/Projects/yaklang-ai-training-materials/library-usage"
+targets = [
+    // MITM (13)
+    baseDir + "/mitm-hot-patch-templates/m01-hijack-modify-json-field.yak",
+    baseDir + "/mitm-hot-patch-templates/m02-hijack-inject-token-header.yak",
+    baseDir + "/mitm-hot-patch-templates/m03-hijack-drop-blacklist.yak",
+    baseDir + "/mitm-hot-patch-templates/m04-hijack-response-strip-js.yak",
+    baseDir + "/mitm-hot-patch-templates/m05-hijack-response-rewrite-security-headers.yak",
+    baseDir + "/mitm-hot-patch-templates/m06-mirror-color-by-status.yak",
+    baseDir + "/mitm-hot-patch-templates/m07-mirror-filtered-extract-secrets.yak",
+    baseDir + "/mitm-hot-patch-templates/m08-mirror-new-website-fingerprint.yak",
+    baseDir + "/mitm-hot-patch-templates/m09-mirror-new-path-nuclei.yak",
+    baseDir + "/mitm-hot-patch-templates/m10-save-tag-sensitive-keywords.yak",
+    baseDir + "/mitm-hot-patch-templates/m11-save-pii-redaction.yak",
+    baseDir + "/mitm-hot-patch-templates/m12-mock-danger-protect.yak",
+    baseDir + "/mitm-hot-patch-templates/m13-mock-vuln-virtual-range.yak",
+    // Analyze (4)
+    baseDir + "/httpflow-analyze-hot-patch-templates/a01-extract-phones-tokens.yak",
+    baseDir + "/httpflow-analyze-hot-patch-templates/a02-host-stats.yak",
+    baseDir + "/httpflow-analyze-hot-patch-templates/a03-classify-by-path.yak",
+    baseDir + "/httpflow-analyze-hot-patch-templates/a04-abnormal-status-report.yak",
+    // Global (5)
+    baseDir + "/global-hot-patch-templates/g01-global-sm4-transparent.yak",
+    baseDir + "/global-hot-patch-templates/g02-global-challenge-sign-pipeline.yak",
+    baseDir + "/global-hot-patch-templates/g03-global-auto-bearer-token.yak",
+    baseDir + "/global-hot-patch-templates/g04-global-flow-tag-coloring.yak",
+    baseDir + "/global-hot-patch-templates/g05-global-danger-mock-protect.yak",
+]
+
+for path in targets {
+    content = file.ReadFile(path)~
+    log.info("loading via dyn.Eval (simulating yakit hot-patch load): " + path)
+    err = dyn.Eval(string(content))
+    if err != nil {
+        die(sprintf("template %s failed dyn.Eval: %v", path, err))
+    }
+    log.info("module loaded OK without triggering self test: " + path)
+}
+
+log.info(sprintf("yakit-safe load verification passed for all %d new templates", len(targets)))

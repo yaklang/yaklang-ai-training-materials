@@ -1,0 +1,79 @@
+/*
+模版名称: [请求] hijackHTTPRequest 注入 X-Auth-Token / Cookie
+关键词: hijackHTTPRequest, Authorization, X-Auth-Token, Cookie 注入, 全局认证
+适用场景: 在 MITM 出站前自动给目标 host 的所有请求补一个 Authorization Bearer 或额外 Cookie，避免每个工具单独配置认证
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackHTTPRequest 注入认证头模板
+// 对匹配 TARGET_HOST 的所有请求注入 Authorization 与额外 Cookie
+TARGET_HOST = "api.example.com"          /* 仅对该 host 注入 */
+INJECT_AUTH = "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature"
+EXTRA_COOKIE = "session=mitm-injected"   /* 追加的 Cookie 键值 */
+
+isTargetByUrl = func(url) {
+    return str.Contains(url, TARGET_HOST)
+}
+
+injectAuth = func(req) {
+    req = poc.ReplaceHTTPPacketHeader(req, "Authorization", INJECT_AUTH)
+    return poc.AppendHTTPPacketCookie(req, str.SplitN(EXTRA_COOKIE, "=", 2)[0], str.SplitN(EXTRA_COOKIE, "=", 2)[1])
+}
+
+hijackHTTPRequest = func(isHttps, url, req, forward, drop) {
+    if !isTargetByUrl(url) {
+        forward(req)
+        return
+    }
+    forward(injectAuth(req))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start hijack inject token header self test")
+
+    targetReq := []byte(`GET /v1/profile HTTP/1.1
+Host: api.example.com
+Cookie: lang=zh
+
+`)
+    captured = {"req": []byte(""), "dropped": false}
+    forward = func(b) { captured["req"] = b }
+    drop = func() { captured["dropped"] = true }
+
+    hijackHTTPRequest(false, "http://api.example.com/v1/profile", targetReq, forward, drop)
+    assert !captured["dropped"], "target should NOT be dropped"
+
+    auth = poc.GetHTTPPacketHeader(captured["req"], "Authorization")
+    log.info("injected authorization: " + auth)
+    assert auth == INJECT_AUTH, "Authorization header mismatch"
+
+    cookie = poc.GetHTTPPacketCookie(captured["req"], "session")
+    log.info("injected session cookie: " + cookie)
+    assert cookie == "mitm-injected", "session cookie mismatch"
+
+    langCookie = poc.GetHTTPPacketCookie(captured["req"], "lang")
+    assert langCookie == "zh", "existing cookie should be preserved"
+
+    otherReq := []byte(`GET / HTTP/1.1
+Host: other.example.com
+
+`)
+    captured["req"] = []byte("")
+    hijackHTTPRequest(false, "http://other.example.com/", otherReq, forward, drop)
+    assert poc.GetHTTPPacketHeader(captured["req"], "Authorization") == "", "non-target should NOT be injected"
+
+    log.info("hijack inject token header self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

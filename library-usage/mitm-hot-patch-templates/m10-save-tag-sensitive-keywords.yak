@@ -1,0 +1,118 @@
+/*
+模版名称: [入库] hijackSaveHTTPFlow 敏感关键字染色 + tag
+关键词: hijackSaveHTTPFlow, AddTag, Red, 关键字染色, 敏感词, 流量分类入库
+适用场景: 入库前根据请求/响应 body 命中的关键字给流量打 tag 并染色，便于在 yakit 历史中按 tag 检索定位
+说明: flow.Request / flow.Response 是 str.Quote 后的字符串，需 Unquote/Quote 回去；染色通过 flow.Red() 等方法
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackSaveHTTPFlow 敏感关键字染色 + tag 模板
+// 关键字 → 标签 + 染色 映射；命中后调用 flow.AddTag 与对应颜色方法
+KEYWORDS = [
+    {"key": "password", "tag": "credential", "color": "Red"},
+    {"key": "passwd", "tag": "credential", "color": "Red"},
+    {"key": "secret", "tag": "credential", "color": "Red"},
+    {"key": "id_card", "tag": "pii", "color": "Orange"},
+    {"key": "身份证", "tag": "pii", "color": "Orange"},
+    {"key": "phone", "tag": "pii", "color": "Yellow"},
+    {"key": "admin", "tag": "admin-related", "color": "Purple"},
+    {"key": "debug=", "tag": "debug-flag", "color": "Cyan"},
+]
+
+applyColor = func(flow, color) {
+    if color == "Red" { flow.Red() }
+    if color == "Orange" { flow.Orange() }
+    if color == "Yellow" { flow.Yellow() }
+    if color == "Green" { flow.Green() }
+    if color == "Blue" { flow.Blue() }
+    if color == "Purple" { flow.Purple() }
+    if color == "Cyan" { flow.Cyan() }
+    if color == "Grey" { flow.Grey() }
+}
+
+scanAndTag = func(flow) {
+    req = codec.StrconvUnquote(flow.Request)~
+    rsp = codec.StrconvUnquote(flow.Response)~
+    text = str.ToLower(string(req) + "\n" + string(rsp))
+    hits = []
+    for item in KEYWORDS {
+        if str.Contains(text, str.ToLower(item.key)) {
+            hits = append(hits, item)
+        }
+    }
+    for item in hits {
+        flow.AddTag(item.tag)
+        applyColor(flow, item.color)
+    }
+}
+
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    scanAndTag(flow)
+    modify(flow)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start save tag sensitive keywords self test")
+
+    req = `POST /api/login HTTP/1.1
+Host: target.local
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=Passw0rd!`
+
+    rsp = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"token":"abc","secret":"top-secret","id_card":"110101199001011234"}`
+
+    // 用 map 模拟 *yakit.HTTPFlow，AddTag 与各颜色方法都 stub 出来观察调用
+    tags = []
+    colors = []
+    flow = make(map[string]any)
+    flow["Request"] = codec.StrconvQuote(req)
+    flow["Response"] = codec.StrconvQuote(rsp)
+    flow["AddTag"] = func(t...) {
+        for one in t {
+            tags = append(tags, one)
+        }
+    }
+    flow["Red"] = func() { colors = append(colors, "Red") }
+    flow["Orange"] = func() { colors = append(colors, "Orange") }
+    flow["Yellow"] = func() { colors = append(colors, "Yellow") }
+    flow["Green"] = func() { colors = append(colors, "Green") }
+    flow["Blue"] = func() { colors = append(colors, "Blue") }
+    flow["Purple"] = func() { colors = append(colors, "Purple") }
+    flow["Cyan"] = func() { colors = append(colors, "Cyan") }
+    flow["Grey"] = func() { colors = append(colors, "Grey") }
+
+    saved = []
+    modify = func(f) { saved = append(saved, f) }
+    drop = func() { log.error("should not drop") }
+
+    hijackSaveHTTPFlow(flow, modify, drop)
+
+    log.info(sprintf("hit tags: %v", tags))
+    log.info(sprintf("hit colors: %v", colors))
+    assert len(saved) == 1, "modify must be called"
+    assert "credential" in tags, "credential tag should be added (password+secret)"
+    assert "pii" in tags, "pii tag should be added (id_card)"
+    assert "admin-related" in tags, "admin tag should be added"
+    assert "Red" in colors, "Red color should be applied (credential)"
+    assert "Orange" in colors, "Orange color should be applied (id_card)"
+    assert "Purple" in colors, "Purple color should be applied (admin)"
+
+    log.info("save tag sensitive keywords self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

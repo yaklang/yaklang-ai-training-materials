@@ -1,0 +1,160 @@
+/*
+模版名称: [全局] 默认 Authorization Bearer 自动注入（缓存登录）
+对应 i18n key: GlobalHotPatch.auto_bearer_token
+关键词: 全局热加载, Authorization, Bearer, 自动登录, Token 缓存, beforeRequest, hijackHTTPRequest
+适用场景: 所有内网接口都需要 Authorization Bearer，全局热加载安装后自动登录拿一次 token 并缓存，所有 MITM/Fuzzer 请求自动补 header
+说明: fetchToken 是可注入扩展点；同时支持 beforeRequest (Fuzzer 链路) 和 hijackHTTPRequest (MITM 链路)
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全局自动 Bearer 注入模板
+// 工作流程:
+//   1. 首次请求触发 fetchToken() 自动登录拿一个 token，缓存到 tokenCache
+//   2. 后续所有目标 host 请求自动注入 Authorization Bearer
+//   3. 当响应 401 时（通过 hijackHTTPResponseEx 检测），清空缓存触发下次重新登录
+TOKEN_TARGET_HOST = ".internal."
+LOGIN_PATH = "/api/auth/login"
+tokenCache = {"value": "", "expires_at": 0}
+
+isTargetByReq = func(req, https) {
+    host = poc.GetHTTPPacketHeader(req, "Host")
+    if !str.Contains(host, TOKEN_TARGET_HOST) {
+        return false
+    }
+    u, err = str.ExtractURLFromHTTPRequestRaw(req, https)
+    if err != nil { return false }
+    if str.HasPrefix(u.Path, LOGIN_PATH) {
+        return false
+    }
+    return true
+}
+
+fetchToken = func(host, https) {
+    loginReq = "POST " + LOGIN_PATH + " HTTP/1.1\r\n" +
+        "Host: " + host + "\r\n" +
+        "Content-Type: application/json\r\n" +
+        "Connection: close\r\n\r\n" +
+        `{"username":"yak-test","password":"yak-test-pass"}`
+    rsp, _, err = poc.HTTP(loginReq, poc.https(https), poc.timeout(5), poc.save(false))
+    if err != nil {
+        log.error(sprintf("auto bearer login failed: %v", err))
+        return ""
+    }
+    body = poc.GetHTTPPacketBody(rsp)
+    params = json.loads(string(body))
+    if params == nil || !("token" in params) {
+        return ""
+    }
+    return sprintf("%v", params.token)
+}
+
+ensureToken = func(req, https) {
+    if tokenCache.value != "" {
+        return tokenCache.value
+    }
+    host = poc.GetHTTPPacketHeader(req, "Host")
+    if host == "" { return "" }
+    t = fetchToken(host, https)
+    if t != "" {
+        tokenCache["value"] = t
+    }
+    return t
+}
+
+injectToken = func(req, https) {
+    if !isTargetByReq(req, https) {
+        return req
+    }
+    if poc.GetHTTPPacketHeader(req, "Authorization") != "" {
+        return req
+    }
+    t = ensureToken(req, https)
+    if t == "" {
+        return req
+    }
+    return poc.ReplaceHTTPPacketHeader(req, "Authorization", "Bearer " + t)
+}
+
+beforeRequest = func(https, originReq, req) {
+    return injectToken(req, https)
+}
+
+hijackHTTPRequest = func(isHttps, url, req, forward, drop) {
+    forward(injectToken(req, isHttps))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 全局热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start global auto bearer token self test")
+
+    tokenCache["value"] = ""
+    mockToken = "tk-" + codec.EncodeToHex(codec.RandBytes(8))
+    fetchCalls = 0
+    fetchToken = func(host, https) {
+        fetchCalls = fetchCalls + 1
+        return mockToken
+    }
+
+    targetReq := []byte(`GET /api/biz/list HTTP/1.1
+Host: api.crm.internal.example.com
+
+`)
+    out1 = beforeRequest(false, targetReq, targetReq)
+    auth1 = poc.GetHTTPPacketHeader(out1, "Authorization")
+    log.info("injected auth (beforeRequest): " + auth1)
+    assert auth1 == "Bearer " + mockToken, "Bearer should be injected via beforeRequest"
+    assert fetchCalls == 1, "first call should trigger fetchToken"
+
+    captured = {"req": []byte("")}
+    forward = func(b) { captured["req"] = b }
+    drop = func() { log.error("should not drop") }
+
+    targetReq2 := []byte(`GET /api/biz/orders HTTP/1.1
+Host: api.crm.internal.example.com
+
+`)
+    hijackHTTPRequest(false, "http://api.crm.internal.example.com/api/biz/orders", targetReq2, forward, drop)
+    auth2 = poc.GetHTTPPacketHeader(captured["req"], "Authorization")
+    log.info("injected auth (MITM): " + auth2)
+    assert auth2 == "Bearer " + mockToken, "Bearer should be injected via hijackHTTPRequest"
+    assert fetchCalls == 1, "second call should reuse cached token, no new fetch"
+
+    loginReq := []byte(`POST /api/auth/login HTTP/1.1
+Host: api.crm.internal.example.com
+
+`)
+    loginOut = beforeRequest(false, loginReq, loginReq)
+    loginAuth = poc.GetHTTPPacketHeader(loginOut, "Authorization")
+    assert loginAuth == "", "login endpoint should NOT be injected"
+
+    externalReq := []byte(`GET /api/biz/list HTTP/1.1
+Host: api.public.example.com
+
+`)
+    externalOut = beforeRequest(false, externalReq, externalReq)
+    externalAuth = poc.GetHTTPPacketHeader(externalOut, "Authorization")
+    assert externalAuth == "", "non-target host should NOT be injected"
+
+    existingAuthReq := []byte(`GET /api/biz/list HTTP/1.1
+Host: api.crm.internal.example.com
+Authorization: Bearer user-supplied-token
+
+`)
+    existingOut = beforeRequest(false, existingAuthReq, existingAuthReq)
+    existingAuth = poc.GetHTTPPacketHeader(existingOut, "Authorization")
+    assert existingAuth == "Bearer user-supplied-token", "existing Authorization should NOT be overwritten"
+
+    log.info("global auto bearer token self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

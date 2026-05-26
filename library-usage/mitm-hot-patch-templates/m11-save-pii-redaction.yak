@@ -1,0 +1,123 @@
+/*
+模版名称: [入库] hijackSaveHTTPFlow PII 脱敏入库
+关键词: hijackSaveHTTPFlow, PII, 脱敏, 手机号, 身份证, 邮箱, 银行卡, 合规演示
+适用场景: 演示/合规场景下希望流量入库时不带原始 PII，又能保留接口结构供后续排查；本模板对 Response body 做手机号/身份证/邮箱/银行卡的中间位脱敏后保存
+说明: 浏览器端拿到的仍是原文，本 Hook 仅改写"保存到数据库"那一份；与 23（明文存储）相反，本模板降低数据库敏感等级
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackSaveHTTPFlow PII 脱敏模板
+// 对 body 中的 PII 字段做中间星号脱敏：仅入库一份，浏览器不受影响
+// 注意：规则顺序很重要，先处理长串再处理短串，避免长串中的子串被短规则误匹配
+PII_RULES = [
+    {"name": "id_card", "pattern": `[1-9]\d{16}[\dXx]`, "keep_head": 4, "keep_tail": 4},
+    {"name": "bank_card", "pattern": `[1-9]\d{15,18}`, "keep_head": 6, "keep_tail": 4},
+    {"name": "phone", "pattern": `1[3-9]\d{9}`, "keep_head": 3, "keep_tail": 4},
+    {"name": "email", "pattern": `[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`, "keep_head": 2, "keep_tail": -1},
+]
+
+maskValue = func(v, keepHead, keepTail) {
+    if keepTail < 0 {
+        // 邮箱：保留 head + @ 后所有
+        atIdx = str.Index(v, "@")
+        if atIdx <= 0 { return v }
+        prefix = v[:atIdx]
+        domain = v[atIdx:]
+        if len(prefix) <= keepHead { return v }
+        masked = prefix[:keepHead] + str.Repeat("*", len(prefix)-keepHead) + domain
+        return masked
+    }
+    if len(v) <= keepHead+keepTail { return v }
+    return v[:keepHead] + str.Repeat("*", len(v)-keepHead-keepTail) + v[len(v)-keepTail:]
+}
+
+redactText = func(text) {
+    hits = {}
+    for rule in PII_RULES {
+        matches = re.FindAll(text, rule.pattern)
+        seen = {}
+        for m in matches {
+            if seen[m] { continue }
+            seen[m] = true
+            masked = maskValue(m, rule.keep_head, rule.keep_tail)
+            text = str.ReplaceAll(text, m, masked)
+            hits[rule.name] = (hits[rule.name] == nil ? 0 : hits[rule.name]) + 1
+        }
+    }
+    return text, hits
+}
+
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    rsp = codec.StrconvUnquote(flow.Response)~
+    body = string(poc.GetHTTPPacketBody(rsp))
+    newBody, hits = redactText(body)
+    if newBody != body {
+        newRsp = poc.ReplaceHTTPPacketBody(rsp, newBody)
+        flow.Response = codec.StrconvQuote(string(newRsp))
+        flow.AddTag("pii-redacted")
+    }
+    modify(flow)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start save pii redaction self test")
+
+    rspText = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"users":[{"phone":"13812345678","id_card":"110101199001011234","email":"alice@example.com"}]}`
+
+    flow = make(map[string]any)
+    flow["Request"] = codec.StrconvQuote("GET /api/users HTTP/1.1\r\nHost: x\r\n\r\n")
+    flow["Response"] = codec.StrconvQuote(rspText)
+    tags = []
+    flow["AddTag"] = func(t...) {
+        for one in t { tags = append(tags, one) }
+    }
+    saved = []
+    modify = func(f) { saved = append(saved, f) }
+    drop = func() { log.error("should not drop") }
+
+    hijackSaveHTTPFlow(flow, modify, drop)
+    assert len(saved) == 1, "modify should be called once"
+
+    redactedRsp = codec.StrconvUnquote(saved[0].Response)~
+    redactedBody = string(poc.GetHTTPPacketBody(redactedRsp))
+    log.info("redacted body: " + redactedBody)
+
+    assert !str.Contains(redactedBody, "13812345678"), "phone must be redacted"
+    assert !str.Contains(redactedBody, "110101199001011234"), "id_card must be redacted"
+    assert !str.Contains(redactedBody, "alice@example.com"), "email must be redacted"
+    assert str.Contains(redactedBody, "138****5678"), "phone should be masked with middle stars"
+    assert str.Contains(redactedBody, "1101**********1234"), "id_card masked pattern mismatch"
+    assert str.Contains(redactedBody, "al***@example.com"), "email masked pattern mismatch"
+    assert "pii-redacted" in tags, "pii-redacted tag should be added"
+
+    // 无 PII 的响应不应当被改写、也不应当加 tag
+    flow2 = make(map[string]any)
+    flow2["Request"] = codec.StrconvQuote("GET /api/healthz HTTP/1.1\r\nHost: x\r\n\r\n")
+    flow2["Response"] = codec.StrconvQuote("HTTP/1.1 200 OK\r\n\r\nOK")
+    tags2 = []
+    flow2["AddTag"] = func(t...) { for one in t { tags2 = append(tags2, one) } }
+    saved2 = []
+    hijackSaveHTTPFlow(flow2, func(f) { saved2 = append(saved2, f) }, drop)
+    assert len(saved2) == 1, "non-pii flow should still be saved"
+    bodyAfter = string(poc.GetHTTPPacketBody(codec.StrconvUnquote(saved2[0].Response)~))
+    assert bodyAfter == "OK", "non-pii body should remain intact"
+    assert len(tags2) == 0, "non-pii flow should NOT be tagged"
+
+    log.info("save pii redaction self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

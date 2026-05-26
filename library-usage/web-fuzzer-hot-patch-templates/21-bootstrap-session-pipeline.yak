@@ -1,0 +1,214 @@
+/*
+模版名称: [会话] Bootstrap 动态会话 + 多 Header 签名 + 响应解密
+对应 i18n key: HTTPFuzzerHotPatch.bootstrap_session_pipeline
+关键词: bootstrap, session_key, X-Pipeline-Session, X-Pipeline-Timestamp, X-Pipeline-Signature, beforeRequest, afterRequest, AES-CBC, HMAC-SHA256
+适用场景: 业务接口需要先调用 bootstrap 接口换取 session_id 与 session_key（密文 ticket，用引导密钥解密），后续请求需要带 3 个签名头（session/timestamp/signature），响应也是 AES-CBC 密文
+参考文章: yak-project-public 009 (2026-03-18) 全局热加载 pipeline 主场景二
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// Bootstrap Session 完整 pipeline 模板
+// 流程:
+//   1. beforeRequest: 命中目标路径 → 取 bootstrap → 解 ticket 拿 session_id+session_key
+//      → 用 session_key 对 METHOD+\n+PATH+\n+TIMESTAMP 算签名 → 注入 3 个 X-Pipeline-* 头
+//   2. afterRequest:  响应 body 含 {data, iv} → 用缓存的 session_key 做 AES-CBC 解密
+// 缓存策略: sessionKeyCache[sessionID] 减少 bootstrap 调用次数
+BOOTSTRAP_KEY = "YakitPipeBootKey"             /* 解 bootstrap ticket 的固定引导密钥 */
+BOOTSTRAP_PATH = "/api/pipeline/bootstrap"     /* bootstrap 接口路径 */
+TARGET_PATH = "/api/pipeline/orders/search"    /* 真正的业务接口 */
+SESSION_HEADER = "X-Pipeline-Session"
+TIMESTAMP_HEADER = "X-Pipeline-Timestamp"
+SIGNATURE_HEADER = "X-Pipeline-Signature"
+
+sessionKeyCache = {}
+
+isTargetRequest = func(isHttps, packet) {
+    u, err = str.ExtractURLFromHTTPRequestRaw(packet, isHttps)
+    if err != nil {
+        return false
+    }
+    return u.Path == TARGET_PATH
+}
+
+parseBootstrapTicket = func(packet) {
+    body = poc.GetHTTPPacketBody(packet)
+    params = json.loads(string(body))
+    if !("ticket" in params) || !("iv" in params) {
+        log.error("bootstrap: response missing ticket/iv")
+        return nil
+    }
+    ticketBytes = codec.DecodeBase64(params.ticket)~
+    ivBytes = codec.DecodeBase64(params.iv)~
+    plain = codec.AESCBCDecrypt(BOOTSTRAP_KEY, ticketBytes, ivBytes)~
+    return json.loads(string(plain))
+}
+
+fetchSession = func(isHttps, packet) {
+    host = poc.GetHTTPPacketHeader(packet, "Host")
+    if host == "" {
+        log.error("bootstrap: request host is empty")
+        return nil
+    }
+    bootstrapReq = "GET " + BOOTSTRAP_PATH + " HTTP/1.1\r\n" +
+        "Host: " + host + "\r\n" +
+        "User-Agent: yak-bootstrap-pipeline\r\n" +
+        "Connection: close\r\n\r\n"
+    rsp, _, err = poc.HTTP(bootstrapReq, poc.https(isHttps), poc.timeout(5), poc.save(false))
+    if err != nil {
+        log.error("bootstrap: fetch failed: " + sprintf("%v", err))
+        return nil
+    }
+    return parseBootstrapTicket(rsp)
+}
+
+buildSignature = func(method, path, sessionKey) {
+    ts = sprintf("%d", time.Now().Unix())
+    raw = method + "\n" + path + "\n" + ts
+    sig = codec.EncodeToHex(codec.HmacSha256(sessionKey, raw))
+    return ts, sig
+}
+
+decryptResponseBody = func(packet, sessionKey) {
+    body = string(poc.GetHTTPPacketBody(packet))
+    if !str.Contains(body, `"data"`) || !str.Contains(body, `"iv"`) {
+        return packet
+    }
+    params = json.loads(body)
+    if !("data" in params) || !("iv" in params) {
+        return packet
+    }
+    dataBytes = codec.DecodeBase64(params.data)~
+    ivBytes = codec.DecodeBase64(params.iv)~
+    plain = codec.AESCBCDecrypt(sessionKey, dataBytes, ivBytes)~
+    return poc.ReplaceHTTPPacketBody(packet, plain)
+}
+
+beforeRequest = func(https, originReq, req) {
+    if !isTargetRequest(https, req) {
+        return req
+    }
+    ticket = fetchSession(https, req)
+    if ticket == nil {
+        return req
+    }
+    sessionID = sprintf("%v", ticket.session_id)
+    sessionKeyB64 = sprintf("%v", ticket.session_key)
+    sessionKey = codec.DecodeBase64(sessionKeyB64)~
+    method = poc.GetHTTPRequestMethod(req)
+    u = str.ExtractURLFromHTTPRequestRaw(req, https)~
+    ts, sig = buildSignature(method, u.Path, sessionKey)
+    sessionKeyCache[sessionID] = sessionKeyB64
+    req = poc.ReplaceHTTPPacketHeader(req, SESSION_HEADER, sessionID)
+    req = poc.ReplaceHTTPPacketHeader(req, TIMESTAMP_HEADER, ts)
+    req = poc.ReplaceHTTPPacketHeader(req, SIGNATURE_HEADER, sig)
+    return req
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    if !isTargetRequest(https, req) {
+        return rsp
+    }
+    sessionID = poc.GetHTTPPacketHeader(req, SESSION_HEADER)
+    sessionKeyB64 = sessionKeyCache[sessionID]
+    if sessionKeyB64 == "" {
+        return rsp
+    }
+    sessionKey = codec.DecodeBase64(sessionKeyB64)~
+    return decryptResponseBody(rsp, sessionKey)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start bootstrap session pipeline self test")
+
+    port = os.GetRandomAvailableTCPPort()
+    host = "127.0.0.1"
+
+    expectedSessionID = "sess-" + codec.EncodeToHex(codec.RandBytes(4))
+    expectedSessionKey = codec.RandBytes(16)
+    expectedSessionKeyB64 = codec.EncodeBase64(expectedSessionKey)
+    expectedPlain = `{"rows":[{"id":1,"product":"商品A"}],"row_count":1}`
+
+    bootstrapCount = {"n": 0}
+
+    go func {
+        httpserver.Serve(host, port,
+            httpserver.routeHandler(BOOTSTRAP_PATH, (w, req) => {
+                bootstrapCount["n"] = bootstrapCount["n"] + 1
+                ticketObj = json.dumps({
+                    "session_id": expectedSessionID,
+                    "session_key": expectedSessionKeyB64,
+                })
+                iv = codec.RandBytes(16)
+                cipher = codec.AESCBCEncrypt(BOOTSTRAP_KEY, ticketObj, iv)~
+                w.Header().Set("Content-Type", "application/json")
+                w.Write(json.dumps({
+                    "ticket": codec.EncodeBase64(cipher),
+                    "iv": codec.EncodeBase64(iv),
+                }))
+            }),
+            httpserver.handler((w, req) => {
+                w.Write("fallback")
+            }),
+        )
+    }
+    os.WaitConnect(str.HostPort(host, port), 4)
+
+    targetHost = sprintf("%s:%d", host, port)
+
+    mockReq = sprintf(`POST %s HTTP/1.1
+Host: %s
+Content-Type: application/json
+
+{"keyword":"x","page":1,"size":10}`, TARGET_PATH, targetHost)
+
+    signedReq = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    gotSession = poc.GetHTTPPacketHeader(signedReq, SESSION_HEADER)
+    gotTs = poc.GetHTTPPacketHeader(signedReq, TIMESTAMP_HEADER)
+    gotSig = poc.GetHTTPPacketHeader(signedReq, SIGNATURE_HEADER)
+    log.info("session id: " + gotSession)
+    log.info("timestamp: " + gotTs)
+    log.info("signature: " + gotSig)
+    assert gotSession == expectedSessionID, "session id mismatch"
+    assert gotTs != "", "timestamp should be set"
+    expectedSig = codec.EncodeToHex(codec.HmacSha256(expectedSessionKey, "POST\n"+TARGET_PATH+"\n"+gotTs))
+    assert gotSig == expectedSig, "signature mismatch"
+    assert bootstrapCount["n"] == 1, "should call bootstrap once"
+    assert sessionKeyCache[expectedSessionID] == expectedSessionKeyB64, "session key should be cached"
+
+    rspIv = codec.RandBytes(16)
+    rspCipher = codec.AESCBCEncrypt(expectedSessionKey, expectedPlain, rspIv)~
+    mockRsp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + json.dumps({
+        "data": codec.EncodeBase64(rspCipher),
+        "iv": codec.EncodeBase64(rspIv),
+        "session_id": expectedSessionID,
+    })
+
+    decRsp = afterRequest(false, []byte(mockReq), signedReq, []byte(mockRsp), []byte(mockRsp))
+    decBody = string(poc.GetHTTPPacketBody(decRsp))
+    log.info("decrypted body: " + decBody)
+    assert decBody == expectedPlain, "response decryption mismatch"
+
+    otherReq = sprintf(`GET /api/healthz HTTP/1.1
+Host: %s
+
+`, targetHost)
+    untouchedReq = beforeRequest(false, []byte(otherReq), []byte(otherReq))
+    sig2 = poc.GetHTTPPacketHeader(untouchedReq, SIGNATURE_HEADER)
+    assert sig2 == "", "non-target request should NOT be signed"
+    assert bootstrapCount["n"] == 1, "non-target request should NOT trigger bootstrap"
+
+    log.info("bootstrap session pipeline self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

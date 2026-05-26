@@ -1,0 +1,92 @@
+/*
+模版名称: [镜像] mirrorHTTPFlow 按状态码统计 + 5xx 告警
+关键词: mirrorHTTPFlow, 状态码统计, 5xx 告警, 实时监控
+适用场景: 实时监控全量被代理流量按状态码分布；遇到 5xx/4xx 关键状态自动打 log，便于在大量流量中提前发现异常接口
+说明: mirrorHTTPFlow 是只读旁路 hook，不会影响请求/响应；适合做日志、统计、告警，不能修改流量
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mirrorHTTPFlow 按状态码统计 + 5xx 告警模板
+// 累积统计放到模块级 statusStats map，遇到 5xx 立刻 log.error 输出 url
+statusStats = {}
+WARN_PREFIX = ["5"]                /* 这些前缀触发 warn */
+ERROR_PREFIX = []                  /* 留空，本模板不直接触发 error */
+KEY_THRESHOLD = 100                /* 单 host+status 累计达到该阈值时也告警一次 */
+
+extractStatusCode = func(rsp) {
+    if len(rsp) == 0 {
+        return ""
+    }
+    code = poc.GetStatusCodeFromResponse(rsp)
+    if code == 0 {
+        return ""
+    }
+    return sprintf("%d", code)
+}
+
+prefixHit = func(code, prefixes) {
+    for p in prefixes {
+        if str.HasPrefix(code, p) {
+            return true
+        }
+    }
+    return false
+}
+
+mirrorHTTPFlow = func(isHttps, url, req, rsp, body) {
+    code = extractStatusCode(rsp)
+    if code == "" {
+        return
+    }
+    key = code
+    statusStats[key] = (statusStats[key] == nil ? 0 : statusStats[key]) + 1
+
+    if prefixHit(code, WARN_PREFIX) {
+        log.warn("5xx flow detected: " + code + " " + url)
+    }
+    if statusStats[key] == KEY_THRESHOLD {
+        log.info(sprintf("status %s reached threshold %d", code, KEY_THRESHOLD))
+    }
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mirror color by status self test")
+
+    mock = func(code) {
+        return []byte(sprintf("HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\n\r\nbody", code, "OK"))
+    }
+    req := []byte("GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+
+    statusStats = {}
+
+    mirrorHTTPFlow(false, "http://a/", req, mock(200), []byte("body"))
+    mirrorHTTPFlow(false, "http://b/", req, mock(200), []byte("body"))
+    mirrorHTTPFlow(false, "http://c/", req, mock(404), []byte("body"))
+    mirrorHTTPFlow(false, "http://d/", req, mock(503), []byte("body"))
+    mirrorHTTPFlow(false, "http://e/", req, mock(500), []byte("body"))
+
+    log.info(sprintf("status stats: %v", statusStats))
+    assert statusStats["200"] == 2, sprintf("200 count expected 2 got %v", statusStats["200"])
+    assert statusStats["404"] == 1, "404 count expected 1"
+    assert statusStats["503"] == 1, "503 count expected 1"
+    assert statusStats["500"] == 1, "500 count expected 1"
+
+    emptyRsp := []byte("")
+    mirrorHTTPFlow(false, "http://a/", req, emptyRsp, []byte(""))
+    assert statusStats["200"] == 2, "empty response should NOT bump stats"
+
+    log.info("mirror color by status self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

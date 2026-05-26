@@ -1,0 +1,101 @@
+/*
+模版名称: [镜像] mirrorNewWebsite 新域名自动指纹识别
+关键词: mirrorNewWebsite, 指纹识别, Server, X-Powered-By, CMS, 技术栈识别
+适用场景: 在 MITM 抓取流量过程中，每发现一个新 schema+host 自动做轻量级离线指纹（基于 Server / X-Powered-By / Body 关键字），不发包，零开销
+参考文章: yak-project-public 031 (2025-10-17) MITM 热加载全流程解析
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mirrorNewWebsite 离线指纹模板
+// 触发时机：每个新的 schema+host 仅触发一次（由 yakit 引擎去重）
+// 工作流程：从响应 header 取 Server/X-Powered-By；从 body 用关键字命中常见技术栈
+fingerprintRecords = {}
+TECH_KEYWORDS = [
+    ["WordPress", "wp-content"],
+    ["jQuery", "jQuery"],
+    ["Vue", "Vue.config"],
+    ["React", "__REACT_DEVTOOLS_GLOBAL_HOOK__"],
+    ["Bootstrap", "bootstrap.min.css"],
+    ["Tomcat", "Apache Tomcat"],
+    ["Spring Boot", "Whitelabel Error Page"],
+    ["Nginx", "<center>nginx"],
+    ["IIS", "Microsoft-IIS"],
+]
+
+extractServerInfo = func(rsp) {
+    server = poc.GetHTTPPacketHeader(rsp, "Server")
+    poweredBy = poc.GetHTTPPacketHeader(rsp, "X-Powered-By")
+    return server, poweredBy
+}
+
+matchTechByText = func(text) {
+    hits = []
+    for item in TECH_KEYWORDS {
+        if str.Contains(text, item[1]) {
+            hits = append(hits, item[0])
+        }
+    }
+    return hits
+}
+
+mirrorNewWebsite = func(isHttps, url, req, rsp, body) {
+    server, poweredBy = extractServerInfo(rsp)
+    techs = matchTechByText(string(rsp))
+    record = {
+        "url": url,
+        "server": server,
+        "poweredBy": poweredBy,
+        "techs": techs,
+    }
+    fingerprintRecords[url] = record
+    log.info(sprintf("new website fingerprint: url=%s server=%s poweredBy=%s techs=%v",
+        url, server, poweredBy, techs))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mirror new website fingerprint self test")
+    fingerprintRecords = {}
+
+    wpRsp := []byte(`HTTP/1.1 200 OK
+Server: Apache/2.4
+X-Powered-By: PHP/8.1
+Content-Type: text/html
+
+<html><head><link href="/wp-content/themes/x/style.css"></head><body>jQuery loaded</body></html>`)
+    mirrorNewWebsite(true, "https://wp.example.com", []byte("GET / HTTP/1.1\r\n\r\n"), wpRsp, poc.GetHTTPPacketBody(wpRsp))
+
+    tomcatRsp := []byte(`HTTP/1.1 500 Internal Server Error
+Server: Apache Tomcat/9.0
+Content-Type: text/html
+
+<html>Whitelabel Error Page</html>`)
+    mirrorNewWebsite(false, "http://api.example.com", []byte("GET / HTTP/1.1\r\n\r\n"), tomcatRsp, poc.GetHTTPPacketBody(tomcatRsp))
+
+    log.info(sprintf("fingerprint records: %v", fingerprintRecords))
+    assert "https://wp.example.com" in fingerprintRecords, "wp record missing"
+    wp = fingerprintRecords["https://wp.example.com"]
+    assert wp.server == "Apache/2.4", "wp server mismatch"
+    assert wp.poweredBy == "PHP/8.1", "wp poweredBy mismatch"
+    assert "WordPress" in wp.techs, "WordPress tech should be detected"
+    assert "jQuery" in wp.techs, "jQuery tech should be detected"
+
+    tomcat = fingerprintRecords["http://api.example.com"]
+    assert str.Contains(tomcat.server, "Tomcat"), "tomcat server header mismatch"
+    assert "Tomcat" in tomcat.techs, "Tomcat tech should be detected"
+    assert "Spring Boot" in tomcat.techs, "Spring Boot keyword should hit on Whitelabel page"
+
+    log.info("mirror new website fingerprint self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

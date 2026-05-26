@@ -1,0 +1,115 @@
+/*
+模版名称: [分析] 自动分类（登录/上传/后台）+ tag + 染色
+关键词: analyzeHTTPFlow, AddTag, Blue, Purple, Green, 登录上传后台分类, 行为可视化
+适用场景: 对历史流量做快速业务分类，根据请求 URL/Body 自动给"登录/上传/后台/注销"等行为打 tag + 颜色，便于后续按 tag 检索定位
+参考文章: yak-project-public 030 (2025-10-24) 流量分析热加载实战技巧 案例三
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 自动分类 + AddTag + 染色模板
+// 规则列表：每条 {keyword, tag, color}，命中第一条规则后停止（一条流量只标一种类型）
+CLASSIFY_RULES = [
+    {"keyword": "/admin", "tag": "admin-area", "color": "Blue"},
+    {"keyword": "upload", "tag": "upload-api", "color": "Purple"},
+    {"keyword": "login", "tag": "login-flow", "color": "Green"},
+    {"keyword": "logout", "tag": "logout-flow", "color": "Grey"},
+    {"keyword": "register", "tag": "register-flow", "color": "Cyan"},
+]
+
+applyColor = func(flow, color) {
+    if color == "Red" { flow.Red() }
+    if color == "Orange" { flow.Orange() }
+    if color == "Yellow" { flow.Yellow() }
+    if color == "Green" { flow.Green() }
+    if color == "Blue" { flow.Blue() }
+    if color == "Purple" { flow.Purple() }
+    if color == "Cyan" { flow.Cyan() }
+    if color == "Grey" { flow.Grey() }
+}
+
+mu = sync.NewMutex()
+
+analyzeHTTPFlow = func(flow, extract) {
+    mu.Lock()
+    defer mu.Unlock()
+
+    req = flow.GetRequest()
+    lower = str.ToLower(req)
+    for rule in CLASSIFY_RULES {
+        if str.Contains(lower, str.ToLower(rule.keyword)) {
+            flow.AddTag(rule.tag)
+            applyColor(flow, rule.color)
+            extract(rule.tag, flow)
+            return
+        }
+    }
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 历史分析热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start classify by path self test")
+
+    allTags = []
+    allColors = []
+    extractCalls = []
+    extract = func(ruleName, flow, content...) {
+        extractCalls = append(extractCalls, ruleName)
+    }
+
+    makeFlow = func(req) {
+        f = make(map[string]any)
+        f["GetRequest"] = func() { return req }
+        f["GetResponse"] = func() { return "" }
+        f["AddTag"] = func(t...) { for one in t { allTags = append(allTags, one) } }
+        f["Red"] = func() { allColors = append(allColors, "Red") }
+        f["Orange"] = func() { allColors = append(allColors, "Orange") }
+        f["Yellow"] = func() { allColors = append(allColors, "Yellow") }
+        f["Green"] = func() { allColors = append(allColors, "Green") }
+        f["Blue"] = func() { allColors = append(allColors, "Blue") }
+        f["Purple"] = func() { allColors = append(allColors, "Purple") }
+        f["Cyan"] = func() { allColors = append(allColors, "Cyan") }
+        f["Grey"] = func() { allColors = append(allColors, "Grey") }
+        return f
+    }
+
+    flows = [
+        makeFlow("GET /admin/dashboard HTTP/1.1\r\nHost: x\r\n\r\n"),
+        makeFlow("POST /api/upload-file HTTP/1.1\r\nHost: x\r\n\r\n"),
+        makeFlow("POST /user/login HTTP/1.1\r\nHost: x\r\n\r\n"),
+        makeFlow("POST /user/logout HTTP/1.1\r\nHost: x\r\n\r\n"),
+        makeFlow("POST /user/register HTTP/1.1\r\nHost: x\r\n\r\n"),
+        makeFlow("GET /api/users HTTP/1.1\r\nHost: x\r\n\r\n"),  /* 不命中 */
+    ]
+    for f in flows {
+        analyzeHTTPFlow(f, extract)
+    }
+
+    log.info(sprintf("tags=%v", allTags))
+    log.info(sprintf("colors=%v", allColors))
+    log.info(sprintf("extract calls=%v", extractCalls))
+
+    assert len(allTags) == 5, sprintf("expected 5 tags, got %d", len(allTags))
+    assert "admin-area" in allTags, "admin-area tag missing"
+    assert "upload-api" in allTags, "upload-api tag missing"
+    assert "login-flow" in allTags, "login-flow tag missing"
+    assert "logout-flow" in allTags, "logout-flow tag missing"
+    assert "register-flow" in allTags, "register-flow tag missing"
+    assert "Blue" in allColors, "Blue color missing for admin"
+    assert "Purple" in allColors, "Purple color missing for upload"
+    assert "Green" in allColors, "Green color missing for login"
+    assert len(extractCalls) == 5, sprintf("expected 5 extract calls, got %d", len(extractCalls))
+
+    log.info("classify by path self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

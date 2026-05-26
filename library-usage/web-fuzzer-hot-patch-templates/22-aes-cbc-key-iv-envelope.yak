@@ -1,0 +1,121 @@
+/*
+模版名称: [AES] 自带 key/iv 信封协议双向加解密
+对应 i18n key: HTTPFuzzerHotPatch.aes_cbc_key_iv_envelope
+关键词: AES-CBC, 随机 key, 随机 iv, 信封协议, beforeRequest, afterRequest, 双向加解密
+适用场景: 请求/响应 body 都是 {"key":"hex","iv":"hex","message":"base64-cipher"} 形式，每次随机生成 key 和 iv 一并下发的"自带密钥"信封协议（CryptoJS 前端常见做法）
+参考文章: yak-project-public 084 (2024-12-05) 渗透测试高级技巧(三) 被前端加密后的漏洞测试 末尾全站加密章节
+区别说明: 与已有的 [AES] 请求&响应 AES-CBC 双向加解密 模板不同——本模板的 key/iv 不是固定的，而是请求每次随机生成、响应也每次随机生成
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 自带 key/iv 信封协议（key 与 iv 随请求/响应一并下发）
+// 请求方向: 把明文 body 用每次新生成的 key/iv 加密后，封装成 {key, iv, message} 发出
+// 响应方向: 解开服务端返回的 {key, iv, message}，把 body 替换成明文便于查看
+// 适用前提: 协议本身不依赖固定密钥，例如学习靶场 vulinbox /crypto/sqli/aes-ecb 系列
+encryptEnvelope = func(packet) {
+    body = poc.GetHTTPPacketBody(packet)
+    if len(body) == 0 {
+        return packet
+    }
+    key = codec.RandBytes(16)
+    iv = codec.RandBytes(16)
+    cipher = codec.AESCBCEncryptWithPKCS7Padding(key, string(body), iv)~
+    envelope = json.dumps({
+        "key": codec.EncodeToHex(key),
+        "iv": codec.EncodeToHex(iv),
+        "message": codec.EncodeBase64(cipher),
+    })
+    packet = poc.ReplaceHTTPPacketBody(packet, envelope)
+    packet = poc.ReplaceHTTPPacketHeader(packet, "Content-Type", "application/json")
+    return packet
+}
+
+decryptEnvelope = func(packet) {
+    body = string(poc.GetHTTPPacketBody(packet))
+    if !str.Contains(body, `"key"`) || !str.Contains(body, `"iv"`) || !str.Contains(body, `"message"`) {
+        return packet
+    }
+    params = json.loads(body)
+    if !("key" in params) || !("iv" in params) || !("message" in params) {
+        return packet
+    }
+    key = codec.DecodeHex(params.key)~
+    iv = codec.DecodeHex(params.iv)~
+    cipher = codec.DecodeBase64(params.message)~
+    plain = codec.AESCBCDecrypt(key, cipher, iv)~
+    return poc.ReplaceHTTPPacketBody(packet, plain)
+}
+
+beforeRequest = func(https, originReq, req) {
+    return encryptEnvelope(req)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    return decryptEnvelope(rsp)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start aes cbc key/iv envelope self test")
+
+    plain = `{"search":"' OR 1=1 -- "}`
+    mockReq = `POST /crypto/sqli/aes-ecb/encrypt/login HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/json
+
+` + plain
+
+    encReq = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    encBody = string(poc.GetHTTPPacketBody(encReq))
+    log.info("encrypted request body: " + encBody)
+    params = json.loads(encBody)
+    assert "key" in params, "envelope must contain key"
+    assert "iv" in params, "envelope must contain iv"
+    assert "message" in params, "envelope must contain message"
+
+    keyBytes = codec.DecodeHex(params.key)~
+    ivBytes = codec.DecodeHex(params.iv)~
+    cipherBytes = codec.DecodeBase64(params.message)~
+    roundTrip = codec.AESCBCDecrypt(keyBytes, cipherBytes, ivBytes)~
+    log.info("round trip plaintext: " + string(roundTrip))
+    assert string(roundTrip) == plain, "request envelope round trip mismatch"
+
+    encReq2 = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    params2 = json.loads(string(poc.GetHTTPPacketBody(encReq2)))
+    assert params2.key != params.key, "request key should be random each time"
+    assert params2.iv != params.iv, "request iv should be random each time"
+
+    rspKey = codec.RandBytes(16)
+    rspIv = codec.RandBytes(16)
+    rspPlain = `{"code":0,"msg":"login success","data":{"username":"admin"}}`
+    rspCipher = codec.AESCBCEncryptWithPKCS7Padding(rspKey, rspPlain, rspIv)~
+    mockRsp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + json.dumps({
+        "key": codec.EncodeToHex(rspKey),
+        "iv": codec.EncodeToHex(rspIv),
+        "message": codec.EncodeBase64(rspCipher),
+    })
+
+    decRsp = afterRequest(false, []byte(mockReq), encReq, []byte(mockRsp), []byte(mockRsp))
+    decBody = string(poc.GetHTTPPacketBody(decRsp))
+    log.info("decrypted response body: " + decBody)
+    assert decBody == rspPlain, "response decryption mismatch"
+
+    nonEnvelopeRsp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + `{"hello":"world"}`
+    untouchedRsp = afterRequest(false, []byte(mockReq), encReq, []byte(nonEnvelopeRsp), []byte(nonEnvelopeRsp))
+    untouchedBody = string(poc.GetHTTPPacketBody(untouchedRsp))
+    assert untouchedBody == `{"hello":"world"}`, "non envelope response should be untouched"
+
+    log.info("aes cbc key/iv envelope self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

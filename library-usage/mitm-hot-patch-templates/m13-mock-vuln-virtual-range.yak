@@ -1,0 +1,137 @@
+/*
+模版名称: [Mock] mockHTTPRequest 虚拟靶场 (SQLi/RCE/SSRF)
+关键词: mockHTTPRequest, 虚拟靶场, SQLi, RCE, SSRF, 离线练习, 模板调试
+适用场景: 没有真实漏洞服务器时，用 mockHTTPRequest 在本地构造一个最小可用的 SQLi/RCE/SSRF 虚拟靶场，便于练习 PoC/Fuzz/插件
+参考文章: yak-project-public 021 (2025-12-26) Mock 热加载进阶 从 WebFuzzer 到模板调试的全链路支持
+说明: 实际无任何漏洞，仅在响应中模拟漏洞特征字符串；适合教学/演示/模板开发
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mockHTTPRequest 虚拟靶场模板
+// 三种漏洞路径: /vuln/sqli /vuln/rce /vuln/ssrf
+// 命中即由本模板构造响应，不会真的发包
+makeResponse = func(status, body) {
+    return sprintf("HTTP/1.1 %d OK\r\nContent-Type: application/json\r\nX-Vuln-Mock: 1\r\nContent-Length: %d\r\n\r\n%s",
+        status, len(body), body)
+}
+
+handleSQLi = func(url) {
+    if str.Contains(url, "id=1' OR 1=1") || str.Contains(url, "1 OR 1=1") {
+        body = json.dumps({
+            "code": 0,
+            "msg": "ok",
+            "data": [
+                {"id": 1, "username": "admin", "password": "P@ssw0rd"},
+                {"id": 2, "username": "alice", "password": "Hello123"},
+            ],
+        }, json.withIndent(""))
+        return makeResponse(200, body)
+    }
+    if str.Contains(url, "id=1'") || str.Contains(url, "id=1\"") {
+        body = json.dumps({
+            "code": 500,
+            "msg": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server",
+        }, json.withIndent(""))
+        return makeResponse(500, body)
+    }
+    body = json.dumps({"code": 0, "msg": "ok", "data": [{"id": 1, "username": "admin"}]}, json.withIndent(""))
+    return makeResponse(200, body)
+}
+
+handleRCE = func(url) {
+    if str.Contains(url, "cmd=") {
+        cmd = url[str.Index(url, "cmd=")+4:]
+        if str.Contains(cmd, "&") {
+            cmd = cmd[:str.Index(cmd, "&")]
+        }
+        if cmd == "ls" || cmd == "ls%20-la" {
+            body = "drwxr-xr-x  3 root root 4096 Jan  1 12:00 .\ndrwxr-xr-x  3 root root 4096 Jan  1 12:00 ..\n-rw-r--r--  1 root root  220 Jan  1 12:00 flag.txt\n"
+            return makeResponse(200, body)
+        }
+        if str.Contains(cmd, "cat") && str.Contains(cmd, "flag") {
+            return makeResponse(200, "flag{mock_rce_virtual_range}")
+        }
+        return makeResponse(200, "<unknown command> " + cmd)
+    }
+    return makeResponse(400, "missing cmd parameter")
+}
+
+handleSSRF = func(url) {
+    if str.Contains(url, "target=http://127.0.0.1") || str.Contains(url, "target=http://localhost") {
+        body = json.dumps({"code": 0, "msg": "internal data leaked", "data": "Apache Tomcat root /manager/html"}, json.withIndent(""))
+        return makeResponse(200, body)
+    }
+    if str.Contains(url, "target=") {
+        return makeResponse(200, `{"code":0,"msg":"fetched external URL"}`)
+    }
+    return makeResponse(400, "missing target parameter")
+}
+
+mockHTTPRequest = func(isHttps, url, req, mockResponse) {
+    if str.Contains(url, "/vuln/sqli") {
+        mockResponse(handleSQLi(url))
+        return
+    }
+    if str.Contains(url, "/vuln/rce") {
+        mockResponse(handleRCE(url))
+        return
+    }
+    if str.Contains(url, "/vuln/ssrf") {
+        mockResponse(handleSSRF(url))
+        return
+    }
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mock vuln virtual range self test")
+
+    captured = {"rsp": ""}
+    mockResponse = func(rsp) { captured["rsp"] = rsp }
+    req := []byte("GET / HTTP/1.1\r\nHost: target\r\n\r\n")
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/sqli?id=1", req, mockResponse)
+    log.info("normal sqli rsp: " + captured["rsp"][:120])
+    assert str.Contains(captured["rsp"], `"admin"`), "normal sqli should return user list"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/sqli?id=1'", req, mockResponse)
+    assert str.Contains(captured["rsp"], "SQL syntax"), "single quote should trigger SQL syntax error"
+    assert str.Contains(captured["rsp"], "500 OK"), "should return 500"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/sqli?id=1' OR 1=1--", req, mockResponse)
+    assert str.Contains(captured["rsp"], "P@ssw0rd"), "OR 1=1 should leak all users"
+    assert str.Contains(captured["rsp"], "alice"), "should leak multiple records"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/rce?cmd=ls", req, mockResponse)
+    assert str.Contains(captured["rsp"], "flag.txt"), "RCE ls should list flag.txt"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/rce?cmd=cat%20flag.txt", req, mockResponse)
+    assert str.Contains(captured["rsp"], "flag{mock_rce_virtual_range}"), "RCE cat flag should leak flag"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/vuln/ssrf?target=http://127.0.0.1:8080", req, mockResponse)
+    assert str.Contains(captured["rsp"], "internal data leaked"), "SSRF 127.0.0.1 should leak internal"
+
+    captured["rsp"] = ""
+    mockHTTPRequest(false, "http://target/api/healthz", req, mockResponse)
+    assert captured["rsp"] == "", "non-vuln path should NOT be mocked"
+
+    log.info("mock vuln virtual range self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

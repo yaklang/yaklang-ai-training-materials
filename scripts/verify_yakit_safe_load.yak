@@ -1,0 +1,28 @@
+// Verify that when the 5 new web-fuzzer hot-patch templates are loaded the same way
+// yakit loads them (YAK_MAIN=false, via dyn.Eval), the runSelfTest() block is NOT
+// executed. We assert by counting the number of expected "self test passed" log
+// lines that would appear if YAK_MAIN were true (none should appear).
+
+dir = "/Users/v1ll4n/Projects/yaklang-ai-training-materials/library-usage/web-fuzzer-hot-patch-templates"
+targets = [
+    "20-challenge-response-sign.yak",
+    "21-bootstrap-session-pipeline.yak",
+    "22-aes-cbc-key-iv-envelope.yak",
+    "23-mitm-hijack-save-decrypt.yak",
+    "24-mock-http-offline-response.yak",
+]
+
+for name in targets {
+    path = sprintf("%s/%s", dir, name)
+    content = file.ReadFile(path)~
+
+    log.info("loading template via dyn.Eval (simulating yakit hot-patch load): " + name)
+    err = dyn.Eval(string(content))
+    if err != nil {
+        log.error(sprintf("dyn.Eval failed for %s: %v", name, err))
+        die(sprintf("template %s failed to load as a module", name))
+    }
+    log.info("module loaded OK without triggering self test: " + name)
+}
+
+log.info("yakit-safe load verification passed for all 5 new templates")

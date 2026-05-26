@@ -1,0 +1,89 @@
+/*
+模版名称: [响应] hijackHTTPResponseEx 删除阻断 JS (alert / location.href)
+关键词: hijackHTTPResponseEx, JS 改写, alert 注释, location.href 屏蔽, 前端跳转拦截
+适用场景: 测试时前端 JS 经常自动 alert/跳走/刷新打断调试，MITM 在响应入站前用正则把这些 JS 改成无害字符串，让浏览器可以停在调试页面
+参考文章: yak-project-public 031 (2025-10-17) MITM 热加载全流程解析 场景二
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackHTTPResponseEx 删除阻断 JS 模板
+// 仅对 Content-Type 含 javascript / html 的响应做改写
+// 把 alert( / location.href= / location.replace( / window.close( 改成无副作用的 console.log
+JS_REPLACEMENTS = [
+    ["alert(", "console.log('ALERT_BYPASSED',"],
+    ["location.href", "window.__bypassed_href"],
+    ["location.replace(", "console.log('REPLACE_BYPASSED',"],
+    ["window.close(", "console.log('CLOSE_BYPASSED',"],
+]
+
+needRewriteResponse = func(rsp) {
+    ct = poc.GetHTTPPacketHeader(rsp, "Content-Type")
+    lower = str.ToLower(ct)
+    return str.Contains(lower, "javascript") || str.Contains(lower, "html") || str.Contains(lower, "text/x-script")
+}
+
+stripBlockingJS = func(rsp) {
+    if !needRewriteResponse(rsp) {
+        return rsp
+    }
+    body = string(poc.GetHTTPPacketBody(rsp))
+    if body == "" {
+        return rsp
+    }
+    for pair in JS_REPLACEMENTS {
+        body = str.ReplaceAll(body, pair[0], pair[1])
+    }
+    return poc.ReplaceHTTPPacketBody(rsp, body)
+}
+
+hijackHTTPResponseEx = func(isHttps, url, req, rsp, forward, drop) {
+    forward(stripBlockingJS(rsp))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start hijack response strip js self test")
+
+    jsBody = `function init() { alert("admin only"); location.href = "/login"; }`
+    jsRsp := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\n\r\n" + jsBody)
+
+    captured = {"rsp": []byte(""), "dropped": false}
+    forward = func(b) { captured["rsp"] = b }
+    drop = func() { captured["dropped"] = true }
+
+    hijackHTTPResponseEx(false, "http://target/app.js", []byte("GET /app.js"), jsRsp, forward, drop)
+    newBody = string(poc.GetHTTPPacketBody(captured["rsp"]))
+    log.info("rewritten js: " + newBody)
+    assert !str.Contains(newBody, "alert("), "alert should be replaced"
+    assert !str.Contains(newBody, "location.href ="), "location.href= should be replaced"
+    assert str.Contains(newBody, "ALERT_BYPASSED"), "should contain bypass marker"
+    assert str.Contains(newBody, "__bypassed_href"), "should contain bypassed href marker"
+
+    htmlBody = `<html><script>location.replace('/login'); window.close();</script></html>`
+    htmlRsp := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n" + htmlBody)
+    hijackHTTPResponseEx(false, "http://target/index.html", []byte("GET /"), htmlRsp, forward, drop)
+    htmlNew = string(poc.GetHTTPPacketBody(captured["rsp"]))
+    log.info("rewritten html: " + htmlNew)
+    assert str.Contains(htmlNew, "REPLACE_BYPASSED"), "html replace should be bypassed"
+    assert str.Contains(htmlNew, "CLOSE_BYPASSED"), "html close should be bypassed"
+
+    jsonBody = `{"alert(":1,"location.href":"x"}`
+    jsonRsp := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + jsonBody)
+    hijackHTTPResponseEx(false, "http://target/api/data", []byte("GET /api/data"), jsonRsp, forward, drop)
+    jsonNew = string(poc.GetHTTPPacketBody(captured["rsp"]))
+    assert jsonNew == jsonBody, "json response should NOT be rewritten"
+
+    log.info("hijack response strip js self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

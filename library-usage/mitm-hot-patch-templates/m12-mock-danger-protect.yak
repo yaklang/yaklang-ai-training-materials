@@ -1,0 +1,100 @@
+/*
+模版名称: [Mock] mockHTTPRequest 危险操作保护 (DELETE/PUT 强制 mock)
+关键词: mockHTTPRequest, 危险操作保护, DELETE, PUT, drop 数据, 演练环境
+适用场景: 在演练/生产场景做 MITM 渗透时希望"看得到、操作得了"但不真的破坏；本模板把所有 DELETE/PUT 改为 mock 成功响应，确保不会真的把数据删了
+参考文章: yak-project-public 024 (2025-12-05) Mock 重塑无污染客户端测试
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mockHTTPRequest 危险操作保护模板
+// DELETE / PUT 等修改型方法直接 mock 成功响应，原请求不发出
+// 也兼顾 path 黑名单（如 /admin/users/delete 这种 POST 删除接口）
+DANGEROUS_METHODS = ["DELETE", "PUT", "PATCH"]
+DANGEROUS_PATH_KEYWORDS = ["/delete", "/destroy", "/wipe", "/drop", "/purge"]
+
+isDangerousByMethod = func(method) {
+    upper = str.ToUpper(method)
+    for m in DANGEROUS_METHODS {
+        if upper == m { return true }
+    }
+    return false
+}
+
+isDangerousByPath = func(url) {
+    lower = str.ToLower(url)
+    for kw in DANGEROUS_PATH_KEYWORDS {
+        if str.Contains(lower, kw) { return true }
+    }
+    return false
+}
+
+buildBlockedResponse = func(method, url) {
+    body = json.dumps({
+        "ok": false,
+        "code": 403,
+        "msg": "[MITM-PROTECT] dangerous operation blocked",
+        "method": method,
+        "url": url,
+    }, json.withIndent(""))
+    return "HTTP/1.1 403 Forbidden\r\n" +
+        "Content-Type: application/json\r\n" +
+        "X-Mitm-Protect: 1\r\n" +
+        "Content-Length: " + sprintf("%d", len(body)) + "\r\n\r\n" + body
+}
+
+mockHTTPRequest = func(isHttps, url, req, mockResponse) {
+    method = poc.GetHTTPRequestMethod(req)
+    if isDangerousByMethod(method) || isDangerousByPath(url) {
+        log.warn(sprintf("dangerous operation blocked: %s %s", method, url))
+        mockResponse(buildBlockedResponse(method, url))
+    }
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mock danger protect self test")
+
+    captured = {"rsp": ""}
+    mockResponse = func(rsp) { captured["rsp"] = rsp }
+
+    delReq := []byte("DELETE /api/users/1 HTTP/1.1\r\nHost: target\r\n\r\n")
+    mockHTTPRequest(false, "http://target/api/users/1", delReq, mockResponse)
+    log.info("captured DELETE rsp: " + captured["rsp"])
+    assert captured["rsp"] != "", "DELETE should be blocked"
+    assert str.Contains(captured["rsp"], "X-Mitm-Protect: 1"), "should have protect header"
+    assert str.Contains(captured["rsp"], "blocked"), "body should contain blocked"
+
+    captured["rsp"] = ""
+    putReq := []byte("PUT /api/items/9 HTTP/1.1\r\nHost: target\r\n\r\n")
+    mockHTTPRequest(false, "http://target/api/items/9", putReq, mockResponse)
+    assert captured["rsp"] != "", "PUT should be blocked"
+
+    captured["rsp"] = ""
+    pathDelReq := []byte("POST /admin/users/delete HTTP/1.1\r\nHost: target\r\nContent-Type: application/json\r\n\r\n{\"id\":1}")
+    mockHTTPRequest(false, "http://target/admin/users/delete", pathDelReq, mockResponse)
+    assert captured["rsp"] != "", "POST /admin/users/delete should be blocked by path"
+
+    captured["rsp"] = ""
+    safeReq := []byte("GET /api/users HTTP/1.1\r\nHost: target\r\n\r\n")
+    mockHTTPRequest(false, "http://target/api/users", safeReq, mockResponse)
+    assert captured["rsp"] == "", "safe GET should NOT be mocked"
+
+    captured["rsp"] = ""
+    postReq := []byte("POST /api/users HTTP/1.1\r\nHost: target\r\n\r\n")
+    mockHTTPRequest(false, "http://target/api/users", postReq, mockResponse)
+    assert captured["rsp"] == "", "safe POST should NOT be mocked"
+
+    log.info("mock danger protect self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

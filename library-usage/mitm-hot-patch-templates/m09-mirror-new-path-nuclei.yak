@@ -1,0 +1,86 @@
+/*
+模版名称: [镜像] mirrorNewWebsitePath 新路径自动 nuclei 扫描
+关键词: mirrorNewWebsitePath, nuclei, 自动扫描, 新路径触发, 资产发现
+适用场景: 边浏览边扫描，当 MITM 发现某网站出现新路径时，自动把该路径加入 nuclei 扫描队列；常用于结合渗透测试中"摸底+发现+扫描"自动化
+说明: 实际扫描在 doScan() 中，默认使用 nuclei；自测时被替换为内存队列，不真正发包
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mirrorNewWebsitePath 新路径触发扫描模板
+// 设计思路：
+//   1. shouldScan(url) 判定是否扫描（默认排除静态资源）
+//   2. doScan(url) 真正触发扫描；自测时被替换为 mock
+//   3. 收集已处理路径，避免短时间重复触发
+EXCLUDE_SUFFIX = [".css", ".js", ".png", ".jpg", ".woff", ".woff2", ".ico", ".svg"]
+pendingScans = []
+
+shouldScan = func(url) {
+    lower = str.ToLower(url)
+    for suffix in EXCLUDE_SUFFIX {
+        if str.HasSuffix(lower, suffix) {
+            return false
+        }
+    }
+    return true
+}
+
+doScan = func(url) {
+    pendingScans = append(pendingScans, url)
+    log.info("scheduled nuclei scan: " + url)
+    // 生产用法（取消注释以启用真实扫描）：
+    // res, err = nuclei.Scan(url, nuclei.timeout(10), nuclei.severity("low,medium,high,critical"))
+    // if err != nil { log.error(sprintf("nuclei scan failed: %v", err)); return }
+    // for r in res { log.warn(sprintf("nuclei hit: %v", r)) }
+}
+
+mirrorNewWebsitePath = func(isHttps, url, req, rsp, body) {
+    if !shouldScan(url) {
+        return
+    }
+    doScan(url)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mirror new path nuclei self test")
+    pendingScans = []
+
+    req := []byte("GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+    rsp := []byte("HTTP/1.1 200 OK\r\n\r\n")
+
+    targets = [
+        "http://example.com/admin",
+        "https://api.example.com/v1/users",
+        "http://example.com/login",
+    ]
+    for u in targets {
+        mirrorNewWebsitePath(str.HasPrefix(u, "https://"), u, req, rsp, []byte(""))
+    }
+    log.info(sprintf("pending scans: %v", pendingScans))
+    assert len(pendingScans) == len(targets), sprintf("expected %d scans got %d", len(targets), len(pendingScans))
+
+    pendingScans = []
+    statics = [
+        "http://example.com/static/app.css",
+        "http://example.com/img/logo.png",
+        "http://example.com/vendor/lib.js",
+    ]
+    for u in statics {
+        mirrorNewWebsitePath(false, u, req, rsp, []byte(""))
+    }
+    assert len(pendingScans) == 0, sprintf("static assets should NOT be scanned, got %d", len(pendingScans))
+
+    log.info("mirror new path nuclei self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

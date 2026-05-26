@@ -1,0 +1,140 @@
+/*
+模版名称: [分析] 异常状态码报告（4xx/5xx 饼图 + 表格）
+关键词: analyzeHTTPFlow, onAnalyzeHTTPFlowFinish, report.New, 饼图, 表格, 异常状态码, Markdown 报告
+适用场景: 对历史流量做异常状态码（>= 400）统计，结束时生成包含 Markdown 描述、饼图、表格的完整报告（自动写入 yakit 数据库->报告页）
+参考文章: yak-project-public 030 (2025-10-24) 流量分析热加载实战技巧 案例四
+说明: makeReport() 是可替换工厂；自测时替换成 mock 工厂以避免污染用户数据库
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 异常状态码生成报告模板
+// 流程:
+//   1. analyzeHTTPFlow 累积 abnormalFlows (status >= 400) 与 extract 计数
+//   2. onAnalyzeHTTPFlowFinish 生成 markdown / pie / table，最后 Save()
+// 关键点: makeReport 是抽离的工厂，便于自测替换
+mu = sync.NewMutex()
+abnormalFlows = []
+
+makeReport = func() {
+    r = report.New()
+    r.From("http-anomaly-detector")
+    r.Title("HTTP 异常流量分析报告")
+    return r
+}
+
+analyzeHTTPFlow = func(flow, extract) {
+    mu.Lock()
+    defer mu.Unlock()
+    code = flow.StatusCode
+    if code >= 400 {
+        abnormalFlows = append(abnormalFlows, [flow.Url, code, flow.Method])
+        extract("abnormal-flow", flow, sprintf("status=%d", code))
+    }
+}
+
+onAnalyzeHTTPFlowFinish = func(totalCount, matchedCount) {
+    r = makeReport()
+    abnormalPercent = 0.0
+    if totalCount > 0 {
+        abnormalPercent = float(matchedCount) / float(totalCount) * 100.0
+    }
+    r.Markdown(sprintf(`# 异常流量检测报告
+
+- 总流量数: %v
+- 异常流量数: %v
+- 异常比例: %.2f%%
+`, totalCount, matchedCount, abnormalPercent))
+
+    normalCount = totalCount - matchedCount
+    if normalCount < 0 { normalCount = 0 }
+    r.PieGraph(
+        {"name": "正常流量", "value": normalCount, "color": "#43ab42"},
+        {"name": "异常流量", "value": matchedCount, "color": "#da4943"},
+    )
+    r.Markdown(`# 异常流量具体信息`)
+    r.Table(["URL", "StatusCode", "Method"], abnormalFlows...)
+    r.Save()
+    log.info(sprintf("abnormal report generated total=%d matched=%d", totalCount, matchedCount))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 历史分析热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start abnormal status report self test")
+
+    abnormalFlows = []
+
+    extractCalls = []
+    extract = func(ruleName, flow, content...) {
+        for c in content {
+            extractCalls = append(extractCalls, ruleName + ":" + c)
+        }
+    }
+
+    makeFlow = func(url, method, status) {
+        f = make(map[string]any)
+        f["Url"] = url
+        f["Method"] = method
+        f["StatusCode"] = status
+        f["Host"] = "x"
+        f["GetRequest"] = func() { return "GET / HTTP/1.1\r\n\r\n" }
+        f["GetResponse"] = func() { return "" }
+        return f
+    }
+
+    flows = [
+        makeFlow("http://a/api/x", "GET", 200),
+        makeFlow("http://a/api/y", "POST", 404),
+        makeFlow("http://a/api/z", "PUT", 500),
+        makeFlow("http://b/api/x", "GET", 503),
+        makeFlow("http://b/api/y", "DELETE", 401),
+    ]
+    for f in flows {
+        analyzeHTTPFlow(f, extract)
+    }
+    log.info(sprintf("abnormalFlows=%v", abnormalFlows))
+    assert len(abnormalFlows) == 4, sprintf("expected 4 abnormal got %d", len(abnormalFlows))
+    assert len(extractCalls) == 4, sprintf("expected 4 extract calls got %d", len(extractCalls))
+
+    // 替换 makeReport 为 mock，避免向 yakit 数据库写入真报告
+    captured = {"markdown": [], "pie": [], "table_headers": [], "table_rows": [], "saved": false}
+    makeReport = func() {
+        mock = make(map[string]any)
+        mock["Markdown"] = func(s) { captured["markdown"] = append(captured["markdown"], s) }
+        mock["PieGraph"] = func(items...) {
+            for it in items { captured["pie"] = append(captured["pie"], it) }
+        }
+        mock["Table"] = func(headers, rows...) {
+            captured["table_headers"] = headers
+            for r in rows { captured["table_rows"] = append(captured["table_rows"], r) }
+        }
+        mock["Save"] = func() { captured["saved"] = true }
+        return mock
+    }
+
+    onAnalyzeHTTPFlowFinish(5, 4)
+    log.info(sprintf("captured markdown count=%d", len(captured["markdown"])))
+    log.info(sprintf("captured pie items=%d table rows=%d", len(captured["pie"]), len(captured["table_rows"])))
+
+    assert len(captured["markdown"]) == 2, sprintf("expected 2 markdown sections got %d", len(captured["markdown"]))
+    assert str.Contains(captured["markdown"][0], "异常比例: 80.00%"), "first markdown should contain abnormal percent 80%"
+    assert len(captured["pie"]) == 2, "pie should have 2 segments"
+    assert captured["pie"][0].value == 1, "normal count should be 1 (totalCount - matchedCount)"
+    assert captured["pie"][1].value == 4, "abnormal count should be 4"
+    assert captured["table_headers"][0] == "URL", "first table header should be URL"
+    assert len(captured["table_rows"]) == 4, sprintf("expected 4 table rows got %d", len(captured["table_rows"]))
+    assert captured["saved"], "Save() must be called"
+
+    log.info("abnormal status report self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

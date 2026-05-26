@@ -1,0 +1,85 @@
+/*
+模版名称: [Mock] mockHTTPRequest 离线响应模拟
+对应 i18n key: HTTPFuzzerHotPatch.mock_http_offline_response
+关键词: mockHTTPRequest, 离线模拟, 不发包, 协议调试, Fuzzer Hook
+适用场景: 想要在 Web Fuzzer 中调试加解密 / 签名脚本但暂时没有真实服务端可联通时，使用 mockHTTPRequest 本地"截胡"请求，由脚本直接构造响应返回；也可用于把已知靶场密文写死成离线 case 反复试错
+参考实现: yaklang common/yakgrpc/grpc_fuzzer_test.go mockHTTPRequest 测试用例
+注意: 与 hijackSaveHTTPFlow / afterRequest 的本质区别——mockHTTPRequest 触发后，请求根本不会发到真实服务器；如果不调用 mockResponse，则正常走真实链路
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// mockHTTPRequest Hook - Fuzzer 不真正发包，由脚本直接返回响应
+// 函数签名: mockHTTPRequest(isHttps bool, url string, req []byte, mockResponse func)
+// 调用 mockResponse(rsp) → 立即返回该 rsp，不会走网络
+// 不调用 mockResponse → 请求按正常链路发出
+MOCK_PATH = "/api/offline-mock"   /* 命中该路径的请求会被本地 mock */
+MOCK_LATENCY_MS = 0               /* 模拟服务端处理耗时（毫秒），0 表示立即返回 */
+
+buildMockResponse = func(req) {
+    method = poc.GetHTTPRequestMethod(req)
+    body = json.dumps({
+        "mocked": true,
+        "method": method,
+        "echo_body": string(poc.GetHTTPPacketBody(req)),
+    }, json.withIndent(""))
+    return "HTTP/1.1 200 OK\r\n" +
+        "Content-Type: application/json\r\n" +
+        "X-Yak-Mock: 1\r\n" +
+        "Content-Length: " + sprintf("%d", len(body)) + "\r\n\r\n" + body
+}
+
+mockHTTPRequest = func(isHttps, url, req, mockResponse) {
+    if !str.Contains(url, MOCK_PATH) {
+        return
+    }
+    if MOCK_LATENCY_MS > 0 {
+        time.Sleep(float(MOCK_LATENCY_MS) / 1000.0)
+    }
+    mockResponse(buildMockResponse(req))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start mock http request self test")
+
+    captured = {"rsp": ""}
+    mockResponse = func(rsp) {
+        captured["rsp"] = rsp
+    }
+
+    mockReq := []byte(`POST /api/offline-mock HTTP/1.1
+Host: anywhere.local
+Content-Type: application/json
+
+{"hello":"yak"}`)
+    mockHTTPRequest(false, "http://anywhere.local/api/offline-mock", mockReq, mockResponse)
+    log.info("captured rsp: " + sprintf("%v", captured["rsp"]))
+    assert captured["rsp"] != "", "mock response should be captured"
+    rspStr = sprintf("%v", captured["rsp"])
+    assert str.Contains(rspStr, "X-Yak-Mock: 1"), "response should contain mock header"
+    assert str.Contains(rspStr, `"mocked":true`), "response body should contain mocked flag"
+    assert str.Contains(rspStr, `"method":"POST"`), "response should echo method"
+    assert str.Contains(rspStr, `"echo_body":"{\"hello\":\"yak\"}"`), "response should echo body"
+
+    captured["rsp"] = ""
+    otherReq := []byte(`GET /api/healthz HTTP/1.1
+Host: anywhere.local
+
+`)
+    mockHTTPRequest(false, "http://anywhere.local/api/healthz", otherReq, mockResponse)
+    assert captured["rsp"] == "", "non-target request should NOT trigger mockResponse"
+
+    log.info("mock http request self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

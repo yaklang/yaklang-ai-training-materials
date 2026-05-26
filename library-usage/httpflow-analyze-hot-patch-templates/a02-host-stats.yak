@@ -1,0 +1,100 @@
+/*
+模版名称: [分析] 主机访问次数统计
+关键词: analyzeHTTPFlow, onAnalyzeHTTPFlowFinish, host 统计, 5xx 标红, 流量分布
+适用场景: 对历史流量按 host 维度做次数统计；同时把状态码 >= 500 的流量染红 + 上报 extract，结束时打印 host 排名
+参考文章: yak-project-public 030 (2025-10-24) 流量分析热加载实战技巧 案例二
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 按 host 统计访问次数 + 5xx 标红模板
+// 输出: 每个 host 的访问次数 (yakit.Info / log.info)
+mu = sync.NewMutex()
+hostStats = {}
+
+bumpHost = func(host) {
+    mu.Lock()
+    defer mu.Unlock()
+    hostStats[host] = (hostStats[host] == nil ? 0 : hostStats[host]) + 1
+}
+
+analyzeHTTPFlow = func(flow, extract) {
+    host = flow.Host
+    if host == "" {
+        return
+    }
+    bumpHost(host)
+    if flow.StatusCode >= 500 {
+        flow.Red()
+        extract("server-error", flow, sprintf("status=%d", flow.StatusCode))
+    }
+}
+
+onAnalyzeHTTPFlowFinish = func(totalCount, matchedCount) {
+    log.info("=== host access stats ===")
+    for host, cnt in hostStats {
+        log.info(sprintf("host %s: %d", host, cnt))
+    }
+    log.info(sprintf("analyze finished total=%d matched=%d", totalCount, matchedCount))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 历史分析热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start host stats self test")
+
+    hostStats = {}
+    extractCalls = []
+    extract = func(ruleName, flow, content...) {
+        for c in content {
+            extractCalls = append(extractCalls, ruleName + ":" + c)
+        }
+    }
+
+    colors = []
+    makeFlow = func(host, status) {
+        f = make(map[string]any)
+        f["Host"] = host
+        f["StatusCode"] = status
+        f["Url"] = "http://" + host + "/x"
+        f["Red"] = func() { colors = append(colors, "Red") }
+        f["GetRequest"] = func() { return "GET / HTTP/1.1\r\nHost: " + host + "\r\n\r\n" }
+        f["GetResponse"] = func() { return "" }
+        return f
+    }
+
+    flows = [
+        makeFlow("a.com", 200),
+        makeFlow("a.com", 404),
+        makeFlow("b.com", 500),
+        makeFlow("b.com", 503),
+        makeFlow("c.com", 200),
+    ]
+    for f in flows {
+        analyzeHTTPFlow(f, extract)
+    }
+
+    log.info(sprintf("hostStats=%v", hostStats))
+    assert hostStats["a.com"] == 2, sprintf("a.com expected 2 got %v", hostStats["a.com"])
+    assert hostStats["b.com"] == 2, sprintf("b.com expected 2 got %v", hostStats["b.com"])
+    assert hostStats["c.com"] == 1, sprintf("c.com expected 1 got %v", hostStats["c.com"])
+
+    redCount = 0
+    for c in colors { if c == "Red" { redCount = redCount + 1 } }
+    assert redCount == 2, sprintf("expected 2 red, got %d", redCount)
+    assert len(extractCalls) == 2, sprintf("expected 2 extract calls, got %d", len(extractCalls))
+
+    onAnalyzeHTTPFlowFinish(5, 2)
+
+    log.info("host stats self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

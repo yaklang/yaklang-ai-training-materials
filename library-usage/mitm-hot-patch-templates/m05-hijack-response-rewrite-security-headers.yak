@@ -1,0 +1,113 @@
+/*
+模版名称: [响应] hijackHTTPResponseEx 宽松 CORS / 删 CSP / 去 HttpOnly
+关键词: hijackHTTPResponseEx, CORS, CSP, X-Frame-Options, HttpOnly, Set-Cookie, 安全头改写
+适用场景: 安全研究/调试时需要让浏览器跨域访问、可在 iframe 嵌入页面、JS 能读 Cookie，本模板把响应安全头改成宽松值方便测试
+警告: 仅用于授权环境调试，不要在生产环境使用
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackHTTPResponseEx 改写安全相关响应头
+//   1. Access-Control-Allow-Origin = *  并允许凭据
+//   2. 删除 Content-Security-Policy / X-Frame-Options / X-Content-Type-Options
+//   3. 把 Set-Cookie 中的 HttpOnly / Secure / SameSite=Strict 去掉
+WEAK_CORS_HEADERS = [
+    ["Access-Control-Allow-Origin", "*"],
+    ["Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"],
+    ["Access-Control-Allow-Headers", "*"],
+    ["Access-Control-Allow-Credentials", "true"],
+]
+HEADERS_TO_DROP = [
+    "Content-Security-Policy",
+    "Content-Security-Policy-Report-Only",
+    "X-Frame-Options",
+    "X-Content-Type-Options",
+    "Strict-Transport-Security",
+]
+
+loosenCookies = func(rsp) {
+    cookies = poc.GetHTTPPacketHeaders(rsp)["Set-Cookie"]
+    if cookies == nil {
+        return rsp
+    }
+    rsp = poc.DeleteHTTPPacketHeader(rsp, "Set-Cookie")
+    cookieList = cookies
+    if typeof(cookieList).String() == "string" {
+        cookieList = [cookieList]
+    }
+    for c in cookieList {
+        nc = c
+        for attr in ["HttpOnly", "Secure", "SameSite=Strict", "SameSite=Lax"] {
+            nc = str.ReplaceAll(nc, "; "+attr, "")
+            nc = str.ReplaceAll(nc, ";"+attr, "")
+        }
+        rsp = poc.AppendHTTPPacketHeader(rsp, "Set-Cookie", nc)
+    }
+    return rsp
+}
+
+rewriteSecurityHeaders = func(rsp) {
+    for pair in WEAK_CORS_HEADERS {
+        rsp = poc.ReplaceHTTPPacketHeader(rsp, pair[0], pair[1])
+    }
+    for h in HEADERS_TO_DROP {
+        rsp = poc.DeleteHTTPPacketHeader(rsp, h)
+    }
+    return loosenCookies(rsp)
+}
+
+hijackHTTPResponseEx = func(isHttps, url, req, rsp, forward, drop) {
+    forward(rewriteSecurityHeaders(rsp))
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit MITM 热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start hijack response rewrite security headers self test")
+
+    mockRsp := []byte(`HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Security-Policy: default-src 'self'
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=31536000
+Access-Control-Allow-Origin: https://app.example.com
+Set-Cookie: SESSION=abc123; Path=/; HttpOnly; Secure; SameSite=Strict
+
+{"ok":true}`)
+
+    captured = {"rsp": []byte("")}
+    forward = func(b) { captured["rsp"] = b }
+    drop = func() { log.error("should not drop") }
+
+    hijackHTTPResponseEx(false, "http://target/api", []byte("GET /api"), mockRsp, forward, drop)
+
+    newRsp = captured["rsp"]
+    cors = poc.GetHTTPPacketHeader(newRsp, "Access-Control-Allow-Origin")
+    log.info("rewritten ACAO: " + cors)
+    assert cors == "*", "ACAO should be wildcard"
+    assert poc.GetHTTPPacketHeader(newRsp, "Access-Control-Allow-Credentials") == "true", "credentials should be true"
+
+    assert poc.GetHTTPPacketHeader(newRsp, "Content-Security-Policy") == "", "CSP should be removed"
+    assert poc.GetHTTPPacketHeader(newRsp, "X-Frame-Options") == "", "X-Frame-Options should be removed"
+    assert poc.GetHTTPPacketHeader(newRsp, "Strict-Transport-Security") == "", "HSTS should be removed"
+
+    cookie = poc.GetHTTPPacketHeader(newRsp, "Set-Cookie")
+    log.info("rewritten cookie: " + cookie)
+    assert str.Contains(cookie, "SESSION=abc123"), "cookie value should remain"
+    assert !str.Contains(cookie, "HttpOnly"), "HttpOnly should be stripped"
+    assert !str.Contains(cookie, "Secure"), "Secure should be stripped"
+    assert !str.Contains(cookie, "SameSite=Strict"), "SameSite=Strict should be stripped"
+
+    log.info("hijack response rewrite security headers self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

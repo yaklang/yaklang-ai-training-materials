@@ -1,0 +1,118 @@
+/*
+模版名称: [全局] 内网 SM4-CBC 透明加解密 + 入库明文
+对应 i18n key: GlobalHotPatch.guomi_sm4_transparent
+关键词: 全局热加载, SM4, SM4-CBC, 国密, beforeRequest, afterRequest, hijackSaveHTTPFlow, 透明加解密, 入库明文
+适用场景: 全站统一使用国密 SM4-CBC 加密的内网业务，安装本全局模板后所有 MITM/Fuzzer 流量自动加解密；同时入库存明文便于排查
+参考文章: yak-project-public 009 (2026-03-18) 全局热加载帮你自动接管签名流程 + 084 (2024-12-05) 渗透测试高级技巧(三) 全站加密章节
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 全局 SM4-CBC 透明加解密模板
+// 工作流程:
+//   1. beforeRequest: 把明文 body 加密成 SM4-CBC 密文
+//   2. afterRequest:  把响应密文解密成明文返回给客户端
+//   3. hijackSaveHTTPFlow: 入库时确保 Request/Response 都是明文（便于在 yakit 历史里直接看）
+SM4_KEY = "1234567890123456"   /* 16 字节 SM4 密钥 */
+SM4_IV = "1234567890123456"    /* 16 字节 IV */
+
+shouldHandle = func(packet) {
+    body = poc.GetHTTPPacketBody(packet)
+    return len(body) > 0
+}
+
+tryEncryptBody = func(packet) {
+    body = poc.GetHTTPPacketBody(packet)
+    if len(body) == 0 { return packet }
+    cipher, err = codec.Sm4CBCEncrypt(SM4_KEY, string(body), SM4_IV)
+    if err != nil {
+        log.error(sprintf("sm4 encrypt failed: %v", err))
+        return packet
+    }
+    encoded = codec.EncodeBase64(cipher)
+    return poc.ReplaceHTTPPacketBody(packet, encoded)
+}
+
+tryDecryptBody = func(packet) {
+    body = poc.GetHTTPPacketBody(packet)
+    if len(body) == 0 { return packet }
+    raw, err = codec.DecodeBase64(string(body))
+    if err != nil { return packet }
+    plain, err2 = codec.Sm4CBCDecrypt(SM4_KEY, raw, SM4_IV)
+    if err2 != nil { return packet }
+    return poc.ReplaceHTTPPacketBody(packet, plain)
+}
+
+beforeRequest = func(https, originReq, req) {
+    return tryEncryptBody(req)
+}
+
+afterRequest = func(https, originReq, req, originRsp, rsp) {
+    return tryDecryptBody(rsp)
+}
+
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    rsp = codec.StrconvUnquote(flow.Response)~
+    plainRsp = tryDecryptBody(rsp)
+    flow.Response = codec.StrconvQuote(string(plainRsp))
+    flow.AddTag("sm4-transparent")
+    modify(flow)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明:
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit 全局热加载窗口使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start global sm4 transparent self test")
+
+    plain = `{"username":"admin","password":"P@ssw0rd"}`
+    mockReq = sprintf(`POST /api/login HTTP/1.1
+Host: target.local
+Content-Type: application/json
+
+%s`, plain)
+
+    encReq = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    encBody = string(poc.GetHTTPPacketBody(encReq))
+    log.info("encrypted body: " + encBody)
+    assert encBody != plain, "body should be encrypted"
+    cipherBytes = codec.DecodeBase64(encBody)~
+    roundTrip = codec.Sm4CBCDecrypt(SM4_KEY, cipherBytes, SM4_IV)~
+    assert string(roundTrip) == plain, "request encrypt round-trip mismatch"
+
+    rspPlain = `{"code":0,"msg":"ok","token":"abc123"}`
+    rspCipher = codec.Sm4CBCEncrypt(SM4_KEY, rspPlain, SM4_IV)~
+    mockRsp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + codec.EncodeBase64(rspCipher)
+    decRsp = afterRequest(false, []byte(mockReq), encReq, []byte(mockRsp), []byte(mockRsp))
+    decBody = string(poc.GetHTTPPacketBody(decRsp))
+    log.info("decrypted response body: " + decBody)
+    assert decBody == rspPlain, "response decryption mismatch"
+
+    flow = make(map[string]any)
+    flow["Request"] = codec.StrconvQuote(mockReq)
+    flow["Response"] = codec.StrconvQuote(string(mockRsp))
+    tags = []
+    flow["AddTag"] = func(t...) { for one in t { tags = append(tags, one) } }
+    saved = []
+    modify = func(f) { saved = append(saved, f) }
+    drop = func() { log.error("should not drop") }
+
+    hijackSaveHTTPFlow(flow, modify, drop)
+    assert len(saved) == 1, "modify must be called"
+    finalRsp = codec.StrconvUnquote(saved[0].Response)~
+    finalBody = string(poc.GetHTTPPacketBody(finalRsp))
+    log.info("saved-to-db body: " + finalBody)
+    assert finalBody == rspPlain, "saved response body should be plaintext"
+    assert "sm4-transparent" in tags, "tag should be added"
+
+    log.info("global sm4 transparent self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

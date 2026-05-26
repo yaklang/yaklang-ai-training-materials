@@ -1,0 +1,133 @@
+/*
+模版名称: [挑战应答] 动态 Challenge + HMAC 签名注入
+对应 i18n key: HTTPFuzzerHotPatch.challenge_response_sign
+关键词: 挑战应答, challenge, nonce, AES-CBC, HMAC-SHA256, beforeRequest, X-Auth-Signature
+适用场景: 业务接口需要先访问 /api/get-challenge 拿到密文 challenge，解密成 nonce 之后再用 HMAC 算签名，并注入到目标请求的 X-Auth-Signature 头
+参考文章: yak-project-public 009 (2026-03-18) 前端加密测不动 全局热加载帮你自动接管签名流程
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// 动态挑战应答签名模板
+// 流程: 取 challenge → AES-CBC 解密拿到 nonce → HMAC-SHA256 计算签名 → 注入 X-Auth-Signature
+// 仅对命中 TARGET_PATH 的请求生效，避免污染其他接口
+API_AES_KEY = "YakitVulinboxAES"               /* 解密 challenge 用的对称密钥 */
+API_SIGN_KEY = "YakitVulinboxHMACKey-SIGNATURE"/* 计算签名用的 HMAC 密钥 */
+TARGET_PATH = "/api/user/info"                 /* 仅对该路径补签名 */
+CHALLENGE_PATH = "/api/get-challenge"          /* challenge 接口路径 */
+SIGN_HEADER = "X-Auth-Signature"               /* 签名注入的头名 */
+
+isTargetRequest = func(isHttps, packet) {
+    u, err = str.ExtractURLFromHTTPRequestRaw(packet, isHttps)
+    if err != nil {
+        return false
+    }
+    return str.Contains(u.String(), TARGET_PATH)
+}
+
+fetchChallengeSignature = func(isHttps, packet) {
+    host = poc.GetHTTPPacketHeader(packet, "Host")
+    if host == "" {
+        log.error("challenge sign: request host is empty")
+        return ""
+    }
+    challengeReq = "GET " + CHALLENGE_PATH + " HTTP/1.1\r\n" +
+        "Host: " + host + "\r\n" +
+        "User-Agent: yak-challenge-sign\r\n" +
+        "Connection: close\r\n\r\n"
+    rsp, _, err = poc.HTTP(challengeReq, poc.https(isHttps), poc.timeout(5), poc.save(false))
+    if err != nil {
+        log.error("challenge sign: fetch challenge failed: " + sprintf("%v", err))
+        return ""
+    }
+    body = poc.GetHTTPPacketBody(rsp)
+    params = json.loads(string(body))
+    if !("challenge" in params) || !("iv" in params) {
+        log.error("challenge sign: response missing challenge/iv")
+        return ""
+    }
+    challengeBytes = codec.DecodeBase64(params.challenge)~
+    ivBytes = codec.DecodeBase64(params.iv)~
+    nonce = codec.AESCBCDecrypt(API_AES_KEY, challengeBytes, ivBytes)~
+    return codec.EncodeToHex(codec.HmacSha256(API_SIGN_KEY, nonce))
+}
+
+beforeRequest = func(https, originReq, req) {
+    if !isTargetRequest(https, req) {
+        return req
+    }
+    signature = fetchChallengeSignature(https, req)
+    if signature == "" {
+        return req
+    }
+    return poc.ReplaceHTTPPacketHeader(req, SIGN_HEADER, signature)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start challenge response sign self test")
+
+    port = os.GetRandomAvailableTCPPort()
+    host = "127.0.0.1"
+
+    mockNonce = "nonce-" + codec.EncodeToHex(codec.RandBytes(8))
+    expectedSig = codec.EncodeToHex(codec.HmacSha256(API_SIGN_KEY, mockNonce))
+
+    challengeCount = {"n": 0}
+
+    go func {
+        httpserver.Serve(host, port,
+            httpserver.routeHandler(CHALLENGE_PATH, (w, req) => {
+                challengeCount["n"] = challengeCount["n"] + 1
+                iv = codec.RandBytes(16)
+                cipher = codec.AESCBCEncrypt(API_AES_KEY, mockNonce, iv)~
+                rspJson = json.dumps({
+                    "challenge": codec.EncodeBase64(cipher),
+                    "iv": codec.EncodeBase64(iv),
+                })
+                w.Header().Set("Content-Type", "application/json")
+                w.Write(rspJson)
+            }),
+            httpserver.handler((w, req) => {
+                w.Write("fallback")
+            }),
+        )
+    }
+    os.WaitConnect(str.HostPort(host, port), 4)
+
+    targetHost = sprintf("%s:%d", host, port)
+    mockReq = sprintf(`GET %s HTTP/1.1
+Host: %s
+User-Agent: yak
+
+`, TARGET_PATH, targetHost)
+    otherReq = sprintf(`GET /api/healthz HTTP/1.1
+Host: %s
+
+`, targetHost)
+
+    signedReq = beforeRequest(false, []byte(mockReq), []byte(mockReq))
+    sig = poc.GetHTTPPacketHeader(signedReq, SIGN_HEADER)
+    log.info("injected signature: " + sig)
+    assert sig == expectedSig, "challenge signature mismatch"
+    assert challengeCount["n"] == 1, "should call challenge once"
+
+    untouchedReq = beforeRequest(false, []byte(otherReq), []byte(otherReq))
+    sig2 = poc.GetHTTPPacketHeader(untouchedReq, SIGN_HEADER)
+    log.info("non-target request signature header: '" + sig2 + "'")
+    assert sig2 == "", "non-target request should NOT be signed"
+    assert challengeCount["n"] == 1, "non-target request should NOT trigger challenge fetch"
+
+    log.info("challenge response sign self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====

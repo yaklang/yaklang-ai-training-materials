@@ -1,0 +1,115 @@
+/*
+模版名称: [MITM] hijackSaveHTTPFlow 数据库存储明文
+对应 i18n key: HTTPFuzzerHotPatch.mitm_hijack_save_decrypt
+关键词: hijackSaveHTTPFlow, MITM, 入库改写, 明文存储, AES-CBC, 不影响在线流量
+适用场景: MITM 场景下，浏览器需要继续按原协议（密文）跟服务端交互，但希望保存到 yakit 历史的流量已经被解成明文，方便排查/分析
+参考文章: yak-project-public 009 (2026-03-18) / 084 (2024-12-05) hijackSaveHTTPFlow 用法
+说明: 本模板是少有的同时演示 hijackSaveHTTPFlow Hook 的模板；和 beforeRequest/afterRequest 的关键区别是：本 Hook 不影响在线请求与响应，只改写"保存到数据库"那一刻的内容
+*/
+
+// ===== HOT PATCH TEMPLATE START =====
+// hijackSaveHTTPFlow 模板 - MITM 入库时把响应改写为明文，浏览器仍收原密文
+// 仅对命中 TARGET_PATH 的 flow 做改写；其他 flow 原样保存
+// 注意: flow.Request / flow.Response 是 strconv.Quote 后的字符串，需 Unquote/Quote 来回
+SAVE_AES_KEY = "1234567890123456" /* 16 字节 AES 密钥，按实际环境替换 */
+SAVE_AES_IV = "1234567890123456"
+TARGET_PATH = "/api/secret/data"   /* 仅对该 path 入库改写 */
+
+isTargetFlowRequest = func(packet) {
+    for isHttps in [false, true] {
+        u, err = str.ExtractURLFromHTTPRequestRaw(packet, isHttps)
+        if err == nil && u != nil && str.Contains(u.Path, TARGET_PATH) {
+            return true
+        }
+    }
+    return false
+}
+
+decryptFlowResponse = func(rspPacket) {
+    body = poc.GetHTTPPacketBody(rspPacket)
+    if len(body) == 0 {
+        return rspPacket
+    }
+    plain, err = codec.AESCBCDecrypt(SAVE_AES_KEY, body, SAVE_AES_IV)
+    if err != nil {
+        return rspPacket
+    }
+    return poc.ReplaceHTTPPacketBody(rspPacket, plain)
+}
+
+hijackSaveHTTPFlow = func(flow, modify, drop) {
+    req = codec.StrconvUnquote(flow.Request)~
+    if !isTargetFlowRequest(req) {
+        modify(flow)
+        return
+    }
+    rsp = codec.StrconvUnquote(flow.Response)~
+    newRsp = decryptFlowResponse(rsp)
+    flow.Response = codec.StrconvQuote(string(newRsp))
+    modify(flow)
+}
+
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
+func runSelfTest() {
+    log.info("start hijack save http flow self test")
+
+    plain = `{"secret":"deadbeef","ok":true}`
+    cipher = codec.AESCBCEncrypt(SAVE_AES_KEY, plain, SAVE_AES_IV)~
+
+    targetReq = sprintf(`GET %s HTTP/1.1
+Host: target.local
+
+`, TARGET_PATH)
+    encryptedRsp := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\n\r\n") + cipher
+    targetFlow = {
+        "Request": codec.StrconvQuote(targetReq),
+        "Response": codec.StrconvQuote(string(encryptedRsp)),
+    }
+
+    saved = []
+    modify = func(flow) {
+        saved = append(saved, flow)
+    }
+    drop = func() {
+        log.error("should not drop")
+    }
+
+    hijackSaveHTTPFlow(targetFlow, modify, drop)
+    assert len(saved) == 1, "modify should be called once for target"
+    finalRsp = codec.StrconvUnquote(saved[0].Response)~
+    finalBody = string(poc.GetHTTPPacketBody(finalRsp))
+    log.info("target flow saved body: " + finalBody)
+    assert finalBody == plain, "target flow response body should be plaintext after hijack"
+
+    nonTargetReq = `GET /api/healthz HTTP/1.1
+Host: target.local
+
+`
+    nonTargetRsp = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nOK"
+    nonTargetFlow = {
+        "Request": codec.StrconvQuote(nonTargetReq),
+        "Response": codec.StrconvQuote(nonTargetRsp),
+    }
+
+    saved = []
+    hijackSaveHTTPFlow(nonTargetFlow, modify, drop)
+    assert len(saved) == 1, "modify should still be called for non-target"
+    finalRsp2 = codec.StrconvUnquote(saved[0].Response)~
+    finalBody2 = string(poc.GetHTTPPacketBody(finalRsp2))
+    log.info("non-target flow saved body: " + finalBody2)
+    assert finalBody2 == "OK", "non-target flow response should remain unchanged"
+
+    log.info("hijack save http flow self test passed")
+}
+
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====
