@@ -29,9 +29,15 @@ decodeSm2 = func(param) {
     }
     return resultList
 }
-// ===== HOT PATCH TEMPLATE END =====
 
-// 本地自测代码 - 临时生成一对密钥对，覆盖模版变量后做加解密验证
+/*
+========== 模板自测块（YAK_MAIN 守卫）==========
+说明：
+  - 用 `yak xxx.yak` 命令行运行时，YAK_MAIN = true，会调用 runSelfTest() 做 mock 自测
+  - 当本模板被复制到 yakit Fuzzer 热加载使用时，YAK_MAIN = false，下方测试代码不会执行
+  - 修改模板后用 `yak xxx.yak` 一键自测，安全调试不影响 yakit 实际使用
+*/
+
 func runSelfTest() {
     log.info("start sm2 bruteforce self test")
 
@@ -69,4 +75,7 @@ func runSelfTest() {
     log.info("sm2 bruteforce self test passed")
 }
 
-runSelfTest()
+if YAK_MAIN {
+    runSelfTest()
+}
+// ===== HOT PATCH TEMPLATE END =====
