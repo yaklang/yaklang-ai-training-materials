@@ -319,7 +319,7 @@ if [ -n "$SCRIPT_ARGS" ]; then
     echo "✓ Script arguments expanded"
     
     # 显示脚本参数（隐藏敏感信息）
-    SAFE_ARGS=$(echo "$SCRIPT_ARGS" | sed 's/--totp-secret "[^"]*"/--totp-secret [REDACTED]/g')
+    SAFE_ARGS=$(echo "$SCRIPT_ARGS" | sed -E 's/--totp-secret "([^"]*)"/--totp-secret [REDACTED]/g; s/--action-token "([^"]*)"/--action-token [REDACTED]/g')
     echo "  Script Args: $SAFE_ARGS"
 fi
 
@@ -394,7 +394,7 @@ echo "  Type: $SERVICE_TYPE"
 
 if [ -n "$SCRIPT_ARGS" ]; then
     # 隐藏敏感参数
-    SAFE_ARGS=$(echo "$SCRIPT_ARGS" | sed 's/--totp-secret "[^"]*"/--totp-secret [REDACTED]/g')
+    SAFE_ARGS=$(echo "$SCRIPT_ARGS" | sed -E 's/--totp-secret "([^"]*)"/--totp-secret [REDACTED]/g; s/--action-token "([^"]*)"/--action-token [REDACTED]/g')
     echo "  Args: $SAFE_ARGS"
 else
     echo "  Args: (none)"
@@ -529,4 +529,3 @@ fi
 echo "  Main script: $MAIN_SCRIPT"
 echo "  Install script: $INSTALL_SCRIPT"
 echo ""
-

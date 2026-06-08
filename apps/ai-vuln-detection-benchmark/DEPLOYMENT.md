@@ -52,6 +52,7 @@
 | `EMBEDDING_HOST` | 远程服务器地址 | `root@example.com:22` |
 | `EMBEDDING_HOST_PRIVATE_KEY` | SSH 私钥 | `-----BEGIN RSA PRIVATE KEY-----...` |
 | `AI_BENCHMARK_REPORT_PORT` | Report Viewer 端口 | `9094` |
+| `AI_BENCHMARK_REPORT_VIEWER_TOKEN` | Report Viewer 手动触发按钮所需 token | `benchmark-manual-trigger-2026-03` |
 | `AI_BENCHMARK_TEST_CONFIG` | 测试配置 JSON（必需） | `{"testConfigs":[...]}` |
 | `AI_BENCHMARK_AI_CONFIG` | AI 配置 JSON（必需） | `{"aiConfigs":[...]}` |
 
@@ -200,8 +201,13 @@ yak ai-model-vuln-detection-benchmark.yak \
 ```bash
 yak report-viewer.yak \
   --port $REPORT_VIEWER_PORT \
-  --report-dir $REPORT_DIR
+  --report-dir $REPORT_DIR \
+  --action-token $REPORT_VIEWER_ACTION_TOKEN
 ```
+
+**Web 功能**:
+- 查看历史测试报告与矩阵详情
+- 支持输入 token 后手动“强制更新引擎并执行基准测试”
 
 ## 服务管理
 
@@ -478,6 +484,7 @@ REPORT_DIR=/root/ai-benchmark-reports
 ```bash
 REPORT_VIEWER_PORT=9094
 REPORT_DIR=/root/ai-benchmark-reports
+REPORT_VIEWER_ACTION_TOKEN=benchmark-manual-trigger-2026-03
 ```
 
 ### Systemd 服务文件位置
@@ -486,4 +493,3 @@ REPORT_DIR=/root/ai-benchmark-reports
 /etc/systemd/system/yak-ai-benchmark.service
 /etc/systemd/system/yak-ai-benchmark-report-viewer.service
 ```
-

@@ -11,6 +11,8 @@
 port = cli.Int("port", cli.setDefault(9094), cli.setHelp("Web服务端口"))
 reportDir = cli.String("report-dir", cli.setDefault(""), cli.setHelp("报告目录路径（必需）"))
 frontendPath = cli.String("frontend", cli.setDefault(""), cli.setHelp("前端HTML文件路径（可选，默认自动查找）"))
+actionToken = cli.String("action-token", cli.setDefault(""), cli.setHelp("手动触发强制更新和基准测试所需的 token（可选）"))
+autoRunnerScriptPath = cli.String("auto-runner-script", cli.setDefault(""), cli.setHelp("auto-benchmark.sh 脚本路径（可选，默认自动查找）"))
 
 // 验证参数
 cli.check()
@@ -23,6 +25,51 @@ if reportDir == "" {
 log.info("Starting AI Benchmark Report Viewer")
 log.info("Report Directory: %s", reportDir)
 log.info("Web Port: %d", port)
+
+serviceDir = "/root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service"
+configFile = sprintf("%s/config.json", serviceDir)
+lockFile = sprintf("%s/benchmark.lock", serviceDir)
+
+// 加载 Auto Runner 脚本
+var autoRunnerScript
+autoRunnerScriptLoaded = false
+
+if autoRunnerScriptPath != "" {
+    if file.IsExisted(autoRunnerScriptPath) {
+        autoRunnerScript = autoRunnerScriptPath
+        autoRunnerScriptLoaded = true
+        log.info("Auto runner script loaded from specified path: %s", autoRunnerScriptPath)
+    } else {
+        log.warn("Auto runner script not found at specified path: %s", autoRunnerScriptPath)
+    }
+}
+
+if !autoRunnerScriptLoaded {
+    possibleAutoRunnerPaths = [
+        "/root/yaklang-ai-training-materials/apps/ai-vuln-detection-benchmark/auto-benchmark.sh",
+        "apps/ai-vuln-detection-benchmark/auto-benchmark.sh",
+        "auto-benchmark.sh",
+        "./auto-benchmark.sh",
+    ]
+
+    for scriptPath in possibleAutoRunnerPaths {
+        if file.IsExisted(scriptPath) {
+            autoRunnerScript = scriptPath
+            autoRunnerScriptLoaded = true
+            log.info("Auto runner script loaded from: %s", scriptPath)
+            break
+        }
+    }
+}
+
+manualTriggerEnabled = actionToken != "" && autoRunnerScriptLoaded
+if manualTriggerEnabled {
+    log.info("Manual force benchmark trigger is enabled")
+} else if actionToken == "" {
+    log.warn("Manual force benchmark trigger is disabled because action token is not configured")
+} else {
+    log.warn("Manual force benchmark trigger is disabled because auto runner script was not found")
+}
 
 // 加载前端HTML
 // 关键词: 前端加载, HTML文件
@@ -235,7 +282,6 @@ systemStatusHandle = (rsp, req) => {
     rsp.Header().Set("Access-Control-Allow-Origin", "*")
     
     // 读取配置文件
-    configFile = "/root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/config.json"
     configData = {}
     
     if file.IsExisted(configFile) {
@@ -270,12 +316,81 @@ systemStatusHandle = (rsp, req) => {
         "total_runs": configData["total_runs"],
         "last_run_success": configData["last_run_success"],
         "last_run_error": configData["last_run_error"],
+        "manualTriggerEnabled": manualTriggerEnabled,
+        "benchmarkRunning": file.IsExisted(lockFile),
     }
     
     rsp.WriteHeader(200)
     rsp.Write(json.dumps({
         "success": true,
         "status": statusData
+    }))
+}
+
+// API: 手动强制更新引擎并执行基准测试
+// 关键词: 手动触发, 强制更新, 基准测试
+forceBenchmarkHandle = (rsp, req) => {
+    log.info("API request: %s /api/force-benchmark from %s", req.Method, req.RemoteAddr)
+
+    rsp.Header().Set("Content-Type", "application/json; charset=utf-8")
+    rsp.Header().Set("Access-Control-Allow-Origin", "*")
+
+    if req.Method != "POST" {
+        rsp.WriteHeader(405)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Method Not Allowed"
+        }))
+        return
+    }
+
+    if !manualTriggerEnabled {
+        rsp.WriteHeader(503)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Manual force benchmark trigger is not configured"
+        }))
+        return
+    }
+
+    inputToken = req.Header.Get("X-Action-Token")
+    if inputToken == "" {
+        rsp.WriteHeader(401)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Missing X-Action-Token header"
+        }))
+        return
+    }
+
+    if inputToken != actionToken {
+        log.warn("Invalid manual trigger token from %s", req.RemoteAddr)
+        rsp.WriteHeader(401)
+        rsp.Write(json.dumps({
+            "success": false,
+            "message": "Invalid token"
+        }))
+        return
+    }
+
+    remoteAddr = req.RemoteAddr
+    go fn {
+        command = sprintf("/bin/bash %s --force >/dev/null 2>&1", autoRunnerScript)
+        log.info("Starting manual force benchmark trigger from %s with command: %s", remoteAddr, command)
+
+        _, err = exec.System(command)
+        if err != nil {
+            log.error("Manual force benchmark execution failed: %v", err)
+            return
+        }
+
+        log.info("Manual force benchmark execution finished")
+    }
+
+    rsp.WriteHeader(202)
+    rsp.Write(json.dumps({
+        "success": true,
+        "message": "Manual force benchmark trigger accepted"
     }))
 }
 
@@ -286,6 +401,7 @@ handles = append(handles, httpserver.routeHandler("/index.html", indexHandle))
 handles = append(handles, httpserver.routeHandler("/api/reports", reportsListHandle))
 handles = append(handles, httpserver.routeHandler("/api/report", reportDetailHandle))
 handles = append(handles, httpserver.routeHandler("/api/status", systemStatusHandle))
+handles = append(handles, httpserver.routeHandler("/api/force-benchmark", forceBenchmarkHandle))
 
 // 启动服务器
 log.info("Starting HTTP server on 0.0.0.0:%d", port)
@@ -294,4 +410,3 @@ println(f"✓ Report Directory: ${reportDir}")
 println("\nService is running. Press Ctrl+C to stop.")
 
 httpserver.Serve("0.0.0.0", port, handles...)
-

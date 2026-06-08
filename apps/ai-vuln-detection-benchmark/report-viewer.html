@@ -89,6 +89,12 @@
       align-items: center;
       gap: 8px;
     }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none !important;
+      box-shadow: none !important;
+    }
     .btn-primary {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
       color: #0b1224;
@@ -96,8 +102,50 @@
       box-shadow: 0 14px 30px rgba(91,141,239,0.25);
     }
     .btn-primary:hover { transform: translateY(-1px); }
+    .btn-danger {
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      color: #fff;
+      padding: 10px 16px;
+      box-shadow: 0 14px 30px rgba(239,68,68,0.2);
+    }
+    .btn-danger:hover { transform: translateY(-1px); }
+    .btn-secondary {
+      background: rgba(148,163,184,0.14);
+      border: 1px solid rgba(148,163,184,0.25);
+      color: var(--text);
+      padding: 10px 16px;
+    }
 
     .counter { color: var(--muted); font-size: 14px; }
+    .action-status {
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 20px;
+    }
+    .action-status.ok { color: #86efac; }
+    .action-status.error { color: #fca5a5; }
+    .text-input {
+      width: 100%;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1326;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 14px;
+      outline: none;
+    }
+    .text-input:focus {
+      border-color: rgba(91,141,239,0.75);
+      box-shadow: 0 0 0 3px rgba(91,141,239,0.15);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
 
     .report-list { display: flex; flex-direction: column; gap: 12px; }
     .report-card {
@@ -267,6 +315,12 @@
       <div class="section-head">
         <span class="section-title">系统状态</span>
       </div>
+      <div class="toolbar" style="flex-wrap:wrap;">
+        <button id="forceBenchmarkBtn" class="btn-danger" onclick="openForceBenchmarkModal()" disabled>强制更新引擎并执行基准测试</button>
+        <div id="manualTriggerHint" class="counter">手动触发未配置</div>
+        <div class="spacer"></div>
+        <div id="manualTriggerStatus" class="action-status"></div>
+      </div>
       <div id="systemStatus">
         <div class="loading">正在读取状态...</div>
       </div>
@@ -294,8 +348,30 @@
     </div>
   </div>
 
+  <div id="actionModal" class="modal" onclick="handleActionModalBg(event)">
+    <div class="modal-content" style="width:min(520px,96vw);">
+      <button class="modal-close" onclick="closeActionModal()">关闭</button>
+      <h3 style="margin-bottom:10px;font-size:18px;">手动触发基准测试</h3>
+      <p class="section-desc" style="margin-bottom:12px;">请输入启动 `report-viewer.yak` 时配置的 token。验证通过后，会强制检查最新引擎并执行一次基准测试。</p>
+      <div class="info-item">
+        <div class="info-label">Token</div>
+        <input id="actionTokenInput" class="text-input" type="password" placeholder="请输入 token" autocomplete="current-password" onkeydown="handleActionTokenKeydown(event)" />
+      </div>
+      <div id="actionModalMessage" class="action-status" style="margin-top:12px;"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeActionModal()">取消</button>
+        <button id="confirmForceBenchmarkBtn" class="btn-danger" onclick="submitForceBenchmark()">确认执行</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    let manualTriggerEnabled = false;
+    let benchmarkRunning = false;
+    let forceBenchmarkPending = false;
+
     window.addEventListener('DOMContentLoaded', () => {
+      updateForceBenchmarkButtonState();
       loadSystemStatus();
       loadReports();
     });
@@ -310,6 +386,20 @@
             return;
           }
           const s = data.status;
+          manualTriggerEnabled = !!s.manualTriggerEnabled;
+          benchmarkRunning = !!s.benchmarkRunning;
+          updateForceBenchmarkButtonState();
+          const hint = document.getElementById('manualTriggerHint');
+          const triggerStatus = document.getElementById('manualTriggerStatus');
+          if (!manualTriggerEnabled) {
+            hint.textContent = '手动触发未配置';
+          } else if (benchmarkRunning) {
+            hint.textContent = '当前已有基准测试在运行中';
+          } else {
+            hint.textContent = '输入 token 后可手动触发一次强制更新与基准测试';
+          }
+          triggerStatus.textContent = benchmarkRunning ? '基准测试运行中' : '';
+          triggerStatus.className = `action-status${benchmarkRunning ? ' ok' : ''}`;
           box.innerHTML = `
             <div class="status-grid">
               <div class="status-card">
@@ -344,6 +434,9 @@
         })
         .catch(err => {
           console.error(err);
+          manualTriggerEnabled = false;
+          benchmarkRunning = false;
+          updateForceBenchmarkButtonState();
           box.innerHTML = `<div class="error">错误：${err.message}</div>`;
         });
     }
@@ -582,6 +675,102 @@
     function copyToClipboard(enc) {
       const text = decodeURIComponent(enc);
       navigator.clipboard.writeText(text).then(() => alert('已复制'));
+    }
+
+    function updateForceBenchmarkButtonState() {
+      const btn = document.getElementById('forceBenchmarkBtn');
+      if (!btn) return;
+      btn.disabled = forceBenchmarkPending || !manualTriggerEnabled || benchmarkRunning;
+      btn.textContent = forceBenchmarkPending ? '正在触发...' : '强制更新引擎并执行基准测试';
+
+      const confirmBtn = document.getElementById('confirmForceBenchmarkBtn');
+      if (confirmBtn) {
+        confirmBtn.disabled = forceBenchmarkPending;
+        confirmBtn.textContent = forceBenchmarkPending ? '提交中...' : '确认执行';
+      }
+    }
+
+    function openForceBenchmarkModal() {
+      if (!manualTriggerEnabled) {
+        alert('当前环境未配置手动触发 token');
+        return;
+      }
+      if (benchmarkRunning) {
+        alert('当前已有基准测试在运行中，请稍后再试');
+        return;
+      }
+      document.getElementById('actionModal').style.display = 'flex';
+      document.getElementById('actionTokenInput').value = '';
+      setActionModalMessage('');
+      setTimeout(() => document.getElementById('actionTokenInput').focus(), 0);
+    }
+
+    function closeActionModal() {
+      if (forceBenchmarkPending) return;
+      document.getElementById('actionModal').style.display = 'none';
+      document.getElementById('actionTokenInput').value = '';
+      setActionModalMessage('');
+    }
+
+    function handleActionModalBg(e) {
+      if (e.target.id === 'actionModal') closeActionModal();
+    }
+
+    function handleActionTokenKeydown(e) {
+      if (e.key === 'Enter') submitForceBenchmark();
+    }
+
+    function setActionModalMessage(message, type = '') {
+      const box = document.getElementById('actionModalMessage');
+      box.textContent = message || '';
+      box.className = `action-status${type ? ` ${type}` : ''}`;
+    }
+
+    function submitForceBenchmark() {
+      const token = document.getElementById('actionTokenInput').value.trim();
+      if (!token) {
+        setActionModalMessage('请输入 token', 'error');
+        return;
+      }
+
+      forceBenchmarkPending = true;
+      updateForceBenchmarkButtonState();
+      setActionModalMessage('正在验证 token 并触发任务...', '');
+
+      fetch('/api/force-benchmark', {
+        method: 'POST',
+        headers: {
+          'X-Action-Token': token
+        }
+      })
+        .then(async r => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok || !data.success) {
+            throw new Error(data.message || '触发失败');
+          }
+          return data;
+        })
+        .then(() => {
+          benchmarkRunning = true;
+          setActionModalMessage('验证成功，任务已开始执行', 'ok');
+          document.getElementById('manualTriggerStatus').textContent = '手动任务已提交';
+          document.getElementById('manualTriggerStatus').className = 'action-status ok';
+          updateForceBenchmarkButtonState();
+          setTimeout(() => {
+            closeActionModal();
+            loadSystemStatus();
+          }, 500);
+          setTimeout(loadSystemStatus, 3000);
+          setTimeout(loadReports, 5000);
+        })
+        .catch(err => {
+          console.error(err);
+          setActionModalMessage(err.message, 'error');
+        })
+        .finally(() => {
+          forceBenchmarkPending = false;
+          updateForceBenchmarkButtonState();
+        });
     }
 
     function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }

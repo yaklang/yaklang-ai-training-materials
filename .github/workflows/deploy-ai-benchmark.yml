@@ -72,12 +72,19 @@ jobs:
           else
             echo "✓ AI_BENCHMARK_API_KEY 已设置"
           fi
+
+          if [ -z "${{ secrets.AI_BENCHMARK_REPORT_VIEWER_TOKEN }}" ]; then
+            echo "ERROR: AI_BENCHMARK_REPORT_VIEWER_TOKEN secret 未设置"
+            exit 1
+          fi
+          echo "✓ AI_BENCHMARK_REPORT_VIEWER_TOKEN 已设置"
           
           echo "✓ Secrets 验证完成"
       
       - name: Prepare deployment package
         env:
           AI_BENCHMARK_API_KEY: ${{ secrets.AI_BENCHMARK_API_KEY }}
+          AI_BENCHMARK_REPORT_VIEWER_TOKEN: ${{ secrets.AI_BENCHMARK_REPORT_VIEWER_TOKEN }}
         run: |
           echo "=== 准备部署包 ==="
           
@@ -145,6 +152,7 @@ jobs:
           # AI Benchmark Report Viewer 配置
           REPORT_VIEWER_PORT=${{ env.REPORT_VIEWER_PORT }}
           REPORT_DIR=${{ env.REPORT_DIR }}
+          REPORT_VIEWER_ACTION_TOKEN=${AI_BENCHMARK_REPORT_VIEWER_TOKEN}
           EOF
           
           # 5. 复制部署脚本
@@ -156,10 +164,10 @@ jobs:
           echo ""
           echo "=== 配置文件内容验证 ==="
           echo "--- benchmark-config.env ---"
-          cat "$DEPLOY_DIR/configs/benchmark-config.env"
+          sed 's/^AI_BENCHMARK_API_KEY=.*/AI_BENCHMARK_API_KEY=[REDACTED]/' "$DEPLOY_DIR/configs/benchmark-config.env"
           echo ""
           echo "--- report-viewer-config.env ---"
-          cat "$DEPLOY_DIR/configs/report-viewer-config.env"
+          sed 's/^REPORT_VIEWER_ACTION_TOKEN=.*/REPORT_VIEWER_ACTION_TOKEN=[REDACTED]/' "$DEPLOY_DIR/configs/report-viewer-config.env"
           echo ""
           
           # 显示部署包内容
@@ -252,10 +260,10 @@ jobs:
             echo ""
             echo "=== 验证配置文件内容 ==="
             echo "--- .env.benchmark ---"
-            cat ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark
+            sed 's/^AI_BENCHMARK_API_KEY=.*/AI_BENCHMARK_API_KEY=[REDACTED]/' ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.benchmark
             echo ""
             echo "--- .env.report-viewer ---"
-            cat ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer
+            sed 's/^REPORT_VIEWER_ACTION_TOKEN=.*/REPORT_VIEWER_ACTION_TOKEN=[REDACTED]/' ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/.env.report-viewer
             echo ""
             
             # 设置脚本执行权限
@@ -298,7 +306,7 @@ jobs:
               --yak-version "${{ env.YAK_VERSION }}" \
               --yak-path "${{ env.YAK_PATH }}" \
               --config-file "${{ env.APP_PATH }}/.env.report-viewer" \
-              --script-args '--port $REPORT_VIEWER_PORT --report-dir $REPORT_DIR --frontend ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/report-viewer.html' \
+              --script-args '--port $REPORT_VIEWER_PORT --report-dir $REPORT_DIR --frontend ${{ env.WORK_DIR }}/${{ env.APP_PATH }}/report-viewer.html --action-token "$REPORT_VIEWER_ACTION_TOKEN"' \
               --verify-port "${{ env.REPORT_VIEWER_PORT }}" \
               --install-yak
             
@@ -422,6 +430,7 @@ jobs:
           echo "- 运行模式: 定时任务 (每 5 分钟)" >> $GITHUB_STEP_SUMMARY
           echo "- 配置来源: apps/ai-vuln-detection-benchmark/config/" >> $GITHUB_STEP_SUMMARY
           echo "- API Key: GitHub Secrets (AI_BENCHMARK_API_KEY)" >> $GITHUB_STEP_SUMMARY
+          echo "- 手动触发 Token: GitHub Secrets (AI_BENCHMARK_REPORT_VIEWER_TOKEN)" >> $GITHUB_STEP_SUMMARY
           echo "- 功能: 自动检测新引擎版本并执行测试" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 共享配置" >> $GITHUB_STEP_SUMMARY
@@ -478,9 +487,11 @@ jobs:
           echo "- Auto Runner 会每 5 分钟自动检查最新引擎版本" >> $GITHUB_STEP_SUMMARY
           echo "- 发现新版本时自动下载并执行测试" >> $GITHUB_STEP_SUMMARY
           echo "- 配置文件从 config/ 目录自动部署，API Key 从 GitHub Secrets 读取" >> $GITHUB_STEP_SUMMARY
+          echo "- Report Viewer 的手动触发按钮需要输入 GitHub Secrets 中配置的 Token" >> $GITHUB_STEP_SUMMARY
           echo "- 两个服务共享报告目录: \`${{ env.REPORT_DIR }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Report Viewer 提供 Web 界面查看报告（端口 \`${{ env.REPORT_VIEWER_PORT }}\`）" >> $GITHUB_STEP_SUMMARY
           echo "- 测试会自动安装并启动 vulinbox 靶场" >> $GITHUB_STEP_SUMMARY
           echo "- 更新配置需修改 config/ 目录下的配置文件后重新部署" >> $GITHUB_STEP_SUMMARY
           echo "- 更新 API Key 需修改 GitHub Secrets (AI_BENCHMARK_API_KEY) 后重新部署" >> $GITHUB_STEP_SUMMARY
+          echo "- 更新手动触发 Token 需修改 GitHub Secrets (AI_BENCHMARK_REPORT_VIEWER_TOKEN) 后重新部署" >> $GITHUB_STEP_SUMMARY
           echo "- 查看配置状态: \`cat /root/yaklang-ai-training-materials/ai-vuln-detection-benchmark-service/config.json\`" >> $GITHUB_STEP_SUMMARY

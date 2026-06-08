@@ -40,7 +40,19 @@ MIIEpAIBAAKCAQEA...
   - 确保端口未被占用
   - 如需外网访问，需在防火墙开放此端口
 
-### 3. 测试配置
+### 3. 手动触发鉴权
+
+#### `AI_BENCHMARK_REPORT_VIEWER_TOKEN`
+- **说明**: Report Viewer 页面手动“强制更新引擎并执行基准测试”按钮使用的验证 token
+- **格式**: 高强度随机字符串
+- **示例**: `benchmark-manual-trigger-2026-03`
+- **用途**: 部署时写入 `report-viewer.yak` 启动参数，用户在页面输入后通过后端校验
+- **注意事项**:
+  - 建议长度至少 16 位
+  - 不要与其他系统共用同一个 token
+  - 修改后需要重新运行部署 Workflow 才会生效
+
+### 4. 测试配置
 
 #### `AI_BENCHMARK_TEST_CONFIG`
 - **说明**: 测试配置 JSON
@@ -114,6 +126,7 @@ MIIEpAIBAAKCAQEA...
 - [ ] `EMBEDDING_HOST` - 服务器地址
 - [ ] `EMBEDDING_HOST_PRIVATE_KEY` - SSH 私钥
 - [ ] `AI_BENCHMARK_REPORT_PORT` - Report Viewer 端口
+- [ ] `AI_BENCHMARK_REPORT_VIEWER_TOKEN` - Report Viewer 手动触发 token
 - [ ] `AI_BENCHMARK_TEST_CONFIG` - 测试配置 JSON
 - [ ] `AI_BENCHMARK_AI_CONFIG` - AI 模型配置 JSON
 
@@ -222,6 +235,12 @@ netstat -tlnp | grep 9094
 1. 在 GitHub Secrets 中修改 `AI_BENCHMARK_AI_CONFIG`
 2. 重新运行部署 Workflow
 3. 新配置会自动部署到服务器
+
+### 更新 Report Viewer 手动触发 Token
+
+1. 在 GitHub Secrets 中修改 `AI_BENCHMARK_REPORT_VIEWER_TOKEN`
+2. 重新运行部署 Workflow
+3. Report Viewer 中的手动触发按钮会使用新的 token
 
 ### 更新后验证
 
@@ -347,13 +366,14 @@ systemctl restart yak-ai-benchmark
 
 ## 总结
 
-### 必需的 5 个 Secrets
+### 必需的 6 个 Secrets
 
 | Secret 名称 | 类型 | 是否必需 | 说明 |
 |-------------|------|----------|------|
 | `EMBEDDING_HOST` | 字符串 | ✅ 必需 | 服务器地址 |
 | `EMBEDDING_HOST_PRIVATE_KEY` | 文本 | ✅ 必需 | SSH 私钥 |
 | `AI_BENCHMARK_REPORT_PORT` | 数字 | ✅ 必需 | Web 端口 |
+| `AI_BENCHMARK_REPORT_VIEWER_TOKEN` | 字符串 | ✅ 必需 | Report Viewer 手动触发 token |
 | `AI_BENCHMARK_TEST_CONFIG` | JSON | ✅ 必需 | 测试配置 |
 | `AI_BENCHMARK_AI_CONFIG` | JSON | ✅ 必需 | AI 配置 |
 
@@ -374,4 +394,3 @@ systemctl restart yak-ai-benchmark
 1. 查看 GitHub Actions 运行日志
 2. 检查服务器日志: `journalctl -u yak-ai-benchmark -n 100`
 3. 提交 Issue 到 GitHub 仓库
-

@@ -31,6 +31,14 @@ REPORT_DIR="/root/ai-benchmark-reports-v2"
 VERSION_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt"
 ENGINE_DOWNLOAD_URL_TEMPLATE="https://yaklang.oss-accelerate.aliyuncs.com/yak/{VERSION}/yak_linux_amd64"
 
+# 运行模式
+FORCE_RUN=false
+for arg in "$@"; do
+    if [ "$arg" = "--force" ]; then
+        FORCE_RUN=true
+    fi
+done
+
 # ============= 日志函数 =============
 log_info() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*" | tee -a "$LOG_FILE" >&2
@@ -330,6 +338,9 @@ main() {
     log_info "=========================================="
     log_info "AI Benchmark Auto Runner Started"
     log_info "=========================================="
+    if [ "$FORCE_RUN" = "true" ]; then
+        log_info "Force mode enabled: benchmark will run even if the engine version is already up to date"
+    fi
     
     # 检查锁文件，避免重复执行
     if [ -f "$LOCK_FILE" ]; then
@@ -408,7 +419,9 @@ main() {
     if [ "$need_update" = "false" ]; then
         if [ -n "$engine_path" ] && [ -x "$engine_path" ]; then
              local last_run_success=$(read_config "last_run_success")
-             if [ "$last_run_success" != "true" ]; then
+             if [ "$FORCE_RUN" = "true" ]; then
+                 log_info "Force mode enabled, rerunning benchmark with current latest engine"
+             elif [ "$last_run_success" != "true" ]; then
                  log_info "Last run failed, forcing rerun with current version"
                  engine_path=$(read_config "engine_path")
                  # 继续执行下载（检查）和测试逻辑
@@ -463,4 +476,3 @@ main() {
 
 # 执行主函数
 main "$@"
-
