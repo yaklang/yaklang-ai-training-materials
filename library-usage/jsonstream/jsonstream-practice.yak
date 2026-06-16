@@ -1,0 +1,194 @@
+/*
+jsonstream 库实战练习 - 流式 JSON 解析（数据流 + 回调）
+
+jsonstream 与 json 库的本质区别：
+- json 库：整体解析，必须拿到完整 JSON 再 Unmarshal（json.loads/json.dumps）
+- jsonstream 库：边读边解析，字符级流式 + 回调，支持字段级数据流、容错解析、常量内存处理大字段
+- jsonstream 底层与 Yaklang AI 解析 LLM 数据流（SSE 流）使用同一套引擎 common/jsonextractor
+
+关键词: jsonstream, 流式JSON, 数据流回调, Extract, onObject, onKeyValue
+*/
+
+// 基础流式解析与对象回调
+// 关键词: jsonstream.Extract, jsonstream.onObject, 对象回调
+func testBasicObjectCallback() {
+    log.info("test basic object callback")
+
+    // onObject 对每个解析完成的对象都会触发（包含嵌套对象与根对象），顺序自底向上
+    // 关键词: onObject, 嵌套对象, 自底向上
+    objCount = 0
+    rootName = ""
+    jsonstream.Extract(`{"user": {"name": "Alice"}, "admin": {"name": "Bob"}}`,
+        jsonstream.onObject(func(data) {
+            objCount++
+        }),
+    )
+    // user 对象、admin 对象、根对象 => 共 3 次
+    assert objCount == 3, f"onObject should fire 3 times (2 nested + 1 root), got: ${objCount}"
+    log.info("basic object callback passed")
+}
+
+// 数组回调
+// 关键词: jsonstream.onArray, 数组回调
+func testArrayCallback() {
+    log.info("test array callback")
+
+    arrLen = 0
+    jsonstream.Extract(`{"items": [10, 20, 30, 40]}`,
+        jsonstream.onArray(func(data) {
+            arrLen = len(data)
+        }),
+    )
+    assert arrLen == 4, f"onArray should get array of len 4, got: ${arrLen}"
+    log.info("array callback passed")
+}
+
+// 键值对回调
+// 关键词: jsonstream.onKeyValue, 键值回调
+func testKeyValueCallback() {
+    log.info("test key-value callback")
+
+    // 注意：onKeyValue 不仅对标量键值触发，容器（对象/数组）解析完成时也会触发一次，
+    // 且根对象触发时 key 为空字符串。实战中通常按需过滤空 key。
+    // 关键词: onKeyValue, 容器触发, 根对象空key
+    scalars = {}
+    jsonstream.Extract(`{"a": 1, "b": 2, "c": 3}`,
+        jsonstream.onKeyValue(func(key, value) {
+            if key != "" {
+                scalars[key] = value
+            }
+        }),
+    )
+    assert scalars["a"] == 1, "key a should be 1"
+    assert scalars["b"] == 2, "key b should be 2"
+    assert scalars["c"] == 3, "key c should be 3"
+    log.info("key-value callback passed")
+}
+
+// 原始键值对回调
+// 关键词: jsonstream.onRawKeyValue, 原始键值
+func testRawKeyValueCallback() {
+    log.info("test raw key-value callback")
+
+    hitName = false
+    jsonstream.Extract(`{"name": "Alice", "age": 30}`,
+        jsonstream.onRawKeyValue(func(key, value) {
+            if str.Contains(sprintf("%v", key), "name") {
+                hitName = true
+            }
+        }),
+    )
+    assert hitName, "onRawKeyValue should hit key name"
+    log.info("raw key-value callback passed")
+}
+
+// 带父路径的键值对回调
+// 关键词: jsonstream.onKeyValueEx, 父路径, parents
+func testKeyValueExCallback() {
+    log.info("test key-value with parents callback")
+
+    cityParents = nil
+    jsonstream.Extract(`{"user": {"profile": {"city": "NY"}}}`,
+        jsonstream.onKeyValueEx(func(key, value, parents) {
+            // city 字段的父路径应为 [user, profile]
+            if key == "city" {
+                cityParents = parents
+            }
+        }),
+    )
+    assert cityParents != nil, "city parents should not be nil"
+    assert len(cityParents) == 2, f"city parents len should be 2, got: ${len(cityParents)}"
+    assert cityParents[0] == "user" && cityParents[1] == "profile", f"city parents mismatch: ${cityParents}"
+    log.info("key-value with parents callback passed")
+}
+
+// 根对象回调（仅顶层）
+// 关键词: jsonstream.onRootMap, 根对象, 顶层
+func testRootMapCallback() {
+    log.info("test root map callback")
+
+    rootCount = 0
+    rootKeys = 0
+    jsonstream.Extract(`{"user": {"name": "Alice"}, "ok": true}`,
+        jsonstream.onRootMap(func(data) {
+            rootCount++
+            rootKeys = len(data)
+        }),
+    )
+    // 与 onObject 不同，onRootMap 只在顶层对象完成时触发一次
+    assert rootCount == 1, f"onRootMap should fire only once, got: ${rootCount}"
+    assert rootKeys == 2, f"root map should have 2 keys, got: ${rootKeys}"
+    log.info("root map callback passed")
+}
+
+// 条件对象回调
+// 关键词: jsonstream.onConditionalObject, 条件回调, 必含键
+func testConditionalObjectCallback() {
+    log.info("test conditional object callback")
+
+    // 只有同时包含 name 和 email 的对象才会触发
+    // 关键词: onConditionalObject, 同时包含
+    users = []
+    jsonstream.Extract(`{"user": {"name": "Alice", "email": "a@test.com"}, "product": {"id": 1, "name": "Widget"}}`,
+        jsonstream.onConditionalObject(["name", "email"], func(data) {
+            users = append(users, data["name"])
+        }),
+    )
+    assert len(users) == 1, f"only 1 object has both name and email, got: ${len(users)}"
+    assert users[0] == "Alice", f"matched user should be Alice, got: ${users[0]}"
+    log.info("conditional object callback passed")
+}
+
+// 解析完成回调
+// 关键词: jsonstream.onFinished, 完成回调
+func testFinishedCallback() {
+    log.info("test finished callback")
+
+    finished = false
+    jsonstream.Extract(`{"a": 1}`,
+        jsonstream.onFinished(func() {
+            finished = true
+        }),
+    )
+    assert finished, "onFinished should be triggered on success"
+    log.info("finished callback passed")
+}
+
+// 容错解析（非标准 JSON）
+// 关键词: jsonstream, 容错解析, 尾逗号, 非标准JSON
+func testFaultTolerance() {
+    log.info("test fault tolerance")
+
+    // 含尾逗号的非标准 JSON 仍可解析出有效部分
+    // 关键词: 容错, 尾逗号
+    got = nil
+    jsonstream.Extract(`{"a": 1, "c": "ok",}`,
+        jsonstream.onRootMap(func(data) {
+            got = data
+        }),
+    )
+    assert got != nil, "fault-tolerant parse should still produce a root map"
+    valA = got["a"]
+    valC = got["c"]
+    assert valA == 1, f"key a should be parsed as 1, got: ${valA}"
+    assert valC == "ok", f"key c should be parsed as ok, got: ${valC}"
+    log.info("fault tolerance passed")
+}
+
+func main() {
+    log.info("start jsonstream practice")
+
+    testBasicObjectCallback()
+    testArrayCallback()
+    testKeyValueCallback()
+    testRawKeyValueCallback()
+    testKeyValueExCallback()
+    testRootMapCallback()
+    testConditionalObjectCallback()
+    testFinishedCallback()
+    testFaultTolerance()
+
+    log.info("all jsonstream practice tests passed")
+}
+
+main()

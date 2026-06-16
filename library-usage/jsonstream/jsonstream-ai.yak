@@ -1,0 +1,127 @@
+/*
+jsonstream 库实战 - 模拟解析 AI(LLM) 数据流
+
+这是 jsonstream 最贴近 Yaklang AI 的使用场景：大模型以"数据流"形式逐块返回一个 JSON 对象，
+我们不等它输出完整，而是边到达边解析，并对 content 字段做字符级实时消费。
+Yaklang AI 内部解析 LLM 响应（aispec/stream.go）使用的就是同一套引擎 common/jsonextractor。
+
+关键词: jsonstream, AI数据流, LLM流式, ExtractFromReader, onField, 实时消费
+*/
+
+// 模拟大模型逐块吐出一个 JSON 对象（带轻微延迟），消费端边收边解析
+// 关键词: AI数据流, io.Pipe, 逐块输出, ExtractFromReader
+func testAIStreamParsing() {
+    log.info("test AI stream parsing")
+
+    r, w = io.Pipe()
+
+    // 生产者：模拟 LLM 服务端把一个 JSON 对象分多片写出
+    // 关键词: LLM分片输出, 流式生产
+    go func() {
+        defer w.Close()
+        // content 值里故意带 \u0021(=!) 转义，演示流式 JSON 解码可跨分片还原 unicode 转义
+        chunks = [
+            `{"role": "assistant", "reasoning_content": "let me think", `,
+            `"content": "Hello`,
+            ` from`,
+            ` Yak`,
+            ` AI\u00`,
+            `21", "finish_reason": "stop"}`,
+        ]
+        for chunk in chunks {
+            w.WriteString(chunk)
+            sleep(0.02) // 模拟网络分片到达的间隔
+        }
+    }()
+
+    // 消费者：对 content 字段做字符级实时读取（独立 goroutine），
+    // 同时用 onKeyValue 捕获结构化字段
+    // 关键词: 实时读取, 字符级消费, onField, onKeyValue
+    mu = sync.NewMutex()
+    contentBuf = ""
+    readChunks = 0
+    finishReason = ""
+    role = ""
+
+    jsonstream.ExtractFromReader(r,
+        jsonstream.onField("content", func(key, reader, parents) {
+            // 字段流给出的是带引号和转义的原始值，用 str.NewJSONStringReader 流式解码：
+            // 边到达边去引号、还原转义(\n \t \uXXXX 等)，内部已做 UTF-8 安全读取，不会截断多字节字符
+            // 关键词: str.NewJSONStringReader, 流式JSON解码, json utf8 reader
+            decoded = str.NewJSONStringReader(reader)
+            // 用小缓冲循环读取，演示"边到达边消费"的真实流式特性
+            buf = make([]byte, 4)
+            for {
+                n, err = decoded.Read(buf)
+                if n > 0 {
+                    mu.Lock()
+                    contentBuf += string(buf[:n])
+                    readChunks++
+                    mu.Unlock()
+                }
+                if err != nil {
+                    break // EOF: 字段值结束
+                }
+            }
+        }),
+        jsonstream.onKeyValue(func(key, value) {
+            if key == "finish_reason" {
+                mu.Lock(); finishReason = value; mu.Unlock()
+            }
+            if key == "role" {
+                mu.Lock(); role = value; mu.Unlock()
+            }
+        }),
+    )
+
+    // ExtractFromReader 返回时，所有字段流 goroutine 已结束，可安全读取结果
+    // contentBuf 已是解码后的最终答案（无引号、\u0021 已还原为 !）
+    // 关键词: 流式解码结果, 最终答案
+    answer = contentBuf
+    assert answer == "Hello from Yak AI!", f"streamed content mismatch, got: ${answer}"
+    assert readChunks > 1, f"content should be read in multiple chunks (truly streamed), got chunks: ${readChunks}"
+    assert finishReason == "stop", f"finish_reason should be stop, got: ${finishReason}"
+    assert role == "assistant", f"role should be assistant, got: ${role}"
+
+    // AI 处理常用：用 str.CalcTokenCount 估算答案的 token 数（基于 Qwen BPE 词表）
+    // 关键词: str.CalcTokenCount, token估算, AI上下文预算
+    tokenCount = str.CalcTokenCount(answer)
+    assert tokenCount > 0, f"token count should be positive, got: ${tokenCount}"
+
+    log.info(sprintf("AI stream parsed: role=%v answer=%v finish=%v readChunks=%v tokens=%v", role, answer, finishReason, readChunks, tokenCount))
+    log.info("AI stream parsing passed")
+}
+
+// 模拟解析 AI 返回的工具调用参数（嵌套结构 + 条件回调）
+// 关键词: jsonstream, 工具调用, tool_calls, onConditionalObject
+func testAIToolCallParsing() {
+    log.info("test AI tool call parsing")
+
+    // 模拟 LLM 返回带工具调用的响应，用条件回调精确捕获函数调用对象
+    // 关键词: 条件回调, name+arguments
+    payload = `{
+        "role": "assistant",
+        "tool_call": {"name": "servicescan_scan", "arguments": "{\"target\": \"127.0.0.1\"}"}
+    }`
+
+    mu = sync.NewMutex()
+    toolName = ""
+    jsonstream.Extract(payload,
+        jsonstream.onConditionalObject(["name", "arguments"], func(data) {
+            mu.Lock(); toolName = data["name"]; mu.Unlock()
+        }),
+    )
+    assert toolName == "servicescan_scan", f"tool name should be servicescan_scan, got: ${toolName}"
+    log.info("AI tool call parsing passed")
+}
+
+func main() {
+    log.info("start jsonstream AI stream practice")
+
+    testAIStreamParsing()
+    testAIToolCallParsing()
+
+    log.info("all jsonstream AI stream practice tests passed")
+}
+
+main()

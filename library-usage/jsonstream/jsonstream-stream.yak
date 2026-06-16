@@ -1,0 +1,176 @@
+/*
+jsonstream 库进阶练习 - 数据流与字段级字符流
+
+本文件聚焦 jsonstream 的"流式"核心能力：
+- 从 io.Reader 数据流边读边解析（ExtractFromReader）
+- 字段级字符流处理（onField），每个字段在独立 goroutine 中以 io.Reader 形式实时产出
+- 多字段、正则、Glob 字段匹配
+- 多字段并发流式处理
+
+重要约定：
+- 字段流（onField/onFields/...）产出的是"原始值字节"，字符串字段会带上首尾双引号且保留转义。
+  本文件示例中的值都是无转义的简单字符串，用 str.Trim(string(data), `"`) 去引号即可；
+  若值可能含转义(\n、\uXXXX 等，AI 流式常见)，应改用 str 库配套解码器：
+  一次性 str.JsonStringDecode(string(raw))，或流式 str.NewJSONStringReader(reader)（详见 jsonstream-ai.yak）。
+- ExtractFromReader 会等待所有字段流 goroutine 结束后才返回，因此返回后可安全读取结果
+
+关键词: jsonstream, ExtractFromReader, onField, 字段流, 数据流回调
+*/
+
+// 从 io.Reader 数据流解析
+// 关键词: jsonstream.ExtractFromReader, io.Pipe, 数据流
+func testExtractFromReader() {
+    log.info("test extract from reader")
+
+    // 用管道模拟生产者-消费者：一端写入，一端流式解析
+    // 关键词: io.Pipe, 边写边解析
+    r, w = io.Pipe()
+    go func() {
+        w.WriteString(`{"id": 1, "msg": "from-stream"}`)
+        w.Close()
+    }()
+
+    gotMsg = ""
+    jsonstream.ExtractFromReader(r, jsonstream.onObject(func(data) {
+        gotMsg = data["msg"]
+    }))
+    assert gotMsg == "from-stream", f"ExtractFromReader should get msg=from-stream, got: ${gotMsg}"
+    log.info("extract from reader passed")
+}
+
+// 字段级字符流处理
+// 关键词: jsonstream.onField, 字符流, io.ReadAll
+func testFieldStream() {
+    log.info("test field stream")
+
+    // onField 为指定字段注册字符级流处理器，回调在独立 goroutine 中执行
+    // 字符串字段的原始值带引号，需 str.Trim 去引号
+    // 关键词: onField, 原始值带引号, str.Trim
+    content = ""
+    parentsPath = nil
+    jsonstream.Extract(`{"company": {"team": {"lead": "Alice"}}, "content": "hello stream world"}`,
+        jsonstream.onField("content", func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            content = str.Trim(string(raw), `"`)
+        }),
+        jsonstream.onField("lead", func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            // lead 字段位于 company.team 下，parents 记录祖先路径
+            parentsPath = parents
+        }),
+    )
+    assert content == "hello stream world", f"field content mismatch, got: ${content}"
+    assert parentsPath != nil && len(parentsPath) == 2, f"lead parents should have len 2, got: ${parentsPath}"
+    assert parentsPath[0] == "company" && parentsPath[1] == "team", f"lead parents mismatch: ${parentsPath}"
+    log.info("field stream passed")
+}
+
+// 多字段匹配（包含匹配，大小写不敏感）
+// 关键词: jsonstream.onFields, 多字段匹配, 包含匹配
+func testMultiFieldStream() {
+    log.info("test multi-field stream")
+
+    // onFields 对字段名做"包含子串"匹配（大小写不敏感），任意子串命中即触发
+    // 这里 data1/data2/data3 都包含子串 "data"
+    // 关键词: onFields, 子串包含
+    mu = sync.NewMutex()
+    hit = {}
+    jsonstream.Extract(`{"data1": "AAA", "data2": "BBBB", "other": "xxx", "data3": "CCCCC"}`,
+        jsonstream.onFields(["data"], func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            val = str.Trim(string(raw), `"`)
+            mu.Lock()
+            hit[key] = len(val)
+            mu.Unlock()
+        }),
+    )
+    assert len(hit) == 3, f"onFields should match 3 data* fields, got: ${len(hit)} keys"
+    assert hit["data1"] == 3 && hit["data2"] == 4 && hit["data3"] == 5, f"field length mismatch: ${hit}"
+    log.info("multi-field stream passed")
+}
+
+// 正则字段匹配
+// 关键词: jsonstream.onFieldRegexp, 正则匹配
+func testFieldRegexpStream() {
+    log.info("test field regexp stream")
+
+    mu = sync.NewMutex()
+    userFields = []
+    jsonstream.Extract(`{"user_name": "alice", "user_email": "a@b.com", "admin_role": "root"}`,
+        jsonstream.onFieldRegexp("^user_", func(key, reader, parents) {
+            io.ReadAll(reader)~
+            mu.Lock()
+            userFields = append(userFields, key)
+            mu.Unlock()
+        }),
+    )
+    assert len(userFields) == 2, f"regexp ^user_ should match 2 fields, got: ${len(userFields)}"
+    log.info("field regexp stream passed")
+}
+
+// Glob 字段匹配
+// 关键词: jsonstream.onFieldGlob, Glob匹配, 通配符
+func testFieldGlobStream() {
+    log.info("test field glob stream")
+
+    mu = sync.NewMutex()
+    configFields = []
+    jsonstream.Extract(`{"config_host": "localhost", "config_port": 8080, "name": "svc"}`,
+        jsonstream.onFieldGlob("config_*", func(key, reader, parents) {
+            io.ReadAll(reader)~
+            mu.Lock()
+            configFields = append(configFields, key)
+            mu.Unlock()
+        }),
+    )
+    assert len(configFields) == 2, f"glob config_* should match 2 fields, got: ${len(configFields)}"
+    log.info("field glob stream passed")
+}
+
+// 多字段并发流式处理
+// 关键词: jsonstream.onField, 并发处理, sync.Mutex
+func testConcurrentFieldStream() {
+    log.info("test concurrent field stream")
+
+    // 每个匹配字段在独立 goroutine 中流式处理；用 Mutex 保护共享结果
+    // ExtractFromReader/Extract 返回前会等待所有字段 goroutine 完成
+    // 关键词: 并发字段流, Mutex
+    mu = sync.NewMutex()
+    sizes = {}
+    bigData = sprintf(`{"f1": "%s", "f2": "%s", "f3": "%s"}`,
+        str.Repeat("A", 200), str.Repeat("B", 300), str.Repeat("C", 400))
+    jsonstream.Extract(bigData,
+        jsonstream.onField("f1", func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            mu.Lock(); sizes["f1"] = len(str.Trim(string(raw), `"`)); mu.Unlock()
+        }),
+        jsonstream.onField("f2", func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            mu.Lock(); sizes["f2"] = len(str.Trim(string(raw), `"`)); mu.Unlock()
+        }),
+        jsonstream.onField("f3", func(key, reader, parents) {
+            raw = io.ReadAll(reader)~
+            mu.Lock(); sizes["f3"] = len(str.Trim(string(raw), `"`)); mu.Unlock()
+        }),
+    )
+    s1, s2, s3 = sizes["f1"], sizes["f2"], sizes["f3"]
+    assert s1 == 200, f"f1 size should be 200, got: ${s1}"
+    assert s2 == 300, f"f2 size should be 300, got: ${s2}"
+    assert s3 == 400, f"f3 size should be 400, got: ${s3}"
+    log.info("concurrent field stream passed")
+}
+
+func main() {
+    log.info("start jsonstream stream practice")
+
+    testExtractFromReader()
+    testFieldStream()
+    testMultiFieldStream()
+    testFieldRegexpStream()
+    testFieldGlobStream()
+    testConcurrentFieldStream()
+
+    log.info("all jsonstream stream practice tests passed")
+}
+
+main()

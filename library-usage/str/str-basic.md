@@ -791,3 +791,147 @@ str.Split(",a,b,", ",")  // => ["", "a", "b", ""]
 // 分隔符不存在
 str.Split("hello", "x")  // => ["hello"]
 ```
+
+# str 流式 JSON 与 AI 处理辅助函数
+
+这些函数是为"数据流 + 回调"式 JSON 解析（见 jsonstream 库 / common/jsonextractor）和大模型(LLM)文本处理配套准备的：
+解析数据流时拿到的字段值通常是带引号、带转义(\n、\t、\uXXXX 等)的原始片段，需要 JSON 字符串解码；
+按字节/小缓冲读取流时，多字节字符(中文等)可能被从中间截断，需要 UTF-8 安全读取；
+AI 场景下还常需要估算文本的 token 数量来做上下文预算。
+
+## `str.JsonStringDecode` 函数
+
+### 功能描述
+解码一个 JSON 字符串值（一次性版本）：去掉首尾引号并还原转义（`\n`、`\t`、`\uXXXX`、`\xNN`、代理对等），返回真实字符串内容。
+相比 `str.Unquote`（基于 strconv，严格、遇非标准输入会报错）更容错：遇到非标准/畸形数据会回退返回原始内容而不是报错。
+
+### 参数说明
+```
+func JsonStringDecode(raw: string) => string
+```
+- `raw` : 带引号的 JSON 字符串值，例如 `"Hello\nYak"`
+- **返回值**：去引号、去转义后的真实内容
+
+### 示例代码
+```
+// 还原换行与中文 unicode 转义
+str.JsonStringDecode(`"Hello\nYak \u4f60\u597d"`)  // => "Hello\nYak 你好"
+
+// 还原 unicode
+str.JsonStringDecode(`"\u4f60\u597d"`)              // => "你好"
+
+// 配合 jsonstream onField 解码字段原始值
+captured = ""
+jsonstream.Extract(`{"content": "stream\u4f60\u597d done"}`,
+    jsonstream.onField("content", func(key, reader, parents) {
+        raw = io.ReadAll(reader)~
+        captured = str.JsonStringDecode(string(raw))  // => "stream你好 done"
+    }),
+)~
+```
+
+### 注意事项
+1. **容错回退**：当输入不是合法 JSON 字符串（无引号、畸形）时，原样返回输入内容
+2. **与 str.Unquote 的区别**：`Unquote` 严格且会返回 error，`JsonStringDecode` 宽松且只返回 string
+3. **流式版本**：处理数据流时请用 `str.NewJSONStringReader`（边到达边解码）
+
+## `str.NewJSONStringReader` 函数
+
+### 功能描述
+包装一个 JSON 字符串值的 Reader，流式解码其中的转义（`\n`、`\t`、`\uXXXX`、`\xNN` 等），
+返回去引号、去转义后的真实字符串内容。内部已做 UTF-8 安全读取，遇到非标准/畸形数据会自动回退为原始透传。
+即使转义序列跨越多个读取分片（如网络流、io.Pipe、LLM 流式响应）也能正确还原，不会重复或截断。
+
+### 参数说明
+```
+func NewJSONStringReader(r: io.Reader) => io.Reader
+```
+- `r` : 提供 JSON 字符串值原始字节的 reader
+- **返回值**：解码后的 reader，读到的内容已去引号、已还原转义
+
+### 示例代码
+```
+// 一次读取全部
+reader = str.NewJSONStringReader(str.NewReader(`"escaped: \t tab and \u4f60"`))
+data = io.ReadAll(reader)~
+println(string(data))  // => "escaped: \t tab and 你"
+
+// 配合 jsonstream onField：把字段流包一层，边到达边解码（适合 AI 流式输出）
+jsonstream.onField("content", func(key, reader, parents) {
+    decoded = str.NewJSONStringReader(reader)
+    buf = make([]byte, 4)
+    for {
+        n, err = decoded.Read(buf)
+        if n > 0 { /* 实时消费 string(buf[:n]) */ }
+        if err != nil { break }
+    }
+})
+```
+
+### 注意事项
+1. **流式去引号去转义**：适合大模型逐块输出 content 字段时实时消费
+2. **跨分片安全**：转义序列被分片切断时会等待数据补齐后再解码
+3. **容错**：首字符非 `"` 或中途畸形时回退为原始透传
+
+## `str.NewUTF8Reader` 函数
+
+### 功能描述
+包装一个 Reader，使每次读取都只返回完整的 UTF-8 字符，避免按字节/小缓冲读取数据流时把一个多字节字符（中文等）从中间截断造成乱码。
+
+### 参数说明
+```
+func NewUTF8Reader(r: io.Reader) => io.Reader
+```
+- `r` : 原始 reader
+- **返回值**：UTF-8 安全的 reader，每次 Read 返回的都是完整 UTF-8 序列
+
+### 示例代码
+```
+u8 = str.NewUTF8Reader(str.NewReader("你好世界"))
+buf = make([]byte, 4)
+total = ""
+for {
+    n, err = u8.Read(buf)
+    if n > 0 { total += string(buf[:n]) }  // buf[:n] 一定是完整 UTF-8
+    if err != nil { break }
+}
+println(total)  // => "你好世界"
+```
+
+### 注意事项
+1. **配合字段流**：jsonstream onField 用小缓冲读取中文内容时避免乱码
+2. **缓冲区为 1 字节时退化**：极小缓冲无法保证完整字符，会直接透传
+
+## AI token 计算函数（基于 Qwen BPE 词表）
+
+### 功能描述
+- `str.CalcTokenCount(text)`：计算文本 token 数，识别特殊 token（如 `<|im_start|>`、`<|im_end|>`、`<|endoftext|>`）
+- `str.CalcOrdinaryTokenCount(text)`：计算文本 token 数，但不识别特殊 token
+- `str.EncodeTokens(text)`：编码为 token id 列表（识别特殊 token）
+- `str.EncodeOrdinaryTokens(text)`：编码为 token id 列表（不识别特殊 token）
+- `str.DecodeTokens(tokens)`：将 token id 列表解码还原为文本
+
+### 参数说明
+```
+func CalcTokenCount(text: string) => int
+func CalcOrdinaryTokenCount(text: string) => int
+func EncodeTokens(text: string) => []int
+func EncodeOrdinaryTokens(text: string) => []int
+func DecodeTokens(tokens: []int) => string
+```
+
+### 示例代码
+```
+// 估算大模型上下文预算
+n = str.CalcTokenCount("Hello, Yak!")   // => 4
+n = str.CalcTokenCount("你好，世界")      // 中文 token 数
+
+// 编码 / 解码往返
+ids = str.EncodeTokens("Hello, Yak!")    // => [9707, 11, 70868, 0]
+text = str.DecodeTokens(ids)             // => "Hello, Yak!"
+```
+
+### 注意事项
+1. **用途**：长文本裁剪、上下文窗口预算、计费估算等 AI 处理场景
+2. **词表**：基于 Qwen BPE，对英文/中文/符号的切分粒度各不相同
+3. **往返一致**：`DecodeTokens(EncodeTokens(s)) == s`
