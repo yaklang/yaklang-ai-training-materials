@@ -2,7 +2,7 @@
 
 日期: 2023-11-08 | 原文: <https://mp.weixin.qq.com/s/TDdx_PhIR6RD0vxBShwUSQ>
 
-![image](static/a3622a51d3d713fc.png)
+author: @Longlone
 
 **前言**
 
@@ -10,21 +10,15 @@
 
 **小实验：通过.git文件夹恢复文件**
 
-![image](static/262e3bad11787232.png)
-
 在此之前，师傅们可以先做一个小实验，即将一个代码仓库的 .git 文件夹单独复制出来到另外的一个文件夹中，看看会发生什么？
 
 ![image](static/7f0bb0599a19a924.png)
 
 可以看到，执行`git status`后依然能看到被删除的文件，这时候只需要简单地执行`git checkout -- .`恢复最后一次commit的提交时的状态，被删除的文件也就恢复了，这实际上证明，**假如能下载 .git 文件夹，就相当于下载了源码。Githack原理**
 
-![image](static/262e3bad11787232.png)
-
 知道了上述这点之后，我们关注的重点变成了如何下载 .git 文件夹。一个最简单的情况是该目录由于中间件（ apache / nginx) 配置不当导致其能直接目录遍历，这时候只需要通过 `wget -r`或者编写脚本递归遍历下载文件夹和文件即可。
 
 假如不能目录遍历，那么我们就需要先了解Git内部原理，才能够进行接下来的工作。（**Git内部原理** 章节的内容参考 `Pro Git第二版`）
-
-![image](static/acb72ea11dfd4a75.svg)
 
 **Git内部原理**
 
@@ -39,8 +33,6 @@ $ ls -F1HEADconfig*descriptionhooks/info/objects/refs/
 需要重点关注的是`HEAD` 文件、（还未创建的）`index` 文件，和 `objects` 目录、`refs` 目录。这些文件或目录是 git 的核心组成部分，其中`HEAD`文件保存了当前所在分支，`index`文件保存了暂存区信息，`objects`目录存储了所有数据内容，`refs`目录则存储了指向数据的指针。
 
 **数据对象(blob object)**
-
-![image](static/fe5935e2360f474b.gif)
 
 Git是一个内容寻址文件系统，这意味着 Git 的核心部分是一个简单的键值对数据库，我们可以简单地往数据库中插入任意类型的内容，数据库会返回一个键值，通过该键值可以在任意时刻再次检索该内容。
 
@@ -71,8 +63,6 @@ $ git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4test content
 ```
 
 **树对象（tree object）**
-
-![image](static/fe5935e2360f474b.gif)
 
 接下来要讨论的对象类型是树对象，它能解决文件名保存的问题，也允许我们将多个文件组织到一起。Git 以一种类似于 UNIX 文件系统的方式存储内容，所有内容均以树对象和数据对象的形式存储，其中树对象对应了 UNIX 中的目录项，数据对象则大致上对应了 inodes 或文件内容。一个树对象包含了一条或多条树对象记录，每条记录含有一个指向数据对象或者子树对象的 SHA-1 指针，以及相应的模式、类型、文件名信息，一个示例图如下：
 
@@ -108,8 +98,6 @@ $ git statusOn branch masterNo commits yetChanges to be committed:  (use "git rm
 
 **提交对象(commit object)**
 
-![image](static/fe5935e2360f474b.gif)
-
 提交对象解决了以下问题：假如我们存在多个树对象，而每个树对象则有一个独立的键值，我们不可能去记忆所有的键值。
 
 所以我们将树对象提交为提交对象，在其上附加上作者信息/作者邮箱以及一段注释。
@@ -126,8 +114,6 @@ $ echo 'first commit' | git commit-tree 80865964295ae2f11d27383e5f9c0b58a8ef21da
 
 除了上述提交的几个对象之外，实际上git还存在tag和repack对象，在此不再做介绍。
 
-![image](static/acb72ea11dfd4a75.svg)
-
 **具体实现**
 
 在了解了 Git 内部原理之后，我们就可以开始来编写 Githack 了，在Yaklang中实现的 Githack 使用了 go-git 这个依赖库。其执行流程如下：
@@ -135,8 +121,6 @@ $ echo 'first commit' | git commit-tree 80865964295ae2f11d27383e5f9c0b58a8ef21da
 ![image](static/20455ad63172d137.jpg)
 
 **使用案例**
-
-![image](static/262e3bad11787232.png)
 
 我们以 `ctfhub-技能树-Web-信息泄露-Git泄露-Log` 题目为例，以此展示如何在 Yaklang 中使用 Githack ，启动题目后，我们获取靶场地址，这里的靶场地址是：
 

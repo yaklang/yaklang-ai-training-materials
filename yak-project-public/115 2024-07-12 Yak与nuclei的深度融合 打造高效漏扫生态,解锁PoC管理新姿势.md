@@ -2,11 +2,11 @@
 
 日期: 2024-07-12 | 原文: <https://mp.weixin.qq.com/s/P54qitE4VuEAUnHy7cappQ>
 
-![image](static/03398f4870a90994.png)
+> nuclei因为其优秀的Yaml PoC生态而十分受欢迎，在过去的一段时间，经常有小伙伴在Yak交流群中经常提到nuclei。而在我们的官网教程中，已经对Yak怎么调用nuclei漏扫能力进行简要介绍。不过仍有小伙伴还有疑惑，其一是调用过程中出现一些没有PoC模板的报错；其二是不清楚为什么放着原生的nuclei不用非要写代码来调用这项能力，这不是多此一举吗？
+>
+> 本篇文章将从Yakit整个生态角度，为大家介绍Yak与nuclei的有机融合，展现在Yak中使用nuclei的诸多便利。
 
-![image](static/dd27461cdaba174b.png)
-
-![image](static/b66ccf5caffe9a6c.png)
+## PoC数据库 就是你的弹药库
 
 在Yakit中使用nuclei很简单，只需要几行代码。在**Yak Runner**中，使用下面代码，指定扫描的目标与选项，便能调用nuclei的漏扫能力：
 
@@ -32,7 +32,7 @@ results:=nuclei.Scan("192.168.135.128:8080",nuclei.tags("thinkphp"))~for result 
 
 由此可以看到，Yakit调用nuclei逻辑和原生的nuclei操作逻辑是不一样的。许多师傅习惯了**nuclei -t**指定目录模板的操作，而在使用Yak代码调用nuclei的时候会很疑惑为什么没反应。请记住，Yakit中数据库就是你的弹药库，如果有你一些珍藏的PoC，请将其加入到弹药库中吧！
 
-![image](static/36552b353a282079.png)
+## 找到RCE漏洞了 战绩可查
 
 我们将nuclei的扫描结果加入到我们的漏洞展示页面，让其展示更为直观。在将Yaml格式的PoC导入后，便能够使用命令行进行扫描了，如果扫描成功，那么在Yakit的**数据库-漏洞**便能够看到告警。
 
@@ -42,7 +42,7 @@ results:=nuclei.Scan("192.168.135.128:8080",nuclei.tags("thinkphp"))~for result 
 
 漏扫结果中，所有信息，包括IP地址、漏洞类型甚至是发送包和返回包都清晰可见。如果需要的话，可以将漏洞报告进行导出，支持导出csv和html格式的报告。
 
-![image](static/3d6b6896b4e1f0b9.png)
+## 使用Web Fuzzer更快地写出PoC
 
 在整个nuclei漏扫过程中，PoC的编写尤为重要，一个好的PoC能让渗透测试做到事半功倍，而Yakit能快速生成Yaml格式的PoC。
 
@@ -56,7 +56,7 @@ results:=nuclei.Scan("192.168.135.128:8080",nuclei.tags("thinkphp"))~for result 
 
 ![image](static/2aeb75891b84a19c.png)
 
-![image](static/db34b52a639f69e9.png)
+## 更为方便的PoC管理
 
 得益于Yakit的插件系统，你可以很方便的管理你所拥有的PoC，你可以将你的PoC按照资产、项目或者时间进行分类成组，以便下次需要的时候可以一把“梭哈”。
 

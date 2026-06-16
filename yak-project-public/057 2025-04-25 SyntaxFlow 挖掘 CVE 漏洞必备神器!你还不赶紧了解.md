@@ -2,15 +2,21 @@
 
 日期: 2025-04-25 | 原文: <https://mp.weixin.qq.com/s/i3IB7JQpH8jVm7wSQyTghA>
 
-![image](static/6690f2fa54676624.webp)
+author: @Q16G
 
-![image](static/2acef98bd3d8dd98.png)
+> 在代码审计产品从yakit分离出来作为单独产品的这一段时间中，除了底层ssa bug的修复和syntaxflow规则编写之外，我还利用irify做了一些新尝试，比如：
+>
+> ·对某些CVE进行复现，并且进行指定框架/某些漏洞的查缺补漏。
+>
+> ·进行未知的漏洞挖掘，并且进行CVE漏洞提交。
+>
+> 在开始读取文章之前，你可以对代码审计是弱基础，基于irify工具进行漏洞挖掘，会对代码审计流程进行优化，简化审计流程。希望读者也可以通过irify的助力去进行深入的代码审计。
 
-![image](static/23517aa0b9d09204.jpg)
+## 知识补充
 
 > 基础知识：https://ssa.to/syntaxflow-guide/intro
 
-![image](static/818201fe24178075.png)
+## 框架编译技巧
 
 对于框架来说，常常是不能编译底层全部源码的，一方面，底层源码采用多种设计模式来降低代码的耦合度，另一方面，对于底层的代码框架，其文件和包含的依赖常常有几千个，其编译起来会非常吃内存，并且会出现速度降低的情况。
 
@@ -18,7 +24,7 @@
 
 > 而 yak-ssa 又支持代码部分编译，是一个适配性非常好的工具。
 
-![image](static/70f7531ac1bcd3d9.png)
+## 框架规则编写技巧
 
 在上面给到了编译技巧，那么针对框架来说，参数的获取/生成是被包裹在thinkphp底层的获取中，并且也内置了一些常见的默认过滤函数。比如在之前的代码审计中php代码审计，说过一些thinkphp的规则编写，接下来我将具体介绍规则编写实例。
 
@@ -46,13 +52,13 @@ request->param
 
 > 可能存在的问题：在代码审计过程中，可能有些并不是Controller，这里只是做了一些框架的大众化处理，可能针对某些具体情况需要进行具体修改。
 
-![image](static/a59be4f5750527c8.png)
+## 74cms漏洞挖掘
 
-![image](static/9d152aee2bca5302.png)
+## 背景
 
 74cms是基于thinkphp进行的二次开发，在2024年末，`yak-ssa `刚刚问世时，当时只适配了命令行工具进行编译和规则执行，我尝试用 yak-ssa 命令行进行编译审计挖掘出来的，接下来我将用最新版的 IRify 来进行审计。
 
-![image](static/234afdf3ea46261f.png)
+## 挖掘流程
 
 ### 【内置规则】windows任意文件读取（已交CVE）
 
@@ -248,6 +254,6 @@ Accept: application/json, text/plain, */*
 
 ![image](static/71935c6f81b90070.png)
 
-![image](static/77e978eac93e3213.png)
+## 后记
 
 在上面的CVE审计过程中，除 `CVE-2024-2561 `撞洞外，其他均为原创且已提交CVE官方。

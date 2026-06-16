@@ -2,7 +2,7 @@
 
 日期: 2022-05-20 | 原文: <https://mp.weixin.qq.com/s/H88JkOVNHRUQ6T2kT0w4Hg>
 
-![image](static/f0be3c118f6da376.png)
+## Memmet
 
 ![image](static/fdcdd061afc10e0e.png)
 
@@ -64,9 +64,7 @@ httpserver.Serve("0.0.0.0", 8883, httpserver.handler(func(writer, req) {
 
 在我们配置了 “过滤器” 之后，轻松跑到上万请求并不会有任何卡顿的情况。情绪十分稳定
 
-![image](static/797aaf3f6624f193.png)
-
-![image](static/f0be3c118f6da376.png)
+## Memmet
 
 ![image](static/fdcdd061afc10e0e.png)
 
@@ -82,7 +80,7 @@ httpserver.Serve("0.0.0.0", 8883, httpserver.handler(func(writer, req) {
 
 我们吸取了大量用户的建议，重构了这个功能，在保持原本 “目的” 的情况下，支持可以使用 Tag 作为依据扫描，同时仅保留关键结果和滚动日志，保证前端性能。
 
-![image](static/f0be3c118f6da376.png)
+## Memmet
 
 ![image](static/fdcdd061afc10e0e.png)
 
@@ -96,7 +94,7 @@ httpserver.Serve("0.0.0.0", 8883, httpserver.handler(func(writer, req) {
 2. HTTP History 新增 “无限滚动” 的功能
 3. MITM 新增 “Match && Replace” 这部分能力将在之后 “单独推文” 为大家介绍
 
-![image](static/f0be3c118f6da376.png)
+## Memmet
 
 ![image](static/fdcdd061afc10e0e.png)
 

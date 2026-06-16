@@ -2,10 +2,6 @@
 
 日期: 2022-10-20 | 原文: <https://mp.weixin.qq.com/s/Je8RFYH3T8WyFIcfGHH24w>
 
-![image](static/0395a2bd025db810.png)
-
-![image](static/cf5c660d760256cb.png)
-
 背景
 
 在 Web Fuzzer 中，我们实现 BurpSuite Intruder 的代替是使用一种名字叫 Fuzztag 的全新机制，这种机制在以前并没有出现在任何安全工具和产品中，因此它对于绝大多数人来说是 “船新” 的。
@@ -13,10 +9,6 @@
 实际在使用中，Fuzztag 并没有给大家带来太多麻烦的学习成本，其简单的语法和快速交互解决了各种 “配置” 的过程。
 
 但是因为早期版本 Fuzztag 的技术实现比较简单，纯正则编译+分阶段编码有很多的额外限制，造成了不必要的理解成本，我们在 v1.1.3-sp4以后的版本中，对 Fuzztag 的底层机制进行了完全的重构，使用编译原理的技术实现定制的 Lexer 和 Parser，实现了一套**可嵌套递归执行 Fuzztag 表达式模版语言。**
-
-![image](static/0395a2bd025db810.png)
-
-![image](static/cf5c660d760256cb.png)
 
 # Yaklang Fuzztag 是什么？
 
@@ -45,10 +37,6 @@ payload-3
 payload-4
 payload-5
 ```
-
-![image](static/0395a2bd025db810.png)
-
-![image](static/cf5c660d760256cb.png)
 
 # 五分钟学会 Fuzztag
 
@@ -228,10 +216,6 @@ union select {{
 
 ![image](static/f7ce094bbac05b41.png)
 
-![image](static/0395a2bd025db810.png)
-
-![image](static/cf5c660d760256cb.png)
-
 # 特殊 Fuzztag
 
 # Fuzztag 的本质实际上是对一个标签的执行，那么这个过程理论上和执行 “函数” 行为是完全一致的，为了满足更多的特殊需求：
@@ -241,10 +225,6 @@ union select {{
 # 2.在 Yak 脚本编写中，使用 {{params}} 标签来控制参数执行
 
 # 3.Yakit 用户可以通过 {{codec}} 调用 Codec 类型插件
-
-![image](static/0395a2bd025db810.png)
-
-![image](static/cf5c660d760256cb.png)
 
 # 小总结
 

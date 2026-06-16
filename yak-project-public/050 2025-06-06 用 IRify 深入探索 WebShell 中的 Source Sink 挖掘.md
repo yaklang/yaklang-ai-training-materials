@@ -2,11 +2,13 @@
 
 日期: 2025-06-06 | 原文: <https://mp.weixin.qq.com/s/iJd9v4CVLlT1vgPxLe3Pzw>
 
-![image](static/6690f2fa54676624.webp)
+author: @Q16G
 
-![image](static/8fb9ebc6868a749c.jpg)
+> 做 ssa 的开发和维护至今，从 ssa 的底层到 syntaxflow 的语法构建，ssa 的能力也逐渐提升，在上一阶段中，我也提供了一些 ssa 的漏洞挖掘案例。在最近的一段时间内，对 ssa 优化和增加新语法的同时，我也对 webshell 做了一些分析和审计。
+>
+> 接下来，我将会从两个方面进行展开讲解。
 
-![image](static/397f6c56ebdb3df0.jpg)
+## ssa 新语法介绍
 
 ## ?()表达式：
 
@@ -35,13 +37,13 @@ a?(*?{opcode: const},) as $sink
 a?(*?{opcode: const},*?{opcode: const}) as $sink
 ```
 
-![image](static/0d53e38d320de5fe.png)
+## Webshell 重塑 source 和 sink
 
 `Webshell` 大家并不陌生，无论是红蓝中对 webshell 的检测还是免杀，也是老生常谈的问题。在2023年，我也参加过伏魔挑战赛，我也会用一部分我对 webshell 的理解和 `ssa` 结合，重新对 WebShell 审视**source** 和 **sink** ，并且针对 WebShell 实现一些规则。
 
 在 `PHP `漏洞挖掘的过程中，我们常常认为 `Source `点为 `$_GET`、`$_POST`、`$_REQUEST`、`headers `等一系列全局可控函数，sink 点尝尝为 `eval`、`system` 等一系列常见的**代码执行** /**命令执行**的代码中，但是在 `PHP `是动态运行。支持 `php `中的常见间接函数调用。
 
-![image](static/8e0aafcda927b683.png)
+## 非常规 source 和 sink_
 
 那么从 WebShell 的编写来说，我们常常需要绕过一些常规的 Sink 点，像`REQUEST`、`POST`、`GET `等一些常规的 `source `点都会被 ban 掉，那么是否存在一些冷门的 `source `点呢？
 
@@ -148,7 +150,7 @@ namespace {
 }
 ```
 
-![image](static/9fae106907dac71f.png)
+## Jsp WebShell_
 
 在 jsp 中，和 php 会有所不同，jsp 会 `<%!%> `会被翻译成class，而 `<%%> `中的内容会被翻译到 `_jspService `方法中。在我前一段时间的研究中发现，`jsp `在翻译成 .java 的时候，会在底层有一些**鸡肋**的处理。比如：
 
@@ -167,7 +169,7 @@ namespace {
 <%*/out.print(1);%>
 ```
 
-![image](static/18faa7a7be12d81f.png)
+## 针对 WebShell 实现一些通用检测
 
 因为 `WebShell `中的 `source `和 `sink `都做了很多污染，也利用了一些冷门的特性。只能找一些通用的共同点，提供一些通用的思路检测。
 
@@ -214,7 +216,7 @@ $call?{<getCallee>?(* #{include: <<<CODE
 CODE}->)} as $sink
 ```
 
-![image](static/aa83b72f18329de9.png)
+## 常见代码中可能出现的“冷门”source 点
 
 在上面讲到了 `java `和 `php` webshell 中常见的 source 点，在平时的漏洞挖掘中，是否也同样存在呢？
 
@@ -259,6 +261,6 @@ unserialize?(* #{include: <<<CODE
 CODE}->) as $sink
 ```
 
-![image](static/1260f73beebfa497.png)
+## 总结
 
 在后面也许会支持一些 webshell 的通用检查规则，去编写每种语言的一些通用规则。另外，在漏洞挖掘中，目前的内置规则中是覆盖了大部分情况，但由于代码的多样性，可能需要用户对某些特定的代码环境进行特定的编写，而对于冷门的 `source` 点，通常需要找到“中间环境”，比如：`env`、`cache `等。

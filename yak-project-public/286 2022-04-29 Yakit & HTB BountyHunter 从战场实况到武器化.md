@@ -136,15 +136,11 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 ![image](static/391a7acd5df3ef0c.png)
 
-![image](static/324ff644a11121d4.png)
-
 ## **从源码发现一点线索**
 
 ![image](static/6fd668b09033ae34.png)
 
 其实这个网站也并没有数据库，本来想办法连数据库提权应该是不能了。碰巧爆破密码直接就出了结果
-
-![image](static/324ff644a11121d4.png)
 
 ## **爆破密码**
 
@@ -156,11 +152,7 @@ Yakit 表现复盘
 
 这是一个非常 Easy 的靶场，不论是从思路还是利用难度来说都非常简单，我们在这个靶场测试的过程中，其实并没有用到其他的工具去辅助测试，只通过 Yakit 自身提供的功能，编写小的脚本就完成了整个简单流程：
 
-![image](static/76bf725db77c0b75.png)
-
 但是实际上，并不是没有提升空间
-
-![image](static/324ff644a11121d4.png)
 
 ## **Web Fuzzer 的强化与高级用法**
 
@@ -173,8 +165,6 @@ Yakit 表现复盘
 如何解决这个问题呢？最理想的其实是类似 MITM “热加载” 模式，热加载 codec 代码，让流量自动经过 fuzz 标签调用我们的自定义函数。
 
 > 我很确信，这是 Web Fuzzer 的下一个很可靠的进化方向
-
-![image](static/324ff644a11121d4.png)
 
 ## **端口扫描插件启示**
 

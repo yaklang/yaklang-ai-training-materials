@@ -2,13 +2,19 @@
 
 日期: 2025-12-26 | 原文: <https://mp.weixin.qq.com/s/Syq3SQMk3P7pKK_UxGdawg>
 
-![image](static/b63d4ccef763b3bb.webp)
+author: @z3r0ne
 
-![image](static/8f0e27c241c29e67.png)
+> 在上一篇文章中，我们介绍了 mockHTTPRequest 热加载函数在 MITM 代理场景下的应用——通过完全控制响应来实现“无污染”的客户端测试。今天，我们将这一能力进一步延伸到两个关键场景：
+>
+> WebFuzzer 中的 Mock 响应：用于漏洞场景模拟、复现与演示
+>
+> 模板代码调试中的模拟响应：便于本地调试匹配器和提取器
+>
+> 这两个新特性共同解决了一个核心痛点：在没有真实漏洞环境的情况下，如何高效地编写、调试和演示安全检测规则？
 
-![image](static/5c5a765bec21a089.jpg)
+## WebFuzzer 中的 Mock 响应：漏洞场景模拟与复现
 
-![image](static/f094e16f4959e8dc.png)
+## 使用场景
 
 在日常工作中，我们经常遇到以下困境：
 
@@ -16,7 +22,7 @@
 - **演示环境受限**：在客户演示或培训场景中，无法直接展示对真实系统的攻击；
 - **匹配器调试困难**：编写响应包匹配规则时，需要反复触发真实请求，效率低下，对目标系统造成影响。
 
-![image](static/c6b637fbc69a43ff.png)
+## 工作原理
 
 当你在 WebFuzzer 的热加载代码中定义 `mockHTTPRequest` 函数后，每次 Fuzzer 发送请求时都会先经过这个 hook：
 
@@ -24,7 +30,7 @@
 
 在底层实现中，当 `mockHTTPRequest` 被调用并产生模拟响应时，系统会完全跳过真实的 HTTP 请求。
 
-![image](static/2bb4e377675adb61.png)
+## 典型应用：漏洞演示与教学
 
 假设我们需要演示一个 SQL 注入漏洞的检测过程，但手头没有可用的漏洞环境。我们可以在 webfuzzer 热加载中添加 mockHTTPRequest 代码：
 
@@ -66,7 +72,7 @@ Content-Type: application/json
 
 都极为有用。
 
-![image](static/5bd53fe11f544e15.png)
+## 进阶应用：构建虚拟漏洞靶场
 
 你甚至可以用 Mock 构建一个完整的"虚拟靶场"：
 
@@ -113,9 +119,9 @@ Content-Type: application/json
 }
 ```
 
-![image](static/ea3716b688543ad8.png)
+## 模板代码调试：支持模拟响应的本地调试
 
-![image](static/59de3b4a7f205fd0.png)
+## 问题背景
 
 在编写 Yaml 风格的检测模板时，我们经常需要：
 
@@ -131,7 +137,7 @@ Content-Type: application/json
 - **效率低下**：每次验证都要发真实请求，可能由于网络问题造成每次测试都花费很多时间
 - **结果不可控**：服务端响应可能变化
 
-![image](static/ca33f8ff5244f702.png)
+## 解决方案：模拟响应
 
 现在，WebFuzzer 支持将匹配器和提取器导出为模板代码，并且在模板调试过程中支持传入**模拟响应**。这个模拟响应会在模板执行时完全替代真实的 HTTP 请求。
 
@@ -139,7 +145,7 @@ Content-Type: application/json
 
 ![image](static/76d12ee4536b9406.png)
 
-![image](static/4e30460b1a14acc7.png)
+## 使用方式
 
 ### 步骤一：在 WebFuzzer 中配置匹配器
 
@@ -157,7 +163,6 @@ Content-Type: application/json
 id: WebFuzzer-Template-FjBpUiDb
 info:
   name: WebFuzzer Template FjBpUiDb
-  author: god
   severity: low
   description: write your description here
   reference:
@@ -197,7 +202,7 @@ http:
 
 ![image](static/ad092ff0db545f00.png)
 
-![image](static/df7e012272e22d55.png)
+## 底层实现
 
 在模板执行层，Mock 响应通过 `nuclei.mockHTTPRequest` 选项注入，在编写YAK 代码调用 yaml 模板时同样可以实现模拟响应。
 
@@ -225,7 +230,7 @@ execNuclei = func(target) {
 
 这确保了整个模板执行过程中，所有 HTTP 请求都会被模拟响应替代——**不会发出任何真实的网络请求**。
 
-![image](static/9c1a68aebd6f047b.png)
+## 实战案例：CVE 漏洞检测模板的开发流程
 
 让我们通过一个完整的案例，来测试模拟响应的用法。
 
@@ -260,7 +265,6 @@ Content-Type: application/json
 id: WebFuzzer-Template-FXTvoTiO
 info:
   name: WebFuzzer Template FXTvoTiO
-  author: god
   severity: low
   description: write your description here
   reference:
@@ -305,6 +309,6 @@ http:
 
 ![image](static/7f49fb7a2c747956.png)
 
-![image](static/48e4e2a7ccbfc2ce.png)
+## 总结
 
 Mock 响应功能的引入，标志着安全检测规则开发进入了一个新阶段。我们不再受制于真实环境的可用性，而是可以在完全可控的条件下进行高效的规则开发、测试和演示。

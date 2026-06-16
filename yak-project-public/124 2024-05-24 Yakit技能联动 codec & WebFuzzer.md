@@ -16,8 +16,6 @@
 
 是**Yakit**平台的最核心的组件，**之一**
 
-![image](static/8d977797c74fc64d.png)
-
 这么熟悉的一个老大哥了，怎么还拿出来讲啊？？
 
 当然是因为团队一直在**“做难而正确的事”**呀！
@@ -31,8 +29,6 @@
 codec插件是YAK的一个插件类型，在之前的文章中常常作为单独的小脚本被介绍，或者在Yakit codec模块中作为编码流的一个步骤使用。
 
 **如何使用联动技能？**可**在不同场景进行触发**！触发前准备：**
-
-![image](static/0a6212ec7ca8e749.png)
 
 codec联动Web Fuzzer十分简单，只需要在新建codec插件的时候配置好选项即可。在新建插件中选择codec插件，如下图所示。
 
@@ -55,10 +51,6 @@ codec联动Web Fuzzer十分简单，只需要在新建codec插件的时候配置
 将需要的选项勾选上即可在对应的菜单里调用codec插件。
 
 **场景一：自定义的HTTP数据包变形**
-
-![image](static/0a6212ec7ca8e749.png)
-
-![image](static/cac2e841230c25ce.svg)
 
 **关卡1：转化POST参数功能**
 
@@ -125,8 +117,6 @@ Content-Length: 9
 key=value
 ```
 
-![image](static/cac2e841230c25ce.svg)
-
 **关卡2：数据包修复**
 
 web fuzzer会自动对HTTP数据进行一定程度的修复，以保证发送出的数据尽可能地能被服务器解析。不过有些时候可能需要自我控制如何修复数据包，也想看到数据包修复后地内容，这个时候就可以使用自定义变形数据包功能，编写一个修复数据包的插件。
@@ -162,11 +152,7 @@ key=value
 
 **场景二：自定义右键菜单执行**
 
-![image](static/0a6212ec7ca8e749.png)
-
 自定义右键菜单执行可以通过勾选来选择处理某段数据。
-
-![image](static/cac2e841230c25ce.svg)
 
 **关卡1：反弹shell**
 
@@ -227,8 +213,6 @@ handle = func(origin /*string*/) {
 
 ![image](static/c8d8b4bf99db0364.png)
 
-![image](static/cac2e841230c25ce.svg)
-
 **关卡2：AI识别编码插件**
 
 值得一提是yakit更新**AI插件联动此处**，在新的AI中有更新好的体验
@@ -265,8 +249,6 @@ Do not include any explanations, only provide a  RFC8259 compliant JSON response
 
 ![image](static/780ffd89014e67fc.png)
 
-![image](static/cac2e841230c25ce.svg)
-
 **关卡3：AI识别指纹插件**
 
 ```go
@@ -296,8 +278,6 @@ Do not include any explanations. data packet: \`\`\`${origin}\`\`\`\n\nThe JSON 
 同样的使用AI还可以有其他的方法使用，比如识别一下数据包可能存在的服务指纹
 
 ![image](static/164004219ae1eb59.png)
-
-![image](static/cac2e841230c25ce.svg)
 
 **关卡4：AI参数识别**
 

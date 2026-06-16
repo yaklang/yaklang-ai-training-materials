@@ -2,8 +2,6 @@
 
 日期: 2022-07-21 | 原文: <https://mp.weixin.qq.com/s/5Um0FNeDBryi5h37uwMgyA>
 
-![image](static/ca56f4ba8a03ed9f.gif)
-
 随着大家对 Yakit 的使用越来越深入，一些场景支持逐渐被提上日程。
 
 众所周知，在 Yak 检测模块中，很多漏洞需要借助外部的 DNSLog 或者随机的 TCP 端口连接或 ICMP 长度进行反连确认。然而在内网中或者遇到 “数据不出网” 合规要求，我们不应当将反连操作接入公共的 Yak Bridge 来进行操作。很自然地，我们将会遇到 Yak Bridge 的私有化部署的问题。

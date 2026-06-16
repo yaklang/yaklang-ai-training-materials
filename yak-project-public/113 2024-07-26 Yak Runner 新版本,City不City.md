@@ -2,11 +2,9 @@
 
 日期: 2024-07-26 | 原文: <https://mp.weixin.qq.com/s/lZfzy3nS7PuWWg5daZnTfg>
 
-![image](static/03398f4870a90994.png)
+> Yak Runner，在Yakit中内置的代码编辑器，近期迎来了大更新。新版本的Yak Runner更具美观与实用性，本期文章将对近期的更新做个小盘点。
 
-![image](static/bc7772e52a84d0af.png)
-
-![image](static/93263f57f6230274.png)
+## Yak Runner启动
 
 现在直接打开Yak Runner，在最中间的位置将会有三个选项以供选择，分别是**`新建文件`**、**`打开文件`**和**`打开文件夹`**。
 
@@ -16,7 +14,7 @@
 
 ![image](static/ef68cbd87ebde02f.png)
 
-![image](static/320119096fe3778c.png)
+## 终端
 
 首先是一个大更新，Yak Runner以前监修中的终端现在可以使用了。
 
@@ -34,13 +32,13 @@
 
 ![image](static/458db5f567b0396a.gif)
 
-![image](static/4f1aead5f7ceba07.png)
+## 语法检查
 
 在终端左边的选项就是语法检查，它能够实时的检测你输入的Yak代码是否正确，并提供报错信息。点击其报错信息，就能够跳转到报错代码的具体位置。因此，现在在Yak Runner写代码，调试更加的简单了。
 
 ![image](static/424a6f84ad3fbddb.gif)
 
-![image](static/261a341936f92646.png)
+## 文件树
 
 文件树相比之前，也迎来了较大的更新。现在的文件树中，允许你右击文件，提供了更多的选项以供你选择，如复制文件路径、复制文件相对路径。
 
@@ -58,7 +56,7 @@
 
 ![image](static/44c53daa0451eec1.gif)
 
-![image](static/1a8f7c2ab59b494b.png)
+## 帮助文档
 
 最后，与旧版Yak Runner有很大不同的是，在新版Yak Runner左侧边栏中，现在提供了一个新选项：帮助文档。
 

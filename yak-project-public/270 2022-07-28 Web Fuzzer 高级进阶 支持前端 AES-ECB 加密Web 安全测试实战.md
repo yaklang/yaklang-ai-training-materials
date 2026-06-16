@@ -2,31 +2,13 @@
 
 日期: 2022-07-28 | 原文: <https://mp.weixin.qq.com/s/ePogLxU5SPkNNPiCMb3QTw>
 
-![image](static/ca56f4ba8a03ed9f.gif)
-
-![image](static/02a5272afa2fbace.gif)
-
-![image](static/43f2186d5b78f962.png)
-
 背景知识
-
-![image](static/98cbea99bb678e91.png)
-
-![image](static/0decd9bc739b6ea0.gif)
 
 随着 Yakit Web Fuzzer 的广泛使用，我们遇到了很多非常复杂且需要针对前端加密的处理场景，为此，虽然在独一无二的热加载机制理论中可以解决这类问题，但是在某些更贴近实战的场景还是会有水土不服。为此我们在 Web Fuzzer 中恢复了 `{{params(...)}}` 标签的使用，这个标签可以在一个 Web Fuzzer 中做各种便捷操作。当然 `{{params(...)}}` 作为一个 Yaklang Fuzz Tag，我们采用了 “构造函数” 的内置 Hook 让它更具备实战价值。
 
 我们以非常常见的 AES-ECB 进行前端加密的场景来使用 Yakit 解决测试问题。
 
-![image](static/02a5272afa2fbace.gif)
-
-![image](static/43f2186d5b78f962.png)
-
 Web Fuzzer 核心流程
-
-![image](static/98cbea99bb678e91.png)
-
-![image](static/0decd9bc739b6ea0.gif)
 
 我们实现 Web Fuzzer 的时候，其实并不是简单的把一个数据包发送出去，同时为了保证数据包的自动纠错，自动修复`Content-Type`，实现自动热加载，我们实现了下面非常复杂的流程
 
@@ -34,15 +16,7 @@ Web Fuzzer 核心流程
 
 依托于 Yak 引擎内置的动态代码加载能力，我们可以很容易进行预处理，参数预加载，动态代码执行，beforeRequest 和 afterRequest Hook。
 
-![image](static/02a5272afa2fbace.gif)
-
-![image](static/43f2186d5b78f962.png)
-
 如何在Web Fuzzer 中使用 params？
-
-![image](static/98cbea99bb678e91.png)
-
-![image](static/0decd9bc739b6ea0.gif)
 
 版本要求：Yakit-1.0.16-sp2 以及以上
 
@@ -88,15 +62,7 @@ __getParams__ = func() {
 
 ![image](static/6759a6b0e1a5c07d.png)
 
-![image](static/02a5272afa2fbace.gif)
-
-![image](static/43f2186d5b78f962.png)
-
 实战案例：前端加密的解决方案
-
-![image](static/98cbea99bb678e91.png)
-
-![image](static/0decd9bc739b6ea0.gif)
 
 **加密分析：前端AES-ECB 加密**
 
@@ -161,15 +127,7 @@ T1 对应的值大体是 CSRF Token 类似的作用。
 
 在上述热加载调试中，我们实现了 CSRF Token 的自动替换，同时也实现了前端加密解密的问题。
 
-![image](static/02a5272afa2fbace.gif)
-
-![image](static/43f2186d5b78f962.png)
-
 结语
-
-![image](static/98cbea99bb678e91.png)
-
-![image](static/0decd9bc739b6ea0.gif)
 
 本文实践难度并不低，我们实现了在 Burp Suite 中也非常难以测试的场景，通过 Yak 热加载代码与 Params 机制轻松支持了 AES-ECB 的安全测试，实际在这种场景下，我们一般需要编写一个 Python 脚本来实现全套的测试流程，同样在 Yak 中也需要编写，Yakit 可以很好地让用户只关注 “加密解密” 逻辑和 CSRF 的问题。
 

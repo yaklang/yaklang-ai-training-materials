@@ -2,31 +2,11 @@
 
 日期: 2023-08-11 | 原文: <https://mp.weixin.qq.com/s/oqO7Njy7-sYxU3QjK2lVPQ>
 
-![image](static/8585aedd49210e3c.png)
-
-![image](static/8883b48d63c77d9a.png)
-
 Websocket，是一种在单个TCP连接上进行全双工通信的协议。近年来，Websocket在安全圈受到了不少关注，由于其允许实时更新的特性，在部分需要实时通信的领域更具灵活性。BUT！！
 
 对于测试者来说，大多数渗透测试工具官方对Websocket工具的支持不像HTTP那样普遍，流程甚至更加复杂，**能用且好用的工具少之又少。**
 
-![image](static/10925477e6a4d4ab.png)
-
-![image](static/0ebae1e8861873f8.png)
-
-![image](static/dc33425144227b3d.jpg)
-
-![image](static/8585aedd49210e3c.png)
-
-![image](static/8883b48d63c77d9a.png)
-
 Websocket是HTML5的新特性，在客户端和服务端提供了一个基于TCP连接的双向通道。它的原理是是通过HTTP启动的双向、全双工通信协议，通常用于流式传输数据和其他异步流量的现代Web应用程序中。相比于更为熟知的HTTP这类无状态协议，WebSocket则是一种有状态协议。我们可以从服务器获得任意数量的传出“请求”和任意数量的传入“响应”。引用一个我们平日最常见的例子---网站中的聊天机器人。一句话来说，就是一个更方便的通道工。
-
-![image](static/10925477e6a4d4ab.png)
-
-![image](static/0ebae1e8861873f8.png)
-
-![image](static/0b870853017f3f86.jpg)
 
 Websocket劫持大概来讲就是一个抓放包过程，只不过是针对Websocket这项协议而已。大致流程如下：
 
@@ -82,10 +62,6 @@ Burp必须回到history页面再选中再发送到repeater，Yakit直接在Web F
 
 ![image](static/b421c31c39e3f24e.jpg)
 
-![image](static/8585aedd49210e3c.png)
-
-![image](static/8883b48d63c77d9a.png)
-
 **总结**
 
 由于底层连接协议使用的是始终保持打开状态的TCP协议，因此，客户端和服务器可以随时发送消息，而无需等待另一端的响应。
@@ -93,8 +69,6 @@ Burp必须回到history页面再选中再发送到repeater，Yakit直接在Web F
 虽然Websocket劫持的场景相对较少，但在金融交易、在线聊天等实时性强的操作环境下，其重要性不言而喻。
 
 Yakit的Websocket Fuzzer，提供了较为方便的劫持流程以及更清楚的操作逻辑，给师傅们带来便捷的同时，也希望大家多多反馈。
-
-![image](static/10925477e6a4d4ab.png)
 
 ![image](static/d4728ec551c04f69.png)
 

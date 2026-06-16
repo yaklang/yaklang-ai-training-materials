@@ -2,15 +2,11 @@
 
 日期: 2022-09-20 | 原文: <https://mp.weixin.qq.com/s/LnweUcjIL3bpMqvybWy7hw>
 
-![image](static/64d1e3250a1f033b.png)
-
 背景
 
 随着Web应用的发展与动态网页的普及，越来越多的场景需要数据动态刷新功能。在早期时，我们通常使用轮询的方式(即客户端每隔一段时间询问一次服务器)来实现，但是这种实现方式缺点很明显: 大量请求实际上是无效的，这导致了大量带宽的浪费。这时候我们急需一个新的技术来解决这一痛点，Websocket应运而生: WebSocket是一种网络传输协议，可在单个TCP连接上进行**全双工通信**，位于OSI模型的应用层。
 
 Websocket的诞生也给我们带来了新的挑战，我们能否对websocket的请求与响应进行劫持与修改呢？要想做到这一点，我们首先得了解websocket协议。
-
-![image](static/64d1e3250a1f033b.png)
 
 websocket劫持协议细节
 
@@ -112,8 +108,6 @@ Sec-WebSocket-Accept: Oy4NRAQ13jhfONC7bP8dTKb4PTU=
 
 > 载荷数据包括了扩展数据、应用数据。其中，扩展数据x字节，应用数据y字节。在前文的升级阶段没有协商使用扩展的话，扩展数据数据为0字节。**剩下的应用数据就是传输的原始socket内容**，因此也一般会结合其他压缩算法/协议使用，如protobuf。
 
-![image](static/64d1e3250a1f033b.png)
-
 websocket劫持实现
 
 在了解了websocket协议之后，我们实现websocket劫持就变得很简单了，用一张流程图来展示:
@@ -147,8 +141,6 @@ websocket劫持实现
 
 1. 如果mask位为1，则生成并写入32位的随机masking-key，再将数据进行掩码处理与写入，此时即封装好了的websocket帧
 
-![image](static/64d1e3250a1f033b.png)
-
 websocket劫持实现时遇到的坑点
 
 这里讲下在websocket劫持实现时遇到的坑点，仅供参考。
@@ -174,8 +166,6 @@ websocket劫持实现时遇到的坑点
 1. 后续我将b作为websocket帧来处理，但是b的大小只有4096，假如数据量超大，这样写毫无疑问是错误的
 
 后来其他师傅发现了这个bug并指出这几点错误，我才意识到我应该抽象出一个FrameReader来去读取websocket帧，根据读取到的前几个字节来判断最终要读取的长度。
-
-![image](static/64d1e3250a1f033b.png)
 
 新版Yak的websocket尝鲜
 
@@ -355,8 +345,6 @@ die(err)
 
 通过程序输出可以看到我们正常建立了websocket连接并完成了收发。
 
-![image](static/64d1e3250a1f033b.png)
-
 新版Yakit的websocket劫持尝鲜
 
 > Yak版本 1.1.2Yakit版本 1.1.2
@@ -414,8 +402,6 @@ die(err)
 ![image](static/d495f67c0331f0e7.png)
 
 ![image](static/9116685302c2d96b.png)
-
-![image](static/64d1e3250a1f033b.png)
 
 往期内容推荐
 

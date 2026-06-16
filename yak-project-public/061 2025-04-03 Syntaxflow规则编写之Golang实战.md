@@ -2,9 +2,9 @@
 
 日期: 2025-04-03 | 原文: <https://mp.weixin.qq.com/s/l4Ys0zZLTzMgwwLXuqxAOQ>
 
-![image](static/67e586f354cc4fa2.webp)
+author: @YHellow
 
-![image](static/add53ca18c7e656d.png)
+> 在上一篇文章中介绍了 Syntaxflow 的基础用法以及在 Java 中的实战应用，本篇文章主要用于丰富一些在编写规则上的实战细节
 
 > 前文指路⬇️Yak，公众号：Yak Project[SyntaxFlow Java实战（一）：值的搜索与筛选](https://mp.weixin.qq.com/s/q7-cxK1_b86gEIJ5pzJSqQ)
 
@@ -47,9 +47,9 @@ funcmain() {
 
 那么我们该如何通过编写 Syntaxflow 规则来扫描代码中的安全问题呢？
 
-![image](static/30bb5d7c7683141c.png)
+## 查找以及定位代码位置
 
-![image](static/206dd3a36aca4731.png)
+## 基础搜索
 
 Syntaxflow 的搜索遵循 **Use-Def 链**，有两个核心的查找功能：
 
@@ -62,7 +62,7 @@ Syntaxflow 的搜索遵循 **Use-Def 链**，有两个核心的查找功能：
 
 可以发现已经能够查找到问题代码了。但仅仅是查找还不够，还需要添加格外的限制条件来定位问题代码的位置
 
-![image](static/97b12bc70d1cd79b.png)
+## 添加条件
 
 例如，我们需要确定 db.QueryRow 中的 db 是否来自于SQL数据库。此时就可以通过定位 sql.Open() 的返回值来确定 db 是否符合条件，规则如下：
 
@@ -135,7 +135,7 @@ $param.QueryRow(* #-> as $target,);
 
 ![image](static/f6540ce8473d9788.png)
 
-![image](static/5c4bc8c4e0aa1e0d.png)
+## 跨过程的搜索
 
 如果遇到跨过程的代码，往往我们不能直接通过函数名搜索形参：
 
@@ -165,13 +165,13 @@ $handle <getFormalParams> as $output;
 
 ![image](static/3cc048eba6d58d6e.png)
 
-![image](static/a2da95e3c10b05a6.png)
+## 匹配问题代码的行为
 
 现在我们已经成功定位到目标代码的位置了，那么怎样确定该代码是否有安全问题呢？
 
 其实这里Syntaxflow提供的规则非常灵活，以人的视角来看，我们认为随意对SQL语句进行拼接是不安全的行为。
 
-![image](static/120830e9e16ad7c0.png)
+## 判断是否有安全漏洞
 
 对于本案例来说我们就可以直接在过滤器中判断`db.QueryRow(...)`调用参数的上层引用中是否出现`fmt.Sprintf`符号
 
@@ -195,7 +195,7 @@ $target?{have: 'fmt.Sprintf'} as $unsafe;
 <include('golang-database-sql')> as $sink;$sink.QueryRow( * #-> as $target);fmt.Sprintf as $check$target & $check as $unsafe
 ```
 
-![image](static/e258b407b91e5b4a.png)
+## 排除过滤函数
 
 在实战中，单一依靠Syntaxflow查找规则来定位问题代码往往会出现许多误报，案例如下：
 
@@ -266,7 +266,7 @@ $target #{exclude: `$safe`}-> as $low;
 
 `<dataflow>`中可以内嵌其他的Syntaxflow规则，并且在`$target`查询结果的内部进行二次查询。
 
-![image](static/3e88d460860601e5.png)
+## 未来的计划
 
 对golang而言，跨过程分析是未来发展的目标。现阶段yaklang引擎对于指针的处理有限，也没法精心处理interface，导致数据流在遇到interface时可能会断掉。这也是Syntaxflow在扫描大型golang项目时很难出结果的原因之一。
 

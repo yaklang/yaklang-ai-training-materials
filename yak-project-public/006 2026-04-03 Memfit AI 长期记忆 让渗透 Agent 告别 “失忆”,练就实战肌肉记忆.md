@@ -2,7 +2,7 @@
 
 日期: 2026-04-03 | 原文: <https://mp.weixin.qq.com/s/yCM2jpi_iHGZr_RuwvPP0w>
 
-![image](static/39cfc50df3e604a8.webp)
+author: @Rookie
 
 在上一篇文章中[Memfit AI 专业记忆:Agent 动手之前,先翻了一遍你的知识库](https://mp.weixin.qq.com/s?__biz=Mzk0MTM4NzIxMQ==&mid=2247529575&idx=1&sn=cd0b7de7036ee8e812cbdc8fb4fc840a&scene=21#wechat_redirect),我们解决了 Agent 的“见识”问题。通过内置的知识库系统,Agent在执行攻击前,能够像资深专家一样先翻阅企业的私有测试和规范文件,确保自己的行动不脱离合规基线。
 
@@ -20,13 +20,13 @@
 
 当 Agent 再次站在类似的战场前,它不再需要去知识库里大海捞针,而是能直接凭借这种“长期记忆”,避开坑点。
 
-![image](static/c9a293f941b00c90.jpg)
+## C.O.R.E.P.A.C.T. 模型
 
 开发者最头疼的就是“上下文爆炸”。若将每一句对话和回显都存入 RAG,知识库很快会变成噪音堆。Memfit AI 引入了 **C.O.R.E. P.A.C.T.** 审计算法,在记忆沉淀前进行价值审计。
 
 ![image](static/fc4af52df896197d.png)
 
-![image](static/36911eda3a23abd5.jpg)
+## 记忆评估的七个维度
 
 | 维度 | 定义 | 实战逻辑 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@
 | **A**ctionability | **可操作性** | 是废话还是指令?包含完整 sqlmap 或 curl 参数的记录 A 值会很高。 |
 | **T**emporality | **时效性** | 经验的保质期。资产 IP 会变，但漏洞补丁逻辑变动慢，动态清理过期记忆。 |
 
-![image](static/58851507457e9963.jpg)
+## 案例:SQL注入记忆
 
 这是一个我对vulinbox靶场的SQL检测产生的记忆案例图。
 
@@ -77,7 +77,7 @@
 
 **Agent 不再是在搜数据库,而是在“回想”自己的成功经验。**
 
-![image](static/36b3cac5992a3baf.jpg)
+## 记忆的唤起与使用
 
 ![image](static/fce952984c0fe17e.png)
 
@@ -85,7 +85,7 @@
 
 Memfit AI 的 `AIMemoryTriage`(记忆分选器)通过一套严密的加权重排算法,将静态的 C.O.R.E. P.A.C.T. 理论转化为了生产环境中的**实时决策流**。
 
-![image](static/3913ee728ab759f9.jpg)
+## 基本要求：粗筛有意义的记忆
 
 我们为记忆设定了七个维度的权重。先从海量的记忆中排除各种过于极端偏激,或者无意义的经验指导,初步完成记忆寻找。
 
@@ -99,7 +99,7 @@ weights := map[string]float64{
 }
 ```
 
-![image](static/afbf208b8d84c328.jpg)
+## 动态加成：上下文相关强加成
 
 `静态分数保证了记忆的质量,而(关键词加成)则赋予了记忆**灵活性**。`
 
@@ -142,7 +142,7 @@ if contentBonus > 0.3 {
 
 $$FinalScore = \text{BaseScore} + \sum \text{KeywordBonus} (\text{Max } 0.3)$$
 
-![image](static/897955fb6d35d20f.jpg)
+## 分块注入：意图路由
 
 ```sql
 [ must_aware ]
@@ -199,7 +199,7 @@ $$FinalScore = \text{BaseScore} + \sum \text{KeywordBonus} (\text{Max } 0.3)$$
 - **u (Utility):** 效用分,告诉模型这条记忆在当前上下文中的含金量。
 - **age:** 记忆的“年龄”,让模型感知信息的是时效性。
 
-![image](static/6b9d63429777ad88.jpg)
+## 总结
 
 如果说知识库是企业为 Agent 准备的“入职培训手册”,那么长期记忆系统就是 Agent 在炮火中磨砺出来的“实战笔记”。
 

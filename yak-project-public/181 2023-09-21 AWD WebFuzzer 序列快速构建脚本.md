@@ -2,13 +2,7 @@
 
 日期: 2023-09-21 | 原文: <https://mp.weixin.qq.com/s/h0scRfLDtSIm75DLa2oUug>
 
-![image](static/ba41098eba09dcfc.png)
-
 **前言**
-
-![image](static/9049c1314a4dfb78.png)
-
-![image](static/1dd248bfa0610961.gif)
 
 新发布的Web Fuzzer 序列 (Web Fuzzer Sequence)，使用 Fuzzer 序列可以轻松构建一整个测试工作流。现在我们将综合利用 Yakit 现有的功能串联起 CSRF token 获取，flag 获取到提交 flag 这几个工作，最终快速构建起一个**一键收割 flag 的 AWD 脚本。**
 
@@ -17,8 +11,6 @@
 在开始之前，先介绍一下测试环境。这是一个AWD靶场，平台在 127.0.0.1:8080，上面有目前三台靶机分别在127.0.0.1:8001 - 127.0.0.1:8083。他们都有一个目录穿越，但是有csrf token保护。
 
 **这篇文章将使用 Yakit 的能力快速构建一个攻击脚本。Fuzzer Tag 请求多个靶机**
-
-![image](static/c680b2aa60debdb6.png)
 
 这里先整理好所有的靶机地址，并使用fuzztag按照行读取到host变量，host变量会被继承到后面的所有请求，因此只需要设置一次这个变量。
 
@@ -35,8 +27,6 @@ Host: {{p(host)}}
 ```
 
 **提取 CSRF Token**
-
-![image](static/c680b2aa60debdb6.png)
 
 ```xml
     <form action="/" method="post">
@@ -57,8 +47,6 @@ Host: {{p(host)}}
 ![image](static/09fb8ae267e69070.png)
 
 **获取 Flag 并提交**
-
-![image](static/c680b2aa60debdb6.png)
 
 为了把csrf token传递到下一个请求中，先新建一个名为flag的请求，再在 fuzzer 序列的面板中设置变量向下传递。
 
@@ -128,8 +116,6 @@ success
 ```
 
 **有什么优势吗？**
-
-![image](static/c680b2aa60debdb6.png)
 
 - 全程使用 GUI 操作，多数简单的测试，不用写一行代码
 - 可以配合 MITM 抓包使用，复杂包体不用自己构造，直接从 MITM 导入并修改变动部分即可

@@ -12,13 +12,27 @@ Burp Suite 的 Intruder 核心国产化平替
 
 **—— Web Fuzzer**
 
-![image](static/3f1445c85fa18be8.gif)
+> 我们都知道，在渗透测试过程中，相比交互式劫持功能，Repeater 和 Intruder 对于“手工渗透”来说，其实是大家花时间最多的。而 Burp Suite 的 Intruder 核心是一整套的操作流程：
+>
+> 1. 劫持 HTTPS
+>
+> 2. HTTP History 查看劫持到的请求
+>
+> 3. History 中发送需要测试的请求到“插件”或者 Repeater / Intruder
+>
+> 4. 修改数据包，重放/爆破
+>
+> yaklang 的模糊测试标签语法实现了对 Repeater 和 Intruder 的完美整合，运用到 Yakit 里面，甚至可以免配置实现批量发包模糊测试。
 
 ![image](static/dbb8fd7f94c2521f.gif)
 
 ![image](static/8e10f33cbbccaf4d.gif)
 
-![image](static/bee2288ee460071e.gif)
+> 除了账号密码的爆破之外，fuzz 标签还有很多使用的场景
+>
+> 短信验证码类型Fuzz、学号/工号/手机号类型Fuzz、
+>
+> MD5 Fuzz、Base64 Fuzz、重定向并发 Fuzz、host碰撞 Fuzz 等，Yakit 仅通过这些 Fuzz 的组合封装就可以完成渗透测试的各项功能，比如：
 
 **更新日志**
 

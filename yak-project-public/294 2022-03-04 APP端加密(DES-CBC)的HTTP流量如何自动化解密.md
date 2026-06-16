@@ -6,15 +6,7 @@
 
 起因
 
-![image](static/265d5663a3b98965.png)
-
-![image](static/70031d85e27fff84.png)
-
 场景一
-
-![image](static/802caf6cf1b5be13.png)
-
-![image](static/e52d7cbfa20f5cde.png)
 
 以前 app测试遇到这个问题
 
@@ -28,13 +20,7 @@
 
 > 不影响发送的报文和响应的报文 在展示的时候展示解密之后的字符串
 
-![image](static/70031d85e27fff84.png)
-
 Demo
-
-![image](static/802caf6cf1b5be13.png)
-
-![image](static/e52d7cbfa20f5cde.png)
 
 ![image](static/328b1df6aac6c9f2.png)
 
@@ -50,13 +36,7 @@ Demo
 
 ![image](static/cc3784eda16598f9.png)
 
-![image](static/70031d85e27fff84.png)
-
 现实场景
-
-![image](static/802caf6cf1b5be13.png)
-
-![image](static/e52d7cbfa20f5cde.png)
 
 ![image](static/da4ef2811b5001d9.png)
 
@@ -86,13 +66,7 @@ Demo
 
 当然类似功能也可以使用 mitm插件来进行实现
 
-![image](static/70031d85e27fff84.png)
-
 招人招人
-
-![image](static/802caf6cf1b5be13.png)
-
-![image](static/e52d7cbfa20f5cde.png)
 
 **渗透测试工程师  Base成都  8k-15K**
 
