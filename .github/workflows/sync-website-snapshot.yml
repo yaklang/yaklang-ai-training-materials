@@ -40,6 +40,7 @@ concurrency:
 # 允许 workflow 自身 commit/push 回 main
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   sync:
