@@ -41,37 +41,56 @@ jobs:
           echo "Update Mode: incremental"
           echo "============================================"
       
-      - name: Download Yaklang Engine (v1.4.4-beta10)
+      - name: Download Yaklang Engine (latest beta)
+        # 动态解析 yaklang/yaklang 最新 beta tag 并下载对应版本二进制。
+        # 背景: 此前硬编码 1.4.4-beta10, 与新版本生成的 RAG 二进制不兼容,
+        # 加载时报 "parse hnsw graph from binary: unsupported node code type []uint8"。
+        # 改为每次跑都拉最新 beta(通过 GitHub API + sort -V 取最大版本号),
+        # 避免再次踩老版本二进制兼容坑。不使用 /yak/latest/ 是因为 latest 指向可能滞后。
+        # 关键词: yak 引擎版本, hnsw 不兼容, latest beta, 动态版本解析
         run: |
-          echo "=== Downloading Yaklang Engine v1.4.4-beta10 ==="
-          YAK_VERSION="1.4.4-beta10"
-          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
-          
-          echo "Downloading from: $YAK_URL"
-          wget -q --show-progress -O ./yak "$YAK_URL"
-          
-          if [ ! -f ./yak ]; then
-            echo "ERROR: Failed to download yak engine"
-            echo "Trying alternative URL..."
-            YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
-            wget -q --show-progress -O ./yak "$YAK_URL" || exit 1
+          set -e
+          echo "=== Resolving latest yaklang beta tag ==="
+          # 从 GitHub tags API 取所有 vX.Y.Z-betaN, sort -V 取最大, 去掉前导 v
+          YAK_VERSION=$(gh api repos/yaklang/yaklang/tags --paginate -q '.[].name' 2>/dev/null \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-beta[0-9]+$' \
+            | sort -V | tail -1 | sed 's/^v//')
+          if [ -z "${YAK_VERSION}" ]; then
+            echo "ERROR: failed to resolve latest beta tag from GitHub API"
+            echo "Falling back to known-good pinned version: 1.4.7-beta15"
+            YAK_VERSION="1.4.7-beta15"
           fi
-          
+          echo "Resolved latest beta yak version: ${YAK_VERSION}"
+
+          YAK_URL="https://yaklang.oss-accelerate.aliyuncs.com/yak/${YAK_VERSION}/yak_linux_amd64"
+          echo "Downloading from: ${YAK_URL}"
+          wget -q --show-progress -O ./yak "${YAK_URL}"
+
+          if [ ! -s ./yak ]; then
+            echo "ERROR: downloaded yak binary is empty or missing"
+            exit 1
+          fi
+
           chmod +x ./yak
-          
+
           # 验证下载的文件
           echo ""
           echo "=== Downloaded file info ==="
           ls -lh ./yak
           file ./yak
-          
+
           # 测试执行
           echo ""
           echo "=== Testing yak engine ==="
           ./yak version || echo "Note: yak version command may not be available in this version"
-          
+
+          # 把版本号写到环境文件, 供后续 step 在失败诊断时引用
+          echo "YAK_VERSION=${YAK_VERSION}" >> "$GITHUB_ENV"
+
           echo ""
-          echo "✓ Yaklang engine downloaded and verified successfully"
+          echo "Yaklang engine ${YAK_VERSION} downloaded and verified successfully"
+        env:
+          GH_TOKEN: ${{ github.token }}
       
       - name: Generate AIKB ZIP file
         run: |
@@ -249,11 +268,16 @@ jobs:
           fi
           
           # 运行 update-rag.yak
+          # 捕获输出便于检测 yak 引擎二进制不兼容错误(如 hnsw 图解析失败),
+          # 这类错误根因是 yak 版本过旧, 需要升级引擎重跑(见 Download step 动态取最新 beta)。
           echo ""
           echo "=== Running update-rag.yak ==="
           echo "Using diff-zip: $DIFF_ZIP"
           echo "Output file: $NEW_RAG_FILE"
-          
+          echo "Yak engine version: ${YAK_VERSION:-unknown}"
+
+          set +e
+          LOG_FILE="/tmp/update-rag.log"
           if [ -n "$RAG_FILE_ARG" ]; then
             echo "Using existing RAG file: $OLD_RAG_FILE"
             ./yak scripts/update-rag.yak \
@@ -266,7 +290,8 @@ jobs:
               --ai-api-key "$AI_API_KEY" \
               --ai-api-model "$AI_API_MODEL" \
               --ai-api-domain "$AI_API_DOMAIN" \
-              --timeout 60
+              --timeout 60 2>&1 | tee "$LOG_FILE"
+            YAK_EXIT=${PIPESTATUS[0]}
           else
             echo "Creating new RAG (no existing file)"
             ./yak scripts/update-rag.yak \
@@ -278,11 +303,27 @@ jobs:
               --ai-api-key "$AI_API_KEY" \
               --ai-api-model "$AI_API_MODEL" \
               --ai-api-domain "$AI_API_DOMAIN" \
-              --timeout 60
+              --timeout 60 2>&1 | tee "$LOG_FILE"
+            YAK_EXIT=${PIPESTATUS[0]}
           fi
-          
-          if [ $? -ne 0 ]; then
-            echo "ERROR: Failed to update RAG"
+          set -e
+
+          # 不兼容错误特征: parse hnsw graph / unsupported node code type 等
+          if [ "$YAK_EXIT" -ne 0 ]; then
+            echo "ERROR: Failed to update RAG (yak exit code: $YAK_EXIT)"
+            if grep -qiE 'parse hnsw graph|unsupported node code type|incompatible' "$LOG_FILE" 2>/dev/null; then
+              echo ""
+              echo "======================================"
+              echo "DETECTED: yak engine binary incompatibility (hnsw / node code type)"
+              echo "Current yak version: ${YAK_VERSION:-unknown}"
+              echo "This usually means the running yak engine is older than the one"
+              echo "that produced the RAG collection on disk."
+              echo "Action: a newer yaklang beta is required. This CI already auto-"
+              echo "resolves the latest beta tag; if it still fails, verify that"
+              echo "yaklang/yaklang has shipped a newer beta and that the OSS path"
+              echo "yak/<version>/yak_linux_amd64 exists."
+              echo "======================================"
+            fi
             exit 1
           fi
           
