@@ -143,16 +143,20 @@ jobs:
           echo "✓ AIKB ZIP file generated successfully"
 
       - name: Generate diff report and package
+        # 生成 diff 并计算 HAS_CHANGES。HAS_CHANGES 用于闸住后续 RAG 增量更新,
+        # 避免内容零变化时仍跑一遍 update-rag.yak (导入旧 RAG + 空 diff),
+        # 白白消耗 embedding 调用与时间。与 update-rags-latest.yml 的闸门对齐。
+        # 关键词: HAS_CHANGES, 空变化短路, 增量闸门, skip empty diff
         if: always()
         run: |
           echo "=== Generating ZIP diff report and package ==="
           echo "Update mode: incremental"
-          
+
           if [ -f yaklang-aikb-old.zip ] && [ -f yaklang-aikb.zip ]; then
             # 使用 diff-zip-v2.yak 进行对比和生成差异包
             echo "Running diff-zip-v2.yak to compare ZIP files and create diff package..."
             ./yak scripts/diff-zip-v2.yak --old yaklang-aikb-old.zip --new yaklang-aikb.zip --output diff-fs.zip
-            
+
             if [ -f diff-fs.zip ] && [ -f diff-fs.md ]; then
               echo "✓ Diff package and report generated successfully"
               echo ""
@@ -173,14 +177,32 @@ jobs:
             echo "" >> diff-fs.md
             echo "**状态**: 无法生成差异报告 - 缺少比较文件" >> diff-fs.md
             echo "**时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> diff-fs.md
-            
-            # 创建空的差异包
-            echo "Creating empty diff package..."
+
+            # 没有基线 zip 时无法判定差异, 视为有变化以触发全量 RAG 重建兜底
+            echo "Creating empty diff package (no baseline; will trigger full rebuild fallback)..."
             ./yak -c 'emptyZip = zip.CompressRaw({}); file.Save("diff-fs.zip", emptyZip)'
           fi
 
+          # 计算 HAS_CHANGES: diff-fs.zip 存在且含至少 1 个文件才算有变化
+          if [ -f diff-fs.zip ]; then
+            DIFF_COUNT=$(unzip -l diff-fs.zip 2>/dev/null | tail -1 | awk '{print $2}' | tr -d '[:space:]')
+            if [ -z "$DIFF_COUNT" ]; then DIFF_COUNT=0; fi
+            if [ "$DIFF_COUNT" -gt 0 ]; then
+              echo "HAS_CHANGES=true (diff files: $DIFF_COUNT)" >> "$GITHUB_ENV"
+              echo "✓ Diff contains $DIFF_COUNT file(s), RAG incremental update will run"
+            else
+              echo "HAS_CHANGES=false (diff is empty)" >> "$GITHUB_ENV"
+              echo "ℹ️  No content changes detected, RAG incremental update will be skipped"
+            fi
+          else
+            echo "HAS_CHANGES=false (no diff-fs.zip)" >> "$GITHUB_ENV"
+            echo "ℹ️  No diff package generated, RAG incremental update will be skipped"
+          fi
+
       - name: Update RAG with diff package
-        if: success()
+        # 内容零变化时跳过 RAG 增量更新 (HAS_CHANGES=false), 避免空跑 update-rag.yak。
+        # ZIP/timestamp 上传不受此闸门影响 —— 它们是 upload-aikb 的本职, 每次都要刷新。
+        if: success() && env.HAS_CHANGES == 'true'
         env:
           EMBEDDING_HOST: ${{ secrets.EMBEDDING_HOST }}
           EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
@@ -667,4 +689,10 @@ jobs:
           echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Actor: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- Update Mode: \`incremental\`" >> $GITHUB_STEP_SUMMARY
+          echo "- HAS_CHANGES: \`${HAS_CHANGES:-unknown}\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${HAS_CHANGES}" = "true" ]; then
+            echo "- RAG Update: \`ran (incremental)\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- RAG Update: \`skipped (no content changes)\`" >> $GITHUB_STEP_SUMMARY
+          fi
 
