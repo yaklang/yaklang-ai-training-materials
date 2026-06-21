@@ -45,3 +45,4 @@ die(err)
 ```yak
 rsp, req := poc.HTTPEx(packet)~ // 这个代码等价于 `rsp, req, err := poc.HTTPEx(packet)~; die(err)`
 ```
+<!-- vim: set ts=4: -->
