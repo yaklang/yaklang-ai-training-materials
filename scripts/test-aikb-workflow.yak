@@ -26,7 +26,6 @@ println(sprintf("✓ 项目根目录: %v", projectRoot))
 // 检查必要的文件夹
 requiredFolders = [
     "awesome-scripts",
-    "basic-syntax",
     "library-usage",
     "practice",
     "scripts",

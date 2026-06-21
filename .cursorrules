@@ -312,7 +312,7 @@ grep -r "yaklang.Import.*库名" .
 
 ### 在线资源
 - Yaklang 官方文档：查看 yaklang-website 目录
-- 基础语法：查看 basic-syntax 目录
+- 基础语法：查看 yaklang-website/docs（同步自 yaklang.github.io）
 - 实践案例：查看 practice 目录
 - 优秀脚本：查看 awesome-scripts 目录
 

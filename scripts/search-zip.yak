@@ -480,7 +480,8 @@ println("\n=== 完整性验证 ===\n")
 
 // 验证 1: 检查是否包含必要的文件夹
 // 关键词: 文件夹验证, 目录检查, 结构验证, 完整性
-required_folders = ["awesome-scripts", "basic-syntax", "library-usage", "practice"]
+// 注意: basic-syntax 已删除（内容统一由 yaklang-website/docs 提供），不再作为必需文件夹
+required_folders = ["awesome-scripts", "library-usage", "practice"]
 println("验证必要的文件夹:")
 for folder in required_folders {
     found = false

@@ -9,7 +9,6 @@ on:
       - 'ai-benchmark/**'
       - 'scripts/**'
       - 'awesome-scripts/**'
-      - 'basic-syntax/**'
       - 'library-usage/**'
       - 'practice/**'
       - '.github/workflows/upload-aikb.yml'
