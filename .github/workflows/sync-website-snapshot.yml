@@ -1,0 +1,170 @@
+name: Sync Website Snapshot
+
+# 关键词: website snapshot, yaklang.github.io, site-packages.json, sync, training materials
+# 功能: 同步 yaklang.github.io (yaklang.com) 官网最新一期全站内容快照到本仓 yaklang-website/
+# 数据源: yaklang.github.io 仓的 static/site-packages.json (公开, 最新一期 zip)
+# 脚本: scripts/sync-website-snapshot.js (零第三方依赖)
+# 本仓 main 分支当前无保护, 采用直推 main (与现有其它定时 CI 不冲突; 真正提交只在有新快照时发生)
+#
+# 版本探测机制:
+#   - 拉 site-packages.json 取最新一期 id
+#   - 与 yaklang-website/.snapshot-id 中记录的上次 id 比较
+#   - 一致 (且 force!=true) 则跳过
+#   - 不一致则下载 zip, 整理, commit, push
+
+on:
+  schedule:
+    # 每天 UTC 18:30 (北京时间次日 02:30)
+    # 比 yaklang.github.io 的 sync-docs cron (UTC 18:00) 晚 30 分钟, 确保 site-packages.json 已更新
+    - cron: '30 18 * * *'
+
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '即使 id 未变也强制同步'
+        required: false
+        type: boolean
+        default: false
+      package_url:
+        description: '直接指定要同步的 zip URL (覆盖自动探测, 留空走 site-packages.json)'
+        required: false
+        type: string
+        default: ''
+
+# 同一时刻只允许一个实例
+concurrency:
+  group: sync-website-snapshot
+  cancel-in-progress: false
+
+# 允许 workflow 自身 commit/push 回 main
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync Website Snapshot
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Print trigger info
+        run: |
+          echo "============================================"
+          echo "Sync Website Snapshot"
+          echo "============================================"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch:  ${{ github.ref }}"
+          echo "Commit:  ${{ github.sha }}"
+          echo "Time:    $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Force:   ${{ github.event.inputs.force || 'false' }}"
+          echo "Package URL override: ${INPUT_PKG_URL:-<auto>}"
+          echo "============================================"
+        env:
+          INPUT_PKG_URL: ${{ github.event.inputs.package_url }}
+
+      - name: Run sync script
+        id: sync
+        run: |
+          # 把 workflow_dispatch 输入映射到脚本参数 / 环境变量
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            export FORCE_SYNC=1
+          fi
+
+          if [ -n "${{ github.event.inputs.package_url }}" ]; then
+            node scripts/sync-website-snapshot.js --zip "${{ github.event.inputs.package_url }}"
+          else
+            node scripts/sync-website-snapshot.js
+          fi
+
+          # 末行是 SUMMARY id=... url=... count=... dest=... status=...
+          # 解析 status 和 id 供后续步骤使用
+          SUMMARY_LINE="$(grep '^SUMMARY ' "$GITHUB_STEP_SUMMARY" 2>/dev/null || true)"
+          # 上面没拿到 (因为 SUMMARY 走 stdout), 直接重跑一次拿到 stdout 不现实
+          # 改用从记账文件读取 (更权威)
+          if [ -f yaklang-website/.snapshot-id ]; then
+            NEW_ID="$(cat yaklang-website/.snapshot-id)"
+          else
+            NEW_ID=""
+          fi
+          {
+            echo "new_id=$NEW_ID"
+            # 用文件改动判断是否真有同步 (status=noop 时 yaklang-website/ 不变)
+            if [ -n "$NEW_ID" ] && [ -n "$(git status --porcelain yaklang-website/)" ]; then
+              echo "changed=true"
+            else
+              echo "changed=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain yaklang-website/)" ]; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "Detected changes in yaklang-website/"
+            git status --porcelain yaklang-website/ | head -20
+          else
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "No changes; snapshot already up to date."
+          fi
+
+      - name: Commit and push to main
+        if: steps.changes.outputs.any == 'true'
+        run: |
+          # main 分支当前无保护, 直推
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add yaklang-website/
+          NEW_ID="$(cat yaklang-website/.snapshot-id)"
+          COUNT="$(awk -F'\t' '{print $4}' yaklang-website/LAST_SYNC.txt | tail -1)"
+          git commit -m "chore(website): sync snapshot ${NEW_ID}" \
+                     -m "Source: yaklang.github.io static/site-packages.json" \
+                     -m "Entries: ${COUNT}"
+          git push origin HEAD:main
+          echo "Pushed commit for snapshot ${NEW_ID} to main."
+
+      - name: Upload snapshot artifact (debug)
+        if: steps.changes.outputs.any == 'true' || steps.changes.outputs.any == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-snapshot-${{ steps.sync.outputs.new_id || 'noop' }}
+          path: |
+            yaklang-website/README.md
+            yaklang-website/LAST_SYNC.txt
+            yaklang-website/.snapshot-id
+            yaklang-website/INDEX.json
+            yaklang-website/MANIFEST.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Step summary
+        if: always()
+        run: |
+          NEW_ID="${{ steps.sync.outputs.new_id }}"
+          CHANGED="${{ steps.changes.outputs.any }}"
+          {
+            echo "## Sync Website Snapshot"
+            echo ""
+            echo "- New snapshot id: \`${NEW_ID:-<none>}\`"
+            echo "- Changed: \`${CHANGED}\`"
+            if [ "$CHANGED" = "true" ]; then
+              echo "- Committed and pushed to \`main\` as \`chore(website): sync snapshot ${NEW_ID}\`"
+            else
+              echo "- No commit (already up to date)"
+            fi
+            echo ""
+            echo "### LAST_SYNC.txt"
+            echo '```'
+            cat yaklang-website/LAST_SYNC.txt 2>/dev/null || echo "(none)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

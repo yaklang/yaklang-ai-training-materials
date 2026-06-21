@@ -1,0 +1,5424 @@
+{
+  "site": "https://yaklang.com",
+  "generatedAt": "2026-06-21T03:07:10.764Z",
+  "baseUrl": "/",
+  "sources": [
+    "docs",
+    "products",
+    "blog"
+  ],
+  "routing": {
+    "docs": {
+      "routeBasePath": "/docs"
+    },
+    "products": {
+      "routeBasePath": "/products"
+    },
+    "blog": {
+      "routeBasePath": "/blog"
+    }
+  },
+  "count": 523,
+  "entries": [
+    {
+      "source": "blog",
+      "relPath": "2021-12-07-311.md",
+      "path": "/blog/traffic-hijacking-with-yakit",
+      "url": "https://yaklang.com/blog/traffic-hijacking-with-yakit",
+      "title": "流量分析：使用 Yakit 进行流量劫持",
+      "size": 2713,
+      "slug": "traffic-hijacking-with-yakit",
+      "tags": [
+        "2021",
+        "traffic"
+      ],
+      "date": "2021-12-07"
+    },
+    {
+      "source": "blog",
+      "relPath": "2021-12-17-310.md",
+      "path": "/blog/log4j-jndi-fuzz-and-passive-scan",
+      "url": "https://yaklang.com/blog/log4j-jndi-fuzz-and-passive-scan",
+      "title": "漏洞分析：Log4j JNDI Fuzz 与被动扫描",
+      "size": 6898,
+      "slug": "log4j-jndi-fuzz-and-passive-scan",
+      "tags": [
+        "2021",
+        "webfuzzer",
+        "java-sec",
+        "vuln-plugin"
+      ],
+      "date": "2021-12-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2021-12-27-309.md",
+      "path": "/blog/brute-force-and-unauthorized-access-detection",
+      "url": "https://yaklang.com/blog/brute-force-and-unauthorized-access-detection",
+      "title": "功能发布：爆破与未授权检测",
+      "size": 7319,
+      "slug": "brute-force-and-unauthorized-access-detection",
+      "tags": [
+        "2021",
+        "webfuzzer",
+        "vuln-plugin"
+      ],
+      "date": "2021-12-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2021-12-31-308.md",
+      "path": "/blog/java-deserialization-cross-language-exploit",
+      "url": "https://yaklang.com/blog/java-deserialization-cross-language-exploit",
+      "title": "Java 安全：使用 Yakit 实现 Java 序列化跨语言利用",
+      "size": 9126,
+      "slug": "java-deserialization-cross-language-exploit",
+      "tags": [
+        "2021",
+        "java-sec"
+      ],
+      "date": "2021-12-31"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-01-11-307.md",
+      "path": "/blog/reverse-connection-intranet-tunneling-and-port-reuse",
+      "url": "https://yaklang.com/blog/reverse-connection-intranet-tunneling-and-port-reuse",
+      "title": "技术研究：反连检测之内网穿透与多协议端口复用",
+      "size": 9104,
+      "slug": "reverse-connection-intranet-tunneling-and-port-reuse",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-01-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-01-14-306.md",
+      "path": "/blog/ssrf-outbound-detection-mitm-plugin",
+      "url": "https://yaklang.com/blog/ssrf-outbound-detection-mitm-plugin",
+      "title": "漏洞分析：SSRF 公网出网检测 MITM 插件",
+      "size": 3564,
+      "slug": "ssrf-outbound-detection-mitm-plugin",
+      "tags": [
+        "2022",
+        "traffic",
+        "vuln-plugin"
+      ],
+      "date": "2022-01-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-01-21-305.md",
+      "path": "/blog/xss-blind-detection-plugin",
+      "url": "https://yaklang.com/blog/xss-blind-detection-plugin",
+      "title": "工程实践：XSS 盲打检测插件案例",
+      "size": 7503,
+      "slug": "xss-blind-detection-plugin",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-01-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-01-25-303.md",
+      "path": "/blog/outbound-reverse-connection-detection",
+      "url": "https://yaklang.com/blog/outbound-reverse-connection-detection",
+      "title": "技术研究：出网反连检测技术",
+      "size": 5888,
+      "slug": "outbound-reverse-connection-detection",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-01-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-08-302.md",
+      "path": "/blog/siemens-plc-exploit-plugin",
+      "url": "https://yaklang.com/blog/siemens-plc-exploit-plugin",
+      "title": "工程实践：开发 Yakit 插件利用西门子 PLC",
+      "size": 4110,
+      "slug": "siemens-plc-exploit-plugin",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-08"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-10-301.md",
+      "path": "/blog/jsonp-passive-detection",
+      "url": "https://yaklang.com/blog/jsonp-passive-detection",
+      "title": "漏洞分析：基于 Yak 的 JSONP 被动检测",
+      "size": 8007,
+      "slug": "jsonp-passive-detection",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-16-299.md",
+      "path": "/blog/cdn-detection-plugin",
+      "url": "https://yaklang.com/blog/cdn-detection-plugin",
+      "title": "工程实践：CDN 检测插件案例",
+      "size": 16287,
+      "slug": "cdn-detection-plugin",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-18-298.md",
+      "path": "/blog/learn-yak-with-redis-unauthorized-detection",
+      "url": "https://yaklang.com/blog/learn-yak-with-redis-unauthorized-detection",
+      "title": "工程实践：从 Redis 未授权检测入门 Yak 语言",
+      "size": 5540,
+      "slug": "learn-yak-with-redis-unauthorized-detection",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-22-297.md",
+      "path": "/blog/build-a-log4j-detection-tool",
+      "url": "https://yaklang.com/blog/build-a-log4j-detection-tool",
+      "title": "漏洞分析：使用 Yak 构建 Log4j 漏洞检测工具",
+      "size": 4872,
+      "slug": "build-a-log4j-detection-tool",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-24-296.md",
+      "path": "/blog/sunlogin-rce-detection-plugin",
+      "url": "https://yaklang.com/blog/sunlogin-rce-detection-plugin",
+      "title": "漏洞分析：向日葵远程命令执行检测插件",
+      "size": 1997,
+      "slug": "sunlogin-rce-detection-plugin",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-02-24"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-02-25-295.md",
+      "path": "/blog/general-penetration-testing-with-yakit",
+      "url": "https://yaklang.com/blog/general-penetration-testing-with-yakit",
+      "title": "渗透实战：使用 Yakit 进行常规渗透测试",
+      "size": 5040,
+      "slug": "general-penetration-testing-with-yakit",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-02-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-03-04-294.md",
+      "path": "/blog/decrypt-app-des-cbc-traffic",
+      "url": "https://yaklang.com/blog/decrypt-app-des-cbc-traffic",
+      "title": "流量分析：App 端 DES-CBC 加密流量的自动化解密",
+      "size": 3069,
+      "slug": "decrypt-app-des-cbc-traffic",
+      "tags": [
+        "2022",
+        "traffic",
+        "crypto"
+      ],
+      "date": "2022-03-04"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-03-10-293.md",
+      "path": "/blog/web-fuzzer-vs-repeater-and-intruder",
+      "url": "https://yaklang.com/blog/web-fuzzer-vs-repeater-and-intruder",
+      "title": "工程实践：Web Fuzzer 对标 Repeater 与 Intruder",
+      "size": 13474,
+      "slug": "web-fuzzer-vs-repeater-and-intruder",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-03-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-03-17-292.md",
+      "path": "/blog/thinkphp-rce-passive-scan-plugin",
+      "url": "https://yaklang.com/blog/thinkphp-rce-passive-scan-plugin",
+      "title": "漏洞分析：ThinkPHP RCE 被动扫描插件",
+      "size": 10237,
+      "slug": "thinkphp-rce-passive-scan-plugin",
+      "tags": [
+        "2022",
+        "traffic",
+        "vuln-plugin"
+      ],
+      "date": "2022-03-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-03-23-291.md",
+      "path": "/blog/modular-fingerprint-scanning-design",
+      "url": "https://yaklang.com/blog/modular-fingerprint-scanning-design",
+      "title": "技术研究：模块化指纹扫描的设计",
+      "size": 6334,
+      "slug": "modular-fingerprint-scanning-design",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-03-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-04-01-290.md",
+      "path": "/blog/java-deserialization-echo-chain-detection",
+      "url": "https://yaklang.com/blog/java-deserialization-echo-chain-detection",
+      "title": "Java 安全：反序列化回显链研究与检测工程化",
+      "size": 12401,
+      "slug": "java-deserialization-echo-chain-detection",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-04-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-04-08-289.md",
+      "path": "/blog/blackbox-vulnerability-scanning-and-risk-assessment",
+      "url": "https://yaklang.com/blog/blackbox-vulnerability-scanning-and-risk-assessment",
+      "title": "方法论：黑盒漏洞扫描与风险评估",
+      "size": 17507,
+      "slug": "blackbox-vulnerability-scanning-and-risk-assessment",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-04-08"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-04-15-288.md",
+      "path": "/blog/java-ldap-protocol-analysis",
+      "url": "https://yaklang.com/blog/java-ldap-protocol-analysis",
+      "title": "协议分析：Java LDAP 协议分析",
+      "size": 4757,
+      "slug": "java-ldap-protocol-analysis",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-04-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-04-22-287.md",
+      "path": "/blog/multi-protocol-reverse-connection-beyond-dnslog",
+      "url": "https://yaklang.com/blog/multi-protocol-reverse-connection-beyond-dnslog",
+      "title": "技术研究：DNSLog 之外的多协议反连检测",
+      "size": 5709,
+      "slug": "multi-protocol-reverse-connection-beyond-dnslog",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-04-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-04-29-286.md",
+      "path": "/blog/htb-bountyhunter-walkthrough-and-weaponization",
+      "url": "https://yaklang.com/blog/htb-bountyhunter-walkthrough-and-weaponization",
+      "title": "渗透实战：HTB BountyHunter 靶机攻防与武器化",
+      "size": 8646,
+      "slug": "htb-bountyhunter-walkthrough-and-weaponization",
+      "tags": [
+        "2022",
+        "range"
+      ],
+      "date": "2022-04-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-06-285.md",
+      "path": "/blog/web-fuzzer-hot-reload-fuzz",
+      "url": "https://yaklang.com/blog/web-fuzzer-hot-reload-fuzz",
+      "title": "功能发布：Web Fuzzer 热加载 Fuzz 能力",
+      "size": 6838,
+      "slug": "web-fuzzer-hot-reload-fuzz",
+      "tags": [
+        "2022",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2022-05-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-10-284.md",
+      "path": "/blog/weblogic-t3-protocol-analysis",
+      "url": "https://yaklang.com/blog/weblogic-t3-protocol-analysis",
+      "title": "协议分析：WebLogic T3 协议分析",
+      "size": 12452,
+      "slug": "weblogic-t3-protocol-analysis",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-05-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-20-281.md",
+      "path": "/blog/web-fuzzer-mass-requests-and-batch-plugins",
+      "url": "https://yaklang.com/blog/web-fuzzer-mass-requests-and-batch-plugins",
+      "title": "功能发布：Web Fuzzer 海量发包与批量插件执行重构",
+      "size": 5484,
+      "slug": "web-fuzzer-mass-requests-and-batch-plugins",
+      "tags": [
+        "2022",
+        "webfuzzer",
+        "vuln-plugin"
+      ],
+      "date": "2022-05-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-20-282.md",
+      "path": "/blog/web-fuzzer-hot-reload-fuzz-capability",
+      "url": "https://yaklang.com/blog/web-fuzzer-hot-reload-fuzz-capability",
+      "title": "功能发布：Web Fuzzer 热加载 Fuzz 能力",
+      "size": 6849,
+      "slug": "web-fuzzer-hot-reload-fuzz-capability",
+      "tags": [
+        "2022",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2022-05-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-20-283.md",
+      "path": "/blog/web-fuzzer-repeater-and-intruder-alternative",
+      "url": "https://yaklang.com/blog/web-fuzzer-repeater-and-intruder-alternative",
+      "title": "工程实践：Web Fuzzer 对标 Repeater 与 Intruder",
+      "size": 13483,
+      "slug": "web-fuzzer-repeater-and-intruder-alternative",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-05-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-05-27-280.md",
+      "path": "/blog/fastjson-heuristic-detection",
+      "url": "https://yaklang.com/blog/fastjson-heuristic-detection",
+      "title": "漏洞分析：Fastjson 启发式检测",
+      "size": 17456,
+      "slug": "fastjson-heuristic-detection",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-05-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-06-02-279.md",
+      "path": "/blog/mitm-traffic-replacement-and-chrome-launch",
+      "url": "https://yaklang.com/blog/mitm-traffic-replacement-and-chrome-launch",
+      "title": "功能发布：MITM 流量替换/染色/标记与免配置启动 Chrome",
+      "size": 6015,
+      "slug": "mitm-traffic-replacement-and-chrome-launch",
+      "tags": [
+        "2022",
+        "traffic",
+        "crypto"
+      ],
+      "date": "2022-06-02"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-06-10-278.md",
+      "path": "/blog/xss-heuristic-detection-infrastructure",
+      "url": "https://yaklang.com/blog/xss-heuristic-detection-infrastructure",
+      "title": "漏洞分析：XSS 启发式检测基础设施",
+      "size": 13723,
+      "slug": "xss-heuristic-detection-infrastructure",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-06-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-06-29-275.md",
+      "path": "/blog/yaklang-distributed-engine-saas",
+      "url": "https://yaklang.com/blog/yaklang-distributed-engine-saas",
+      "title": "技术研究：Yaklang 分布式引擎的 SaaS 化",
+      "size": 6253,
+      "slug": "yaklang-distributed-engine-saas",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-06-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-07-08-273.md",
+      "path": "/blog/yaklang-xss-heuristic-algorithm",
+      "url": "https://yaklang.com/blog/yaklang-xss-heuristic-algorithm",
+      "title": "漏洞分析：Yaklang XSS 检测启发式算法",
+      "size": 13247,
+      "slug": "yaklang-xss-heuristic-algorithm",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-07-08"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-07-15-272.md",
+      "path": "/blog/cve-2020-2551-iiop-detection-and-exploit",
+      "url": "https://yaklang.com/blog/cve-2020-2551-iiop-detection-and-exploit",
+      "title": "Java 安全：CVE-2020-2551 IIOP 检测与 Yak 利用",
+      "size": 11516,
+      "slug": "cve-2020-2551-iiop-detection-and-exploit",
+      "tags": [
+        "2022",
+        "java-sec",
+        "vuln-plugin"
+      ],
+      "date": "2022-07-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-07-21-271.md",
+      "path": "/blog/self-hosted-yak-bridge-reverse-connection",
+      "url": "https://yaklang.com/blog/self-hosted-yak-bridge-reverse-connection",
+      "title": "功能发布：自建 Yak Bridge 反连（DNSLog/ICMPLog/TCPLog）",
+      "size": 5639,
+      "slug": "self-hosted-yak-bridge-reverse-connection",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-07-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-07-28-270.md",
+      "path": "/blog/testing-frontend-aes-ecb-encryption",
+      "url": "https://yaklang.com/blog/testing-frontend-aes-ecb-encryption",
+      "title": "渗透实战：前端 AES-ECB 加密场景的 Web 安全测试",
+      "size": 6773,
+      "slug": "testing-frontend-aes-ecb-encryption",
+      "tags": [
+        "2022",
+        "webfuzzer",
+        "crypto"
+      ],
+      "date": "2022-07-28"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-08-01-269.md",
+      "path": "/blog/remote-mode-hijacking-scanning-and-pentest",
+      "url": "https://yaklang.com/blog/remote-mode-hijacking-scanning-and-pentest",
+      "title": "工程实践：远程模式下的劫持、扫描与渗透",
+      "size": 7235,
+      "slug": "remote-mode-hijacking-scanning-and-pentest",
+      "tags": [
+        "2022",
+        "traffic",
+        "vuln-plugin"
+      ],
+      "date": "2022-08-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-08-05-268.md",
+      "path": "/blog/yaklang-java-bytecode-processing",
+      "url": "https://yaklang.com/blog/yaklang-java-bytecode-processing",
+      "title": "技术研究：Yaklang Java 字节码处理能力",
+      "size": 6967,
+      "slug": "yaklang-java-bytecode-processing",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-08-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-08-15-266.md",
+      "path": "/blog/yakit-plugin-store-guide",
+      "url": "https://yaklang.com/blog/yakit-plugin-store-guide",
+      "title": "功能发布：Yakit 插件商店使用指南",
+      "size": 3008,
+      "slug": "yakit-plugin-store-guide",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-08-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-08-19-265.md",
+      "path": "/blog/build-a-low-cost-passive-scanner",
+      "url": "https://yaklang.com/blog/build-a-low-cost-passive-scanner",
+      "title": "工程实践：低成本被动扫描工具实现（安全研发启蒙）",
+      "size": 9738,
+      "slug": "build-a-low-cost-passive-scanner",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-08-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-08-29-263.md",
+      "path": "/blog/subdomain-collection-with-vuln-scanning",
+      "url": "https://yaklang.com/blog/subdomain-collection-with-vuln-scanning",
+      "title": "工程实践：子域名收集联动 Yak 漏扫插件（安全研发启蒙）",
+      "size": 14339,
+      "slug": "subdomain-collection-with-vuln-scanning",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-08-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-09-02-261.md",
+      "path": "/blog/cybersecurity-dsl-whitepaper",
+      "url": "https://yaklang.com/blog/cybersecurity-dsl-whitepaper",
+      "title": "技术研究：网络安全领域 DSL 白皮书",
+      "size": 6596,
+      "slug": "cybersecurity-dsl-whitepaper",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-09-02"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-09-06-260.md",
+      "path": "/blog/pentest-team-collaboration-and-sharing",
+      "url": "https://yaklang.com/blog/pentest-team-collaboration-and-sharing",
+      "title": "功能发布：渗透测试团队协作与即时分享",
+      "size": 4986,
+      "slug": "pentest-team-collaboration-and-sharing",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-09-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-09-15-258.md",
+      "path": "/blog/reverse-engineering-sheep-game-traffic",
+      "url": "https://yaklang.com/blog/reverse-engineering-sheep-game-traffic",
+      "title": "流量分析：抓包分析“羊了个羊”游戏通关逻辑",
+      "size": 2844,
+      "slug": "reverse-engineering-sheep-game-traffic",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-09-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-09-20-257.md",
+      "path": "/blog/yaklang-websocket-hijacking-tutorial",
+      "url": "https://yaklang.com/blog/yaklang-websocket-hijacking-tutorial",
+      "title": "工程实践：Yaklang WebSocket 劫持教程",
+      "size": 17585,
+      "slug": "yaklang-websocket-hijacking-tutorial",
+      "tags": [
+        "2022",
+        "traffic"
+      ],
+      "date": "2022-09-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-09-22-256.md",
+      "path": "/blog/yaklang-sql-injection-heuristic-algorithm",
+      "url": "https://yaklang.com/blog/yaklang-sql-injection-heuristic-algorithm",
+      "title": "漏洞分析：Yaklang SQL 注入检测启发式算法",
+      "size": 10727,
+      "slug": "yaklang-sql-injection-heuristic-algorithm",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-09-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-10-13-253.md",
+      "path": "/blog/reverse-connection-and-javahack-enhancements",
+      "url": "https://yaklang.com/blog/reverse-connection-and-javahack-enhancements",
+      "title": "功能发布：反连检测与 JavaHack 能力强化",
+      "size": 8324,
+      "slug": "reverse-connection-and-javahack-enhancements",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-10-13"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-10-20-252.md",
+      "path": "/blog/generate-payloads-with-fuzztag",
+      "url": "https://yaklang.com/blog/generate-payloads-with-fuzztag",
+      "title": "工程实践：使用 Fuzztag 生成与变形 Payload",
+      "size": 10689,
+      "slug": "generate-payloads-with-fuzztag",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-10-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-11-11-248.md",
+      "path": "/blog/extract-data-from-batch-brute-force",
+      "url": "https://yaklang.com/blog/extract-data-from-batch-brute-force",
+      "title": "功能发布：从批量爆破请求中提取关键数据",
+      "size": 4862,
+      "slug": "extract-data-from-batch-brute-force",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-11-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-11-18-247.md",
+      "path": "/blog/match-and-extract-with-yakit",
+      "url": "https://yaklang.com/blog/match-and-extract-with-yakit",
+      "title": "工程实践：用 Yakit 实现 Match-Extract 功能",
+      "size": 2473,
+      "slug": "match-and-extract-with-yakit",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-11-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-11-25-246.md",
+      "path": "/blog/yakvm-stack-virtual-machine",
+      "url": "https://yaklang.com/blog/yakvm-stack-virtual-machine",
+      "title": "技术研究：YakVM 栈式虚拟机与编译运行时分离",
+      "size": 8407,
+      "slug": "yakvm-stack-virtual-machine",
+      "tags": [
+        "2022"
+      ],
+      "date": "2022-11-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-12-01-245.md",
+      "path": "/blog/sql-injection-heuristic-detection-infrastructure",
+      "url": "https://yaklang.com/blog/sql-injection-heuristic-detection-infrastructure",
+      "title": "漏洞分析：SQL 注入检测启发式算法（基础设施）",
+      "size": 5903,
+      "slug": "sql-injection-heuristic-detection-infrastructure",
+      "tags": [
+        "2022",
+        "vuln-plugin"
+      ],
+      "date": "2022-12-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-12-09-244.md",
+      "path": "/blog/modify-traffic-with-mitm-hot-reload",
+      "url": "https://yaklang.com/blog/modify-traffic-with-mitm-hot-reload",
+      "title": "流量分析：用 MITM 热加载任意修改流量",
+      "size": 9719,
+      "slug": "modify-traffic-with-mitm-hot-reload",
+      "tags": [
+        "2022",
+        "traffic",
+        "hotpatch"
+      ],
+      "date": "2022-12-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-12-16-243.md",
+      "path": "/blog/deserialization-memory-shell-with-yso-java-hack",
+      "url": "https://yaklang.com/blog/deserialization-memory-shell-with-yso-java-hack",
+      "title": "Java 安全：利用反序列化漏洞打内存马（Yso-Java Hack 进阶）",
+      "size": 10794,
+      "slug": "deserialization-memory-shell-with-yso-java-hack",
+      "tags": [
+        "2022",
+        "java-sec"
+      ],
+      "date": "2022-12-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-12-22-242.md",
+      "path": "/blog/brute-force-deserialization-chain-with-fuzztag",
+      "url": "https://yaklang.com/blog/brute-force-deserialization-chain-with-fuzztag",
+      "title": "工程实践：使用 Fuzztag 爆破反序列化链",
+      "size": 8085,
+      "slug": "brute-force-deserialization-chain-with-fuzztag",
+      "tags": [
+        "2022",
+        "webfuzzer",
+        "java-sec"
+      ],
+      "date": "2022-12-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2022-12-29-241.md",
+      "path": "/blog/fuzztag-capability-upgrade",
+      "url": "https://yaklang.com/blog/fuzztag-capability-upgrade",
+      "title": "功能发布：Fuzztag 能力升级",
+      "size": 7438,
+      "slug": "fuzztag-capability-upgrade",
+      "tags": [
+        "2022",
+        "webfuzzer"
+      ],
+      "date": "2022-12-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-01-13-239.md",
+      "path": "/blog/brute-force-deserialization-chain-with-fuzztag-v2",
+      "url": "https://yaklang.com/blog/brute-force-deserialization-chain-with-fuzztag-v2",
+      "title": "工程实践：使用 Fuzztag 爆破反序列化链（2.0）",
+      "size": 3612,
+      "slug": "brute-force-deserialization-chain-with-fuzztag-v2",
+      "tags": [
+        "2023",
+        "webfuzzer",
+        "java-sec"
+      ],
+      "date": "2023-01-13"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-02-03-237.md",
+      "path": "/blog/traffic-modification-techniques-in-pentest",
+      "url": "https://yaklang.com/blog/traffic-modification-techniques-in-pentest",
+      "title": "流量分析：渗透测试中的流量修改技巧",
+      "size": 8360,
+      "slug": "traffic-modification-techniques-in-pentest",
+      "tags": [
+        "2023",
+        "traffic"
+      ],
+      "date": "2023-02-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-02-09-236.md",
+      "path": "/blog/yaklang-new-language-engine-update",
+      "url": "https://yaklang.com/blog/yaklang-new-language-engine-update",
+      "title": "技术研究：Yaklang 新语言引擎更新解析",
+      "size": 5856,
+      "slug": "yaklang-new-language-engine-update",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-02-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-03-23-230.md",
+      "path": "/blog/jndi-injection-exploitation-part1",
+      "url": "https://yaklang.com/blog/jndi-injection-exploitation-part1",
+      "title": "Java 安全：JNDI 注入利用总结（上）",
+      "size": 16399,
+      "slug": "jndi-injection-exploitation-part1",
+      "tags": [
+        "2023",
+        "java-sec"
+      ],
+      "date": "2023-03-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-03-30-229.md",
+      "path": "/blog/jndi-injection-exploitation-part2",
+      "url": "https://yaklang.com/blog/jndi-injection-exploitation-part2",
+      "title": "Java 安全：JNDI 注入利用总结（下）",
+      "size": 16348,
+      "slug": "jndi-injection-exploitation-part2",
+      "tags": [
+        "2023",
+        "java-sec"
+      ],
+      "date": "2023-03-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-04-21-223.md",
+      "path": "/blog/generate-strings-from-regex",
+      "url": "https://yaklang.com/blog/generate-strings-from-regex",
+      "title": "技术研究：通过正则表达式反向生成字符串",
+      "size": 5084,
+      "slug": "generate-strings-from-regex",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-04-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-04-27-221.md",
+      "path": "/blog/hijack-https-tcp-tls-with-socks5",
+      "url": "https://yaklang.com/blog/hijack-https-tcp-tls-with-socks5",
+      "title": "流量分析：使用 Socks5 劫持 HTTPS(TCP-TLS)",
+      "size": 8990,
+      "slug": "hijack-https-tcp-tls-with-socks5",
+      "tags": [
+        "2023",
+        "traffic"
+      ],
+      "date": "2023-04-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-06-09-209.md",
+      "path": "/blog/automated-testing-of-nested-json-params",
+      "url": "https://yaklang.com/blog/automated-testing-of-nested-json-params",
+      "title": "工程实践：嵌套 JSON 参数的自动化测试",
+      "size": 11217,
+      "slug": "automated-testing-of-nested-json-params",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-06-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-06-16-207.md",
+      "path": "/blog/fastjson-with-jdk-deserialization-aliyun-ctf",
+      "url": "https://yaklang.com/blog/fastjson-with-jdk-deserialization-aliyun-ctf",
+      "title": "Java 安全：Fastjson 结合 JDK 原生反序列化利用（Aliyun CTF）",
+      "size": 11577,
+      "slug": "fastjson-with-jdk-deserialization-aliyun-ctf",
+      "tags": [
+        "2023",
+        "java-sec",
+        "range"
+      ],
+      "date": "2023-06-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-06-21-205.md",
+      "path": "/blog/nuclei-dsl-compatibility-via-sandbox",
+      "url": "https://yaklang.com/blog/nuclei-dsl-compatibility-via-sandbox",
+      "title": "技术研究：基于虚拟机沙箱兼容 Nuclei DSL",
+      "size": 7954,
+      "slug": "nuclei-dsl-compatibility-via-sandbox",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-06-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-06-29-204.md",
+      "path": "/blog/rule-based-javaweb-echo",
+      "url": "https://yaklang.com/blog/rule-based-javaweb-echo",
+      "title": "Java 安全：基于规则的 JavaWeb 回显方案",
+      "size": 25504,
+      "slug": "rule-based-javaweb-echo",
+      "tags": [
+        "2023",
+        "java-sec"
+      ],
+      "date": "2023-06-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-06-30-203.md",
+      "path": "/blog/no-code-mitm-with-yakit",
+      "url": "https://yaklang.com/blog/no-code-mitm-with-yakit",
+      "title": "流量分析：基于 Yakit 的无代码 MITM 实践",
+      "size": 10815,
+      "slug": "no-code-mitm-with-yakit",
+      "tags": [
+        "2023",
+        "traffic"
+      ],
+      "date": "2023-06-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-07-07-201.md",
+      "path": "/blog/shiro-range-without-java-dependency",
+      "url": "https://yaklang.com/blog/shiro-range-without-java-dependency",
+      "title": "靶场实战：无 Java 依赖的 Shiro 靶场",
+      "size": 8244,
+      "slug": "shiro-range-without-java-dependency",
+      "tags": [
+        "2023",
+        "java-sec",
+        "range"
+      ],
+      "date": "2023-07-07"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-07-14-200.md",
+      "path": "/blog/web-fuzzer-as-repeater-and-intruder",
+      "url": "https://yaklang.com/blog/web-fuzzer-as-repeater-and-intruder",
+      "title": "功能发布：对标 Repeater 与 Intruder 的 Web Fuzzer",
+      "size": 2600,
+      "slug": "web-fuzzer-as-repeater-and-intruder",
+      "tags": [
+        "2023",
+        "webfuzzer"
+      ],
+      "date": "2023-07-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-07-20-199.md",
+      "path": "/blog/yaklang-sca-standard-library",
+      "url": "https://yaklang.com/blog/yaklang-sca-standard-library",
+      "title": "功能发布：Yaklang SCA 标准库",
+      "size": 8094,
+      "slug": "yaklang-sca-standard-library",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-07-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-07-21-198.md",
+      "path": "/blog/web-fuzzer-fuzztag-and-hot-reload",
+      "url": "https://yaklang.com/blog/web-fuzzer-fuzztag-and-hot-reload",
+      "title": "工程实践：Web Fuzzer 的 Fuzztag 与热加载实践",
+      "size": 4840,
+      "slug": "web-fuzzer-fuzztag-and-hot-reload",
+      "tags": [
+        "2023",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2023-07-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-08-03-195.md",
+      "path": "/blog/intro-to-ssa-static-single-assignment",
+      "url": "https://yaklang.com/blog/intro-to-ssa-static-single-assignment",
+      "title": "技术研究：SSA（静态单赋值）格式入门",
+      "size": 13307,
+      "slug": "intro-to-ssa-static-single-assignment",
+      "tags": [
+        "2023",
+        "code-audit"
+      ],
+      "date": "2023-08-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-08-11-191.md",
+      "path": "/blog/how-to-build-ssa",
+      "url": "https://yaklang.com/blog/how-to-build-ssa",
+      "title": "技术研究：SSA 的构建方法",
+      "size": 8599,
+      "slug": "how-to-build-ssa",
+      "tags": [
+        "2023",
+        "code-audit"
+      ],
+      "date": "2023-08-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-08-11-192.md",
+      "path": "/blog/websocket-fuzzer-testing",
+      "url": "https://yaklang.com/blog/websocket-fuzzer-testing",
+      "title": "工程实践：WebSocket Fuzzer 测试",
+      "size": 4658,
+      "slug": "websocket-fuzzer-testing",
+      "tags": [
+        "2023",
+        "traffic",
+        "webfuzzer"
+      ],
+      "date": "2023-08-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-08-17-190.md",
+      "path": "/blog/url-redirect-vulnerability-detection-plugin",
+      "url": "https://yaklang.com/blog/url-redirect-vulnerability-detection-plugin",
+      "title": "漏洞分析：URL 重定向漏洞检测插件",
+      "size": 5609,
+      "slug": "url-redirect-vulnerability-detection-plugin",
+      "tags": [
+        "2023",
+        "vuln-plugin"
+      ],
+      "date": "2023-08-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-08-31-187.md",
+      "path": "/blog/web-fuzzer-sequence-feature",
+      "url": "https://yaklang.com/blog/web-fuzzer-sequence-feature",
+      "title": "功能发布：Web Fuzzer 序列功能",
+      "size": 7371,
+      "slug": "web-fuzzer-sequence-feature",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-08-31"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-09-01-185.md",
+      "path": "/blog/tokenless-reverse-connection-detection",
+      "url": "https://yaklang.com/blog/tokenless-reverse-connection-detection",
+      "title": "技术研究：无 Token 的反连检测技术",
+      "size": 4924,
+      "slug": "tokenless-reverse-connection-detection",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-09-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-09-14-183.md",
+      "path": "/blog/signature-verification-and-frontend-encryption-part1",
+      "url": "https://yaklang.com/blog/signature-verification-and-frontend-encryption-part1",
+      "title": "渗透实战：验签与前端加密分析（一）",
+      "size": 14229,
+      "slug": "signature-verification-and-frontend-encryption-part1",
+      "tags": [
+        "2023",
+        "crypto"
+      ],
+      "date": "2023-09-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-09-21-181.md",
+      "path": "/blog/web-fuzzer-sequence-scripting-for-awd",
+      "url": "https://yaklang.com/blog/web-fuzzer-sequence-scripting-for-awd",
+      "title": "工程实践：AWD 场景下 Web Fuzzer 序列脚本构建",
+      "size": 4186,
+      "slug": "web-fuzzer-sequence-scripting-for-awd",
+      "tags": [
+        "2023",
+        "webfuzzer"
+      ],
+      "date": "2023-09-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-10-11-177.md",
+      "path": "/blog/bypassing-frontend-dynamic-keys-part2",
+      "url": "https://yaklang.com/blog/bypassing-frontend-dynamic-keys-part2",
+      "title": "渗透实战：对抗前端动态密钥与非对称加密（二）",
+      "size": 13719,
+      "slug": "bypassing-frontend-dynamic-keys-part2",
+      "tags": [
+        "2023",
+        "crypto"
+      ],
+      "date": "2023-10-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-10-19-175.md",
+      "path": "/blog/yakssa-code-parsing-and-completion",
+      "url": "https://yaklang.com/blog/yakssa-code-parsing-and-completion",
+      "title": "代码审计：YakSSA 代码解析与语法提示",
+      "size": 4334,
+      "slug": "yakssa-code-parsing-and-completion",
+      "tags": [
+        "2023",
+        "code-audit"
+      ],
+      "date": "2023-10-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-10-20-174.md",
+      "path": "/blog/sql-injection-range-part1",
+      "url": "https://yaklang.com/blog/sql-injection-range-part1",
+      "title": "靶场实战：SQL 注入（一）",
+      "size": 14415,
+      "slug": "sql-injection-range-part1",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-10-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-10-27-172.md",
+      "path": "/blog/sql-injection-range-part2",
+      "url": "https://yaklang.com/blog/sql-injection-range-part2",
+      "title": "靶场实战：SQL 注入（二）",
+      "size": 11358,
+      "slug": "sql-injection-range-part2",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-10-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-03-171.md",
+      "path": "/blog/one-click-poc-generation-with-web-fuzzer",
+      "url": "https://yaklang.com/blog/one-click-poc-generation-with-web-fuzzer",
+      "title": "工程实践：Web Fuzzer 一键生成 PoC 工作流",
+      "size": 7893,
+      "slug": "one-click-poc-generation-with-web-fuzzer",
+      "tags": [
+        "2023",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-08-170.md",
+      "path": "/blog/git-leak-exploitation-githack-in-golang",
+      "url": "https://yaklang.com/blog/git-leak-exploitation-githack-in-golang",
+      "title": "工程实践：Golang 实现 Githack（.git 泄露利用）",
+      "size": 9343,
+      "slug": "git-leak-exploitation-githack-in-golang",
+      "tags": [
+        "2023"
+      ],
+      "date": "2023-11-08"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-10-169.md",
+      "path": "/blog/xss-scenarios-range-part1",
+      "url": "https://yaklang.com/blog/xss-scenarios-range-part1",
+      "title": "靶场实战：XSS 多场景（一）",
+      "size": 15374,
+      "slug": "xss-scenarios-range-part1",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-16-168.md",
+      "path": "/blog/xss-scenarios-range-part2",
+      "url": "https://yaklang.com/blog/xss-scenarios-range-part2",
+      "title": "靶场实战：XSS 多场景（二）",
+      "size": 16186,
+      "slug": "xss-scenarios-range-part2",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-17-167.md",
+      "path": "/blog/multi-request-poc-with-web-fuzzer-sequence",
+      "url": "https://yaklang.com/blog/multi-request-poc-with-web-fuzzer-sequence",
+      "title": "工程实践：Web Fuzzer 序列与多请求 PoC 生成",
+      "size": 6693,
+      "slug": "multi-request-poc-with-web-fuzzer-sequence",
+      "tags": [
+        "2023",
+        "webfuzzer"
+      ],
+      "date": "2023-11-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-23-166.md",
+      "path": "/blog/java-deserialization-poc-development",
+      "url": "https://yaklang.com/blog/java-deserialization-poc-development",
+      "title": "Java 安全：Java 反序列化漏洞 PoC 开发",
+      "size": 6970,
+      "slug": "java-deserialization-poc-development",
+      "tags": [
+        "2023",
+        "java-sec",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-24-165.md",
+      "path": "/blog/ssrf-parameter-scenarios-range-part1",
+      "url": "https://yaklang.com/blog/ssrf-parameter-scenarios-range-part1",
+      "title": "靶场实战：SSRF 参数多场景测试（一）",
+      "size": 16398,
+      "slug": "ssrf-parameter-scenarios-range-part1",
+      "tags": [
+        "2023",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-24"
+    },
+    {
+      "source": "blog",
+      "relPath": "2023-11-30-164.md",
+      "path": "/blog/http2-downgrade-request-smuggling",
+      "url": "https://yaklang.com/blog/http2-downgrade-request-smuggling",
+      "title": "漏洞分析：HTTP/2 降级请求走私",
+      "size": 10251,
+      "slug": "http2-downgrade-request-smuggling",
+      "tags": [
+        "2023",
+        "vuln-plugin"
+      ],
+      "date": "2023-11-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-01-05-152.md",
+      "path": "/blog/file-upload-and-file-format-vulnerabilities",
+      "url": "https://yaklang.com/blog/file-upload-and-file-format-vulnerabilities",
+      "title": "靶场实战：文件上传与特定文件格式漏洞",
+      "size": 13496,
+      "slug": "file-upload-and-file-format-vulnerabilities",
+      "tags": [
+        "2024",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2024-01-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-01-11-150.md",
+      "path": "/blog/static-behavior-analysis-compilation-notes-1",
+      "url": "https://yaklang.com/blog/static-behavior-analysis-compilation-notes-1",
+      "title": "技术研究：代码静态行为分析（编译拾遗一）",
+      "size": 14400,
+      "slug": "static-behavior-analysis-compilation-notes-1",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-01-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-01-26-146.md",
+      "path": "/blog/taint-tracking-challenges-compilation-notes-2",
+      "url": "https://yaklang.com/blog/taint-tracking-challenges-compilation-notes-2",
+      "title": "技术研究：污点追踪的难点与对策（编译拾遗二）",
+      "size": 15380,
+      "slug": "taint-tracking-challenges-compilation-notes-2",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-01-26"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-02-22-141.md",
+      "path": "/blog/javascript-ssa-and-network-request-parsing",
+      "url": "https://yaklang.com/blog/javascript-ssa-and-network-request-parsing",
+      "title": "代码审计：JavaScript SSA 与网络请求解析",
+      "size": 12875,
+      "slug": "javascript-ssa-and-network-request-parsing",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-02-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-02-29-140.md",
+      "path": "/blog/xml-fuzzing-techniques",
+      "url": "https://yaklang.com/blog/xml-fuzzing-techniques",
+      "title": "工程实践：XML 模糊测试方法探析",
+      "size": 7596,
+      "slug": "xml-fuzzing-techniques",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-02-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-03-14-137.md",
+      "path": "/blog/yakit-codec-sequential-encoding",
+      "url": "https://yaklang.com/blog/yakit-codec-sequential-encoding",
+      "title": "功能发布：Yakit 新版 Codec 序列式编解码",
+      "size": 5888,
+      "slug": "yakit-codec-sequential-encoding",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-03-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-03-22-136.md",
+      "path": "/blog/java-dirty-data-padding-techniques",
+      "url": "https://yaklang.com/blog/java-dirty-data-padding-techniques",
+      "title": "Java 安全：Java 脏数据填充技术探索",
+      "size": 12160,
+      "slug": "java-dirty-data-padding-techniques",
+      "tags": [
+        "2024",
+        "java-sec"
+      ],
+      "date": "2024-03-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-03-28-135.md",
+      "path": "/blog/headless-browser-login-brute-force-plugin",
+      "url": "https://yaklang.com/blog/headless-browser-login-brute-force-plugin",
+      "title": "工程实践：基于无头浏览器的 Web 登录爆破插件",
+      "size": 8768,
+      "slug": "headless-browser-login-brute-force-plugin",
+      "tags": [
+        "2024",
+        "webfuzzer",
+        "vuln-plugin"
+      ],
+      "date": "2024-03-28"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-04-03-134.md",
+      "path": "/blog/yak-command-line-scanning-guide",
+      "url": "https://yaklang.com/blog/yak-command-line-scanning-guide",
+      "title": "工程实践：Yak 命令行扫描指南",
+      "size": 6972,
+      "slug": "yak-command-line-scanning-guide",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-04-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-04-11-133.md",
+      "path": "/blog/capturing-miniprogram-and-app-traffic",
+      "url": "https://yaklang.com/blog/capturing-miniprogram-and-app-traffic",
+      "title": "流量分析：使用 Yakit 进行小程序与 App 抓包",
+      "size": 10698,
+      "slug": "capturing-miniprogram-and-app-traffic",
+      "tags": [
+        "2024",
+        "traffic"
+      ],
+      "date": "2024-04-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-04-18-131.md",
+      "path": "/blog/java-ssa-dataflow-tracking-intro",
+      "url": "https://yaklang.com/blog/java-ssa-dataflow-tracking-intro",
+      "title": "代码审计：Java 的 SSA 数据流追踪初探",
+      "size": 12278,
+      "slug": "java-ssa-dataflow-tracking-intro",
+      "tags": [
+        "2024",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2024-04-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-04-25-129.md",
+      "path": "/blog/integrating-goja-javascript-engine",
+      "url": "https://yaklang.com/blog/integrating-goja-javascript-engine",
+      "title": "功能发布：集成 goja JavaScript 引擎",
+      "size": 6737,
+      "slug": "integrating-goja-javascript-engine",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-04-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-05-10-127.md",
+      "path": "/blog/yakssa-program-analysis-with-ssa",
+      "url": "https://yaklang.com/blog/yakssa-program-analysis-with-ssa",
+      "title": "技术研究：基于静态单赋值（SSA）的 YakSSA 程序分析",
+      "size": 5899,
+      "slug": "yakssa-program-analysis-with-ssa",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-05-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-05-24-124.md",
+      "path": "/blog/combining-codec-and-web-fuzzer",
+      "url": "https://yaklang.com/blog/combining-codec-and-web-fuzzer",
+      "title": "工程实践：Codec 与 Web Fuzzer 的联动应用",
+      "size": 11978,
+      "slug": "combining-codec-and-web-fuzzer",
+      "tags": [
+        "2024",
+        "webfuzzer"
+      ],
+      "date": "2024-05-24"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-05-31-123.md",
+      "path": "/blog/yakrunner-code-execution-and-debugging-ide",
+      "url": "https://yaklang.com/blog/yakrunner-code-execution-and-debugging-ide",
+      "title": "功能发布：YakRunner 代码执行与脚本调试 IDE",
+      "size": 2799,
+      "slug": "yakrunner-code-execution-and-debugging-ide",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-05-31"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-06-06-122.md",
+      "path": "/blog/yakit-ai-gateway-and-security-workflow",
+      "url": "https://yaklang.com/blog/yakit-ai-gateway-and-security-workflow",
+      "title": "工程实践：Yakit 实践型 AI Gateway 与安全工作流",
+      "size": 5106,
+      "slug": "yakit-ai-gateway-and-security-workflow",
+      "tags": [
+        "2024",
+        "ai"
+      ],
+      "date": "2024-06-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-06-14-121.md",
+      "path": "/blog/intro-to-syntaxflow-code-audit",
+      "url": "https://yaklang.com/blog/intro-to-syntaxflow-code-audit",
+      "title": "代码审计：SyntaxFlow 代码审计技术介绍",
+      "size": 19220,
+      "slug": "intro-to-syntaxflow-code-audit",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-06-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-06-21-120.md",
+      "path": "/blog/syntaxflow-cross-function-analysis-part1",
+      "url": "https://yaklang.com/blog/syntaxflow-cross-function-analysis-part1",
+      "title": "代码审计：SyntaxFlow 跨函数与跨对象分析（一）",
+      "size": 8059,
+      "slug": "syntaxflow-cross-function-analysis-part1",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-06-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-06-27-119.md",
+      "path": "/blog/rdp-protocol-exploration",
+      "url": "https://yaklang.com/blog/rdp-protocol-exploration",
+      "title": "协议分析：RDP 协议探索",
+      "size": 8038,
+      "slug": "rdp-protocol-exploration",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-06-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-07-05-117.md",
+      "path": "/blog/yak-yso-deserialization-faq",
+      "url": "https://yaklang.com/blog/yak-yso-deserialization-faq",
+      "title": "Java 安全：Yak-yso 反序列化利用常见问题解析",
+      "size": 4770,
+      "slug": "yak-yso-deserialization-faq",
+      "tags": [
+        "2024",
+        "java-sec"
+      ],
+      "date": "2024-07-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-07-12-115.md",
+      "path": "/blog/poc-management-with-yak-and-nuclei",
+      "url": "https://yaklang.com/blog/poc-management-with-yak-and-nuclei",
+      "title": "工程实践：Yak 与 Nuclei 融合的 PoC 管理方案",
+      "size": 5322,
+      "slug": "poc-management-with-yak-and-nuclei",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-07-12"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-07-19-114.md",
+      "path": "/blog/yakit-mitm-and-plugin-integration",
+      "url": "https://yaklang.com/blog/yakit-mitm-and-plugin-integration",
+      "title": "流量分析：Yakit MITM 功能与插件联动详解",
+      "size": 5764,
+      "slug": "yakit-mitm-and-plugin-integration",
+      "tags": [
+        "2024",
+        "traffic"
+      ],
+      "date": "2024-07-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-07-26-113.md",
+      "path": "/blog/yak-runner-code-editor-updates",
+      "url": "https://yaklang.com/blog/yak-runner-code-editor-updates",
+      "title": "功能发布：Yak Runner 代码编辑器更新盘点",
+      "size": 3881,
+      "slug": "yak-runner-code-editor-updates",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-07-26"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-08-02-111.md",
+      "path": "/blog/enhancing-mitm-plugins-with-cli-params",
+      "url": "https://yaklang.com/blog/enhancing-mitm-plugins-with-cli-params",
+      "title": "工程实践：使用 CLI 参数增强 MITM 插件",
+      "size": 5971,
+      "slug": "enhancing-mitm-plugins-with-cli-params",
+      "tags": [
+        "2024",
+        "traffic",
+        "vuln-plugin"
+      ],
+      "date": "2024-08-02"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-08-09-110.md",
+      "path": "/blog/write-a-standard-yaklang-poc-in-15-minutes",
+      "url": "https://yaklang.com/blog/write-a-standard-yaklang-poc-in-15-minutes",
+      "title": "工程实践：15 分钟编写规范的 Yaklang PoC",
+      "size": 17962,
+      "slug": "write-a-standard-yaklang-poc-in-15-minutes",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-08-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-08-15-108.md",
+      "path": "/blog/syntaxflow-dataflow-analysis-in-practice",
+      "url": "https://yaklang.com/blog/syntaxflow-dataflow-analysis-in-practice",
+      "title": "代码审计：SyntaxFlow 数据流分析实战",
+      "size": 8142,
+      "slug": "syntaxflow-dataflow-analysis-in-practice",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-08-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-08-23-107.md",
+      "path": "/blog/syntaxflow-configuration-syntax",
+      "url": "https://yaklang.com/blog/syntaxflow-configuration-syntax",
+      "title": "代码审计：SyntaxFlow 配置项语法原理与用法",
+      "size": 8220,
+      "slug": "syntaxflow-configuration-syntax",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-08-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-08-30-105.md",
+      "path": "/blog/multi-auth-privilege-escalation-testing-plugin",
+      "url": "https://yaklang.com/blog/multi-auth-privilege-escalation-testing-plugin",
+      "title": "漏洞分析：多认证越权测试插件原理与使用",
+      "size": 6612,
+      "slug": "multi-auth-privilege-escalation-testing-plugin",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-08-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-09-05-104.md",
+      "path": "/blog/syntaxflow-project-compilation-and-query-in-yakit",
+      "url": "https://yaklang.com/blog/syntaxflow-project-compilation-and-query-in-yakit",
+      "title": "代码审计：SyntaxFlow 在 Yakit 中的项目编译与查询",
+      "size": 4768,
+      "slug": "syntaxflow-project-compilation-and-query-in-yakit",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-09-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-09-14-101.md",
+      "path": "/blog/difference-between-yaklang-and-yakit",
+      "url": "https://yaklang.com/blog/difference-between-yaklang-and-yakit",
+      "title": "技术科普：Yaklang 与 Yakit 的区别",
+      "size": 4151,
+      "slug": "difference-between-yaklang-and-yakit",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-09-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-09-26-098.md",
+      "path": "/blog/understanding-ssa-ir-code-audit",
+      "url": "https://yaklang.com/blog/understanding-ssa-ir-code-audit",
+      "title": "代码审计：从编译技术理解 SSA IR 代码审计",
+      "size": 34931,
+      "slug": "understanding-ssa-ir-code-audit",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-09-26"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-10-11-096.md",
+      "path": "/blog/dataflow-and-sensitivity-in-static-analysis",
+      "url": "https://yaklang.com/blog/dataflow-and-sensitivity-in-static-analysis",
+      "title": "原理剖析：静态代码分析中的数据流与敏感性",
+      "size": 18920,
+      "slug": "dataflow-and-sensitivity-in-static-analysis",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-10-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-10-17-095.md",
+      "path": "/blog/writing-high-quality-syntaxflow-rules",
+      "url": "https://yaklang.com/blog/writing-high-quality-syntaxflow-rules",
+      "title": "代码审计：编写高质量 SyntaxFlow 规则的方法",
+      "size": 8213,
+      "slug": "writing-high-quality-syntaxflow-rules",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-10-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-10-25-092.md",
+      "path": "/blog/yak-yso-transform-gadget-chain",
+      "url": "https://yaklang.com/blog/yak-yso-transform-gadget-chain",
+      "title": "Java 安全：Yak-yso 支持 Transform 利用链",
+      "size": 7499,
+      "slug": "yak-yso-transform-gadget-chain",
+      "tags": [
+        "2024",
+        "java-sec"
+      ],
+      "date": "2024-10-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-11-01-091.md",
+      "path": "/blog/yakit-code-audit-and-project-management",
+      "url": "https://yaklang.com/blog/yakit-code-audit-and-project-management",
+      "title": "代码审计：Yakit 代码审计功能与项目管理",
+      "size": 3808,
+      "slug": "yakit-code-audit-and-project-management",
+      "tags": [
+        "2024",
+        "code-audit"
+      ],
+      "date": "2024-11-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-11-08-090.md",
+      "path": "/blog/captcha-recognition-and-brute-force-with-hot-reload",
+      "url": "https://yaklang.com/blog/captcha-recognition-and-brute-force-with-hot-reload",
+      "title": "工程实践：基于热加载的验证码识别与爆破",
+      "size": 5737,
+      "slug": "captcha-recognition-and-brute-force-with-hot-reload",
+      "tags": [
+        "2024",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2024-11-08"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-11-15-088.md",
+      "path": "/blog/how-syn-port-scanning-works",
+      "url": "https://yaklang.com/blog/how-syn-port-scanning-works",
+      "title": "原理剖析：SYN 端口扫描技术原理",
+      "size": 8574,
+      "slug": "how-syn-port-scanning-works",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-11-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-11-21-086.md",
+      "path": "/blog/yak-mitm-architecture-and-workflow",
+      "url": "https://yaklang.com/blog/yak-mitm-architecture-and-workflow",
+      "title": "流量分析：Yak MITM 模块组成与工作流程",
+      "size": 6794,
+      "slug": "yak-mitm-architecture-and-workflow",
+      "tags": [
+        "2024",
+        "traffic"
+      ],
+      "date": "2024-11-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-11-27-085.md",
+      "path": "/blog/plugin-environment-variable-global-config",
+      "url": "https://yaklang.com/blog/plugin-environment-variable-global-config",
+      "title": "功能发布：插件环境变量全局配置",
+      "size": 4699,
+      "slug": "plugin-environment-variable-global-config",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-11-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-12-05-084.md",
+      "path": "/blog/testing-under-frontend-encryption-part3",
+      "url": "https://yaklang.com/blog/testing-under-frontend-encryption-part3",
+      "title": "渗透实战：前端加密场景下的漏洞测试（三）",
+      "size": 13170,
+      "slug": "testing-under-frontend-encryption-part3",
+      "tags": [
+        "2024",
+        "crypto"
+      ],
+      "date": "2024-12-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-12-12-083.md",
+      "path": "/blog/closure-handling-in-yaklang-compiler",
+      "url": "https://yaklang.com/blog/closure-handling-in-yaklang-compiler",
+      "title": "技术研究：Yaklang 编译器的闭包处理机制",
+      "size": 6914,
+      "slug": "closure-handling-in-yaklang-compiler",
+      "tags": [
+        "2024"
+      ],
+      "date": "2024-12-12"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-12-19-082.md",
+      "path": "/blog/java-decompilation-techniques-part1",
+      "url": "https://yaklang.com/blog/java-decompilation-techniques-part1",
+      "title": "技术研究：Java 反编译技术解析（一）",
+      "size": 7487,
+      "slug": "java-decompilation-techniques-part1",
+      "tags": [
+        "2024",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2024-12-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2024-12-25-081.md",
+      "path": "/blog/active-vs-passive-scanning-plugins",
+      "url": "https://yaklang.com/blog/active-vs-passive-scanning-plugins",
+      "title": "工程实践：主动扫描与被动扫描的区别与插件应用",
+      "size": 8664,
+      "slug": "active-vs-passive-scanning-plugins",
+      "tags": [
+        "2024",
+        "vuln-plugin"
+      ],
+      "date": "2024-12-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-01-02-078.md",
+      "path": "/blog/syntaxflow-rule-management",
+      "url": "https://yaklang.com/blog/syntaxflow-rule-management",
+      "title": "代码审计：SyntaxFlow 规则管理功能详解",
+      "size": 9932,
+      "slug": "syntaxflow-rule-management",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-01-02"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-01-09-076.md",
+      "path": "/blog/yakssa-thinkphp-code-audit",
+      "url": "https://yaklang.com/blog/yakssa-thinkphp-code-audit",
+      "title": "代码审计：YAK-SSA 在 ThinkPHP 框架中的实战应用",
+      "size": 8655,
+      "slug": "yakssa-thinkphp-code-audit",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-01-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-01-16-075.md",
+      "path": "/blog/writing-js-forward-scripts",
+      "url": "https://yaklang.com/blog/writing-js-forward-scripts",
+      "title": "工程实践：Js-Forward 脚本的编写方法",
+      "size": 8410,
+      "slug": "writing-js-forward-scripts",
+      "tags": [
+        "2025"
+      ],
+      "date": "2025-01-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-01-23-074.md",
+      "path": "/blog/sca-dependency-analysis-with-syntaxflow",
+      "url": "https://yaklang.com/blog/sca-dependency-analysis-with-syntaxflow",
+      "title": "代码审计：基于 SyntaxFlow 的 SCA 依赖成分分析规则",
+      "size": 11249,
+      "slug": "sca-dependency-analysis-with-syntaxflow",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-01-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-02-14-069.md",
+      "path": "/blog/jwt-range-vulnerability-exploitation",
+      "url": "https://yaklang.com/blog/jwt-range-vulnerability-exploitation",
+      "title": "靶场实战：YAK-JWT 靶场的漏洞分析与利用",
+      "size": 4015,
+      "slug": "jwt-range-vulnerability-exploitation",
+      "tags": [
+        "2025",
+        "range"
+      ],
+      "date": "2025-02-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-02-27-067.md",
+      "path": "/blog/yak-project-technical-evolution-in-ai-era",
+      "url": "https://yaklang.com/blog/yak-project-technical-evolution-in-ai-era",
+      "title": "方法论：AI 浪潮下 Yak Project 的技术演进方向",
+      "size": 7794,
+      "slug": "yak-project-technical-evolution-in-ai-era",
+      "tags": [
+        "2025",
+        "ai"
+      ],
+      "date": "2025-02-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-03-06-066.md",
+      "path": "/blog/syntaxflow-java-value-search-and-filter-part1",
+      "url": "https://yaklang.com/blog/syntaxflow-java-value-search-and-filter-part1",
+      "title": "代码审计：SyntaxFlow Java 实战之值的搜索与筛选（一）",
+      "size": 24417,
+      "slug": "syntaxflow-java-value-search-and-filter-part1",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2025-03-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-04-03-061.md",
+      "path": "/blog/writing-syntaxflow-rules-for-golang",
+      "url": "https://yaklang.com/blog/writing-syntaxflow-rules-for-golang",
+      "title": "代码审计：SyntaxFlow 规则编写之 Golang 实战",
+      "size": 10611,
+      "slug": "writing-syntaxflow-rules-for-golang",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-04-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-04-10-060.md",
+      "path": "/blog/sql-injection-detection-with-irify",
+      "url": "https://yaklang.com/blog/sql-injection-detection-with-irify",
+      "title": "代码审计：IRify 实战之 SQL 注入检测",
+      "size": 10118,
+      "slug": "sql-injection-detection-with-irify",
+      "tags": [
+        "2025",
+        "code-audit",
+        "vuln-plugin"
+      ],
+      "date": "2025-04-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-04-18-059.md",
+      "path": "/blog/java-decompilation-if-statements-part2",
+      "url": "https://yaklang.com/blog/java-decompilation-if-statements-part2",
+      "title": "技术研究：Java 反编译之 If 语句解析（二）",
+      "size": 6288,
+      "slug": "java-decompilation-if-statements-part2",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2025-04-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-04-25-057.md",
+      "path": "/blog/finding-cve-vulnerabilities-with-syntaxflow",
+      "url": "https://yaklang.com/blog/finding-cve-vulnerabilities-with-syntaxflow",
+      "title": "代码审计：使用 SyntaxFlow 挖掘 CVE 漏洞",
+      "size": 10477,
+      "slug": "finding-cve-vulnerabilities-with-syntaxflow",
+      "tags": [
+        "2025",
+        "code-audit",
+        "vuln-plugin"
+      ],
+      "date": "2025-04-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-04-30-055.md",
+      "path": "/blog/yakit-traffic-analysis-feature",
+      "url": "https://yaklang.com/blog/yakit-traffic-analysis-feature",
+      "title": "功能发布：Yakit 流量分析功能详解",
+      "size": 6252,
+      "slug": "yakit-traffic-analysis-feature",
+      "tags": [
+        "2025",
+        "traffic"
+      ],
+      "date": "2025-04-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-05-09-054.md",
+      "path": "/blog/full-attack-chain-analysis-with-syntaxflow",
+      "url": "https://yaklang.com/blog/full-attack-chain-analysis-with-syntaxflow",
+      "title": "代码审计：SyntaxFlow 完整攻击链路分析实战",
+      "size": 12828,
+      "slug": "full-attack-chain-analysis-with-syntaxflow",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-05-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-05-16-053.md",
+      "path": "/blog/alternative-javascript-ssa-frontend-parsing",
+      "url": "https://yaklang.com/blog/alternative-javascript-ssa-frontend-parsing",
+      "title": "性能优化：JavaScript SSA 前端解析方案的替代探索",
+      "size": 20793,
+      "slug": "alternative-javascript-ssa-frontend-parsing",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2025-05-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-05-23-052.md",
+      "path": "/blog/aiforge-modular-ai-application",
+      "url": "https://yaklang.com/blog/aiforge-modular-ai-application",
+      "title": "功能发布：AIForge 模块化 AI 应用体",
+      "size": 16846,
+      "slug": "aiforge-modular-ai-application",
+      "tags": [
+        "2025",
+        "ai"
+      ],
+      "date": "2025-05-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-05-30-051.md",
+      "path": "/blog/managing-false-positives-in-irify",
+      "url": "https://yaklang.com/blog/managing-false-positives-in-irify",
+      "title": "代码审计：IRify 静态分析误报的分级管理策略",
+      "size": 7547,
+      "slug": "managing-false-positives-in-irify",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-05-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-06-06-050.md",
+      "path": "/blog/webshell-source-sink-mining-with-irify",
+      "url": "https://yaklang.com/blog/webshell-source-sink-mining-with-irify",
+      "title": "代码审计：IRify 在 WebShell 中的 Source/Sink 挖掘",
+      "size": 9593,
+      "slug": "webshell-source-sink-mining-with-irify",
+      "tags": [
+        "2025",
+        "code-audit",
+        "vuln-plugin"
+      ],
+      "date": "2025-06-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-06-13-049.md",
+      "path": "/blog/java-decompilation-loop-recovery-part3",
+      "url": "https://yaklang.com/blog/java-decompilation-loop-recovery-part3",
+      "title": "技术研究：Java 反编译之循环结构还原（三）",
+      "size": 8162,
+      "slug": "java-decompilation-loop-recovery-part3",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2025-06-13"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-06-20-048.md",
+      "path": "/blog/irify-admin-framework-vuln-chain",
+      "url": "https://yaklang.com/blog/irify-admin-framework-vuln-chain",
+      "title": "代码审计：IRify 定位某 Admin 框架文件上传与反序列化漏洞链",
+      "size": 16768,
+      "slug": "irify-admin-framework-vuln-chain",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec",
+        "vuln-plugin"
+      ],
+      "date": "2025-06-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-06-27-047.md",
+      "path": "/blog/syntaxflow-dataflow-advanced-filtering",
+      "url": "https://yaklang.com/blog/syntaxflow-dataflow-advanced-filtering",
+      "title": "代码审计：SyntaxFlow 数据流分析与高级过滤技巧",
+      "size": 9743,
+      "slug": "syntaxflow-dataflow-advanced-filtering",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-06-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-07-04-046.md",
+      "path": "/blog/bypass-waf-with-random-chunked-transfer",
+      "url": "https://yaklang.com/blog/bypass-waf-with-random-chunked-transfer",
+      "title": "工程实践：Yakit 随机分块传输绕过 WAF",
+      "size": 6632,
+      "slug": "bypass-waf-with-random-chunked-transfer",
+      "tags": [
+        "2025"
+      ],
+      "date": "2025-07-04"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-07-11-045.md",
+      "path": "/blog/hijacking-sm-crypto-traffic-with-mitm",
+      "url": "https://yaklang.com/blog/hijacking-sm-crypto-traffic-with-mitm",
+      "title": "流量分析：Yakit MITM 劫持国密通信",
+      "size": 8686,
+      "slug": "hijacking-sm-crypto-traffic-with-mitm",
+      "tags": [
+        "2025",
+        "traffic",
+        "crypto"
+      ],
+      "date": "2025-07-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-07-18-044.md",
+      "path": "/blog/irify-database-io-optimization-part1",
+      "url": "https://yaklang.com/blog/irify-database-io-optimization-part1",
+      "title": "性能优化：IRify 数据库持久化 I/O 瓶颈优化（一）",
+      "size": 16736,
+      "slug": "irify-database-io-optimization-part1",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-07-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-07-25-043.md",
+      "path": "/blog/web-fuzzer-hot-reload-retry-and-error-handling",
+      "url": "https://yaklang.com/blog/web-fuzzer-hot-reload-retry-and-error-handling",
+      "title": "功能发布：Web Fuzzer 热加载之重试控制与错误处理",
+      "size": 7661,
+      "slug": "web-fuzzer-hot-reload-retry-and-error-handling",
+      "tags": [
+        "2025",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2025-07-25"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-08-01-042.md",
+      "path": "/blog/yakit-dark-mode",
+      "url": "https://yaklang.com/blog/yakit-dark-mode",
+      "title": "功能发布：Yakit 暗黑模式",
+      "size": 4274,
+      "slug": "yakit-dark-mode",
+      "tags": [
+        "2025"
+      ],
+      "date": "2025-08-01"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-08-07-041.md",
+      "path": "/blog/complete-irify-code-audit-workflow",
+      "url": "https://yaklang.com/blog/complete-irify-code-audit-workflow",
+      "title": "代码审计：IRify 代码审计完整流程",
+      "size": 4596,
+      "slug": "complete-irify-code-audit-workflow",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-08-07"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-08-15-040.md",
+      "path": "/blog/java-decompilation-switch-recovery-part4",
+      "url": "https://yaklang.com/blog/java-decompilation-switch-recovery-part4",
+      "title": "技术研究：Java 反编译之 Switch 语句还原（四）",
+      "size": 8934,
+      "slug": "java-decompilation-switch-recovery-part4",
+      "tags": [
+        "2025",
+        "code-audit",
+        "java-sec"
+      ],
+      "date": "2025-08-15"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-08-22-039.md",
+      "path": "/blog/vulinbox-sql-injection-techniques",
+      "url": "https://yaklang.com/blog/vulinbox-sql-injection-techniques",
+      "title": "靶场实战：Vulinbox SQL 注入攻防与技巧解析",
+      "size": 17843,
+      "slug": "vulinbox-sql-injection-techniques",
+      "tags": [
+        "2025",
+        "range",
+        "vuln-plugin"
+      ],
+      "date": "2025-08-22"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-08-29-038.md",
+      "path": "/blog/building-knowledge-base-from-long-videos-part1",
+      "url": "https://yaklang.com/blog/building-knowledge-base-from-long-videos-part1",
+      "title": "技术研究：超长视频内容沉淀为知识库的方法（一）",
+      "size": 18468,
+      "slug": "building-knowledge-base-from-long-videos-part1",
+      "tags": [
+        "2025",
+        "ai"
+      ],
+      "date": "2025-08-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-09-05-037.md",
+      "path": "/blog/plugintrace-plugin-execution-tracing",
+      "url": "https://yaklang.com/blog/plugintrace-plugin-execution-tracing",
+      "title": "功能发布：PluginTrace 插件执行追踪",
+      "size": 5257,
+      "slug": "plugintrace-plugin-execution-tracing",
+      "tags": [
+        "2025",
+        "vuln-plugin"
+      ],
+      "date": "2025-09-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-09-12-036.md",
+      "path": "/blog/irify-concurrent-compilation-engine-part2",
+      "url": "https://yaklang.com/blog/irify-concurrent-compilation-engine-part2",
+      "title": "性能优化：IRify 前端并发与高并发编译引擎（二）",
+      "size": 10565,
+      "slug": "irify-concurrent-compilation-engine-part2",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-09-12"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-09-19-035.md",
+      "path": "/blog/knowledge-entity-and-retrieval-plugins",
+      "url": "https://yaklang.com/blog/knowledge-entity-and-retrieval-plugins",
+      "title": "功能发布：知识实体构建与知识检索内置插件",
+      "size": 17810,
+      "slug": "knowledge-entity-and-retrieval-plugins",
+      "tags": [
+        "2025",
+        "vuln-plugin"
+      ],
+      "date": "2025-09-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-09-26-034.md",
+      "path": "/blog/c-pointer-ssa-handling-in-irify",
+      "url": "https://yaklang.com/blog/c-pointer-ssa-handling-in-irify",
+      "title": "技术研究：IRify 中 C 语言指针的 SSA 处理方案",
+      "size": 8140,
+      "slug": "c-pointer-ssa-handling-in-irify",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-09-26"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-10-11-032.md",
+      "path": "/blog/vector-database-and-rag-semantic-retrieval",
+      "url": "https://yaklang.com/blog/vector-database-and-rag-semantic-retrieval",
+      "title": "原理剖析：向量数据库与 RAG 语义检索机制",
+      "size": 7168,
+      "slug": "vector-database-and-rag-semantic-retrieval",
+      "tags": [
+        "2025",
+        "ai"
+      ],
+      "date": "2025-10-11"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-10-17-031.md",
+      "path": "/blog/four-scenarios-of-mitm-hot-reload-hooks",
+      "url": "https://yaklang.com/blog/four-scenarios-of-mitm-hot-reload-hooks",
+      "title": "工程实践：MITM 热加载 Hook 函数四大场景解析",
+      "size": 14316,
+      "slug": "four-scenarios-of-mitm-hot-reload-hooks",
+      "tags": [
+        "2025",
+        "traffic",
+        "hotpatch"
+      ],
+      "date": "2025-10-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-10-24-030.md",
+      "path": "/blog/automated-history-traffic-analysis-with-hot-reload",
+      "url": "https://yaklang.com/blog/automated-history-traffic-analysis-with-hot-reload",
+      "title": "流量分析：基于热加载的历史流量自动化分析",
+      "size": 10926,
+      "slug": "automated-history-traffic-analysis-with-hot-reload",
+      "tags": [
+        "2025",
+        "traffic",
+        "hotpatch"
+      ],
+      "date": "2025-10-24"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-10-31-029.md",
+      "path": "/blog/sm-mutual-tls-certificate-handling-in-mitm",
+      "url": "https://yaklang.com/blog/sm-mutual-tls-certificate-handling-in-mitm",
+      "title": "流量分析：Yakit MITM 国密双向认证证书处理",
+      "size": 5099,
+      "slug": "sm-mutual-tls-certificate-handling-in-mitm",
+      "tags": [
+        "2025",
+        "traffic",
+        "crypto"
+      ],
+      "date": "2025-10-31"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-11-07-028.md",
+      "path": "/blog/irify-memory-optimization-part3",
+      "url": "https://yaklang.com/blog/irify-memory-optimization-part3",
+      "title": "性能优化：IRify 内存占用优化复盘（三）",
+      "size": 14450,
+      "slug": "irify-memory-optimization-part3",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-11-07"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-11-14-027.md",
+      "path": "/blog/web-fuzzer-group-concurrency",
+      "url": "https://yaklang.com/blog/web-fuzzer-group-concurrency",
+      "title": "功能发布：Web Fuzzer 组并发能力",
+      "size": 4645,
+      "slug": "web-fuzzer-group-concurrency",
+      "tags": [
+        "2025",
+        "webfuzzer"
+      ],
+      "date": "2025-11-14"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-11-21-026.md",
+      "path": "/blog/writing-c-static-analysis-rules",
+      "url": "https://yaklang.com/blog/writing-c-static-analysis-rules",
+      "title": "代码审计：C 语言静态分析规则编写实践",
+      "size": 9849,
+      "slug": "writing-c-static-analysis-rules",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-11-21"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-11-28-025.md",
+      "path": "/blog/one-click-certificate-generation",
+      "url": "https://yaklang.com/blog/one-click-certificate-generation",
+      "title": "功能发布：证书一键生成功能",
+      "size": 6017,
+      "slug": "one-click-certificate-generation",
+      "tags": [
+        "2025",
+        "crypto"
+      ],
+      "date": "2025-11-28"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-12-05-024.md",
+      "path": "/blog/clean-client-testing-with-mock-hot-reload",
+      "url": "https://yaklang.com/blog/clean-client-testing-with-mock-hot-reload",
+      "title": "工程实践：Mock 热加载实现无污染客户端测试",
+      "size": 11925,
+      "slug": "clean-client-testing-with-mock-hot-reload",
+      "tags": [
+        "2025",
+        "hotpatch"
+      ],
+      "date": "2025-12-05"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-12-12-023.md",
+      "path": "/blog/tun-hijacking-and-proxy-rules",
+      "url": "https://yaklang.com/blog/tun-hijacking-and-proxy-rules",
+      "title": "流量分析：TUN 劫持与代理规则详解",
+      "size": 7285,
+      "slug": "tun-hijacking-and-proxy-rules",
+      "tags": [
+        "2025",
+        "traffic"
+      ],
+      "date": "2025-12-12"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-12-19-022.md",
+      "path": "/blog/detecting-logic-flaws-with-syntaxflow",
+      "url": "https://yaklang.com/blog/detecting-logic-flaws-with-syntaxflow",
+      "title": "代码审计：使用 SyntaxFlow 规则检测逻辑漏洞",
+      "size": 13804,
+      "slug": "detecting-logic-flaws-with-syntaxflow",
+      "tags": [
+        "2025",
+        "code-audit"
+      ],
+      "date": "2025-12-19"
+    },
+    {
+      "source": "blog",
+      "relPath": "2025-12-26-021.md",
+      "path": "/blog/mock-hot-reload-from-web-fuzzer-to-template-debugging",
+      "url": "https://yaklang.com/blog/mock-hot-reload-from-web-fuzzer-to-template-debugging",
+      "title": "工程实践：Mock 热加载从 Web Fuzzer 到模板调试全链路",
+      "size": 9553,
+      "slug": "mock-hot-reload-from-web-fuzzer-to-template-debugging",
+      "tags": [
+        "2025",
+        "webfuzzer",
+        "hotpatch"
+      ],
+      "date": "2025-12-26"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-01-09-019.md",
+      "path": "/blog/irify-code-audit-report-generation",
+      "url": "https://yaklang.com/blog/irify-code-audit-report-generation",
+      "title": "功能发布：IRify 代码审计报告生成功能",
+      "size": 10450,
+      "slug": "irify-code-audit-report-generation",
+      "tags": [
+        "2026",
+        "code-audit"
+      ],
+      "date": "2026-01-09"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-01-16-018.md",
+      "path": "/blog/tun-hijacking-process-monitoring-and-connection-correlation",
+      "url": "https://yaklang.com/blog/tun-hijacking-process-monitoring-and-connection-correlation",
+      "title": "流量分析：TUN 劫持的进程监控与连接关联实现",
+      "size": 5877,
+      "slug": "tun-hijacking-process-monitoring-and-connection-correlation",
+      "tags": [
+        "2026",
+        "traffic"
+      ],
+      "date": "2026-01-16"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-01-23-017.md",
+      "path": "/blog/irify-antlr4-go-runtime-concurrency-tuning-part4",
+      "url": "https://yaklang.com/blog/irify-antlr4-go-runtime-concurrency-tuning-part4",
+      "title": "性能优化：IRify ANTLR4 Go 运行时高并发解析调优（四）",
+      "size": 8450,
+      "slug": "irify-antlr4-go-runtime-concurrency-tuning-part4",
+      "tags": [
+        "2026",
+        "code-audit"
+      ],
+      "date": "2026-01-23"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-01-30-016.md",
+      "path": "/blog/irify-incremental-compilation-part5",
+      "url": "https://yaklang.com/blog/irify-incremental-compilation-part5",
+      "title": "性能优化：IRify 增量编译技术详解（五）",
+      "size": 10743,
+      "slug": "irify-incremental-compilation-part5",
+      "tags": [
+        "2026",
+        "code-audit"
+      ],
+      "date": "2026-01-30"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-02-06-015.md",
+      "path": "/blog/http-history-traffic-analysis-agent",
+      "url": "https://yaklang.com/blog/http-history-traffic-analysis-agent",
+      "title": "功能发布：HTTP 历史流量分析专家 Agent",
+      "size": 5218,
+      "slug": "http-history-traffic-analysis-agent",
+      "tags": [
+        "2026",
+        "ai",
+        "traffic"
+      ],
+      "date": "2026-02-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-02-27-012.md",
+      "path": "/blog/detecting-password-leaks-with-ai-and-ssa",
+      "url": "https://yaklang.com/blog/detecting-password-leaks-with-ai-and-ssa",
+      "title": "代码审计：AI 结合 SSA 数据流分析检测密码泄露",
+      "size": 11769,
+      "slug": "detecting-password-leaks-with-ai-and-ssa",
+      "tags": [
+        "2026",
+        "code-audit",
+        "ai"
+      ],
+      "date": "2026-02-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-03-06-011.md",
+      "path": "/blog/javascript-typescript-ssa-frontend-refactor",
+      "url": "https://yaklang.com/blog/javascript-typescript-ssa-frontend-refactor",
+      "title": "代码审计：JavaScript/TypeScript SSA 前端重构与规则扩展",
+      "size": 9640,
+      "slug": "javascript-typescript-ssa-frontend-refactor",
+      "tags": [
+        "2026"
+      ],
+      "date": "2026-03-06"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-03-13-010.md",
+      "path": "/blog/memfit-autonomous-pentest-agent-architecture",
+      "url": "https://yaklang.com/blog/memfit-autonomous-pentest-agent-architecture",
+      "title": "技术研究：Memfit AI 生产级自主渗透测试 Agent 架构",
+      "size": 26647,
+      "slug": "memfit-autonomous-pentest-agent-architecture",
+      "tags": [
+        "2026",
+        "ai"
+      ],
+      "date": "2026-03-13"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-03-18-009.md",
+      "path": "/blog/auto-handle-frontend-encryption-with-global-hot-reload",
+      "url": "https://yaklang.com/blog/auto-handle-frontend-encryption-with-global-hot-reload",
+      "title": "工程实践：全局热加载自动接管前端加密与动态签名流程",
+      "size": 37063,
+      "slug": "auto-handle-frontend-encryption-with-global-hot-reload",
+      "tags": [
+        "2026",
+        "hotpatch",
+        "crypto"
+      ],
+      "date": "2026-03-18"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-03-20-008.md",
+      "path": "/blog/memfit-knowledge-base-and-agentic-rag",
+      "url": "https://yaklang.com/blog/memfit-knowledge-base-and-agentic-rag",
+      "title": "技术研究：Memfit AI 内置知识库系统与 Agentic RAG 实现",
+      "size": 22857,
+      "slug": "memfit-knowledge-base-and-agentic-rag",
+      "tags": [
+        "2026",
+        "ai"
+      ],
+      "date": "2026-03-20"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-03-27-007.md",
+      "path": "/blog/irify-full-path-performance-refactor-round2",
+      "url": "https://yaklang.com/blog/irify-full-path-performance-refactor-round2",
+      "title": "性能优化：IRify 第二轮全路径性能重构（SSA/SyntaxFlow/ANTLR）",
+      "size": 23503,
+      "slug": "irify-full-path-performance-refactor-round2",
+      "tags": [
+        "2026",
+        "code-audit"
+      ],
+      "date": "2026-03-27"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-04-03-006.md",
+      "path": "/blog/memfit-long-term-memory-and-corepact-evaluation",
+      "url": "https://yaklang.com/blog/memfit-long-term-memory-and-corepact-evaluation",
+      "title": "技术研究：Memfit AI 长期记忆系统与 C.O.R.E.P.A.C.T. 评估模型",
+      "size": 14681,
+      "slug": "memfit-long-term-memory-and-corepact-evaluation",
+      "tags": [
+        "2026",
+        "ai"
+      ],
+      "date": "2026-04-03"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-04-10-005.md",
+      "path": "/blog/ai-powered-irify-and-auto-poc-generation",
+      "url": "https://yaklang.com/blog/ai-powered-irify-and-auto-poc-generation",
+      "title": "代码审计：IRify 的 AI 化扩展与 PoC 自动生成",
+      "size": 10635,
+      "slug": "ai-powered-irify-and-auto-poc-generation",
+      "tags": [
+        "2026",
+        "code-audit",
+        "ai",
+        "vuln-plugin"
+      ],
+      "date": "2026-04-10"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-04-17-004.md",
+      "path": "/blog/harness-engineering-and-scaling-irify",
+      "url": "https://yaklang.com/blog/harness-engineering-and-scaling-irify",
+      "title": "方法论：Harness Engineering 与 IRify 规模化研发实践",
+      "size": 14519,
+      "slug": "harness-engineering-and-scaling-irify",
+      "tags": [
+        "2026",
+        "code-audit"
+      ],
+      "date": "2026-04-17"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-04-24-003.md",
+      "path": "/blog/ai-agent-orchestration-in-yakit-plugin-store",
+      "url": "https://yaklang.com/blog/ai-agent-orchestration-in-yakit-plugin-store",
+      "title": "工程实践：Yakit 插件商店接入 AI Agent 能力编排链路",
+      "size": 13817,
+      "slug": "ai-agent-orchestration-in-yakit-plugin-store",
+      "tags": [
+        "2026",
+        "ai",
+        "vuln-plugin"
+      ],
+      "date": "2026-04-24"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-04-29-002.md",
+      "path": "/blog/ghost-bits-waf-bypass-with-codec-and-fuzz",
+      "url": "https://yaklang.com/blog/ghost-bits-waf-bypass-with-codec-and-fuzz",
+      "title": "漏洞分析：Ghost Bits WAF 绕过原理与 Codec/Fuzz 插件实现",
+      "size": 9000,
+      "slug": "ghost-bits-waf-bypass-with-codec-and-fuzz",
+      "tags": [
+        "2026"
+      ],
+      "date": "2026-04-29"
+    },
+    {
+      "source": "blog",
+      "relPath": "2026-05-08-001.md",
+      "path": "/blog/llm-captcha-recognition-and-login-brute-force",
+      "url": "https://yaklang.com/blog/llm-captcha-recognition-and-login-brute-force",
+      "title": "工程实践：基于大模型的验证码识别与登录爆破自动化",
+      "size": 45218,
+      "slug": "llm-captcha-recognition-and-login-brute-force",
+      "tags": [
+        "2026",
+        "ai"
+      ],
+      "date": "2026-05-08"
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/aim.md",
+      "path": "/docs/ai/aim",
+      "url": "https://yaklang.com/docs/ai/aim",
+      "title": "ReAct 智能体引擎（aim）",
+      "size": 9202
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/aireducer.md",
+      "path": "/docs/ai/aireducer",
+      "url": "https://yaklang.com/docs/ai/aireducer",
+      "title": "大文本切块流水线（aireducer）",
+      "size": 7442
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/chat.md",
+      "path": "/docs/ai/chat",
+      "url": "https://yaklang.com/docs/ai/chat",
+      "title": "基础对话与模型调用（ai）",
+      "size": 10609
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/overview.md",
+      "path": "/docs/ai/overview",
+      "url": "https://yaklang.com/docs/ai/overview",
+      "title": "Yaklang 中的 AI 编程",
+      "size": 4387
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/rag.md",
+      "path": "/docs/ai/rag",
+      "url": "https://yaklang.com/docs/ai/rag",
+      "title": "知识库检索增强（RAG）",
+      "size": 11506
+    },
+    {
+      "source": "docs",
+      "relPath": "ai/structured.md",
+      "path": "/docs/ai/structured",
+      "url": "https://yaklang.com/docs/ai/structured",
+      "title": "函数调用与结构化流（ai）",
+      "size": 5103
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ai.mdx",
+      "path": "/api/ai",
+      "url": "https://yaklang.com/api/ai",
+      "title": "ai",
+      "size": 52640,
+      "description": "AI 模块提供了与多种大语言模型集成的能力，支持 OpenAI、ChatGLM、Moonshot 等主流 AI 服务。通过统一的接口调用不同的 AI 服务，支持对话、函数调用、流式输出等功能。",
+      "slug": "/api/ai"
+    },
+    {
+      "source": "docs",
+      "relPath": "api/aiagent.md",
+      "path": "/docs/api/aiagent",
+      "url": "https://yaklang.com/docs/api/aiagent",
+      "title": "aiagent {#library-aiagent}",
+      "size": 31355
+    },
+    {
+      "source": "docs",
+      "relPath": "api/aim.md",
+      "path": "/docs/api/aim",
+      "url": "https://yaklang.com/docs/api/aim",
+      "title": "aim {#library-aim}",
+      "size": 11394
+    },
+    {
+      "source": "docs",
+      "relPath": "api/aireducer.md",
+      "path": "/docs/api/aireducer",
+      "url": "https://yaklang.com/docs/api/aireducer",
+      "title": "aireducer {#library-aireducer}",
+      "size": 10086
+    },
+    {
+      "source": "docs",
+      "relPath": "api/amap.md",
+      "path": "/docs/api/amap",
+      "url": "https://yaklang.com/docs/api/amap",
+      "title": "amap {#library-amap}",
+      "size": 16573
+    },
+    {
+      "source": "docs",
+      "relPath": "api/bin.md",
+      "path": "/docs/api/bin",
+      "url": "https://yaklang.com/docs/api/bin",
+      "title": "bin {#library-bin}",
+      "size": 18164
+    },
+    {
+      "source": "docs",
+      "relPath": "api/bot.md",
+      "path": "/docs/api/bot",
+      "url": "https://yaklang.com/docs/api/bot",
+      "title": "bot {#library-bot}",
+      "size": 6002
+    },
+    {
+      "source": "docs",
+      "relPath": "api/browser.md",
+      "path": "/docs/api/browser",
+      "url": "https://yaklang.com/docs/api/browser",
+      "title": "browser {#library-browser}",
+      "size": 6320
+    },
+    {
+      "source": "docs",
+      "relPath": "api/brute.md",
+      "path": "/docs/api/brute",
+      "url": "https://yaklang.com/docs/api/brute",
+      "title": "brute {#library-brute}",
+      "size": 12606
+    },
+    {
+      "source": "docs",
+      "relPath": "api/bufio.md",
+      "path": "/docs/api/bufio",
+      "url": "https://yaklang.com/docs/api/bufio",
+      "title": "bufio {#library-bufio}",
+      "size": 9034
+    },
+    {
+      "source": "docs",
+      "relPath": "api/cli.md",
+      "path": "/docs/api/cli",
+      "url": "https://yaklang.com/docs/api/cli",
+      "title": "cli {#library-cli}",
+      "size": 67079
+    },
+    {
+      "source": "docs",
+      "relPath": "api/codec.md",
+      "path": "/docs/api/codec",
+      "url": "https://yaklang.com/docs/api/codec",
+      "title": "codec {#library-codec}",
+      "size": 216974
+    },
+    {
+      "source": "docs",
+      "relPath": "api/container.md",
+      "path": "/docs/api/container",
+      "url": "https://yaklang.com/docs/api/container",
+      "title": "container {#library-container}",
+      "size": 3157
+    },
+    {
+      "source": "docs",
+      "relPath": "api/context.md",
+      "path": "/docs/api/context",
+      "url": "https://yaklang.com/docs/api/context",
+      "title": "context {#library-context}",
+      "size": 8183
+    },
+    {
+      "source": "docs",
+      "relPath": "api/crawler.md",
+      "path": "/docs/api/crawler",
+      "url": "https://yaklang.com/docs/api/crawler",
+      "title": "crawler {#library-crawler}",
+      "size": 26973
+    },
+    {
+      "source": "docs",
+      "relPath": "api/crawlerx.md",
+      "path": "/docs/api/crawlerx",
+      "url": "https://yaklang.com/docs/api/crawlerx",
+      "title": "crawlerx {#library-crawlerx}",
+      "size": 38858
+    },
+    {
+      "source": "docs",
+      "relPath": "api/csrf.md",
+      "path": "/docs/api/csrf",
+      "url": "https://yaklang.com/docs/api/csrf",
+      "title": "csrf {#library-csrf}",
+      "size": 5119
+    },
+    {
+      "source": "docs",
+      "relPath": "api/cve.md",
+      "path": "/docs/api/cve",
+      "url": "https://yaklang.com/docs/api/cve",
+      "title": "cve {#library-cve}",
+      "size": 11880
+    },
+    {
+      "source": "docs",
+      "relPath": "api/cwe.md",
+      "path": "/docs/api/cwe",
+      "url": "https://yaklang.com/docs/api/cwe",
+      "title": "cwe {#library-cwe}",
+      "size": 6910
+    },
+    {
+      "source": "docs",
+      "relPath": "api/db.md",
+      "path": "/docs/api/db",
+      "url": "https://yaklang.com/docs/api/db",
+      "title": "db {#library-db}",
+      "size": 75155
+    },
+    {
+      "source": "docs",
+      "relPath": "api/dictutil.md",
+      "path": "/docs/api/dictutil",
+      "url": "https://yaklang.com/docs/api/dictutil",
+      "title": "dictutil {#library-dictutil}",
+      "size": 1724
+    },
+    {
+      "source": "docs",
+      "relPath": "api/diff.md",
+      "path": "/docs/api/diff",
+      "url": "https://yaklang.com/docs/api/diff",
+      "title": "diff {#library-diff}",
+      "size": 6009
+    },
+    {
+      "source": "docs",
+      "relPath": "api/dns.md",
+      "path": "/docs/api/dns",
+      "url": "https://yaklang.com/docs/api/dns",
+      "title": "dns {#library-dns}",
+      "size": 8141
+    },
+    {
+      "source": "docs",
+      "relPath": "api/dnslog.md",
+      "path": "/docs/api/dnslog",
+      "url": "https://yaklang.com/docs/api/dnslog",
+      "title": "dnslog {#library-dnslog}",
+      "size": 6343
+    },
+    {
+      "source": "docs",
+      "relPath": "api/dyn.md",
+      "path": "/docs/api/dyn",
+      "url": "https://yaklang.com/docs/api/dyn",
+      "title": "dyn {#library-dyn}",
+      "size": 5782
+    },
+    {
+      "source": "docs",
+      "relPath": "api/elf.md",
+      "path": "/docs/api/elf",
+      "url": "https://yaklang.com/docs/api/elf",
+      "title": "elf {#library-elf}",
+      "size": 8581
+    },
+    {
+      "source": "docs",
+      "relPath": "api/env.md",
+      "path": "/docs/api/env",
+      "url": "https://yaklang.com/docs/api/env",
+      "title": "env {#library-env}",
+      "size": 2002
+    },
+    {
+      "source": "docs",
+      "relPath": "api/excel.md",
+      "path": "/docs/api/excel",
+      "url": "https://yaklang.com/docs/api/excel",
+      "title": "excel {#library-excel}",
+      "size": 16223
+    },
+    {
+      "source": "docs",
+      "relPath": "api/exec.md",
+      "path": "/docs/api/exec",
+      "url": "https://yaklang.com/docs/api/exec",
+      "title": "exec {#library-exec}",
+      "size": 13889
+    },
+    {
+      "source": "docs",
+      "relPath": "api/facades.md",
+      "path": "/docs/api/facades",
+      "url": "https://yaklang.com/docs/api/facades",
+      "title": "facades {#library-facades}",
+      "size": 10572
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ffmpeg.md",
+      "path": "/docs/api/ffmpeg",
+      "url": "https://yaklang.com/docs/api/ffmpeg",
+      "title": "ffmpeg {#library-ffmpeg}",
+      "size": 12437
+    },
+    {
+      "source": "docs",
+      "relPath": "api/file.md",
+      "path": "/docs/api/file",
+      "url": "https://yaklang.com/docs/api/file",
+      "title": "file {#library-file}",
+      "size": 44785
+    },
+    {
+      "source": "docs",
+      "relPath": "api/filemonitor.md",
+      "path": "/docs/api/filemonitor",
+      "url": "https://yaklang.com/docs/api/filemonitor",
+      "title": "filemonitor {#library-filemonitor}",
+      "size": 2161
+    },
+    {
+      "source": "docs",
+      "relPath": "api/fileparser.md",
+      "path": "/docs/api/fileparser",
+      "url": "https://yaklang.com/docs/api/fileparser",
+      "title": "fileparser {#library-fileparser}",
+      "size": 1626
+    },
+    {
+      "source": "docs",
+      "relPath": "api/filescanner.md",
+      "path": "/docs/api/filescanner",
+      "url": "https://yaklang.com/docs/api/filescanner",
+      "title": "filescanner {#library-filescanner}",
+      "size": 2023
+    },
+    {
+      "source": "docs",
+      "relPath": "api/filesys.md",
+      "path": "/docs/api/filesys",
+      "url": "https://yaklang.com/docs/api/filesys",
+      "title": "filesys {#library-filesys}",
+      "size": 6687
+    },
+    {
+      "source": "docs",
+      "relPath": "api/finscan.md",
+      "path": "/docs/api/finscan",
+      "url": "https://yaklang.com/docs/api/finscan",
+      "title": "finscan {#library-finscan}",
+      "size": 9328
+    },
+    {
+      "source": "docs",
+      "relPath": "api/fp.md",
+      "path": "/docs/api/fp",
+      "url": "https://yaklang.com/docs/api/fp",
+      "title": "fp {#library-fp}",
+      "size": 3681
+    },
+    {
+      "source": "docs",
+      "relPath": "api/fuzz.md",
+      "path": "/docs/api/fuzz",
+      "url": "https://yaklang.com/docs/api/fuzz",
+      "title": "fuzz {#library-fuzz}",
+      "size": 20005
+    },
+    {
+      "source": "docs",
+      "relPath": "api/fuzzx.md",
+      "path": "/docs/api/fuzzx",
+      "url": "https://yaklang.com/docs/api/fuzzx",
+      "title": "fuzzx {#library-fuzzx}",
+      "size": 16125
+    },
+    {
+      "source": "docs",
+      "relPath": "api/git.md",
+      "path": "/docs/api/git",
+      "url": "https://yaklang.com/docs/api/git",
+      "title": "git {#library-git}",
+      "size": 30177
+    },
+    {
+      "source": "docs",
+      "relPath": "api/global_buildin_ops.md",
+      "path": "/docs/api/global_buildin_ops",
+      "url": "https://yaklang.com/docs/api/global_buildin_ops",
+      "title": "语法扩展：全局函数表",
+      "size": 8096
+    },
+    {
+      "source": "docs",
+      "relPath": "api/gzip.md",
+      "path": "/docs/api/gzip",
+      "url": "https://yaklang.com/docs/api/gzip",
+      "title": "gzip {#library-gzip}",
+      "size": 3132
+    },
+    {
+      "source": "docs",
+      "relPath": "api/hids.md",
+      "path": "/docs/api/hids",
+      "url": "https://yaklang.com/docs/api/hids",
+      "title": "hids {#library-hids}",
+      "size": 32790
+    },
+    {
+      "source": "docs",
+      "relPath": "api/hook.md",
+      "path": "/docs/api/hook",
+      "url": "https://yaklang.com/docs/api/hook",
+      "title": "hook {#library-hook}",
+      "size": 11297
+    },
+    {
+      "source": "docs",
+      "relPath": "api/http.md",
+      "path": "/docs/api/http",
+      "url": "https://yaklang.com/docs/api/http",
+      "title": "http {#library-http}",
+      "size": 23459
+    },
+    {
+      "source": "docs",
+      "relPath": "api/httpool.md",
+      "path": "/docs/api/httpool",
+      "url": "https://yaklang.com/docs/api/httpool",
+      "title": "httpool {#library-httpool}",
+      "size": 4953
+    },
+    {
+      "source": "docs",
+      "relPath": "api/httpserver.md",
+      "path": "/docs/api/httpserver",
+      "url": "https://yaklang.com/docs/api/httpserver",
+      "title": "httpserver {#library-httpserver}",
+      "size": 10814
+    },
+    {
+      "source": "docs",
+      "relPath": "api/httptpl.md",
+      "path": "/docs/api/httptpl",
+      "url": "https://yaklang.com/docs/api/httptpl",
+      "title": "httptpl {#library-httptpl}",
+      "size": 3232
+    },
+    {
+      "source": "docs",
+      "relPath": "api/iiop.md",
+      "path": "/docs/api/iiop",
+      "url": "https://yaklang.com/docs/api/iiop",
+      "title": "iiop {#library-iiop}",
+      "size": 4459
+    },
+    {
+      "source": "docs",
+      "relPath": "api/imageutils.md",
+      "path": "/docs/api/imageutils",
+      "url": "https://yaklang.com/docs/api/imageutils",
+      "title": "imageutils {#library-imageutils}",
+      "size": 3479
+    },
+    {
+      "source": "docs",
+      "relPath": "api/io.md",
+      "path": "/docs/api/io",
+      "url": "https://yaklang.com/docs/api/io",
+      "title": "io {#library-io}",
+      "size": 12282
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ja3.md",
+      "path": "/docs/api/ja3",
+      "url": "https://yaklang.com/docs/api/ja3",
+      "title": "ja3 {#library-ja3}",
+      "size": 5195
+    },
+    {
+      "source": "docs",
+      "relPath": "api/java.md",
+      "path": "/docs/api/java",
+      "url": "https://yaklang.com/docs/api/java",
+      "title": "java {#library-java}",
+      "size": 29764
+    },
+    {
+      "source": "docs",
+      "relPath": "api/js.md",
+      "path": "/docs/api/js",
+      "url": "https://yaklang.com/docs/api/js",
+      "title": "js {#library-js}",
+      "size": 13420
+    },
+    {
+      "source": "docs",
+      "relPath": "api/json.md",
+      "path": "/docs/api/json",
+      "url": "https://yaklang.com/docs/api/json",
+      "title": "json {#library-json}",
+      "size": 11344
+    },
+    {
+      "source": "docs",
+      "relPath": "api/jsonschema.md",
+      "path": "/docs/api/jsonschema",
+      "url": "https://yaklang.com/docs/api/jsonschema",
+      "title": "jsonschema {#library-jsonschema}",
+      "size": 19966
+    },
+    {
+      "source": "docs",
+      "relPath": "api/jsonstream.md",
+      "path": "/docs/api/jsonstream",
+      "url": "https://yaklang.com/docs/api/jsonstream",
+      "title": "jsonstream {#library-jsonstream}",
+      "size": 6441
+    },
+    {
+      "source": "docs",
+      "relPath": "api/judge.md",
+      "path": "/docs/api/judge",
+      "url": "https://yaklang.com/docs/api/judge",
+      "title": "judge {#library-judge}",
+      "size": 3771
+    },
+    {
+      "source": "docs",
+      "relPath": "api/jwt.md",
+      "path": "/docs/api/jwt",
+      "url": "https://yaklang.com/docs/api/jwt",
+      "title": "jwt {#library-jwt}",
+      "size": 12620
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ldap.md",
+      "path": "/docs/api/ldap",
+      "url": "https://yaklang.com/docs/api/ldap",
+      "title": "ldap {#library-ldap}",
+      "size": 4297
+    },
+    {
+      "source": "docs",
+      "relPath": "api/liteforge.md",
+      "path": "/docs/api/liteforge",
+      "url": "https://yaklang.com/docs/api/liteforge",
+      "title": "liteforge {#library-liteforge}",
+      "size": 33703
+    },
+    {
+      "source": "docs",
+      "relPath": "api/log.md",
+      "path": "/docs/api/log",
+      "url": "https://yaklang.com/docs/api/log",
+      "title": "log {#library-log}",
+      "size": 7441
+    },
+    {
+      "source": "docs",
+      "relPath": "api/math.md",
+      "path": "/docs/api/math",
+      "url": "https://yaklang.com/docs/api/math",
+      "title": "math {#library-math}",
+      "size": 10276
+    },
+    {
+      "source": "docs",
+      "relPath": "api/memeditor.md",
+      "path": "/docs/api/memeditor",
+      "url": "https://yaklang.com/docs/api/memeditor",
+      "title": "memeditor {#library-memeditor}",
+      "size": 1683
+    },
+    {
+      "source": "docs",
+      "relPath": "api/mfa.md",
+      "path": "/docs/api/mfa",
+      "url": "https://yaklang.com/docs/api/mfa",
+      "title": "mfa {#library-mfa}",
+      "size": 6036
+    },
+    {
+      "source": "docs",
+      "relPath": "api/mimetype.md",
+      "path": "/docs/api/mimetype",
+      "url": "https://yaklang.com/docs/api/mimetype",
+      "title": "mimetype {#library-mimetype}",
+      "size": 2763
+    },
+    {
+      "source": "docs",
+      "relPath": "api/mitm.md",
+      "path": "/docs/api/mitm",
+      "url": "https://yaklang.com/docs/api/mitm",
+      "title": "mitm {#library-mitm}",
+      "size": 28791
+    },
+    {
+      "source": "docs",
+      "relPath": "api/mmdb.md",
+      "path": "/docs/api/mmdb",
+      "url": "https://yaklang.com/docs/api/mmdb",
+      "title": "mmdb {#library-mmdb}",
+      "size": 2658
+    },
+    {
+      "source": "docs",
+      "relPath": "api/nasl.md",
+      "path": "/docs/api/nasl",
+      "url": "https://yaklang.com/docs/api/nasl",
+      "title": "nasl {#library-nasl}",
+      "size": 10769
+    },
+    {
+      "source": "docs",
+      "relPath": "api/netstack.md",
+      "path": "/docs/api/netstack",
+      "url": "https://yaklang.com/docs/api/netstack",
+      "title": "netstack {#library-netstack}",
+      "size": 9020
+    },
+    {
+      "source": "docs",
+      "relPath": "api/netutils.md",
+      "path": "/docs/api/netutils",
+      "url": "https://yaklang.com/docs/api/netutils",
+      "title": "netutils {#library-netutils}",
+      "size": 9894
+    },
+    {
+      "source": "docs",
+      "relPath": "api/nuclei.md",
+      "path": "/docs/api/nuclei",
+      "url": "https://yaklang.com/docs/api/nuclei",
+      "title": "nuclei {#library-nuclei}",
+      "size": 51675
+    },
+    {
+      "source": "docs",
+      "relPath": "api/omnisearch.md",
+      "path": "/docs/api/omnisearch",
+      "url": "https://yaklang.com/docs/api/omnisearch",
+      "title": "omnisearch {#library-omnisearch}",
+      "size": 3564
+    },
+    {
+      "source": "docs",
+      "relPath": "api/openapi.md",
+      "path": "/docs/api/openapi",
+      "url": "https://yaklang.com/docs/api/openapi",
+      "title": "openapi {#library-openapi}",
+      "size": 5363
+    },
+    {
+      "source": "docs",
+      "relPath": "api/orderedmap.md",
+      "path": "/docs/api/orderedmap",
+      "url": "https://yaklang.com/docs/api/orderedmap",
+      "title": "orderedmap {#library-orderedmap}",
+      "size": 1901
+    },
+    {
+      "source": "docs",
+      "relPath": "api/os.md",
+      "path": "/docs/api/os",
+      "url": "https://yaklang.com/docs/api/os",
+      "title": "os {#library-os}",
+      "size": 24739
+    },
+    {
+      "source": "docs",
+      "relPath": "api/pandoc.md",
+      "path": "/docs/api/pandoc",
+      "url": "https://yaklang.com/docs/api/pandoc",
+      "title": "pandoc {#library-pandoc}",
+      "size": 4178
+    },
+    {
+      "source": "docs",
+      "relPath": "api/pcapx.md",
+      "path": "/docs/api/pcapx",
+      "url": "https://yaklang.com/docs/api/pcapx",
+      "title": "pcapx {#library-pcapx}",
+      "size": 48327
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ping.md",
+      "path": "/docs/api/ping",
+      "url": "https://yaklang.com/docs/api/ping",
+      "title": "ping {#library-ping}",
+      "size": 10615
+    },
+    {
+      "source": "docs",
+      "relPath": "api/poc.md",
+      "path": "/docs/api/poc",
+      "url": "https://yaklang.com/docs/api/poc",
+      "title": "poc {#library-poc}",
+      "size": 122051
+    },
+    {
+      "source": "docs",
+      "relPath": "api/pprof.md",
+      "path": "/docs/api/pprof",
+      "url": "https://yaklang.com/docs/api/pprof",
+      "title": "pprof {#library-pprof}",
+      "size": 6757
+    },
+    {
+      "source": "docs",
+      "relPath": "api/rag.md",
+      "path": "/docs/api/rag",
+      "url": "https://yaklang.com/docs/api/rag",
+      "title": "rag {#library-rag}",
+      "size": 49530
+    },
+    {
+      "source": "docs",
+      "relPath": "api/rdp.md",
+      "path": "/docs/api/rdp",
+      "url": "https://yaklang.com/docs/api/rdp",
+      "title": "rdp {#library-rdp}",
+      "size": 2646
+    },
+    {
+      "source": "docs",
+      "relPath": "api/re.md",
+      "path": "/docs/api/re",
+      "url": "https://yaklang.com/docs/api/re",
+      "title": "re {#library-re}",
+      "size": 26316
+    },
+    {
+      "source": "docs",
+      "relPath": "api/re2.md",
+      "path": "/docs/api/re2",
+      "url": "https://yaklang.com/docs/api/re2",
+      "title": "re2 {#library-re2}",
+      "size": 12517
+    },
+    {
+      "source": "docs",
+      "relPath": "api/redis.md",
+      "path": "/docs/api/redis",
+      "url": "https://yaklang.com/docs/api/redis",
+      "title": "redis {#library-redis}",
+      "size": 7060
+    },
+    {
+      "source": "docs",
+      "relPath": "api/regen.md",
+      "path": "/docs/api/regen",
+      "url": "https://yaklang.com/docs/api/regen",
+      "title": "regen {#library-regen}",
+      "size": 11609
+    },
+    {
+      "source": "docs",
+      "relPath": "api/report.md",
+      "path": "/docs/api/report",
+      "url": "https://yaklang.com/docs/api/report",
+      "title": "report {#library-report}",
+      "size": 1428
+    },
+    {
+      "source": "docs",
+      "relPath": "api/risk.md",
+      "path": "/docs/api/risk",
+      "url": "https://yaklang.com/docs/api/risk",
+      "title": "risk {#library-risk}",
+      "size": 45760
+    },
+    {
+      "source": "docs",
+      "relPath": "api/rpa.md",
+      "path": "/docs/api/rpa",
+      "url": "https://yaklang.com/docs/api/rpa",
+      "title": "rpa {#library-rpa}",
+      "size": 15432
+    },
+    {
+      "source": "docs",
+      "relPath": "api/sandbox.md",
+      "path": "/docs/api/sandbox",
+      "url": "https://yaklang.com/docs/api/sandbox",
+      "title": "sandbox {#library-sandbox}",
+      "size": 2079
+    },
+    {
+      "source": "docs",
+      "relPath": "api/sca.md",
+      "path": "/docs/api/sca",
+      "url": "https://yaklang.com/docs/api/sca",
+      "title": "sca {#library-sca}",
+      "size": 12755
+    },
+    {
+      "source": "docs",
+      "relPath": "api/servicescan.md",
+      "path": "/docs/api/servicescan",
+      "url": "https://yaklang.com/docs/api/servicescan",
+      "title": "servicescan {#library-servicescan}",
+      "size": 14325
+    },
+    {
+      "source": "docs",
+      "relPath": "api/sfreport.md",
+      "path": "/docs/api/sfreport",
+      "url": "https://yaklang.com/docs/api/sfreport",
+      "title": "sfreport {#library-sfreport}",
+      "size": 11511
+    },
+    {
+      "source": "docs",
+      "relPath": "api/simulator.md",
+      "path": "/docs/api/simulator",
+      "url": "https://yaklang.com/docs/api/simulator",
+      "title": "simulator {#library-simulator}",
+      "size": 22777
+    },
+    {
+      "source": "docs",
+      "relPath": "api/smb.md",
+      "path": "/docs/api/smb",
+      "url": "https://yaklang.com/docs/api/smb",
+      "title": "smb {#library-smb}",
+      "size": 6553
+    },
+    {
+      "source": "docs",
+      "relPath": "api/spacengine.md",
+      "path": "/docs/api/spacengine",
+      "url": "https://yaklang.com/docs/api/spacengine",
+      "title": "spacengine {#library-spacengine}",
+      "size": 20652
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ssa.md",
+      "path": "/docs/api/ssa",
+      "url": "https://yaklang.com/docs/api/ssa",
+      "title": "ssa {#library-ssa}",
+      "size": 18990
+    },
+    {
+      "source": "docs",
+      "relPath": "api/ssh.md",
+      "path": "/docs/api/ssh",
+      "url": "https://yaklang.com/docs/api/ssh",
+      "title": "ssh {#library-ssh}",
+      "size": 5387
+    },
+    {
+      "source": "docs",
+      "relPath": "api/str.md",
+      "path": "/docs/api/str",
+      "url": "https://yaklang.com/docs/api/str",
+      "title": "str {#library-str}",
+      "size": 133273
+    },
+    {
+      "source": "docs",
+      "relPath": "api/subdomain.md",
+      "path": "/docs/api/subdomain",
+      "url": "https://yaklang.com/docs/api/subdomain",
+      "title": "subdomain {#library-subdomain}",
+      "size": 4553
+    },
+    {
+      "source": "docs",
+      "relPath": "api/suricata.md",
+      "path": "/docs/api/suricata",
+      "url": "https://yaklang.com/docs/api/suricata",
+      "title": "suricata {#library-suricata}",
+      "size": 10244
+    },
+    {
+      "source": "docs",
+      "relPath": "api/sync.md",
+      "path": "/docs/api/sync",
+      "url": "https://yaklang.com/docs/api/sync",
+      "title": "sync {#library-sync}",
+      "size": 9115
+    },
+    {
+      "source": "docs",
+      "relPath": "api/synscan.md",
+      "path": "/docs/api/synscan",
+      "url": "https://yaklang.com/docs/api/synscan",
+      "title": "synscan {#library-synscan}",
+      "size": 8869
+    },
+    {
+      "source": "docs",
+      "relPath": "api/syntaxflow.md",
+      "path": "/docs/api/syntaxflow",
+      "url": "https://yaklang.com/docs/api/syntaxflow",
+      "title": "syntaxflow {#library-syntaxflow}",
+      "size": 12088
+    },
+    {
+      "source": "docs",
+      "relPath": "api/systemd.md",
+      "path": "/docs/api/systemd",
+      "url": "https://yaklang.com/docs/api/systemd",
+      "title": "systemd {#library-systemd}",
+      "size": 7857
+    },
+    {
+      "source": "docs",
+      "relPath": "api/t3.md",
+      "path": "/docs/api/t3",
+      "url": "https://yaklang.com/docs/api/t3",
+      "title": "t3 {#library-t3}",
+      "size": 7301
+    },
+    {
+      "source": "docs",
+      "relPath": "api/tcp.md",
+      "path": "/docs/api/tcp",
+      "url": "https://yaklang.com/docs/api/tcp",
+      "title": "tcp {#library-tcp}",
+      "size": 12352
+    },
+    {
+      "source": "docs",
+      "relPath": "api/tcpmitm.md",
+      "path": "/docs/api/tcpmitm",
+      "url": "https://yaklang.com/docs/api/tcpmitm",
+      "title": "tcpmitm {#library-tcpmitm}",
+      "size": 4127
+    },
+    {
+      "source": "docs",
+      "relPath": "api/time.md",
+      "path": "/docs/api/time",
+      "url": "https://yaklang.com/docs/api/time",
+      "title": "time {#library-time}",
+      "size": 12069
+    },
+    {
+      "source": "docs",
+      "relPath": "api/timezone.md",
+      "path": "/docs/api/timezone",
+      "url": "https://yaklang.com/docs/api/timezone",
+      "title": "timezone {#library-timezone}",
+      "size": 2406
+    },
+    {
+      "source": "docs",
+      "relPath": "api/tls.md",
+      "path": "/docs/api/tls",
+      "url": "https://yaklang.com/docs/api/tls",
+      "title": "tls {#library-tls}",
+      "size": 18427
+    },
+    {
+      "source": "docs",
+      "relPath": "api/toolbox.md",
+      "path": "/docs/api/toolbox",
+      "url": "https://yaklang.com/docs/api/toolbox",
+      "title": "toolbox {#library-toolbox}",
+      "size": 5879
+    },
+    {
+      "source": "docs",
+      "relPath": "api/tools.md",
+      "path": "/docs/api/tools",
+      "url": "https://yaklang.com/docs/api/tools",
+      "title": "tools {#library-tools}",
+      "size": 2280
+    },
+    {
+      "source": "docs",
+      "relPath": "api/traceroute.md",
+      "path": "/docs/api/traceroute",
+      "url": "https://yaklang.com/docs/api/traceroute",
+      "title": "traceroute {#library-traceroute}",
+      "size": 3585
+    },
+    {
+      "source": "docs",
+      "relPath": "api/twofa.md",
+      "path": "/docs/api/twofa",
+      "url": "https://yaklang.com/docs/api/twofa",
+      "title": "twofa {#library-twofa}",
+      "size": 6022
+    },
+    {
+      "source": "docs",
+      "relPath": "api/udp.md",
+      "path": "/docs/api/udp",
+      "url": "https://yaklang.com/docs/api/udp",
+      "title": "udp {#library-udp}",
+      "size": 7113
+    },
+    {
+      "source": "docs",
+      "relPath": "api/webforest.md",
+      "path": "/docs/api/webforest",
+      "url": "https://yaklang.com/docs/api/webforest",
+      "title": "webforest {#library-webforest}",
+      "size": 1645
+    },
+    {
+      "source": "docs",
+      "relPath": "api/whisper.md",
+      "path": "/docs/api/whisper",
+      "url": "https://yaklang.com/docs/api/whisper",
+      "title": "whisper {#library-whisper}",
+      "size": 2553
+    },
+    {
+      "source": "docs",
+      "relPath": "api/x.md",
+      "path": "/docs/api/x",
+      "url": "https://yaklang.com/docs/api/x",
+      "title": "x {#library-x}",
+      "size": 33804
+    },
+    {
+      "source": "docs",
+      "relPath": "api/xhtml.md",
+      "path": "/docs/api/xhtml",
+      "url": "https://yaklang.com/docs/api/xhtml",
+      "title": "xhtml {#library-xhtml}",
+      "size": 6832
+    },
+    {
+      "source": "docs",
+      "relPath": "api/xml.md",
+      "path": "/docs/api/xml",
+      "url": "https://yaklang.com/docs/api/xml",
+      "title": "xml {#library-xml}",
+      "size": 4467
+    },
+    {
+      "source": "docs",
+      "relPath": "api/xpath.md",
+      "path": "/docs/api/xpath",
+      "url": "https://yaklang.com/docs/api/xpath",
+      "title": "xpath {#library-xpath}",
+      "size": 11005
+    },
+    {
+      "source": "docs",
+      "relPath": "api/yakit.md",
+      "path": "/docs/api/yakit",
+      "url": "https://yaklang.com/docs/api/yakit",
+      "title": "yakit {#library-yakit}",
+      "size": 82549
+    },
+    {
+      "source": "docs",
+      "relPath": "api/yaml.md",
+      "path": "/docs/api/yaml",
+      "url": "https://yaklang.com/docs/api/yaml",
+      "title": "yaml {#library-yaml}",
+      "size": 3201
+    },
+    {
+      "source": "docs",
+      "relPath": "api/yso.md",
+      "path": "/docs/api/yso",
+      "url": "https://yaklang.com/docs/api/yso",
+      "title": "yso {#library-yso}",
+      "size": 99512
+    },
+    {
+      "source": "docs",
+      "relPath": "api/zip.md",
+      "path": "/docs/api/zip",
+      "url": "https://yaklang.com/docs/api/zip",
+      "title": "zip {#library-zip}",
+      "size": 41728
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_cli.md",
+      "path": "/docs/buildinlibs/lib_cli",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_cli",
+      "title": "[cli] 从命令行读参数",
+      "size": 6183
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_crawler.md",
+      "path": "/docs/buildinlibs/lib_crawler",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_crawler",
+      "title": "[crawler] 普通爬虫(非浏览器爬虫)",
+      "size": 4850
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_dyn.md",
+      "path": "/docs/buildinlibs/lib_dyn",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_dyn",
+      "title": "[dyn] 动态插件",
+      "size": 3726
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_exec.md",
+      "path": "/docs/buildinlibs/lib_exec",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_exec",
+      "title": "[exec] 命令执行封装",
+      "size": 7281
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_file.md",
+      "path": "/docs/buildinlibs/lib_file",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_file",
+      "title": "[file] 文件操作与IO库",
+      "size": 9198
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_fuzz.md",
+      "path": "/docs/buildinlibs/lib_fuzz",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_fuzz",
+      "title": "[fuzz] 模糊测试工具库",
+      "size": 53727
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_http.md",
+      "path": "/docs/buildinlibs/lib_http",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_http",
+      "title": "[http] HTTP库",
+      "size": 11472
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_io.md",
+      "path": "/docs/buildinlibs/lib_io",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_io",
+      "title": "[io] 系统读写工具库",
+      "size": 1965
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_json.md",
+      "path": "/docs/buildinlibs/lib_json",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_json",
+      "title": "[json] JSON序列化与反序列化",
+      "size": 1918
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_mitm.md",
+      "path": "/docs/buildinlibs/lib_mitm",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_mitm",
+      "title": "[mitm] HTTPS中间人劫持(被动扫描入口)",
+      "size": 13508
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_nuclei.mdx",
+      "path": "/docs/buildinlibs/lib_nuclei",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_nuclei",
+      "title": "[nuclei] 赋予 Yak 漏扫能力",
+      "size": 9927
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_os.md",
+      "path": "/docs/buildinlibs/lib_os",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_os",
+      "title": "[os] 操作系统库",
+      "size": 1694
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_re.md",
+      "path": "/docs/buildinlibs/lib_re",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_re",
+      "title": "[re] 正则工具库",
+      "size": 12823
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_servicescan.md",
+      "path": "/docs/buildinlibs/lib_servicescan",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_servicescan",
+      "title": "[servicescan] 服务指纹扫描",
+      "size": 20279
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_spacengine.md",
+      "path": "/docs/buildinlibs/lib_spacengine",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_spacengine",
+      "title": "[spacengine] 网络空间引擎",
+      "size": 3467
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_str.md",
+      "path": "/docs/buildinlibs/lib_str",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_str",
+      "title": "[str] 字符串工具库",
+      "size": 12769
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_subdomain.md",
+      "path": "/docs/buildinlibs/lib_subdomain",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_subdomain",
+      "title": "[subdomain] 子域名收集",
+      "size": 6450
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_sync.md",
+      "path": "/docs/buildinlibs/lib_sync",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_sync",
+      "title": "[sync] 同步/并发控制",
+      "size": 564
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_synscan.md",
+      "path": "/docs/buildinlibs/lib_synscan",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_synscan",
+      "title": "[synscan] SYN扫端口",
+      "size": 4577
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_tcp.md",
+      "path": "/docs/buildinlibs/lib_tcp",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_tcp",
+      "title": "[tcp] TCP 网络连接库",
+      "size": 5914
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_time.md",
+      "path": "/docs/buildinlibs/lib_time",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_time",
+      "title": "[time] 时间与日期",
+      "size": 834
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_tls.md",
+      "path": "/docs/buildinlibs/lib_tls",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_tls",
+      "title": "[tls] TLS工具包",
+      "size": 6612
+    },
+    {
+      "source": "docs",
+      "relPath": "buildinlibs/lib_xpath.md",
+      "path": "/docs/buildinlibs/lib_xpath",
+      "url": "https://yaklang.com/docs/buildinlibs/lib_xpath",
+      "title": "[xpath] XPATH",
+      "size": 2199
+    },
+    {
+      "source": "docs",
+      "relPath": "builtin-global-functions.md",
+      "path": "/docs/builtin-global-functions",
+      "url": "https://yaklang.com/docs/builtin-global-functions",
+      "title": "全局内置函数与内置操作",
+      "size": 20083
+    },
+    {
+      "source": "docs",
+      "relPath": "crypto/codec.md",
+      "path": "/docs/crypto/codec",
+      "url": "https://yaklang.com/docs/crypto/codec",
+      "title": "编解码与加解密 codec",
+      "size": 21906
+    },
+    {
+      "source": "docs",
+      "relPath": "crypto/tls-crypto.md",
+      "path": "/docs/crypto/tls-crypto",
+      "url": "https://yaklang.com/docs/crypto/tls-crypto",
+      "title": "密钥与证书的密码学处理",
+      "size": 9134
+    },
+    {
+      "source": "docs",
+      "relPath": "intro.md",
+      "path": "/docs/intro",
+      "url": "https://yaklang.com/docs/intro",
+      "title": "Yak：致力于安全能力融合的语言",
+      "size": 26315
+    },
+    {
+      "source": "docs",
+      "relPath": "network/dns.md",
+      "path": "/docs/network/dns",
+      "url": "https://yaklang.com/docs/network/dns",
+      "title": "DNS 解析",
+      "size": 4531
+    },
+    {
+      "source": "docs",
+      "relPath": "network/httpserver.md",
+      "path": "/docs/network/httpserver",
+      "url": "https://yaklang.com/docs/network/httpserver",
+      "title": "HTTP 服务端编程",
+      "size": 6654
+    },
+    {
+      "source": "docs",
+      "relPath": "network/overview.md",
+      "path": "/docs/network/overview",
+      "url": "https://yaklang.com/docs/network/overview",
+      "title": "网络编程",
+      "size": 2951
+    },
+    {
+      "source": "docs",
+      "relPath": "network/tcp.md",
+      "path": "/docs/network/tcp",
+      "url": "https://yaklang.com/docs/network/tcp",
+      "title": "TCP 客户端与服务端编程",
+      "size": 9671
+    },
+    {
+      "source": "docs",
+      "relPath": "network/tls.md",
+      "path": "/docs/network/tls",
+      "url": "https://yaklang.com/docs/network/tls",
+      "title": "TLS 证书生成与加密连接",
+      "size": 7703
+    },
+    {
+      "source": "docs",
+      "relPath": "network/udp.md",
+      "path": "/docs/network/udp",
+      "url": "https://yaklang.com/docs/network/udp",
+      "title": "UDP 无连接通信与服务器",
+      "size": 5768
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/exec.md",
+      "path": "/docs/os-file/exec",
+      "url": "https://yaklang.com/docs/os-file/exec",
+      "title": "系统命令执行（exec）",
+      "size": 9441
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/file-basic.md",
+      "path": "/docs/os-file/file-basic",
+      "url": "https://yaklang.com/docs/os-file/file-basic",
+      "title": "文件增删改查与目录操作",
+      "size": 8132
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/file-io.md",
+      "path": "/docs/os-file/file-io",
+      "url": "https://yaklang.com/docs/os-file/file-io",
+      "title": "文件句柄、IO 与流式读写",
+      "size": 7554
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/intro.md",
+      "path": "/docs/os-file/intro",
+      "url": "https://yaklang.com/docs/os-file/intro",
+      "title": "操作系统与文件编程",
+      "size": 2459
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/os-system.md",
+      "path": "/docs/os-file/os-system",
+      "url": "https://yaklang.com/docs/os-file/os-system",
+      "title": "操作系统环境与系统常量",
+      "size": 4401
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/path.md",
+      "path": "/docs/os-file/path",
+      "url": "https://yaklang.com/docs/os-file/path",
+      "title": "路径操作",
+      "size": 4672
+    },
+    {
+      "source": "docs",
+      "relPath": "os-file/time.md",
+      "path": "/docs/os-file/time",
+      "url": "https://yaklang.com/docs/os-file/time",
+      "title": "系统时间与日期（time）",
+      "size": 4277
+    },
+    {
+      "source": "docs",
+      "relPath": "security/cap8-1-http.md",
+      "path": "/docs/security/cap8-1-http",
+      "url": "https://yaklang.com/docs/security/cap8-1-http",
+      "title": "HTTP 协议与数据包处理",
+      "size": 86520
+    },
+    {
+      "source": "docs",
+      "relPath": "security/cap8-2-mitm.md",
+      "path": "/docs/security/cap8-2-mitm",
+      "url": "https://yaklang.com/docs/security/cap8-2-mitm",
+      "title": "中间人攻击: MITM",
+      "size": 6491
+    },
+    {
+      "source": "docs",
+      "relPath": "security/cap8-3-port-n-service-scan.md",
+      "path": "/docs/security/cap8-3-port-n-service-scan",
+      "url": "https://yaklang.com/docs/security/cap8-3-port-n-service-scan",
+      "title": "网络端口扫描与指纹识别",
+      "size": 17309
+    },
+    {
+      "source": "docs",
+      "relPath": "security/cap8-4-yaml-poc.md",
+      "path": "/docs/security/cap8-4-yaml-poc",
+      "url": "https://yaklang.com/docs/security/cap8-4-yaml-poc",
+      "title": "使用 YAML 编写 PoC",
+      "size": 22625
+    },
+    {
+      "source": "docs",
+      "relPath": "security/cap8-5-java-hack.md",
+      "path": "/docs/security/cap8-5-java-hack",
+      "url": "https://yaklang.com/docs/security/cap8-5-java-hack",
+      "title": "渗透测试 Java 应用",
+      "size": 18858
+    },
+    {
+      "source": "docs",
+      "relPath": "security/overview.md",
+      "path": "/docs/security/overview",
+      "url": "https://yaklang.com/docs/security/overview",
+      "title": "安全能力与漏洞验证",
+      "size": 593
+    },
+    {
+      "source": "docs",
+      "relPath": "startup.mdx",
+      "path": "/docs/startup",
+      "url": "https://yaklang.com/docs/startup",
+      "title": "搭建 Yak 语言开发环境",
+      "size": 14076
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/json.md",
+      "path": "/docs/strings/json",
+      "url": "https://yaklang.com/docs/strings/json",
+      "title": "JSON 处理与流式操作",
+      "size": 8984
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/overview.md",
+      "path": "/docs/strings/overview",
+      "url": "https://yaklang.com/docs/strings/overview",
+      "title": "文本与字符串操作",
+      "size": 1926
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/regexp.md",
+      "path": "/docs/strings/regexp",
+      "url": "https://yaklang.com/docs/strings/regexp",
+      "title": "正则表达式 re / re2",
+      "size": 9491
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/str-manual.md",
+      "path": "/docs/strings/str-manual",
+      "url": "https://yaklang.com/docs/strings/str-manual",
+      "title": "基础内置库 str 手册",
+      "size": 14808
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/string-generation.md",
+      "path": "/docs/strings/string-generation",
+      "url": "https://yaklang.com/docs/strings/string-generation",
+      "title": "模糊生成与随机字符串",
+      "size": 6837
+    },
+    {
+      "source": "docs",
+      "relPath": "strings/xml-html.md",
+      "path": "/docs/strings/xml-html",
+      "url": "https://yaklang.com/docs/strings/xml-html",
+      "title": "用 xpath / xhtml 解析 XML / HTML",
+      "size": 6477
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap3-stats-vars-and-exprs.md",
+      "path": "/docs/yak-basic/cap3-stats-vars-and-exprs",
+      "url": "https://yaklang.com/docs/yak-basic/cap3-stats-vars-and-exprs",
+      "title": "Yak 语言中的语句、变量和表达式",
+      "size": 73737
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap4-control-flow.md",
+      "path": "/docs/yak-basic/cap4-control-flow",
+      "url": "https://yaklang.com/docs/yak-basic/cap4-control-flow",
+      "title": "控制流：IF For Switch",
+      "size": 28082
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap5-function.md",
+      "path": "/docs/yak-basic/cap5-function",
+      "url": "https://yaklang.com/docs/yak-basic/cap5-function",
+      "title": "函数的创建与使用",
+      "size": 14738
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap6-1-concurrent-and-defer.md",
+      "path": "/docs/yak-basic/cap6-1-concurrent-and-defer",
+      "url": "https://yaklang.com/docs/yak-basic/cap6-1-concurrent-and-defer",
+      "title": "异步、并发编程和 defer 延迟",
+      "size": 21765
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap6-2-error-handling.md",
+      "path": "/docs/yak-basic/cap6-2-error-handling",
+      "url": "https://yaklang.com/docs/yak-basic/cap6-2-error-handling",
+      "title": "Yak 语言中的错误处理",
+      "size": 6571
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap6-3-scope.md",
+      "path": "/docs/yak-basic/cap6-3-scope",
+      "url": "https://yaklang.com/docs/yak-basic/cap6-3-scope",
+      "title": "作用域",
+      "size": 4231
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap6-4-modules.md",
+      "path": "/docs/yak-basic/cap6-4-modules",
+      "url": "https://yaklang.com/docs/yak-basic/cap6-4-modules",
+      "title": "模块化与多文件编程",
+      "size": 3329
+    },
+    {
+      "source": "docs",
+      "relPath": "yak-basic/cap6-5-fuzztag.md",
+      "path": "/docs/yak-basic/cap6-5-fuzztag",
+      "url": "https://yaklang.com/docs/yak-basic/cap6-5-fuzztag",
+      "title": "模糊文本渲染: FuzzTag",
+      "size": 19876
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/1-intro.md",
+      "path": "/docs/yakexamples/1-intro",
+      "url": "https://yaklang.com/docs/yakexamples/1-intro",
+      "title": "章节介绍",
+      "size": 396
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/11-synscan.md",
+      "path": "/docs/yakexamples/11-synscan",
+      "url": "https://yaklang.com/docs/yakexamples/11-synscan",
+      "title": "函数库：synscan - SYN 扫描",
+      "size": 10533
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/2-strutils.mdx",
+      "path": "/docs/yakexamples/2-strutils",
+      "url": "https://yaklang.com/docs/yakexamples/2-strutils",
+      "title": "函数库：str - 字符串工具集",
+      "size": 12368
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/3-codec.mdx",
+      "path": "/docs/yakexamples/3-codec",
+      "url": "https://yaklang.com/docs/yakexamples/3-codec",
+      "title": "函数库：codec - 加密与编码",
+      "size": 8969
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/4-http-basic.mdx",
+      "path": "/docs/yakexamples/4-http-basic",
+      "url": "https://yaklang.com/docs/yakexamples/4-http-basic",
+      "title": "函数库：http - 基本 HTTP 通信",
+      "size": 14226
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/5-http-advanced.mdx",
+      "path": "/docs/yakexamples/5-http-advanced",
+      "url": "https://yaklang.com/docs/yakexamples/5-http-advanced",
+      "title": "函数库：poc - 专家 HTTP 库",
+      "size": 22765
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/6-fuzz-request.mdx",
+      "path": "/docs/yakexamples/6-fuzz-request",
+      "url": "https://yaklang.com/docs/yakexamples/6-fuzz-request",
+      "title": "函数库：fuzz - 模糊测试 HTTP",
+      "size": 36459
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/7-fuzztag-basic.md",
+      "path": "/docs/yakexamples/7-fuzztag-basic",
+      "url": "https://yaklang.com/docs/yakexamples/7-fuzztag-basic",
+      "title": "功能集：fuzztag - 模糊测试标签",
+      "size": 41519
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/8-regexp.mdx",
+      "path": "/docs/yakexamples/8-regexp",
+      "url": "https://yaklang.com/docs/yakexamples/8-regexp",
+      "title": "函数库：re - 正则表达式",
+      "size": 13081
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/9-json.mdx",
+      "path": "/docs/yakexamples/9-json",
+      "url": "https://yaklang.com/docs/yakexamples/9-json",
+      "title": "函数库：json - 优雅地处理JSON",
+      "size": 10018
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/batch-http.mdx",
+      "path": "/docs/yakexamples/batch-http",
+      "url": "https://yaklang.com/docs/yakexamples/batch-http",
+      "title": "批量发包: 模糊测试批量发包",
+      "size": 9993
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/concurrent.md",
+      "path": "/docs/yakexamples/concurrent",
+      "url": "https://yaklang.com/docs/yakexamples/concurrent",
+      "title": "YAK 中编写\"多线程/多并发\"应用",
+      "size": 15128
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/first_servicescan.md",
+      "path": "/docs/yakexamples/first_servicescan",
+      "url": "https://yaklang.com/docs/yakexamples/first_servicescan",
+      "title": "你的第一个服务扫描程序",
+      "size": 6317
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/first_synandscanfp.md",
+      "path": "/docs/yakexamples/first_synandscanfp",
+      "url": "https://yaklang.com/docs/yakexamples/first_synandscanfp",
+      "title": "高效的端口扫描：SYN+指纹扫描",
+      "size": 6633
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/func-p.mdx",
+      "path": "/docs/yakexamples/func-p",
+      "url": "https://yaklang.com/docs/yakexamples/func-p",
+      "title": "编程技巧：函数式补充语法",
+      "size": 4164
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/fuzz_for_more.md",
+      "path": "/docs/yakexamples/fuzz_for_more",
+      "url": "https://yaklang.com/docs/yakexamples/fuzz_for_more",
+      "title": "Web Fuzz 高级教程",
+      "size": 10061
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/fuzz_tutorial.md",
+      "path": "/docs/yakexamples/fuzz_tutorial",
+      "url": "https://yaklang.com/docs/yakexamples/fuzz_tutorial",
+      "title": "Web Fuzz 基础",
+      "size": 14662
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/fuzztag.md",
+      "path": "/docs/yakexamples/fuzztag",
+      "url": "https://yaklang.com/docs/yakexamples/fuzztag",
+      "title": "Fuzz Tag Playbook",
+      "size": 39986
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/handle-scan-target.mdx",
+      "path": "/docs/yakexamples/handle-scan-target",
+      "url": "https://yaklang.com/docs/yakexamples/handle-scan-target",
+      "title": "处理扫描目标与网段（批量/分组）",
+      "size": 3030
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/hosts-to-cclass.mdx",
+      "path": "/docs/yakexamples/hosts-to-cclass",
+      "url": "https://yaklang.com/docs/yakexamples/hosts-to-cclass",
+      "title": "处理扫描目标：C段（自动生成）",
+      "size": 1107
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/how_to_make_poc.md",
+      "path": "/docs/yakexamples/how_to_make_poc",
+      "url": "https://yaklang.com/docs/yakexamples/how_to_make_poc",
+      "title": "如何编写优秀的 PoC/Exp 👻",
+      "size": 13389
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/http-raw.mdx",
+      "path": "/docs/yakexamples/http-raw",
+      "url": "https://yaklang.com/docs/yakexamples/http-raw",
+      "title": "发送 HTTP 原始数据包",
+      "size": 6220
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/js-otto.mdx",
+      "path": "/docs/yakexamples/js-otto",
+      "url": "https://yaklang.com/docs/yakexamples/js-otto",
+      "title": "执行 JavaScript 代码 (otto styled)",
+      "size": 6202
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/nuclei.mdx",
+      "path": "/docs/yakexamples/nuclei",
+      "url": "https://yaklang.com/docs/yakexamples/nuclei",
+      "title": "YAK + Nuclei：语言中的漏扫",
+      "size": 165
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/passive_scan.md",
+      "path": "/docs/yakexamples/passive_scan",
+      "url": "https://yaklang.com/docs/yakexamples/passive_scan",
+      "title": "初探被动扫描",
+      "size": 4382
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/risk.md",
+      "path": "/docs/yakexamples/risk",
+      "url": "https://yaklang.com/docs/yakexamples/risk",
+      "title": "漏洞检测：DNSLog",
+      "size": 4045
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/scan_and_crawler.md",
+      "path": "/docs/yakexamples/scan_and_crawler",
+      "url": "https://yaklang.com/docs/yakexamples/scan_and_crawler",
+      "title": "实战2: 指纹扫描+基础爬虫",
+      "size": 4674
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/similarity-calc.mdx",
+      "path": "/docs/yakexamples/similarity-calc",
+      "url": "https://yaklang.com/docs/yakexamples/similarity-calc",
+      "title": "文本相似度算法：SQLMAP、 SimHash 与 SSDeep",
+      "size": 16230
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/spacengine.md",
+      "path": "/docs/yakexamples/spacengine",
+      "url": "https://yaklang.com/docs/yakexamples/spacengine",
+      "title": "网络空间引擎信息收集",
+      "size": 6579
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/vs-dir-in-py.mdx",
+      "path": "/docs/yakexamples/vs-dir-in-py",
+      "url": "https://yaklang.com/docs/yakexamples/vs-dir-in-py",
+      "title": "类比 Python 中的 dir 函数",
+      "size": 1964
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/xpath.mdx",
+      "path": "/docs/yakexamples/xpath",
+      "url": "https://yaklang.com/docs/yakexamples/xpath",
+      "title": "HTML 处理：XPATH 案例",
+      "size": 1792
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/yak_misc.mdx",
+      "path": "/docs/yakexamples/yak_misc",
+      "url": "https://yaklang.com/docs/yakexamples/yak_misc",
+      "title": "实战1: 扫端口/子域名+指纹识别",
+      "size": 18662
+    },
+    {
+      "source": "docs",
+      "relPath": "yakexamples/ysoserial-demo.mdx",
+      "path": "/docs/yakexamples/ysoserial-demo",
+      "url": "https://yaklang.com/docs/yakexamples/ysoserial-demo",
+      "title": "Java 反序列化利用链: yso(ysoserial)",
+      "size": 1899
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/1-1.md",
+      "path": "/products/chapter-1/1-1",
+      "url": "https://yaklang.com/products/chapter-1/1-1",
+      "title": "1.1 信息安全威胁演进与测试需求变化",
+      "size": 9956
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/1-2.md",
+      "path": "/products/chapter-1/1-2",
+      "url": "https://yaklang.com/products/chapter-1/1-2",
+      "title": "1.2 安全工具生态的碎片化困境",
+      "size": 8340
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/1-3.md",
+      "path": "/products/chapter-1/1-3",
+      "url": "https://yaklang.com/products/chapter-1/1-3",
+      "title": "1.3 \"安全融合\"理念与技术路径",
+      "size": 11048
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/1-4.md",
+      "path": "/products/chapter-1/1-4",
+      "url": "https://yaklang.com/products/chapter-1/1-4",
+      "title": "1.4 Yakit统一平台的技术优势与创新突破",
+      "size": 5022
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/1-5.md",
+      "path": "/products/chapter-1/1-5",
+      "url": "https://yaklang.com/products/chapter-1/1-5",
+      "title": "1.5 学习路径规划与发展前景",
+      "size": 7046
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-1/overview.md",
+      "path": "/products/chapter-1/overview",
+      "url": "https://yaklang.com/products/chapter-1/overview",
+      "title": "第一章：为什么需要统一安全工具平台？",
+      "size": 1263
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-1.md",
+      "path": "/products/chapter-2/2-1",
+      "url": "https://yaklang.com/products/chapter-2/2-1",
+      "title": "2.1 Yakit 应用架构与安装配置",
+      "size": 18536
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-2.md",
+      "path": "/products/chapter-2/2-2",
+      "url": "https://yaklang.com/products/chapter-2/2-2",
+      "title": "2.2 Yakit 界面概览与核心功能导航",
+      "size": 6695
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-1.md",
+      "path": "/products/chapter-2/2-3/2-3-1",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-1",
+      "title": "2.3.1 端口扫描 – 探测开放服务",
+      "size": 19695
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-10.md",
+      "path": "/products/chapter-2/2-3/2-3-10",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-10",
+      "title": "2.3.10 Yak IDE：Yak Runner 集成开发环境",
+      "size": 19200
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-11.md",
+      "path": "/products/chapter-2/2-3/2-3-11",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-11",
+      "title": "2.3.11 漏洞检测：自动化扫描的工程化实践",
+      "size": 16229
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-12.md",
+      "path": "/products/chapter-2/2-3/2-3-12",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-12",
+      "title": "2.3.12 数据库：信息沉淀与情报中枢",
+      "size": 34303
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-2.md",
+      "path": "/products/chapter-2/2-3/2-3-2",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-2",
+      "title": "2.3.2 弱口令爆破 – 测试账户密码安全性",
+      "size": 11540
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-3.md",
+      "path": "/products/chapter-2/2-3/2-3-3",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-3",
+      "title": "2.3.3 目录扫描：Web 隐藏内容的揭示者",
+      "size": 8188
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-4.md",
+      "path": "/products/chapter-2/2-3/2-3-4",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-4",
+      "title": "2.3.4 资产测绘双引擎：基础爬虫与空间搜索引擎",
+      "size": 8999
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-5.md",
+      "path": "/products/chapter-2/2-3/2-3-5",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-5",
+      "title": "2.3.5 Codec - 编码与加解密模块",
+      "size": 23483
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-6.md",
+      "path": "/products/chapter-2/2-3/2-3-6",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-6",
+      "title": "2.3.6 流量审计与分析引擎：History 模块深度应用",
+      "size": 17549
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-7.md",
+      "path": "/products/chapter-2/2-3/2-3-7",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-7",
+      "title": "2.3.7 综合反连：OOB 数据外带与无回显漏洞验证",
+      "size": 39814
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-8.md",
+      "path": "/products/chapter-2/2-3/2-3-8",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-8",
+      "title": "2.3.8  Yso-Hack - Java 反序列化与类加载利用框架",
+      "size": 24892
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/2-3-9.md",
+      "path": "/products/chapter-2/2-3/2-3-9",
+      "url": "https://yaklang.com/products/chapter-2/2-3/2-3-9",
+      "title": "2.3.9 Vulinbox：漏洞分析与测试实战靶场",
+      "size": 22457
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-3/overview.md",
+      "path": "/products/chapter-2/2-3/overview",
+      "url": "https://yaklang.com/products/chapter-2/2-3/overview",
+      "title": "2.3 工具集功能实践入门",
+      "size": 2309
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/2-4.md",
+      "path": "/products/chapter-2/2-4",
+      "url": "https://yaklang.com/products/chapter-2/2-4",
+      "title": "2.4 注意事项与实战原则",
+      "size": 2441
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-2/overview.md",
+      "path": "/products/chapter-2/overview",
+      "url": "https://yaklang.com/products/chapter-2/overview",
+      "title": "第二章：Yakit 的基础功能介绍与使用",
+      "size": 1198
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/3-1.md",
+      "path": "/products/chapter-3/3-1",
+      "url": "https://yaklang.com/products/chapter-3/3-1",
+      "title": "3.1 MITM技术原理与含义",
+      "size": 5992
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/3-2.md",
+      "path": "/products/chapter-3/3-2",
+      "url": "https://yaklang.com/products/chapter-3/3-2",
+      "title": "3.2 Yakit MITM基础使用",
+      "size": 27232
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/3-3.md",
+      "path": "/products/chapter-3/3-3",
+      "url": "https://yaklang.com/products/chapter-3/3-3",
+      "title": "3.3 MITM进阶：热加载技术",
+      "size": 31885
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/3-4.md",
+      "path": "/products/chapter-3/3-4",
+      "url": "https://yaklang.com/products/chapter-3/3-4",
+      "title": "3.4 高级流量操控配置与环境模拟",
+      "size": 27373
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/3-5.md",
+      "path": "/products/chapter-3/3-5",
+      "url": "https://yaklang.com/products/chapter-3/3-5",
+      "title": "3.5 本章小结",
+      "size": 1969
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-3/overview.md",
+      "path": "/products/chapter-3/overview",
+      "url": "https://yaklang.com/products/chapter-3/overview",
+      "title": "第三章：通信劫持核心套件 - Yakit MITM",
+      "size": 1190
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-1.md",
+      "path": "/products/chapter-4/4-1",
+      "url": "https://yaklang.com/products/chapter-4/4-1",
+      "title": "4.1 Web Fuzzer 概述与功能介绍",
+      "size": 4565
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-2.md",
+      "path": "/products/chapter-4/4-2",
+      "url": "https://yaklang.com/products/chapter-4/4-2",
+      "title": "4.2 Web Fuzzer 操作界面与基础使用",
+      "size": 14013
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-3.md",
+      "path": "/products/chapter-4/4-3",
+      "url": "https://yaklang.com/products/chapter-4/4-3",
+      "title": "4.3 配置：精细控制测试行为",
+      "size": 19086
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-4.md",
+      "path": "/products/chapter-4/4-4",
+      "url": "https://yaklang.com/products/chapter-4/4-4",
+      "title": "4.4 Fuzztag - 智能化请求构造引擎",
+      "size": 63749
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-5.md",
+      "path": "/products/chapter-4/4-5",
+      "url": "https://yaklang.com/products/chapter-4/4-5",
+      "title": "4.5 数据匹配与处理规则",
+      "size": 23980
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-6.md",
+      "path": "/products/chapter-4/4-6",
+      "url": "https://yaklang.com/products/chapter-4/4-6",
+      "title": "4.6 全局编程与生命周期钩子：Web Fuzzer 热加载",
+      "size": 34677
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-7.md",
+      "path": "/products/chapter-4/4-7",
+      "url": "https://yaklang.com/products/chapter-4/4-7",
+      "title": "4.7 从手动验证到自动化资产：生成 Yaml PoC 工作流",
+      "size": 22129
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-8.md",
+      "path": "/products/chapter-4/4-8",
+      "url": "https://yaklang.com/products/chapter-4/4-8",
+      "title": "4.8 Web Fuzzer 序列：构建多包联动测试流水线",
+      "size": 28361
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/4-9.md",
+      "path": "/products/chapter-4/4-9",
+      "url": "https://yaklang.com/products/chapter-4/4-9",
+      "title": "4.9 本章总结",
+      "size": 3131
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-4/overview.md",
+      "path": "/products/chapter-4/overview",
+      "url": "https://yaklang.com/products/chapter-4/overview",
+      "title": "第四章：HTTP重放与模糊测试套件 - Web Fuzzer",
+      "size": 599
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/5-1.md",
+      "path": "/products/chapter-5/5-1",
+      "url": "https://yaklang.com/products/chapter-5/5-1",
+      "title": "5.1 Yakit 插件系统概述",
+      "size": 7802
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/5-2.md",
+      "path": "/products/chapter-5/5-2",
+      "url": "https://yaklang.com/products/chapter-5/5-2",
+      "title": "5.2 Yakit 插件生态系统",
+      "size": 21547
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/5-3.md",
+      "path": "/products/chapter-5/5-3",
+      "url": "https://yaklang.com/products/chapter-5/5-3",
+      "title": "5.3 插件编写指南",
+      "size": 115281
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/5-4.md",
+      "path": "/products/chapter-5/5-4",
+      "url": "https://yaklang.com/products/chapter-5/5-4",
+      "title": "5.4 高效插件开发：调试与实践",
+      "size": 21482
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/5-5.md",
+      "path": "/products/chapter-5/5-5",
+      "url": "https://yaklang.com/products/chapter-5/5-5",
+      "title": "5.5 插件编写常见错误与修复指南",
+      "size": 45612
+    },
+    {
+      "source": "products",
+      "relPath": "chapter-5/overview.md",
+      "path": "/products/chapter-5/overview",
+      "url": "https://yaklang.com/products/chapter-5/overview",
+      "title": "第五章：高扩展性的Yakit插件系统",
+      "size": 2021
+    },
+    {
+      "source": "products",
+      "relPath": "intro.mdx",
+      "path": "/products/intro",
+      "url": "https://yaklang.com/products/intro",
+      "title": "Yakit 使用手册",
+      "size": 2322
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Auxiliary-tool.md",
+      "path": "/products/legacy/Auxiliary-tool",
+      "url": "https://yaklang.com/products/legacy/Auxiliary-tool",
+      "title": "设置和其他辅助工具",
+      "size": 2605
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Data-processing.md",
+      "path": "/products/legacy/Data-processing",
+      "url": "https://yaklang.com/products/legacy/Data-processing",
+      "title": "数据处理",
+      "size": 2294
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Database.md",
+      "path": "/products/legacy/Database",
+      "url": "https://yaklang.com/products/legacy/Database",
+      "title": "数据库",
+      "size": 2496
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/FAQ.md",
+      "path": "/products/legacy/FAQ",
+      "url": "https://yaklang.com/products/legacy/FAQ",
+      "title": "FAQ",
+      "size": 5524
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/Plugin-repository.md",
+      "path": "/products/legacy/Plugin-repository/Plugin-repository",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/Plugin-repository",
+      "title": "插件商店介绍和使用",
+      "size": 7169
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/become-developer.mdx",
+      "path": "/products/legacy/Plugin-repository/best-practice/become-developer",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/become-developer",
+      "title": "生态贡献指南",
+      "size": 3969
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/intro.mdx",
+      "path": "/products/legacy/Plugin-repository/best-practice/intro",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/intro",
+      "title": "Yakit 插件编程概述",
+      "size": 1467
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/mitm-plug.md",
+      "path": "/products/legacy/Plugin-repository/best-practice/mitm-plug",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/mitm-plug",
+      "title": "MITM 插件：SSRF 公网出网检测",
+      "size": 3653
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/passive-scanning.md",
+      "path": "/products/legacy/Plugin-repository/best-practice/passive-scanning",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/passive-scanning",
+      "title": "Log4j JDNI fuzz与被动扫描",
+      "size": 6061
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/shiro-case.mdx",
+      "path": "/products/legacy/Plugin-repository/best-practice/shiro-case",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/shiro-case",
+      "title": "Shiro CVE-2016-4437（WIP）",
+      "size": 5657
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/thinkphp-case.mdx",
+      "path": "/products/legacy/Plugin-repository/best-practice/thinkphp-case",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/thinkphp-case",
+      "title": "ThinkPHP 5.0.23 RCE 扫描 [YAK]",
+      "size": 9284
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/thinkphp5-pasiveScan.md",
+      "path": "/products/legacy/Plugin-repository/best-practice/thinkphp5-pasiveScan",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/thinkphp5-pasiveScan",
+      "title": "ThinkPHP RCE 被动扫描插件 [MITM]",
+      "size": 10069
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/best-practice/u-own-yak-source.mdx",
+      "path": "/products/legacy/Plugin-repository/best-practice/u-own-yak-source",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/best-practice/u-own-yak-source",
+      "title": "维护你自己的插件源",
+      "size": 261
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/plugins/plugin_create.mdx",
+      "path": "/products/legacy/Plugin-repository/plugins/plugin_create",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/plugins/plugin_create",
+      "title": "插件编写指南：创建插件与设置参数",
+      "size": 10180
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/plugins/plugin_output.mdx",
+      "path": "/products/legacy/Plugin-repository/plugins/plugin_output",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/plugins/plugin_output",
+      "title": "插件编写指南：插件交互式输出",
+      "size": 7704
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/plugins/plugin_type.mdx",
+      "path": "/products/legacy/Plugin-repository/plugins/plugin_type",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/plugins/plugin_type",
+      "title": "插件概述：定义与基础类型",
+      "size": 3205
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/plugins/plugin_workthrough.mdx",
+      "path": "/products/legacy/Plugin-repository/plugins/plugin_workthrough",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/plugins/plugin_workthrough",
+      "title": "Yak 原生插件编写：基础操作整合",
+      "size": 6258
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Plugin-repository/yak-script-system.mdx",
+      "path": "/products/legacy/Plugin-repository/yak-script-system",
+      "url": "https://yaklang.com/products/legacy/Plugin-repository/yak-script-system",
+      "title": "插件系统技术概述",
+      "size": 2752
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/advanced-configuration.md",
+      "path": "/products/legacy/Web Fuzzer/advanced-configuration",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/advanced-configuration",
+      "title": "高级配置",
+      "size": 8054
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/advanced-configuration2.md",
+      "path": "/products/legacy/Web Fuzzer/advanced-configuration2",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/advanced-configuration2",
+      "title": "序列前置知识之高级配置",
+      "size": 8326
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-hotpatch-example1.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-hotpatch-example1",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-hotpatch-example1",
+      "title": "热加载场景案例：csrf token保护下的爆破",
+      "size": 3895
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-hotpatch-example2.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-hotpatch-example2",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-hotpatch-example2",
+      "title": "热加载场景案例：爆破aes cbc加密",
+      "size": 9398
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-hotpatch.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-hotpatch",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-hotpatch",
+      "title": "热加载",
+      "size": 4078
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-other.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-other",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-other",
+      "title": "其他",
+      "size": 8976
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-sequence-example1.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-sequence-example1",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-sequence-example1",
+      "title": "序列场景案例：每日签到",
+      "size": 2025
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-sequence-example2.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-sequence-example2",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-sequence-example2",
+      "title": "序列场景案例：文件上传与校验",
+      "size": 1313
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-sequence-example3.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-sequence-example3",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-sequence-example3",
+      "title": "序列场景案例：csrf token保护下的爆破",
+      "size": 2953
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz-sequence.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz-sequence",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz-sequence",
+      "title": "Web Fuzzer序列基础",
+      "size": 1851
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/fuzz.md",
+      "path": "/products/legacy/Web Fuzzer/fuzz",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/fuzz",
+      "title": "爆破",
+      "size": 7084
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Web Fuzzer/repeat.md",
+      "path": "/products/legacy/Web Fuzzer/repeat",
+      "url": "https://yaklang.com/products/legacy/Web Fuzzer/repeat",
+      "title": "重放",
+      "size": 1383
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/Websocket-hijacking.md",
+      "path": "/products/legacy/Websocket-hijacking",
+      "url": "https://yaklang.com/products/legacy/Websocket-hijacking",
+      "title": "Websocket劫持",
+      "size": 7309
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/back-link.md",
+      "path": "/products/legacy/back-link",
+      "url": "https://yaklang.com/products/legacy/back-link",
+      "title": "反连管理",
+      "size": 7674
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/connection.md",
+      "path": "/products/legacy/connection",
+      "url": "https://yaklang.com/products/legacy/connection",
+      "title": "本地模式与远程模式",
+      "size": 2353
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/download_and_install.mdx",
+      "path": "/products/legacy/download_and_install",
+      "url": "https://yaklang.com/products/legacy/download_and_install",
+      "title": "下载安装与更新配置",
+      "size": 6777
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/intro.mdx",
+      "path": "/products/legacy/intro",
+      "url": "https://yaklang.com/products/legacy/intro",
+      "title": "Yakit: 集成化单兵安全能力平台",
+      "size": 4676
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/ip-auto.md",
+      "path": "/products/legacy/ip-auto",
+      "url": "https://yaklang.com/products/legacy/ip-auto",
+      "title": "自动化漏洞检测",
+      "size": 3410
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/History.md",
+      "path": "/products/legacy/mitm/History",
+      "url": "https://yaklang.com/products/legacy/mitm/History",
+      "title": "History",
+      "size": 2246
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/Mark-Replace-Traffic.md",
+      "path": "/products/legacy/mitm/Mark-Replace-Traffic",
+      "url": "https://yaklang.com/products/legacy/mitm/Mark-Replace-Traffic",
+      "title": "标记/替换流量",
+      "size": 3140
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/Proxy-and-browser-settings.md",
+      "path": "/products/legacy/mitm/Proxy-and-browser-settings",
+      "url": "https://yaklang.com/products/legacy/mitm/Proxy-and-browser-settings",
+      "title": "代理和浏览器设置",
+      "size": 3258
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/filter-traffic.md",
+      "path": "/products/legacy/mitm/filter-traffic",
+      "url": "https://yaklang.com/products/legacy/mitm/filter-traffic",
+      "title": "过滤流量",
+      "size": 1685
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/hijack-configuration.md",
+      "path": "/products/legacy/mitm/hijack-configuration",
+      "url": "https://yaklang.com/products/legacy/mitm/hijack-configuration",
+      "title": "证书安装和免配置启动",
+      "size": 5350
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/site-tree.md",
+      "path": "/products/legacy/mitm/site-tree",
+      "url": "https://yaklang.com/products/legacy/mitm/site-tree",
+      "title": "网站树视角",
+      "size": 1018
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/mitm/start-hijacking.md",
+      "path": "/products/legacy/mitm/start-hijacking",
+      "url": "https://yaklang.com/products/legacy/mitm/start-hijacking",
+      "title": "开始劫持",
+      "size": 3594
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/base-crawler.md",
+      "path": "/products/legacy/module/base-crawler",
+      "url": "https://yaklang.com/products/legacy/module/base-crawler",
+      "title": "基础爬虫",
+      "size": 2145
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/blasting-and-unauthorized-testing.md",
+      "path": "/products/legacy/module/blasting-and-unauthorized-testing",
+      "url": "https://yaklang.com/products/legacy/module/blasting-and-unauthorized-testing",
+      "title": "爆破与未授权检测",
+      "size": 3075
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/directory-canning-and-blasting.md",
+      "path": "/products/legacy/module/directory-canning-and-blasting",
+      "url": "https://yaklang.com/products/legacy/module/directory-canning-and-blasting",
+      "title": "综合目录扫描与爆破",
+      "size": 1923
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/modular-fingerprint-scanning.md",
+      "path": "/products/legacy/module/modular-fingerprint-scanning",
+      "url": "https://yaklang.com/products/legacy/module/modular-fingerprint-scanning",
+      "title": "端口探测和指纹扫描",
+      "size": 5621
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/space-engine.md",
+      "path": "/products/legacy/module/space-engine",
+      "url": "https://yaklang.com/products/legacy/module/space-engine",
+      "title": "空间引擎：Hunter",
+      "size": 965
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/module/subdomain.md",
+      "path": "/products/legacy/module/subdomain",
+      "url": "https://yaklang.com/products/legacy/module/subdomain",
+      "title": "子域名收集",
+      "size": 1697
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/special.md",
+      "path": "/products/legacy/special",
+      "url": "https://yaklang.com/products/legacy/special",
+      "title": "专项漏洞检测",
+      "size": 959
+    },
+    {
+      "source": "products",
+      "relPath": "legacy/written-in-front.md",
+      "path": "/products/legacy/written-in-front",
+      "url": "https://yaklang.com/products/legacy/written-in-front",
+      "title": "中间人攻击简介",
+      "size": 3576
+    }
+  ]
+}

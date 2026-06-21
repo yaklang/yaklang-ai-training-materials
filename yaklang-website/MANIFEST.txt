@@ -1,0 +1,26 @@
+Yaklang Site Content Package
+================================
+
+site:        https://yaklang.com
+generatedAt: 2026-06-21T03:07:10.764Z (UTC ISO)
+baseUrl:     /
+sources:     docs, products, blog (Yaklab and any other dirs excluded)
+entryCount:  523
+
+Routing rules (Docusaurus, baseUrl=/):
+  docs/     -> https://yaklang.com/docs/<relPath-without-ext>  (index.md -> dir)
+  products/ -> https://yaklang.com/products/<relPath-without-ext> (index.md -> dir)
+  blog/     -> https://yaklang.com/blog/<filename-without-ext-or-date-prefix>
+
+frontmatter.slug (if present) overrides the derived path for the entry.
+
+How to recover URL from a file inside this zip:
+  1. Look at the top-level dir of the file: docs | products | blog
+  2. For docs/products: path = routeBasePath + '/' + (relPath without .md/.mdx)
+     (strip trailing /index)
+  3. For blog: path = /blog/ + (filename without .md, without YYYY-MM-DD- prefix)
+  4. full url = https://yaklang.com + path
+  Or just read INDEX.json / INDEX.ndjson for the authoritative mapping.
+
+INDEX.json    full index with routing meta + sorted entries
+INDEX.ndjson  one entry per line, same fields as INDEX.json.entries
