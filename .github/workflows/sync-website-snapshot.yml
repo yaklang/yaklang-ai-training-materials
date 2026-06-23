@@ -177,33 +177,35 @@ jobs:
             echo "pr_number=$PR_NUMBER"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Auto approve and enable auto-merge
+      - name: Auto approve and merge
         # 仅在确有改动且成功拿到 PR 号时执行
         if: steps.changes.outputs.any == 'true' && steps.pr.outputs.pr_number != ''
         env:
-          # 用独立身份的 PAT 批准 PR: GITHUB_TOKEN 无法批准自己创建的 PR。
-          # 该 PAT 对应用户需对本仓有写权限; 建议 fine-grained PAT,
-          # 仅授予 Pull requests: Read and write, Contents: Read。
-          GH_TOKEN: ${{ secrets.SNAPSHOT_AUTOMERGE_TOKEN }}
+          # 批准用独立身份的 PAT: GITHUB_TOKEN 无法批准自己创建的 PR。
+          # 该 PAT 只需最小权限即可批准: Pull requests: Read and write (Contents: Read 即可)。
+          APPROVE_TOKEN: ${{ secrets.SNAPSHOT_AUTOMERGE_TOKEN }}
+          # 合并用内置 GITHUB_TOKEN: 它具备 contents:write; PR 经上面批准后已满足
+          # ruleset 的 review 要求, 属于合规合并, 无需把任何 token 放进 bypass 名单。
+          # (合并 PR 需要 Contents:write, 故不复用上面那个最小权限 PAT。)
+          MERGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
 
-          if [ -z "${GH_TOKEN}" ]; then
+          if [ -z "${APPROVE_TOKEN}" ]; then
             echo "::warning::SNAPSHOT_AUTOMERGE_TOKEN is not configured; skip auto-approve/merge. PR #${PR_NUMBER} must be merged manually."
             exit 0
           fi
 
           echo "Approving PR #${PR_NUMBER} (machine-generated website snapshot)..."
-          gh pr review "${PR_NUMBER}" --approve \
+          GH_TOKEN="${APPROVE_TOKEN}" gh pr review "${PR_NUMBER}" --approve \
             --body "Automated approval: website snapshot sync (machine-generated content)."
 
-          echo "Enabling auto-merge (squash) for PR #${PR_NUMBER}..."
-          # allow_auto_merge 已在仓库开启; --auto 会在必需审批满足后自动合并。
-          # 若 auto-merge 当前不可用 (例如条件已满足), 回退到立即合并。
-          gh pr merge "${PR_NUMBER}" --auto --squash --delete-branch \
-            || gh pr merge "${PR_NUMBER}" --squash --delete-branch
+          echo "Merging PR #${PR_NUMBER} (squash) via GITHUB_TOKEN..."
+          # 已批准且无必需 status check, PR 立即可合并; 先试 auto-merge, 回退到立即合并。
+          GH_TOKEN="${MERGE_TOKEN}" gh pr merge "${PR_NUMBER}" --auto --squash --delete-branch \
+            || GH_TOKEN="${MERGE_TOKEN}" gh pr merge "${PR_NUMBER}" --squash --delete-branch
 
-          echo "Done: PR #${PR_NUMBER} approved and (auto-)merge requested."
+          echo "Done: PR #${PR_NUMBER} approved and merged."
 
       - name: Upload snapshot artifact (debug)
         if: steps.changes.outputs.any == 'true' || steps.changes.outputs.any == 'false'
