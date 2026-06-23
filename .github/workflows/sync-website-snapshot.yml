@@ -5,13 +5,16 @@ name: Sync Website Snapshot
 # 数据源: yaklang.github.io 仓的 static/site-packages.json (公开, 最新一期 zip)
 # 脚本: scripts/sync-website-snapshot.js (零第三方依赖)
 # 本仓 main 受 repository ruleset 保护 (pull_request, 需要 1 个 approving review),
-# 因此 CI 走 "新建 chore 分支 + 开 PR" 模式; PR 由人工合并。
+# 因此 CI 走 "新建 chore 分支 + 开 PR" 模式; 随后用独立 PAT (secret: SNAPSHOT_AUTOMERGE_TOKEN)
+# 自动批准并开启 auto-merge, 满足审批后由 GitHub 自动合并。
+# 注: GITHUB_TOKEN 无法批准自己创建的 PR, 也不能进 ruleset bypass 名单, 故必须用独立身份的 PAT。
+# 未配置该 secret 时自动回退为人工合并 (workflow 不会因此失败)。
 #
 # 版本探测机制:
 #   - 拉 site-packages.json 取最新一期 id
 #   - 与 yaklang-website/.snapshot-id 中记录的上次 id 比较
 #   - 一致 (且 force!=true) 则跳过
-#   - 不一致则下载 zip, 整理, commit, push chore 分支, 开 PR
+#   - 不一致则下载 zip, 整理, commit, push chore 分支, 开 PR, 自动批准 + auto-merge
 
 on:
   schedule:
@@ -121,6 +124,7 @@ jobs:
           fi
 
       - name: Commit and push to branch / open PR
+        id: pr
         if: steps.changes.outputs.any == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -163,10 +167,43 @@ jobs:
           else
             echo "PR already exists on ${BRANCH}; pushed updated commit."
           fi
+          # 取回该分支对应的 PR 号 (新建或已存在都适用), 供后续自动批准/合并使用
+          PR_NUMBER="$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')"
+          echo "Resolved PR number: ${PR_NUMBER:-<none>}"
+
           echo "BRANCH=${BRANCH}" >> "$GITHUB_OUTPUT" 2>/dev/null || true
           {
             echo "pr_branch=$BRANCH"
+            echo "pr_number=$PR_NUMBER"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Auto approve and enable auto-merge
+        # 仅在确有改动且成功拿到 PR 号时执行
+        if: steps.changes.outputs.any == 'true' && steps.pr.outputs.pr_number != ''
+        env:
+          # 用独立身份的 PAT 批准 PR: GITHUB_TOKEN 无法批准自己创建的 PR。
+          # 该 PAT 对应用户需对本仓有写权限; 建议 fine-grained PAT,
+          # 仅授予 Pull requests: Read and write, Contents: Read。
+          GH_TOKEN: ${{ secrets.SNAPSHOT_AUTOMERGE_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::SNAPSHOT_AUTOMERGE_TOKEN is not configured; skip auto-approve/merge. PR #${PR_NUMBER} must be merged manually."
+            exit 0
+          fi
+
+          echo "Approving PR #${PR_NUMBER} (machine-generated website snapshot)..."
+          gh pr review "${PR_NUMBER}" --approve \
+            --body "Automated approval: website snapshot sync (machine-generated content)."
+
+          echo "Enabling auto-merge (squash) for PR #${PR_NUMBER}..."
+          # allow_auto_merge 已在仓库开启; --auto 会在必需审批满足后自动合并。
+          # 若 auto-merge 当前不可用 (例如条件已满足), 回退到立即合并。
+          gh pr merge "${PR_NUMBER}" --auto --squash --delete-branch \
+            || gh pr merge "${PR_NUMBER}" --squash --delete-branch
+
+          echo "Done: PR #${PR_NUMBER} approved and (auto-)merge requested."
 
       - name: Upload snapshot artifact (debug)
         if: steps.changes.outputs.any == 'true' || steps.changes.outputs.any == 'false'
@@ -194,7 +231,7 @@ jobs:
             echo "- Changed: \`${CHANGED}\`"
             if [ "$CHANGED" = "true" ]; then
               echo "- Pushed to \`chore/website-snapshot-${NEW_ID}\` and opened/updated PR against \`main\`"
-              echo "- main is protected by a repository ruleset (pull_request); PR must be merged manually."
+              echo "- Auto-approve + auto-merge requested via \`SNAPSHOT_AUTOMERGE_TOKEN\` (falls back to manual merge if the secret is missing)."
             else
               echo "- No commit (already up to date)"
             fi
