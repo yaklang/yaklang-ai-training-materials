@@ -10,7 +10,7 @@
 
 - Snapshot ID: `2026-06-21-7`
 - 站点生成时间 (zip 内 generatedAt): `2026-06-21T07:21:52.458Z`
-- 同步到本仓时间: `2026-06-21T20:09:40.102Z`
+- 同步到本仓时间: `2026-06-23T03:01:40.455Z`
 - 条目数: `523`
 - 来源 zip URL: <https://aliyun-oss.yaklang.com/yak/docs/2026-06-21/yaklang-com-docs-2026-06-21-7.zip>
 - 来源记账文件: yaklang.github.io `static/site-packages.json`
