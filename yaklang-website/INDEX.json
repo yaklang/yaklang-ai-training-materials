@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-06-21T07:21:52.458Z",
+  "generatedAt": "2026-06-26T19:55:44.281Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -18,7 +18,7 @@
       "routeBasePath": "/blog"
     }
   },
-  "count": 523,
+  "count": 524,
   "entries": [
     {
       "source": "blog",
@@ -3571,6 +3571,14 @@
       "url": "https://yaklang.com/docs/api/regen",
       "title": "regen {#library-regen}",
       "size": 11609
+    },
+    {
+      "source": "docs",
+      "relPath": "api/rehs.md",
+      "path": "/docs/api/rehs",
+      "url": "https://yaklang.com/docs/api/rehs",
+      "title": "rehs {#library-rehs}",
+      "size": 6646
     },
     {
       "source": "docs",
