@@ -2,10 +2,10 @@ Yaklang Site Content Package
 ================================
 
 site:        https://yaklang.com
-generatedAt: 2026-06-21T07:21:52.458Z (UTC ISO)
+generatedAt: 2026-06-26T19:55:44.281Z (UTC ISO)
 baseUrl:     /
 sources:     docs, products, blog (Yaklab and any other dirs excluded)
-entryCount:  523
+entryCount:  524
 
 Routing rules (Docusaurus, baseUrl=/):
   docs/     -> https://yaklang.com/docs/<relPath-without-ext>  (index.md -> dir)

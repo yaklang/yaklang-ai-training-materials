@@ -290,6 +290,7 @@
 {"source":"docs","relPath":"api/re2.md","path":"/docs/api/re2","url":"https://yaklang.com/docs/api/re2","title":"re2 {#library-re2}","size":12517}
 {"source":"docs","relPath":"api/redis.md","path":"/docs/api/redis","url":"https://yaklang.com/docs/api/redis","title":"redis {#library-redis}","size":7060}
 {"source":"docs","relPath":"api/regen.md","path":"/docs/api/regen","url":"https://yaklang.com/docs/api/regen","title":"regen {#library-regen}","size":11609}
+{"source":"docs","relPath":"api/rehs.md","path":"/docs/api/rehs","url":"https://yaklang.com/docs/api/rehs","title":"rehs {#library-rehs}","size":6646}
 {"source":"docs","relPath":"api/report.md","path":"/docs/api/report","url":"https://yaklang.com/docs/api/report","title":"report {#library-report}","size":1428}
 {"source":"docs","relPath":"api/risk.md","path":"/docs/api/risk","url":"https://yaklang.com/docs/api/risk","title":"risk {#library-risk}","size":45760}
 {"source":"docs","relPath":"api/rpa.md","path":"/docs/api/rpa","url":"https://yaklang.com/docs/api/rpa","title":"rpa {#library-rpa}","size":15432}
