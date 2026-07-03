@@ -202,7 +202,7 @@
 {"source":"docs","relPath":"ai/overview.md","path":"/docs/ai/overview","url":"https://yaklang.com/docs/ai/overview","title":"Yaklang 中的 AI 编程","size":4387}
 {"source":"docs","relPath":"ai/rag.md","path":"/docs/ai/rag","url":"https://yaklang.com/docs/ai/rag","title":"知识库检索增强（RAG）","size":11506}
 {"source":"docs","relPath":"ai/structured.md","path":"/docs/ai/structured","url":"https://yaklang.com/docs/ai/structured","title":"函数调用与结构化流（ai）","size":5103}
-{"source":"docs","relPath":"api/ai.mdx","path":"/api/ai","url":"https://yaklang.com/api/ai","title":"ai","size":52640,"description":"AI 模块提供了与多种大语言模型集成的能力，支持 OpenAI、ChatGLM、Moonshot 等主流 AI 服务。通过统一的接口调用不同的 AI 服务，支持对话、函数调用、流式输出等功能。","slug":"/api/ai"}
+{"source":"docs","relPath":"api/ai.mdx","path":"/api/ai","url":"https://yaklang.com/api/ai","title":"ai","size":52641,"description":"AI 模块提供了与多种大语言模型集成的能力，支持 OpenAI、ChatGLM、Moonshot 等主流 AI 服务。通过统一的接口调用不同的 AI 服务，支持对话、函数调用、流式输出等功能。","slug":"/api/ai"}
 {"source":"docs","relPath":"api/aiagent.md","path":"/docs/api/aiagent","url":"https://yaklang.com/docs/api/aiagent","title":"aiagent {#library-aiagent}","size":31355}
 {"source":"docs","relPath":"api/aim.md","path":"/docs/api/aim","url":"https://yaklang.com/docs/api/aim","title":"aim {#library-aim}","size":11394}
 {"source":"docs","relPath":"api/aireducer.md","path":"/docs/api/aireducer","url":"https://yaklang.com/docs/api/aireducer","title":"aireducer {#library-aireducer}","size":10086}
