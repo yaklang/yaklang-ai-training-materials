@@ -308,7 +308,7 @@
 {"source":"docs","relPath":"api/suricata.md","path":"/docs/api/suricata","url":"https://yaklang.com/docs/api/suricata","title":"suricata {#library-suricata}","size":10244}
 {"source":"docs","relPath":"api/sync.md","path":"/docs/api/sync","url":"https://yaklang.com/docs/api/sync","title":"sync {#library-sync}","size":9115}
 {"source":"docs","relPath":"api/synscan.md","path":"/docs/api/synscan","url":"https://yaklang.com/docs/api/synscan","title":"synscan {#library-synscan}","size":8869}
-{"source":"docs","relPath":"api/syntaxflow.md","path":"/docs/api/syntaxflow","url":"https://yaklang.com/docs/api/syntaxflow","title":"syntaxflow {#library-syntaxflow}","size":12088}
+{"source":"docs","relPath":"api/syntaxflow.md","path":"/docs/api/syntaxflow","url":"https://yaklang.com/docs/api/syntaxflow","title":"syntaxflow {#library-syntaxflow}","size":12341}
 {"source":"docs","relPath":"api/systemd.md","path":"/docs/api/systemd","url":"https://yaklang.com/docs/api/systemd","title":"systemd {#library-systemd}","size":7857}
 {"source":"docs","relPath":"api/t3.md","path":"/docs/api/t3","url":"https://yaklang.com/docs/api/t3","title":"t3 {#library-t3}","size":7301}
 {"source":"docs","relPath":"api/tcp.md","path":"/docs/api/tcp","url":"https://yaklang.com/docs/api/tcp","title":"tcp {#library-tcp}","size":12352}

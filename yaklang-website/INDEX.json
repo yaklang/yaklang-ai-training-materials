@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-07-03T19:29:17.847Z",
+  "generatedAt": "2026-07-10T19:39:43.539Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -3722,7 +3722,7 @@
       "path": "/docs/api/syntaxflow",
       "url": "https://yaklang.com/docs/api/syntaxflow",
       "title": "syntaxflow {#library-syntaxflow}",
-      "size": 12088
+      "size": 12341
     },
     {
       "source": "docs",
