@@ -2,7 +2,7 @@ Yaklang Site Content Package
 ================================
 
 site:        https://yaklang.com
-generatedAt: 2026-07-10T19:39:43.539Z (UTC ISO)
+generatedAt: 2026-07-11T19:11:00.101Z (UTC ISO)
 baseUrl:     /
 sources:     docs, products, blog (Yaklab and any other dirs excluded)
 entryCount:  524
