@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-07-17T19:18:04.615Z",
+  "generatedAt": "2026-07-24T19:30:19.167Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -3690,7 +3690,7 @@
       "path": "/docs/api/subdomain",
       "url": "https://yaklang.com/docs/api/subdomain",
       "title": "subdomain {#library-subdomain}",
-      "size": 4553
+      "size": 4862
     },
     {
       "source": "docs",

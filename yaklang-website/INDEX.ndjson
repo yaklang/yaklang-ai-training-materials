@@ -304,7 +304,7 @@
 {"source":"docs","relPath":"api/ssa.md","path":"/docs/api/ssa","url":"https://yaklang.com/docs/api/ssa","title":"ssa {#library-ssa}","size":18990}
 {"source":"docs","relPath":"api/ssh.md","path":"/docs/api/ssh","url":"https://yaklang.com/docs/api/ssh","title":"ssh {#library-ssh}","size":5387}
 {"source":"docs","relPath":"api/str.md","path":"/docs/api/str","url":"https://yaklang.com/docs/api/str","title":"str {#library-str}","size":133273}
-{"source":"docs","relPath":"api/subdomain.md","path":"/docs/api/subdomain","url":"https://yaklang.com/docs/api/subdomain","title":"subdomain {#library-subdomain}","size":4553}
+{"source":"docs","relPath":"api/subdomain.md","path":"/docs/api/subdomain","url":"https://yaklang.com/docs/api/subdomain","title":"subdomain {#library-subdomain}","size":4862}
 {"source":"docs","relPath":"api/suricata.md","path":"/docs/api/suricata","url":"https://yaklang.com/docs/api/suricata","title":"suricata {#library-suricata}","size":10244}
 {"source":"docs","relPath":"api/sync.md","path":"/docs/api/sync","url":"https://yaklang.com/docs/api/sync","title":"sync {#library-sync}","size":9115}
 {"source":"docs","relPath":"api/synscan.md","path":"/docs/api/synscan","url":"https://yaklang.com/docs/api/synscan","title":"synscan {#library-synscan}","size":8869}
