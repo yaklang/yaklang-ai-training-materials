@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-08-07T07:21:16.191Z",
+  "generatedAt": "2026-08-10T03:58:33.594Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -18,7 +18,7 @@
       "routeBasePath": "/blog"
     }
   },
-  "count": 524,
+  "count": 523,
   "entries": [
     {
       "source": "blog",
@@ -3214,14 +3214,6 @@
     },
     {
       "source": "docs",
-      "relPath": "api/hids.md",
-      "path": "/docs/api/hids",
-      "url": "https://yaklang.com/docs/api/hids",
-      "title": "hids {#library-hids}",
-      "size": 32790
-    },
-    {
-      "source": "docs",
       "relPath": "api/hook.md",
       "path": "/docs/api/hook",
       "url": "https://yaklang.com/docs/api/hook",
@@ -3482,7 +3474,7 @@
       "path": "/docs/api/os",
       "url": "https://yaklang.com/docs/api/os",
       "title": "os {#library-os}",
-      "size": 24739
+      "size": 26510
     },
     {
       "source": "docs",
@@ -3666,7 +3658,7 @@
       "path": "/docs/api/ssa",
       "url": "https://yaklang.com/docs/api/ssa",
       "title": "ssa {#library-ssa}",
-      "size": 18990
+      "size": 18291
     },
     {
       "source": "docs",

@@ -245,7 +245,6 @@
 {"source":"docs","relPath":"api/git.md","path":"/docs/api/git","url":"https://yaklang.com/docs/api/git","title":"git {#library-git}","size":30177}
 {"source":"docs","relPath":"api/global_buildin_ops.md","path":"/docs/api/global_buildin_ops","url":"https://yaklang.com/docs/api/global_buildin_ops","title":"语法扩展：全局函数表","size":8096}
 {"source":"docs","relPath":"api/gzip.md","path":"/docs/api/gzip","url":"https://yaklang.com/docs/api/gzip","title":"gzip {#library-gzip}","size":3132}
-{"source":"docs","relPath":"api/hids.md","path":"/docs/api/hids","url":"https://yaklang.com/docs/api/hids","title":"hids {#library-hids}","size":32790}
 {"source":"docs","relPath":"api/hook.md","path":"/docs/api/hook","url":"https://yaklang.com/docs/api/hook","title":"hook {#library-hook}","size":11297}
 {"source":"docs","relPath":"api/http.md","path":"/docs/api/http","url":"https://yaklang.com/docs/api/http","title":"http {#library-http}","size":23459}
 {"source":"docs","relPath":"api/httpool.md","path":"/docs/api/httpool","url":"https://yaklang.com/docs/api/httpool","title":"httpool {#library-httpool}","size":4953}
@@ -278,7 +277,7 @@
 {"source":"docs","relPath":"api/omnisearch.md","path":"/docs/api/omnisearch","url":"https://yaklang.com/docs/api/omnisearch","title":"omnisearch {#library-omnisearch}","size":3564}
 {"source":"docs","relPath":"api/openapi.md","path":"/docs/api/openapi","url":"https://yaklang.com/docs/api/openapi","title":"openapi {#library-openapi}","size":5363}
 {"source":"docs","relPath":"api/orderedmap.md","path":"/docs/api/orderedmap","url":"https://yaklang.com/docs/api/orderedmap","title":"orderedmap {#library-orderedmap}","size":1901}
-{"source":"docs","relPath":"api/os.md","path":"/docs/api/os","url":"https://yaklang.com/docs/api/os","title":"os {#library-os}","size":24739}
+{"source":"docs","relPath":"api/os.md","path":"/docs/api/os","url":"https://yaklang.com/docs/api/os","title":"os {#library-os}","size":26510}
 {"source":"docs","relPath":"api/pandoc.md","path":"/docs/api/pandoc","url":"https://yaklang.com/docs/api/pandoc","title":"pandoc {#library-pandoc}","size":4178}
 {"source":"docs","relPath":"api/pcapx.md","path":"/docs/api/pcapx","url":"https://yaklang.com/docs/api/pcapx","title":"pcapx {#library-pcapx}","size":48327}
 {"source":"docs","relPath":"api/ping.md","path":"/docs/api/ping","url":"https://yaklang.com/docs/api/ping","title":"ping {#library-ping}","size":10615}
@@ -301,7 +300,7 @@
 {"source":"docs","relPath":"api/simulator.md","path":"/docs/api/simulator","url":"https://yaklang.com/docs/api/simulator","title":"simulator {#library-simulator}","size":22777}
 {"source":"docs","relPath":"api/smb.md","path":"/docs/api/smb","url":"https://yaklang.com/docs/api/smb","title":"smb {#library-smb}","size":6553}
 {"source":"docs","relPath":"api/spacengine.md","path":"/docs/api/spacengine","url":"https://yaklang.com/docs/api/spacengine","title":"spacengine {#library-spacengine}","size":20652}
-{"source":"docs","relPath":"api/ssa.md","path":"/docs/api/ssa","url":"https://yaklang.com/docs/api/ssa","title":"ssa {#library-ssa}","size":18990}
+{"source":"docs","relPath":"api/ssa.md","path":"/docs/api/ssa","url":"https://yaklang.com/docs/api/ssa","title":"ssa {#library-ssa}","size":18291}
 {"source":"docs","relPath":"api/ssh.md","path":"/docs/api/ssh","url":"https://yaklang.com/docs/api/ssh","title":"ssh {#library-ssh}","size":5387}
 {"source":"docs","relPath":"api/str.md","path":"/docs/api/str","url":"https://yaklang.com/docs/api/str","title":"str {#library-str}","size":133273}
 {"source":"docs","relPath":"api/subdomain.md","path":"/docs/api/subdomain","url":"https://yaklang.com/docs/api/subdomain","title":"subdomain {#library-subdomain}","size":4862}
