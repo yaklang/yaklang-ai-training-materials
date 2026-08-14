@@ -300,7 +300,7 @@
 {"source":"docs","relPath":"api/simulator.md","path":"/docs/api/simulator","url":"https://yaklang.com/docs/api/simulator","title":"simulator {#library-simulator}","size":22777}
 {"source":"docs","relPath":"api/smb.md","path":"/docs/api/smb","url":"https://yaklang.com/docs/api/smb","title":"smb {#library-smb}","size":6553}
 {"source":"docs","relPath":"api/spacengine.md","path":"/docs/api/spacengine","url":"https://yaklang.com/docs/api/spacengine","title":"spacengine {#library-spacengine}","size":20652}
-{"source":"docs","relPath":"api/ssa.md","path":"/docs/api/ssa","url":"https://yaklang.com/docs/api/ssa","title":"ssa {#library-ssa}","size":18291}
+{"source":"docs","relPath":"api/ssa.md","path":"/docs/api/ssa","url":"https://yaklang.com/docs/api/ssa","title":"ssa {#library-ssa}","size":18340}
 {"source":"docs","relPath":"api/ssh.md","path":"/docs/api/ssh","url":"https://yaklang.com/docs/api/ssh","title":"ssh {#library-ssh}","size":5387}
 {"source":"docs","relPath":"api/str.md","path":"/docs/api/str","url":"https://yaklang.com/docs/api/str","title":"str {#library-str}","size":133273}
 {"source":"docs","relPath":"api/subdomain.md","path":"/docs/api/subdomain","url":"https://yaklang.com/docs/api/subdomain","title":"subdomain {#library-subdomain}","size":4862}
@@ -326,7 +326,7 @@
 {"source":"docs","relPath":"api/xhtml.md","path":"/docs/api/xhtml","url":"https://yaklang.com/docs/api/xhtml","title":"xhtml {#library-xhtml}","size":6832}
 {"source":"docs","relPath":"api/xml.md","path":"/docs/api/xml","url":"https://yaklang.com/docs/api/xml","title":"xml {#library-xml}","size":4467}
 {"source":"docs","relPath":"api/xpath.md","path":"/docs/api/xpath","url":"https://yaklang.com/docs/api/xpath","title":"xpath {#library-xpath}","size":11005}
-{"source":"docs","relPath":"api/yakit.md","path":"/docs/api/yakit","url":"https://yaklang.com/docs/api/yakit","title":"yakit {#library-yakit}","size":82549}
+{"source":"docs","relPath":"api/yakit.md","path":"/docs/api/yakit","url":"https://yaklang.com/docs/api/yakit","title":"yakit {#library-yakit}","size":82599}
 {"source":"docs","relPath":"api/yaml.md","path":"/docs/api/yaml","url":"https://yaklang.com/docs/api/yaml","title":"yaml {#library-yaml}","size":3201}
 {"source":"docs","relPath":"api/yso.md","path":"/docs/api/yso","url":"https://yaklang.com/docs/api/yso","title":"yso {#library-yso}","size":99512}
 {"source":"docs","relPath":"api/zip.md","path":"/docs/api/zip","url":"https://yaklang.com/docs/api/zip","title":"zip {#library-zip}","size":41728}

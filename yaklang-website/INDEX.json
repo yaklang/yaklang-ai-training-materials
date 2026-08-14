@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-08-10T03:58:33.594Z",
+  "generatedAt": "2026-08-14T19:00:10.524Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -3658,7 +3658,7 @@
       "path": "/docs/api/ssa",
       "url": "https://yaklang.com/docs/api/ssa",
       "title": "ssa {#library-ssa}",
-      "size": 18291
+      "size": 18340
     },
     {
       "source": "docs",
@@ -3866,7 +3866,7 @@
       "path": "/docs/api/yakit",
       "url": "https://yaklang.com/docs/api/yakit",
       "title": "yakit {#library-yakit}",
-      "size": 82549
+      "size": 82599
     },
     {
       "source": "docs",
