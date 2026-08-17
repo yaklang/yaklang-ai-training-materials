@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-08-14T19:00:10.524Z",
+  "generatedAt": "2026-08-17T18:44:52.236Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -2872,7 +2872,7 @@
       "path": "/api/ai",
       "url": "https://yaklang.com/api/ai",
       "title": "ai",
-      "size": 52641,
+      "size": 53135,
       "description": "AI 模块提供了与多种大语言模型集成的能力，支持 OpenAI、ChatGLM、Moonshot 等主流 AI 服务。通过统一的接口调用不同的 AI 服务，支持对话、函数调用、流式输出等功能。",
       "slug": "/api/ai"
     },
