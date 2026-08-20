@@ -8,11 +8,11 @@
 
 ## 本期元信息
 
-- Snapshot ID: `2026-08-17`
-- 站点生成时间 (zip 内 generatedAt): `2026-08-17T18:44:52.236Z`
-- 同步到本仓时间: `2026-08-17T19:04:48.099Z`
+- Snapshot ID: `2026-08-20-1`
+- 站点生成时间 (zip 内 generatedAt): `2026-08-20T06:18:54.810Z`
+- 同步到本仓时间: `2026-08-20T19:07:56.642Z`
 - 条目数: `523`
-- 来源 zip URL: <https://aliyun-oss.yaklang.com/yak/docs/2026-08-17/yaklang-com-docs-2026-08-17.zip>
+- 来源 zip URL: <https://aliyun-oss.yaklang.com/yak/docs/2026-08-20/yaklang-com-docs-2026-08-20-1.zip>
 - 来源记账文件: yaklang.github.io `static/site-packages.json`
 
 ## 目录结构
