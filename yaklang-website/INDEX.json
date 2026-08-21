@@ -1,6 +1,6 @@
 {
   "site": "https://yaklang.com",
-  "generatedAt": "2026-08-20T06:18:54.810Z",
+  "generatedAt": "2026-08-21T18:42:48.445Z",
   "baseUrl": "/",
   "sources": [
     "docs",
@@ -3522,7 +3522,7 @@
       "path": "/docs/api/rag",
       "url": "https://yaklang.com/docs/api/rag",
       "title": "rag {#library-rag}",
-      "size": 49530
+      "size": 51049
     },
     {
       "source": "docs",

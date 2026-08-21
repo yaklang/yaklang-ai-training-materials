@@ -283,7 +283,7 @@
 {"source":"docs","relPath":"api/ping.md","path":"/docs/api/ping","url":"https://yaklang.com/docs/api/ping","title":"ping {#library-ping}","size":10615}
 {"source":"docs","relPath":"api/poc.md","path":"/docs/api/poc","url":"https://yaklang.com/docs/api/poc","title":"poc {#library-poc}","size":122051}
 {"source":"docs","relPath":"api/pprof.md","path":"/docs/api/pprof","url":"https://yaklang.com/docs/api/pprof","title":"pprof {#library-pprof}","size":6757}
-{"source":"docs","relPath":"api/rag.md","path":"/docs/api/rag","url":"https://yaklang.com/docs/api/rag","title":"rag {#library-rag}","size":49530}
+{"source":"docs","relPath":"api/rag.md","path":"/docs/api/rag","url":"https://yaklang.com/docs/api/rag","title":"rag {#library-rag}","size":51049}
 {"source":"docs","relPath":"api/rdp.md","path":"/docs/api/rdp","url":"https://yaklang.com/docs/api/rdp","title":"rdp {#library-rdp}","size":2646}
 {"source":"docs","relPath":"api/re.md","path":"/docs/api/re","url":"https://yaklang.com/docs/api/re","title":"re {#library-re}","size":26316}
 {"source":"docs","relPath":"api/re2.md","path":"/docs/api/re2","url":"https://yaklang.com/docs/api/re2","title":"re2 {#library-re2}","size":12517}
